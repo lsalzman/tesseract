@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasTE = false, hasMT = false, hasD3 = false, hasAF = false, hasVP2 = false, hasVP3 = false, hasPP = false, hasMDA = false, hasTE3 = false, hasTE4 = false, hasVP = false, hasFP = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasRN = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasFC = false, hasTEX = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false;
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
@@ -23,22 +23,6 @@ PFNGLCLIENTACTIVETEXTUREARBPROC glClientActiveTexture_ = NULL;
 PFNGLMULTITEXCOORD2FARBPROC     glMultiTexCoord2f_     = NULL;
 PFNGLMULTITEXCOORD3FARBPROC     glMultiTexCoord3f_     = NULL;
 PFNGLMULTITEXCOORD4FARBPROC     glMultiTexCoord4f_     = NULL;
-
-// GL_ARB_vertex_program, GL_ARB_fragment_program
-PFNGLGENPROGRAMSARBPROC              glGenPrograms_              = NULL;
-PFNGLDELETEPROGRAMSARBPROC           glDeletePrograms_           = NULL;
-PFNGLBINDPROGRAMARBPROC              glBindProgram_              = NULL;
-PFNGLPROGRAMSTRINGARBPROC            glProgramString_            = NULL;
-PFNGLGETPROGRAMIVARBPROC             glGetProgramiv_             = NULL;
-PFNGLPROGRAMENVPARAMETER4FARBPROC    glProgramEnvParameter4f_    = NULL;
-PFNGLPROGRAMENVPARAMETER4FVARBPROC   glProgramEnvParameter4fv_   = NULL;
-PFNGLENABLEVERTEXATTRIBARRAYARBPROC  glEnableVertexAttribArray_  = NULL;
-PFNGLDISABLEVERTEXATTRIBARRAYARBPROC glDisableVertexAttribArray_ = NULL;
-PFNGLVERTEXATTRIBPOINTERARBPROC      glVertexAttribPointer_      = NULL;
-
-// GL_EXT_gpu_program_parameters
-PFNGLPROGRAMENVPARAMETERS4FVEXTPROC   glProgramEnvParameters4fv_   = NULL;
-PFNGLPROGRAMLOCALPARAMETERS4FVEXTPROC glProgramLocalParameters4fv_ = NULL;
 
 // GL_ARB_occlusion_query
 PFNGLGENQUERIESARBPROC        glGenQueries_        = NULL;
@@ -88,6 +72,9 @@ PFNGLUNIFORM4FVARBPROC                glUniform4fv_               = NULL;
 PFNGLUNIFORM1IARBPROC                 glUniform1i_                = NULL;
 PFNGLBINDATTRIBLOCATIONARBPROC        glBindAttribLocation_       = NULL;
 PFNGLGETACTIVEUNIFORMARBPROC          glGetActiveUniform_         = NULL;
+PFNGLENABLEVERTEXATTRIBARRAYARBPROC   glEnableVertexAttribArray_  = NULL;
+PFNGLDISABLEVERTEXATTRIBARRAYARBPROC  glDisableVertexAttribArray_ = NULL;
+PFNGLVERTEXATTRIBPOINTERARBPROC       glVertexAttribPointer_      = NULL;
 
 // GL_EXT_draw_range_elements
 PFNGLDRAWRANGEELEMENTSEXTPROC glDrawRangeElements_ = NULL;
@@ -125,9 +112,6 @@ PFNGLUNIFORMBUFFEREXTPROC        glUniformBuffer_        = NULL;
 PFNGLGETUNIFORMBUFFERSIZEEXTPROC glGetUniformBufferSize_ = NULL;
 PFNGLGETUNIFORMOFFSETEXTPROC     glGetUniformOffset_     = NULL;
 
-// GL_EXT_fog_coord
-PFNGLFOGCOORDPOINTEREXTPROC glFogCoordPointer_ = NULL;
-
 void *getprocaddress(const char *name)
 {
     return SDL_GL_GetProcAddress(name);
@@ -136,23 +120,12 @@ void *getprocaddress(const char *name)
 VARP(ati_skybox_bug, 0, 0, 1);
 VAR(ati_oq_bug, 0, 0, 1);
 VAR(ati_minmax_bug, 0, 0, 1);
-VAR(ati_dph_bug, 0, 0, 1);
-VAR(ati_line_bug, 0, 0, 1);
 VAR(ati_cubemap_bug, 0, 0, 1);
 VAR(ati_ubo_bug, 0, 0, 1);
 VAR(nvidia_scissor_bug, 0, 0, 1);
-VAR(apple_glsldepth_bug, 0, 0, 1);
-VAR(apple_ff_bug, 0, 0, 1);
-VAR(apple_vp_bug, 0, 0, 1);
 VAR(sdl_backingstore_bug, -1, 0, 1);
-VAR(mesa_program_bug, 0, 0, 1);
-VAR(avoidshaders, 1, 0, 0);
 VAR(minimizetcusage, 1, 0, 0);
-VAR(emulatefog, 1, 0, 0);
-VAR(usevp2, 1, 0, 0);
-VAR(usevp3, 1, 0, 0);
 VAR(usetexrect, 1, 0, 0);
-VAR(hasglsl, 1, 0, 0);
 VAR(useubo, 1, 0, 0);
 VAR(usebue, 1, 0, 0);
 VAR(rtscissor, 0, 1, 1);
@@ -213,17 +186,6 @@ void gl_checkextensions()
     GLint val;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &val);
     hwtexsize = val;
-
-    if(hasext(exts, "GL_EXT_texture_env_combine") || hasext(exts, "GL_ARB_texture_env_combine"))
-    {
-        hasTE = true;
-        if(hasext(exts, "GL_ARB_texture_env_crossbar")) hasTEX = true;
-        if(hasext(exts, "GL_ATI_texture_env_combine3")) hasTE3 = true;
-        if(hasext(exts, "GL_NV_texture_env_combine4")) hasTE4 = true;
-        if(hasext(exts, "GL_EXT_texture_env_dot3") || hasext(exts, "GL_ARB_texture_env_dot3")) hasD3 = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_env_combine extension.");
-    }
-    else conoutf(CON_WARN, "WARNING: No texture_env_combine extension! (your video card is WAY too old)");
 
     if(hasext(exts, "GL_ARB_multitexture"))
     {
@@ -360,15 +322,11 @@ void gl_checkextensions()
         waterreflect = 0;
     }
 
-    extern int reservedynlighttc, reserveshadowmaptc, batchlightmaps, ffdynlights, fpdepthfx;
+    extern int batchlightmaps, fpdepthfx;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
-
-        reservedynlighttc = 2;
-        reserveshadowmaptc = 3;
         minimizetcusage = 1;
-        emulatefog = 1;
 		if(hasTF && hasNVFB) fpdepthfx = 1;
     }
     else if(nvidia)
@@ -385,22 +343,17 @@ void gl_checkextensions()
     }
     else
     {
-        if(intel)
-        {
-#ifdef __APPLE__
-            apple_vp_bug = 1;
-#endif
-        }
+        // silence warnings
+        (void)intel;
+        (void)mesa;
 
         if(!hasext(exts, "GL_EXT_gpu_shader4"))
         {
-            avoidshaders = 1;
             if(hwtexsize < 4096) 
             {
                 maxtexsize = hwtexsize >= 2048 ? 512 : 256;
                 batchlightmaps = 0;
             }
-            if(!hasTF) ffdynlights = 0;
         }
 
         reservevpparams = 20;
@@ -408,32 +361,6 @@ void gl_checkextensions()
         if(!hasOQ) waterrefract = 0;
     }
 
-    if(hasext(exts, "GL_ARB_vertex_program") && hasext(exts, "GL_ARB_fragment_program"))
-    {
-        hasVP = hasFP = true;
-        glGenPrograms_ =              (PFNGLGENPROGRAMSARBPROC)              getprocaddress("glGenProgramsARB");
-        glDeletePrograms_ =           (PFNGLDELETEPROGRAMSARBPROC)           getprocaddress("glDeleteProgramsARB");
-        glBindProgram_ =              (PFNGLBINDPROGRAMARBPROC)              getprocaddress("glBindProgramARB");
-        glProgramString_ =            (PFNGLPROGRAMSTRINGARBPROC)            getprocaddress("glProgramStringARB");
-        glGetProgramiv_ =             (PFNGLGETPROGRAMIVARBPROC)             getprocaddress("glGetProgramivARB");
-        glProgramEnvParameter4f_ =    (PFNGLPROGRAMENVPARAMETER4FARBPROC)    getprocaddress("glProgramEnvParameter4fARB");
-        glProgramEnvParameter4fv_ =   (PFNGLPROGRAMENVPARAMETER4FVARBPROC)   getprocaddress("glProgramEnvParameter4fvARB");
-        glEnableVertexAttribArray_ =  (PFNGLENABLEVERTEXATTRIBARRAYARBPROC)  getprocaddress("glEnableVertexAttribArrayARB");
-        glDisableVertexAttribArray_ = (PFNGLDISABLEVERTEXATTRIBARRAYARBPROC) getprocaddress("glDisableVertexAttribArrayARB");
-        glVertexAttribPointer_ =      (PFNGLVERTEXATTRIBPOINTERARBPROC)      getprocaddress("glVertexAttribPointerARB");
-
-        if(ati) ati_dph_bug = ati_line_bug = 1;
-        else if(mesa) mesa_program_bug = 1;
-
-#ifdef __APPLE__
-        if(osversion>=0x1050) // fixed in 1055 for some hardware.. but not all..
-        {
-            apple_ff_bug = 1;
-            //conoutf(CON_WARN, "WARNING: Using Leopard ARB_position_invariant bug workaround. (use \"/apple_ff_bug 0\" to disable if unnecessary)");
-        }
-#endif
-    }
-    
     if(hasext(exts, "GL_ARB_shading_language_100") && hasext(exts, "GL_ARB_shader_objects") && hasext(exts, "GL_ARB_vertex_shader") && hasext(exts, "GL_ARB_fragment_shader"))
     {
         glCreateProgramObject_ =        (PFNGLCREATEPROGRAMOBJECTARBPROC)     getprocaddress("glCreateProgramObjectARB");
@@ -458,44 +385,15 @@ void gl_checkextensions()
         glUniform1i_ =                  (PFNGLUNIFORM1IARBPROC)               getprocaddress("glUniform1iARB");
         glBindAttribLocation_ =         (PFNGLBINDATTRIBLOCATIONARBPROC)      getprocaddress("glBindAttribLocationARB");
         glGetActiveUniform_ =           (PFNGLGETACTIVEUNIFORMARBPROC)        getprocaddress("glGetActiveUniformARB");
-        if(!hasVP || !hasFP)
-        {
-            glEnableVertexAttribArray_ =  (PFNGLENABLEVERTEXATTRIBARRAYARBPROC)  getprocaddress("glEnableVertexAttribArrayARB");
-            glDisableVertexAttribArray_ = (PFNGLDISABLEVERTEXATTRIBARRAYARBPROC) getprocaddress("glDisableVertexAttribArrayARB");
-            glVertexAttribPointer_ =      (PFNGLVERTEXATTRIBPOINTERARBPROC)      getprocaddress("glVertexAttribPointerARB");
-        }
+        glEnableVertexAttribArray_ =    (PFNGLENABLEVERTEXATTRIBARRAYARBPROC) getprocaddress("glEnableVertexAttribArrayARB");
+        glDisableVertexAttribArray_ =   (PFNGLDISABLEVERTEXATTRIBARRAYARBPROC)getprocaddress("glDisableVertexAttribArrayARB");
+        glVertexAttribPointer_ =        (PFNGLVERTEXATTRIBPOINTERARBPROC)     getprocaddress("glVertexAttribPointerARB");
 
         extern bool checkglslsupport();
-        if(checkglslsupport())
-        {
-            hasGLSL = true;
-            hasglsl = 1;
-#ifdef __APPLE__
-            //if(osversion<0x1050) ??
-            if(hasVP && hasFP) apple_glsldepth_bug = 1;
-#endif
-            //if(apple_glsldepth_bug) conoutf(CON_WARN, "WARNING: Using Apple GLSL depth bug workaround. (use \"/apple_glsldepth_bug 0\" to disable if unnecessary");
-        }
+        if(checkglslsupport()) hasGLSL = true;
     }
-    
-    bool hasshaders = (hasVP && hasFP) || hasGLSL;
-    if(hasshaders)
-    {
-        extern int matskel;
-        if(!avoidshaders) matskel = 0;
-    }
-
-    if(hasext(exts, "GL_NV_vertex_program2_option")) { usevp2 = 1; hasVP2 = true; }
-    if(hasext(exts, "GL_NV_vertex_program3")) { usevp3 = 1; hasVP3 = true; }
-
-    if(hasext(exts, "GL_EXT_gpu_program_parameters"))
-    {
-        glProgramEnvParameters4fv_   = (PFNGLPROGRAMENVPARAMETERS4FVEXTPROC)  getprocaddress("glProgramEnvParameters4fvEXT");
-        glProgramLocalParameters4fv_ = (PFNGLPROGRAMLOCALPARAMETERS4FVEXTPROC)getprocaddress("glProgramLocalParameters4fvEXT");
-        hasPP = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_gpu_program_parameters extension.");
-    }
-
+    if(!hasGLSL) fatal("GLSL support is required!");
+ 
     if(hasext(exts, "GL_ARB_uniform_buffer_object"))
     {
         glGetUniformIndices_       = (PFNGLGETUNIFORMINDICESPROC)      getprocaddress("glGetUniformIndices");
@@ -529,7 +427,7 @@ void gl_checkextensions()
         hasTR = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_rectangle extension.");
     }
-    else if(hasMT && hasshaders) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
+    else if(hasMT) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
 
     if(hasext(exts, "GL_EXT_packed_depth_stencil") || hasext(exts, "GL_NV_packed_depth_stencil"))
     {
@@ -550,13 +448,6 @@ void gl_checkextensions()
         glBlendColor_ = (PFNGLBLENDCOLOREXTPROC) getprocaddress("glBlendColorEXT");
         hasBC = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_blend_color extension.");
-    }
-
-    if(hasext(exts, "GL_EXT_fog_coord"))
-    {
-        glFogCoordPointer_ = (PFNGLFOGCOORDPOINTEREXTPROC) getprocaddress("glFogCoordPointerEXT");
-        hasFC = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_fog_coord extension.");
     }
 
     if(hasext(exts, "GL_ARB_texture_cube_map"))
@@ -631,15 +522,9 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_SGIX_shadow extension.");
     }
 
-    if(hasext(exts, "GL_EXT_rescale_normal"))
-    {
-        hasRN = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_rescale_normal extension.");
-    }
-
     if(!hasSGIDT && !hasSGISH) shadowmap = 0;
 
-    if(hasext(exts, "GL_EXT_gpu_shader4") && !avoidshaders)
+    if(hasext(exts, "GL_EXT_gpu_shader4"))
     {
         // on DX10 or above class cards (i.e. GF8 or RadeonHD) enable expensive features
         extern int grass, glare, maxdynlights, depthfxsize, depthfxrect, depthfxfilter, blurdepthfx;
@@ -704,28 +589,16 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     }
 #endif
 
-    extern int useshaders, forceglsl;
-    bool hasshaders = (hasVP && hasFP) || hasGLSL;
-    if(!useshaders || (useshaders<0 && avoidshaders) || !hasMT || !hasshaders)
-    {
-        if(!hasMT || !hasshaders) conoutf(CON_WARN, "WARNING: No shader support! Using fixed-function fallback. (no fancy visuals for you)");
-        else if(useshaders<0 && !hasTF) conoutf(CON_WARN, "WARNING: Disabling shaders for extra performance. (use \"/shaders 1\" to enable shaders if desired)");
-        renderpath = R_FIXEDFUNCTION;
-    }
-    else renderpath = hasGLSL ? (!hasVP || !hasFP || forceglsl > 0 ? R_GLSLANG : R_ASMGLSLANG) : R_ASMSHADER;
+    renderpath = R_GLSLANG;
 
-    static const char * const rpnames[4] = { "fixed-function", "assembly shader", "GLSL shader", "assembly/GLSL shader" };
+    static const char * const rpnames[1] = { "GLSL shader" };
     conoutf(CON_INIT, "Rendering using the OpenGL %s path.", rpnames[renderpath]);
 
-    inittmus();
     setuptexcompress();
 }
 
 void cleanupgl()
 {
-    extern int nomasks, nolights, nowater;
-    nomasks = nolights = nowater = 0;
-
     extern void cleanupmotionblur();
     cleanupmotionblur();
 
@@ -1325,7 +1198,7 @@ void drawreflection(float z, bool refract)
     reflectz = z < 0 ? 1e16f : z;
     reflecting = !refract;
     refracting = refract ? (z < 0 || camera1->o.z >= z ? -1 : 1) : 0;
-    fading = renderpath!=R_FIXEDFUNCTION && waterrefract && waterfade && hasFBO && z>=0;
+    fading = waterrefract && waterfade && hasFBO && z>=0;
     fogging = refracting<0 && z>=0;
 
     float oldfogstart, oldfogend, oldfogcolor[4];
@@ -1805,7 +1678,7 @@ void gl_drawframe(int w, int h)
         if(camera1->o.z < z + 1) fogblend = min(z + 1 - camera1->o.z, 1.0f);
         else fogmat = abovemat;
         if(caustics && fogmat==MAT_WATER && camera1->o.z < z)
-            causticspass = renderpath==R_FIXEDFUNCTION ? 1.0f : min(z - camera1->o.z, 1.0f);
+            causticspass = min(z - camera1->o.z, 1.0f);
     }
     else fogmat = MAT_AIR;    
     setfog(fogmat, fogblend, abovemat);

@@ -241,24 +241,6 @@ struct vertmodel : animmodel
         {
             if(!(as->cur.anim&ANIM_NOSKIN))
             {
-                if(s.multitextured())
-                {
-                    if(!enablemtc || lastmtcbuf!=lastvbuf)
-                    {
-                        glClientActiveTexture_(GL_TEXTURE1_ARB);
-                        if(!enablemtc) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                        if(lastmtcbuf!=lastvbuf)
-                        {
-                            vvertff *vverts = hasVBO ? 0 : (vvertff *)vc.vdata;
-                            glTexCoordPointer(2, GL_FLOAT, ((vertmeshgroup *)group)->vertsize, &vverts->u);
-                        }
-                        glClientActiveTexture_(GL_TEXTURE0_ARB);
-                        lastmtcbuf = lastvbuf;
-                        enablemtc = true;
-                    }
-                }
-                else if(enablemtc) disablemtc();
-
                 if(s.tangents())
                 {
                     if(!enabletangents || lastxbuf!=lastvbuf)
@@ -274,38 +256,12 @@ struct vertmodel : animmodel
                     }
                 }
                 else if(enabletangents) disabletangents();
-
-                if(renderpath==R_FIXEDFUNCTION && (s.scrollu || s.scrollv))
-                {
-                    glMatrixMode(GL_TEXTURE);
-                    glPushMatrix();
-                    glTranslatef(s.scrollu*lastmillis/1000.0f, s.scrollv*lastmillis/1000.0f, 0);
-
-                    if(s.multitextured())
-                    {
-                        glActiveTexture_(GL_TEXTURE1_ARB);
-                        glPushMatrix();
-                        glTranslatef(s.scrollu*lastmillis/1000.0f, s.scrollv*lastmillis/1000.0f, 0);
-                    }
-                }
             }
 
             if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, minvert, maxvert, elen, GL_UNSIGNED_SHORT, &((vertmeshgroup *)group)->edata[eoffset]);
             else glDrawElements(GL_TRIANGLES, elen, GL_UNSIGNED_SHORT, &((vertmeshgroup *)group)->edata[eoffset]);
             glde++;
             xtravertsva += numverts;
-
-            if(renderpath==R_FIXEDFUNCTION && !(as->cur.anim&ANIM_NOSKIN) && (s.scrollu || s.scrollv))
-            {
-                if(s.multitextured())
-                {
-                    glPopMatrix();
-                    glActiveTexture_(GL_TEXTURE0_ARB);
-                }
-
-                glPopMatrix();
-                glMatrixMode(GL_MODELVIEW);
-            }
 
             return;
         }

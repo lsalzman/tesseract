@@ -23,7 +23,6 @@
 		B9AC7AD20D06DB44005506F8 /* client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A870D06DB44005506F8 /* client.cpp */; };
 		B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A880D06DB44005506F8 /* command.cpp */; };
 		B9AC7AD40D06DB44005506F8 /* console.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A890D06DB44005506F8 /* console.cpp */; };
-		B9AC7AD50D06DB44005506F8 /* cubeloader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8A0D06DB44005506F8 /* cubeloader.cpp */; };
 		B9AC7AD70D06DB44005506F8 /* grass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8C0D06DB44005506F8 /* grass.cpp */; };
 		B9AC7AD80D06DB44005506F8 /* lightmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8D0D06DB44005506F8 /* lightmap.cpp */; };
 		B9AC7ADA0D06DB44005506F8 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8F0D06DB44005506F8 /* main.cpp */; };
@@ -141,7 +140,6 @@
 		B9AC7A870D06DB44005506F8 /* client.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = client.cpp; sourceTree = "<group>"; };
 		B9AC7A880D06DB44005506F8 /* command.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = command.cpp; sourceTree = "<group>"; };
 		B9AC7A890D06DB44005506F8 /* console.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = console.cpp; sourceTree = "<group>"; };
-		B9AC7A8A0D06DB44005506F8 /* cubeloader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cubeloader.cpp; sourceTree = "<group>"; };
 		B9AC7A8B0D06DB44005506F8 /* engine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = engine.h; sourceTree = "<group>"; };
 		B9AC7A8C0D06DB44005506F8 /* grass.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = grass.cpp; sourceTree = "<group>"; };
 		B9AC7A8D0D06DB44005506F8 /* lightmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = lightmap.cpp; sourceTree = "<group>"; };
@@ -382,7 +380,6 @@
 				B9AC7A870D06DB44005506F8 /* client.cpp */,
 				B9AC7A880D06DB44005506F8 /* command.cpp */,
 				B9AC7A890D06DB44005506F8 /* console.cpp */,
-				B9AC7A8A0D06DB44005506F8 /* cubeloader.cpp */,
 				B91D40200D525FE0004EF78A /* decal.cpp */,
 				D16BD00C0D7000EA0053CECE /* dynlight.cpp */,
 				D118DEB50D979281000E8C4C /* glare.cpp */,
@@ -607,7 +604,6 @@
 				B9AC7AD20D06DB44005506F8 /* client.cpp in Sources */,
 				B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */,
 				B9AC7AD40D06DB44005506F8 /* console.cpp in Sources */,
-				B9AC7AD50D06DB44005506F8 /* cubeloader.cpp in Sources */,
 				B9AC7AD70D06DB44005506F8 /* grass.cpp in Sources */,
 				B9AC7AD80D06DB44005506F8 /* lightmap.cpp in Sources */,
 				B9AC7ADA0D06DB44005506F8 /* main.cpp in Sources */,

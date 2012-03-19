@@ -102,8 +102,7 @@ struct decalrenderer
         bvec color;
         if(flags&DF_OVERBRIGHT)
         {
-            if(renderpath!=R_FIXEDFUNCTION || hasTE) color = bvec(128, 128, 128);
-            else color = bvec(alpha, alpha, alpha);
+            color = bvec(128, 128, 128);
         }
         else
         {
@@ -235,22 +234,13 @@ struct decalrenderer
         {
             glGetFloatv(GL_FOG_COLOR, oldfogc);
             static float zerofog[4] = { 0, 0, 0, 1 }, grayfog[4] = { 0.5f, 0.5f, 0.5f, 1 };
-            glFogfv(GL_FOG_COLOR, flags&DF_OVERBRIGHT && (renderpath!=R_FIXEDFUNCTION || hasTE) ? grayfog : zerofog);
+            glFogfv(GL_FOG_COLOR, flags&DF_OVERBRIGHT ? grayfog : zerofog);
         }
         
         if(flags&DF_OVERBRIGHT) 
         {
-            if(renderpath!=R_FIXEDFUNCTION)
-            {
-                glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR); 
-                SETSHADER(overbrightdecal);
-            }
-            else if(hasTE)
-            {
-                glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
-                setuptmu(0, "T , C @ Ca");
-            }
-            else glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+            glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR); 
+            SETSHADER(overbrightdecal);
         }
         else 
         {
@@ -260,8 +250,7 @@ struct decalrenderer
 
             if(flags&DF_SATURATE)
             {
-                if(renderpath!=R_FIXEDFUNCTION) SETSHADER(saturatedecal);
-                else if(hasTE) setuptmu(0, "C * T x 2");
+                SETSHADER(saturatedecal);
             }
             else foggedshader->set();
         }
@@ -282,7 +271,6 @@ struct decalrenderer
         xtravertsva += count;
 
         if(flags&(DF_ADD|DF_INVMOD|DF_OVERBRIGHT)) glFogfv(GL_FOG_COLOR, oldfogc);
-        if(flags&(DF_OVERBRIGHT|DF_SATURATE) && hasTE) resettmu(0);
     }
 
     decalinfo &newdecal()
@@ -572,7 +560,7 @@ decalrenderer decals[] =
 {
     decalrenderer("<grey>packages/particles/scorch.png", DF_ROTATE, 500),
     decalrenderer("<grey>packages/particles/blood.png", DF_RND4|DF_ROTATE|DF_INVMOD),
-    decalrenderer("<grey><decal>packages/particles/bullet.png", DF_OVERBRIGHT)
+    decalrenderer("<grey>packages/particles/bullet.png", DF_OVERBRIGHT)
 };
 
 void initdecals()

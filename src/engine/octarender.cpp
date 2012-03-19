@@ -413,14 +413,11 @@ struct vacollect : verthash
             if(x.dim > y.dim) return false;
             return false;
         }
-        if(renderpath!=R_FIXEDFUNCTION)
-        {
-            VSlot &xs = lookupvslot(x.tex, false), &ys = lookupvslot(y.tex, false);
-            if(xs.slot->shader < ys.slot->shader) return true;
-            if(xs.slot->shader > ys.slot->shader) return false;
-            if(xs.slot->params.length() < ys.slot->params.length()) return true;
-            if(xs.slot->params.length() > ys.slot->params.length()) return false;
-        }
+        VSlot &xs = lookupvslot(x.tex, false), &ys = lookupvslot(y.tex, false);
+        if(xs.slot->shader < ys.slot->shader) return true;
+        if(xs.slot->shader > ys.slot->shader) return false;
+        if(xs.slot->params.length() < ys.slot->params.length()) return true;
+        if(xs.slot->params.length() > ys.slot->params.length()) return false;
         if(x.tex < y.tex) return true;
         else return false;
     }
@@ -439,10 +436,7 @@ struct vacollect : verthash
 
     void genverts(void *buf)
     {
-        if(renderpath==R_FIXEDFUNCTION)
-            GENVERTSPOSNORMUV(vertexff, buf, { f->lmu = v.lmu/float(SHRT_MAX); f->lmv = v.lmv/float(SHRT_MAX); });
-        else 
-            GENVERTS(vertex, buf, { *f = v; f->norm.flip(); });
+        GENVERTS(vertex, buf, { *f = v; f->norm.flip(); });
     }
 
     void setupdata(vtxarray *va)
@@ -546,7 +540,7 @@ struct vacollect : verthash
         {
             Slot &slot = *lookupvslot(va->eslist[i].texture, false).slot;
             loopvj(slot.sts) va->texmask |= 1<<slot.sts[j].type;
-            if(slot.shader->type&SHADER_ENVMAP && (renderpath!=R_FIXEDFUNCTION || (slot.ffenv && hasCM && maxtmus >= 2))) va->texmask |= 1<<TEX_ENVMAP;
+            if(slot.shader->type&SHADER_ENVMAP) va->texmask |= 1<<TEX_ENVMAP;
         }
 
         if(grasstris.length())
@@ -836,7 +830,7 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
 
     LightMap *lm = NULL;
     LightMapTexture *lmtex = NULL;
-    if(!nolights && lightmaps.inrange(lmid-LMID_RESERVED))
+    if(lightmaps.inrange(lmid-LMID_RESERVED))
     {
         lm = &lightmaps[lmid-LMID_RESERVED];
         if((lm->type&LM_TYPE)==LM_DIFFUSE ||
@@ -864,7 +858,7 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
             v.lmv = short(ceil((lm->offsety + vinfo[k].v*(float(LM_PACKH)/float(USHRT_MAX+1)) + 0.5f) * float(SHRT_MAX)/lmtex->h));
         }
         else v.lmu = v.lmv = 0;
-        if(renderpath!=R_FIXEDFUNCTION && vinfo && vinfo[k].norm)
+        if(vinfo && vinfo[k].norm)
         {
             vec n = decodenormal(vinfo[k].norm), t = orientation_tangent[vslot.rotation][dim];
             t.sub(vec(n).mul(n.dot(t))).normalize();

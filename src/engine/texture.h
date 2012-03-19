@@ -1,25 +1,3 @@
-// GL_ARB_vertex_program, GL_ARB_fragment_program
-extern PFNGLGENPROGRAMSARBPROC              glGenPrograms_;
-extern PFNGLDELETEPROGRAMSARBPROC           glDeletePrograms_;
-extern PFNGLBINDPROGRAMARBPROC              glBindProgram_;
-extern PFNGLPROGRAMSTRINGARBPROC            glProgramString_;
-extern PFNGLGETPROGRAMIVARBPROC             glGetProgramiv_;
-extern PFNGLPROGRAMENVPARAMETER4FARBPROC    glProgramEnvParameter4f_;
-extern PFNGLPROGRAMENVPARAMETER4FVARBPROC   glProgramEnvParameter4fv_;
-extern PFNGLENABLEVERTEXATTRIBARRAYARBPROC  glEnableVertexAttribArray_;
-extern PFNGLDISABLEVERTEXATTRIBARRAYARBPROC glDisableVertexAttribArray_;
-extern PFNGLVERTEXATTRIBPOINTERARBPROC      glVertexAttribPointer_;
-
-// GL_EXT_gpu_program_parameters
-#ifndef GL_EXT_gpu_program_parameters
-#define GL_EXT_gpu_program_parameters 1
-typedef void (APIENTRYP PFNGLPROGRAMENVPARAMETERS4FVEXTPROC) (GLenum target, GLuint index, GLsizei count, const GLfloat *params);
-typedef void (APIENTRYP PFNGLPROGRAMLOCALPARAMETERS4FVEXTPROC) (GLenum target, GLuint index, GLsizei count, const GLfloat *params);
-#endif
-
-extern PFNGLPROGRAMENVPARAMETERS4FVEXTPROC   glProgramEnvParameters4fv_;
-extern PFNGLPROGRAMLOCALPARAMETERS4FVEXTPROC glProgramLocalParameters4fv_;
-
 // GL_ARB_shading_language_100, GL_ARB_shader_objects, GL_ARB_fragment_shader, GL_ARB_vertex_shader
 extern PFNGLCREATEPROGRAMOBJECTARBPROC  glCreateProgramObject_;
 extern PFNGLDELETEOBJECTARBPROC         glDeleteObject_;
@@ -43,6 +21,9 @@ extern PFNGLUNIFORM4FVARBPROC           glUniform4fv_;
 extern PFNGLUNIFORM1IARBPROC            glUniform1i_;
 extern PFNGLBINDATTRIBLOCATIONARBPROC   glBindAttribLocation_;
 extern PFNGLGETACTIVEUNIFORMARBPROC     glGetActiveUniform_;
+extern PFNGLENABLEVERTEXATTRIBARRAYARBPROC  glEnableVertexAttribArray_;
+extern PFNGLDISABLEVERTEXATTRIBARRAYARBPROC glDisableVertexAttribArray_;
+extern PFNGLVERTEXATTRIBPOINTERARBPROC      glVertexAttribPointer_;
 
 #ifndef GL_ARB_uniform_buffer_object
 #define GL_ARB_uniform_buffer_object 1
@@ -130,7 +111,7 @@ extern PFNGLGETUNIFORMOFFSETEXTPROC     glGetUniformOffset_;
 
 extern int renderpath;
 
-enum { R_FIXEDFUNCTION = 0, R_ASMSHADER, R_GLSLANG, R_ASMGLSLANG };
+enum { R_GLSLANG = 0 };
 
 enum { SHPARAM_LOOKUP = 0, SHPARAM_VERTEX, SHPARAM_PIXEL, SHPARAM_UNIFORM };
 
@@ -185,7 +166,6 @@ enum
     SHADER_DEFAULT    = 0, 
     SHADER_NORMALSLMS = 1<<0, 
     SHADER_ENVMAP     = 1<<1,
-    SHADER_GLSLANG    = 1<<2,
     SHADER_OPTION     = 1<<3,
 
     SHADER_INVALID    = 1<<8,
@@ -221,7 +201,6 @@ struct Shader
 
     char *name, *vsstr, *psstr, *defer;
     int type;
-    GLuint vs, ps;
     GLhandleARB program, vsobj, psobj;
     vector<LocalShaderParamState> defaultparams;
     Shader *detailshader, *variantshader, *altshader, *fastshader[MAXSHADERDETAIL];
@@ -234,7 +213,7 @@ struct Shader
     vector<UniformLoc> uniformlocs;
     vector<AttribLoc> attriblocs;
 
-    Shader() : name(NULL), vsstr(NULL), psstr(NULL), defer(NULL), type(SHADER_DEFAULT), vs(0), ps(0), program(0), vsobj(0), psobj(0), detailshader(NULL), variantshader(NULL), altshader(NULL), standard(false), forced(false), used(false), native(true), reusevs(NULL), reuseps(NULL), numextparams(0), extparams(NULL), extvertparams(NULL), extpixparams(NULL)
+    Shader() : name(NULL), vsstr(NULL), psstr(NULL), defer(NULL), type(SHADER_DEFAULT), program(0), vsobj(0), psobj(0), detailshader(NULL), variantshader(NULL), altshader(NULL), standard(false), forced(false), used(false), native(true), reusevs(NULL), reuseps(NULL), numextparams(0), extparams(NULL), extvertparams(NULL), extpixparams(NULL)
     {
         loopi(MAXSHADERDETAIL) fastshader[i] = this;
     }
@@ -276,21 +255,21 @@ struct Shader
 
     void setvariant(int col, int row, Shader *fallbackshader)
     {
-        if(!this || !detailshader || renderpath==R_FIXEDFUNCTION) return;
+        if(!this || !detailshader) return;
         setvariant_(col, row, fallbackshader);
         lastshader->flushenvparams();
     }
 
     void setvariant(int col, int row)
     {
-        if(!this || !detailshader || renderpath==R_FIXEDFUNCTION) return;
+        if(!this || !detailshader) return;
         setvariant_(col, row, detailshader);
         lastshader->flushenvparams();
     }
 
     void setvariant(int col, int row, Slot &slot, VSlot &vslot, Shader *fallbackshader)
     {
-        if(!this || !detailshader || renderpath==R_FIXEDFUNCTION) return;
+        if(!this || !detailshader) return;
         setvariant_(col, row, fallbackshader);
         lastshader->flushenvparams(&slot);
         lastshader->setslotparams(slot, vslot);
@@ -298,7 +277,7 @@ struct Shader
 
     void setvariant(int col, int row, Slot &slot, VSlot &vslot)
     {
-        if(!this || !detailshader || renderpath==R_FIXEDFUNCTION) return;
+        if(!this || !detailshader) return;
         setvariant_(col, row, detailshader);
         lastshader->flushenvparams(&slot);
         lastshader->setslotparams(slot, vslot);
@@ -311,14 +290,14 @@ struct Shader
  
     void set()
     {
-        if(!this || !detailshader || renderpath==R_FIXEDFUNCTION) return;
+        if(!this || !detailshader) return;
         set_();
         lastshader->flushenvparams();
     }
 
     void set(Slot &slot, VSlot &vslot)
     {
-        if(!this || !detailshader || renderpath==R_FIXEDFUNCTION) return;
+        if(!this || !detailshader) return;
         set_();
         lastshader->flushenvparams(&slot);
         lastshader->setslotparams(slot, vslot);
@@ -493,12 +472,9 @@ struct VSlot
     int layer;
     float alphafront, alphaback;
     vec colorscale;
-    vec glowcolor, pulseglowcolor;
-    float pulseglowspeed;
-    vec envscale;
-    int skipped;
+    vec glowcolor;
 
-    VSlot(Slot *slot = NULL, int index = -1) : slot(slot), next(NULL), index(index), changed(0), skipped(0) 
+    VSlot(Slot *slot = NULL, int index = -1) : slot(slot), next(NULL), index(index), changed(0)
     { 
         reset();
         if(slot) addvariant(slot); 
@@ -518,9 +494,6 @@ struct VSlot
         alphaback = 0;
         colorscale = vec(1, 1, 1);
         glowcolor = vec(1, 1, 1);
-        pulseglowcolor = vec(0, 0, 0);
-        pulseglowspeed = 0;
-        envscale = vec(0, 0, 0);
     }
 
     void cleanup()
@@ -552,7 +525,6 @@ struct Slot
     int layermaskmode;
     float layermaskscale;
     ImageData *layermask;
-    bool ffenv;
 
     Slot(int index = -1) : index(index), variants(NULL), autograss(NULL), layermaskname(NULL), layermask(NULL) { reset(); }
     
@@ -570,7 +542,6 @@ struct Slot
         layermaskmode = 0;
         layermaskscale = 1;
         if(layermask) DELETEP(layermask);
-        ffenv = false;
     }
 
     void cleanup()
@@ -625,7 +596,7 @@ struct cubemapside
 extern cubemapside cubemapsides[6];
 extern Texture *notexture;
 extern Shader *defaultshader, *rectshader, *cubemapshader, *notextureshader, *nocolorshader, *foggedshader, *foggednotextureshader, *stdworldshader, *lineshader, *foggedlineshader;
-extern int reservevpparams, maxvpenvparams, maxvplocalparams, maxfpenvparams, maxfplocalparams, maxvsuniforms, maxfsuniforms;
+extern int reservevpparams, maxvsuniforms, maxfsuniforms;
 
 extern Shader *lookupshaderbyname(const char *name);
 extern Shader *useshaderbyname(const char *name);
@@ -641,18 +612,9 @@ extern void flushenvparamf(const char *name, int type, int index, float x = 0, f
 extern void flushenvparamfv(const char *name, int type, int index, const float *v);
 extern void setlocalparamf(const char *name, int type, int index, float x = 0, float y = 0, float z = 0, float w = 0);
 extern void setlocalparamfv(const char *name, int type, int index, const float *v);
-extern void invalidateenvparams(int type, int start, int count);
 extern ShaderParam *findshaderparam(Slot &s, const char *name, int type, int index);
 extern ShaderParam *findshaderparam(VSlot &s, const char *name, int type, int index);
 extern const char *getshaderparamname(const char *name);
-
-extern int maxtmus, nolights, nowater, nomasks;
-
-extern void inittmus();
-extern void resettmu(int n);
-extern void scaletmu(int n, int rgbscale, int alphascale = 0);
-extern void colortmu(int n, float r = 0, float g = 0, float b = 0, float a = 0);
-extern void setuptmu(int n, const char *rgbfunc = NULL, const char *alphafunc = NULL);
 
 #define MAXDYNLIGHTS 5
 #define DYNLIGHTBITS 6

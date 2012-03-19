@@ -285,41 +285,10 @@ void texcolorify(ImageData &s, const vec &color, vec weights)
     );
 }
 
-void texffmask(ImageData &s, float glowscale, float envscale)
-{
-    if(renderpath!=R_FIXEDFUNCTION) return;
-    if(nomasks || s.bpp<3) { s.cleanup(); return; }
-    const int minval = 0x18;
-    bool glow = false, envmap = true;
-    writetex(s,
-        if(dst[1]>minval) glow = true;
-        if(dst[2]>minval) { glow = envmap = true; goto needmask; }
-    );
-    if(!glow && !envmap) { s.cleanup(); return; }
-needmask:
-    ImageData m(s.w, s.h, envmap ? 2 : 1);
-    readwritetex(m, s,
-        dst[0] = uchar(src[1]*glowscale);
-        if(envmap) dst[1] = uchar(src[2]*envscale);
-    );
-    s.replace(m);
-}
-
 void texdup(ImageData &s, int srcchan, int dstchan)
 {
     if(srcchan==dstchan || max(srcchan, dstchan) >= s.bpp) return;
     writetex(s, dst[dstchan] = dst[srcchan]);
-}
-
-void texdecal(ImageData &s)
-{
-    if(renderpath!=R_FIXEDFUNCTION || hasTE) return;
-    ImageData m(s.w, s.w, 2);
-    readwritetex(m, s,
-        dst[0] = src[0];
-        dst[1] = 255 - src[0];
-    );
-    s.replace(m);
 }
 
 void texmix(ImageData &s, int c1, int c2, int c3, int c4)
@@ -1158,19 +1127,7 @@ static bool texturedata(ImageData &d, const char *tname, Slot::Tex *tex = NULL, 
                 else arg[i]++; \
             }
         PARSETEXCOMMANDS(pcmds);
-        if(!strncmp(cmd, "noff", len))
-        {
-            if(renderpath==R_FIXEDFUNCTION) return true;
-        }
-        else if(!strncmp(cmd, "ffmask", len) || !strncmp(cmd, "ffskip", len))
-        {
-            if(renderpath==R_FIXEDFUNCTION) raw = true;
-        }
-        else if(!strncmp(cmd, "decal", len))
-        {
-            if(renderpath==R_FIXEDFUNCTION && !hasTE) raw = true;
-        }
-        else if(!strncmp(cmd, "dds", len)) dds = true;
+        if(!strncmp(cmd, "dds", len)) dds = true;
         else if(!strncmp(cmd, "thumbnail", len)) raw = true;
         else if(!strncmp(cmd, "stub", len)) return canloadsurface(file);
     }
@@ -1199,18 +1156,12 @@ static bool texturedata(ImageData &d, const char *tname, Slot::Tex *tex = NULL, 
         PARSETEXCOMMANDS(cmds);
         if(!strncmp(cmd, "mad", len)) texmad(d, parsevec(arg[0]), parsevec(arg[1])); 
         else if(!strncmp(cmd, "colorify", len)) texcolorify(d, parsevec(arg[0]), parsevec(arg[1]));
-        else if(!strncmp(cmd, "ffmask", len)) 
-        {
-            texffmask(d, atof(arg[0]), atof(arg[1]));
-            if(!d.data) break;
-        }
         else if(!strncmp(cmd, "normal", len)) 
         {
             int emphasis = atoi(arg[0]);
             texnormal(d, emphasis > 0 ? emphasis : 3);
         }
         else if(!strncmp(cmd, "dup", len)) texdup(d, atoi(arg[0]), atoi(arg[1]));
-        else if(!strncmp(cmd, "decal", len)) texdecal(d);
         else if(!strncmp(cmd, "offset", len)) texoffset(d, atoi(arg[0]), atoi(arg[1]));
         else if(!strncmp(cmd, "rotate", len)) texrotate(d, atoi(arg[0]), tex ? tex->type : 0);
         else if(!strncmp(cmd, "reorient", len)) texreorient(d, atoi(arg[0])>0, atoi(arg[1])>0, atoi(arg[2])>0, tex ? tex->type : TEX_DIFFUSE);
@@ -1239,10 +1190,6 @@ static bool texturedata(ImageData &d, const char *tname, Slot::Tex *tex = NULL, 
             if(w <= 0 || w > (1<<12)) w = 64;
             if(h <= 0 || h > (1<<12)) h = w;
             if(d.w > w || d.h > h) scaleimage(d, w, h);
-        }
-        else if(!strncmp(cmd, "ffskip", len))
-        {
-            if(renderpath==R_FIXEDFUNCTION) break;
         }
     }
 
@@ -1711,7 +1658,7 @@ void autograss(char *name)
     if(slots.empty()) return;
     Slot &s = *slots.last();
     DELETEA(s.autograss);
-    s.autograss = name[0] ? newstring(makerelpath("packages", name, NULL, "<ffskip><premul>")) : NULL;
+    s.autograss = name[0] ? newstring(makerelpath("packages", name, NULL, "<premul>")) : NULL;
 }
 COMMAND(autograss, "s");
 
@@ -1784,53 +1731,10 @@ void texcolor(float *r, float *g, float *b)
 }
 COMMAND(texcolor, "fff");
 
-void texffenv(int *ffenv)
-{
-    if(slots.empty()) return;
-    Slot &s = *slots.last();
-    s.ffenv = *ffenv>0;
-}
-COMMAND(texffenv, "i");
-
 static int findtextype(Slot &s, int type, int last = -1)
 {
     for(int i = last+1; i<s.sts.length(); i++) if((type&(1<<s.sts[i].type)) && s.sts[i].combined<0) return i;
     return -1;
-}
-
-static void addbump(ImageData &c, ImageData &n, bool envmap, bool specmap)
-{
-    if(n.bpp < 3) return;
-    if(envmap && c.bpp <= 3 && !specmap)
-    {
-        writetex(n, if(dst[2] < 0xF8) goto noenvmap;); 
-    }
-    if(envmap)
-    {
-        if(c.bpp <= 3)
-        {
-            readwritergbatex(c, n,
-                int z = max(int(src[2])*2-255, 0);
-                loopk(3) dst[k] = int(dst[k])*z/255;
-                dst[3] = z;
-            );
-        }
-        else
-        {
-            readwritergbatex(c, n,
-                int z = max(int(src[2])*2-255, 0);
-                loopk(4) dst[k] = int(dst[k])*z/255;
-            );
-        }
-    }
-    else
-    {
-    noenvmap:
-        readwritergbtex(c, n,
-            int z = max(int(src[2])*2-255, 0);
-            loopk(3) dst[k] = int(dst[k])*z/255;
-        );
-    }
 }
 
 static void addglow(ImageData &c, ImageData &g, const vec &glowcolor)
@@ -1847,15 +1751,6 @@ static void addglow(ImageData &c, ImageData &g, const vec &glowcolor)
             loopk(3) dst[k] = clamp(int(dst[k]) + int(src[k]*glowcolor[k]), 0, 255);
         );
     }
-}
-
-static void blenddecal(ImageData &c, ImageData &d)
-{
-    if(d.bpp < 4) return;
-    readwritergbtex(c, d,
-        uchar a = src[3];
-        loopk(3) dst[k] = (int(src[k])*int(a) + int(dst[k])*int(255-a))/255;
-    );
 }
 
 static void mergespec(ImageData &c, ImageData &s, bool envmap = false)
@@ -1906,30 +1801,14 @@ static void addname(vector<char> &key, Slot &slot, Slot::Tex &t, bool combined =
 
 static void texcombine(Slot &s, int index, Slot::Tex &t, bool forceload = false)
 {
-    if(renderpath==R_FIXEDFUNCTION && t.type!=TEX_DIFFUSE && t.type!=TEX_GLOW && !forceload) { t.t = notexture; return; }
     vector<char> key; 
     addname(key, s, t);
     int texmask = 0;
-    bool envmap = renderpath==R_FIXEDFUNCTION && s.shader->type&SHADER_ENVMAP && s.ffenv && hasCM && maxtmus >= 2;
     if(!forceload) switch(t.type)
     {
         case TEX_DIFFUSE:
-            if(renderpath==R_FIXEDFUNCTION)
-            {
-                int mask = (1<<TEX_DECAL)|(1<<TEX_NORMAL);
-                if(envmap) mask |= 1<<TEX_SPEC;
-                for(int i = -1; (i = findtextype(s, mask, i))>=0;)
-                {
-                    texmask |= 1<<s.sts[i].type;
-                    s.sts[i].combined = index;
-                    addname(key, s, s.sts[i], true, envmap && (s.sts[i].type==TEX_NORMAL || s.sts[i].type==TEX_SPEC) ? "<ffenv>" : NULL);
-                }
-                break;
-            } // fall through to shader case
-
         case TEX_NORMAL:
         {
-            if(renderpath==R_FIXEDFUNCTION) break;
             int i = findtextype(s, t.type==TEX_DIFFUSE ? (1<<TEX_SPEC) : (1<<TEX_DEPTH));
             if(i<0) break;
             texmask |= 1<<s.sts[i].type;
@@ -1947,25 +1826,6 @@ static void texcombine(Slot &s, int index, Slot::Tex &t, bool forceload = false)
     switch(t.type)
     {
         case TEX_DIFFUSE:
-            if(renderpath==R_FIXEDFUNCTION)
-            {
-                if(!ts.compressed) loopv(s.sts)
-                {
-                    Slot::Tex &b = s.sts[i];
-                    if(b.combined!=index) continue;
-                    ImageData bs;
-                    if(!texturedata(bs, NULL, &b)) continue;
-                    if(bs.w!=ts.w || bs.h!=ts.h) scaleimage(bs, ts.w, ts.h);
-                    switch(b.type)
-                    {
-                        case TEX_DECAL: blenddecal(ts, bs); break;
-                        case TEX_NORMAL: addbump(ts, bs, envmap, (texmask&(1<<TEX_SPEC))!=0); break;
-                        case TEX_SPEC: mergespec(ts, bs, envmap); break;
-                    }
-                }
-                break;
-            } // fall through to shader case
-
         case TEX_NORMAL:
             if(!ts.compressed) loopv(s.sts)
             {
@@ -1997,7 +1857,7 @@ static Slot &loadslot(Slot &s, bool forceload)
         switch(t.type)
         {
             case TEX_ENVMAP:
-                if(hasCM && (renderpath != R_FIXEDFUNCTION || (s.shader->type&SHADER_ENVMAP && s.ffenv && maxtmus >= 2) || forceload)) t.t = cubemapload(t.name);
+                if(hasCM) t.t = cubemapload(t.name);
                 break;
 
             default:

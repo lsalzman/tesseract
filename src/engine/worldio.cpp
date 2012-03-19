@@ -1293,9 +1293,8 @@ void writeobj(char *name)
             loopk(es.length[1])
             {
                 int n = idx[k] - va.voffset;
-                const vec &pos = renderpath==R_FIXEDFUNCTION ? ((const vertexff *)&vdata[n*vtxsize])->pos : ((const vertex *)&vdata[n*vtxsize])->pos;
-                vec2 tc(renderpath==R_FIXEDFUNCTION ? ((const vertexff *)&vdata[n*vtxsize])->u : ((const vertex *)&vdata[n*vtxsize])->u,
-                        renderpath==R_FIXEDFUNCTION ? ((const vertexff *)&vdata[n*vtxsize])->v : ((const vertex *)&vdata[n*vtxsize])->v);
+                const vec &pos = ((const vertex *)&vdata[n*vtxsize])->pos;
+                vec2 tc(((const vertex *)&vdata[n*vtxsize])->u, ((const vertex *)&vdata[n*vtxsize])->v);
                 ivec &key = keys.add();
                 key.x = shareverts.access(pos, verts.length());
                 if(key.x == verts.length()) 

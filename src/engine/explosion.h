@@ -50,13 +50,10 @@ static void inithemisphere(int hres, int depth)
 
     if(hasVBO)
     {
-        if(renderpath!=R_FIXEDFUNCTION)
-        {
-            if(!hemivbuf) glGenBuffers_(1, &hemivbuf);
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, hemivbuf);
-            glBufferData_(GL_ARRAY_BUFFER_ARB, heminumverts*sizeof(vec), hemiverts, GL_STATIC_DRAW_ARB);
-            DELETEA(hemiverts);
-        }
+        if(!hemivbuf) glGenBuffers_(1, &hemivbuf);
+        glBindBuffer_(GL_ARRAY_BUFFER_ARB, hemivbuf);
+        glBufferData_(GL_ARRAY_BUFFER_ARB, heminumverts*sizeof(vec), hemiverts, GL_STATIC_DRAW_ARB);
+        DELETEA(hemiverts);
 
         if(!hemiebuf) glGenBuffers_(1, &hemiebuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, hemiebuf);
@@ -84,49 +81,6 @@ static GLuint createexpmodtex(int size, float minval)
     createtexture(tex, size, size, data, 3, 2, GL_ALPHA);
     delete[] data;
     return tex;
-}
-
-static struct expvert
-{
-    vec pos;
-    float u, v, s, t;
-} *expverts = NULL;
-static GLuint expvbuf = 0;
-
-static void animateexplosion()
-{
-    static int lastexpmillis = 0;
-    if(expverts && lastexpmillis == lastmillis)
-    {
-        if(hasVBO) glBindBuffer_(GL_ARRAY_BUFFER_ARB, expvbuf);
-        return;
-    }
-    lastexpmillis = lastmillis;
-    vec center = vec(13.0f, 2.3f, 7.1f);  //only update once per frame! - so use the same center for all...
-    if(!expverts) expverts = new expvert[heminumverts];
-    loopi(heminumverts)
-    {
-        expvert &e = expverts[i];
-        vec &v = hemiverts[i];
-        //texgen - scrolling billboard
-        e.u = v.x*0.5f + 0.0004f*lastmillis;
-        e.v = v.y*0.5f + 0.0004f*lastmillis;
-        //ensure the mod texture is wobbled
-        e.s = v.x*0.5f + 0.5f;
-        e.t = v.y*0.5f + 0.5f;
-        //wobble - similar to shader code
-        float wobble = v.dot(center) + 0.002f*lastmillis;
-        wobble -= floor(wobble);
-        wobble = 1.0f + fabs(wobble - 0.5f)*0.5f;
-        e.pos = vec(v).mul(wobble);
-    }
-
-    if(hasVBO)
-    {
-        if(!expvbuf) glGenBuffers_(1, &expvbuf);
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, expvbuf);
-        glBufferData_(GL_ARRAY_BUFFER_ARB, heminumverts*sizeof(expvert), expverts, GL_STREAM_DRAW_ARB);
-    }
 }
 
 static struct spherevert
@@ -197,77 +151,46 @@ VARP(explosion2d, 0, 0, 1);
 
 static void setupexplosion()
 {
-    if(renderpath!=R_FIXEDFUNCTION || maxtmus>=2)
-    {
-        if(!expmodtex[0]) expmodtex[0] = createexpmodtex(64, 0);
-        if(!expmodtex[1]) expmodtex[1] = createexpmodtex(64, 0.25f);
-        lastexpmodtex = 0;
-    }
+    if(!expmodtex[0]) expmodtex[0] = createexpmodtex(64, 0);
+    if(!expmodtex[1]) expmodtex[1] = createexpmodtex(64, 0.25f);
+    lastexpmodtex = 0;
 
-    if(renderpath!=R_FIXEDFUNCTION)
+    if(glaring)
     {
-        if(glaring)
-        {
-            if(explosion2d) SETSHADER(explosion2dglare); else SETSHADER(explosion3dglare);
-        }
-        else if(!reflecting && !refracting && depthfx && depthfxtex.rendertex && numdepthfxranges>0)
-        {
-            if(depthfxtex.target==GL_TEXTURE_RECTANGLE_ARB)
-            {
-                if(!depthfxtex.highprecision())
-                {
-                    if(explosion2d) SETSHADER(explosion2dsoft8rect); else SETSHADER(explosion3dsoft8rect);
-                }
-                else if(explosion2d) SETSHADER(explosion2dsoftrect); else SETSHADER(explosion3dsoftrect);
-            }
-            else
-            {
-                if(!depthfxtex.highprecision())
-                {
-                    if(explosion2d) SETSHADER(explosion2dsoft8); else SETSHADER(explosion3dsoft8);
-                }
-                else if(explosion2d) SETSHADER(explosion2dsoft); else SETSHADER(explosion3dsoft);
-            }
-        }
-        else if(explosion2d) SETSHADER(explosion2d); else SETSHADER(explosion3d);
+        if(explosion2d) SETSHADER(explosion2dglare); else SETSHADER(explosion3dglare);
     }
+    else if(!reflecting && !refracting && depthfx && depthfxtex.rendertex && numdepthfxranges>0)
+    {
+        if(depthfxtex.target==GL_TEXTURE_RECTANGLE_ARB)
+        {
+            if(!depthfxtex.highprecision())
+            {
+                if(explosion2d) SETSHADER(explosion2dsoft8rect); else SETSHADER(explosion3dsoft8rect);
+            }
+            else if(explosion2d) SETSHADER(explosion2dsoftrect); else SETSHADER(explosion3dsoftrect);
+        }
+        else
+        {
+            if(!depthfxtex.highprecision())
+            {
+                if(explosion2d) SETSHADER(explosion2dsoft8); else SETSHADER(explosion3dsoft8);
+            }
+            else if(explosion2d) SETSHADER(explosion2dsoft); else SETSHADER(explosion3dsoft);
+        }
+    }
+    else if(explosion2d) SETSHADER(explosion2d); else SETSHADER(explosion3d);
 
-    if(renderpath==R_FIXEDFUNCTION || explosion2d)
+    if(explosion2d)
     {
         if(!hemiverts && !hemivbuf) inithemisphere(5, 2);
-        if(renderpath==R_FIXEDFUNCTION) animateexplosion();
         if(hasVBO)
         {
-            if(renderpath!=R_FIXEDFUNCTION) glBindBuffer_(GL_ARRAY_BUFFER_ARB, hemivbuf);
+            glBindBuffer_(GL_ARRAY_BUFFER_ARB, hemivbuf);
             glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, hemiebuf);
         }
 
-        expvert *verts = renderpath==R_FIXEDFUNCTION ? (hasVBO ? 0 : expverts) : (expvert *)hemiverts;
-
         glEnableClientState(GL_VERTEX_ARRAY);
-        glVertexPointer(3, GL_FLOAT, renderpath==R_FIXEDFUNCTION ? sizeof(expvert) : sizeof(vec), verts);
-
-        if(renderpath==R_FIXEDFUNCTION)
-        {
-            glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-            glTexCoordPointer(2, GL_FLOAT, sizeof(expvert), &verts->u);
-
-            if(maxtmus>=2)
-            {
-                setuptmu(0, "C * T", "= Ca");
-
-                glActiveTexture_(GL_TEXTURE1_ARB);
-                glClientActiveTexture_(GL_TEXTURE1_ARB);
-
-                glEnable(GL_TEXTURE_2D);
-                setuptmu(1, "P * Ta x 4", "Pa * Ta x 4");
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                glTexCoordPointer(2, GL_FLOAT, sizeof(expvert), &verts->s);
-
-                glActiveTexture_(GL_TEXTURE0_ARB);
-                glClientActiveTexture_(GL_TEXTURE0_ARB);
-            }
-        }
+        glVertexPointer(3, GL_FLOAT, sizeof(vec), hemiverts);
     }
     else
     {
@@ -296,7 +219,7 @@ static void drawexpverts(int numverts, int numindices, GLushort *indices)
 
 static void drawexplosion(bool inside, uchar r, uchar g, uchar b, uchar a)
 {
-    if((renderpath!=R_FIXEDFUNCTION || maxtmus>=2) && lastexpmodtex != expmodtex[inside ? 1 : 0])
+    if(lastexpmodtex != expmodtex[inside ? 1 : 0])
     {
         glActiveTexture_(GL_TEXTURE1_ARB);
         lastexpmodtex = expmodtex[inside ? 1 :0];
@@ -304,7 +227,7 @@ static void drawexplosion(bool inside, uchar r, uchar g, uchar b, uchar a)
         glActiveTexture_(GL_TEXTURE0_ARB);
     }
     int passes = !reflecting && !refracting && inside ? 2 : 1;
-    if(renderpath!=R_FIXEDFUNCTION && !explosion2d)
+    if(!explosion2d)
     {
         if(inside) glScalef(1, 1, -1);
         loopi(passes)
@@ -342,29 +265,7 @@ static void drawexplosion(bool inside, uchar r, uchar g, uchar b, uchar a)
 static void cleanupexplosion()
 {
     glDisableClientState(GL_VERTEX_ARRAY);
-    if(renderpath==R_FIXEDFUNCTION)
-    {
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-        if(maxtmus>=2)
-        {
-            resettmu(0);
-
-            glActiveTexture_(GL_TEXTURE1_ARB);
-            glClientActiveTexture_(GL_TEXTURE1_ARB);
-
-            glDisable(GL_TEXTURE_2D);
-            resettmu(1);
-            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-            glActiveTexture_(GL_TEXTURE0_ARB);
-            glClientActiveTexture_(GL_TEXTURE0_ARB);
-        }
-    }
-    else
-    {
-        if(!explosion2d) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    }
+    if(!explosion2d) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
     if(hasVBO)
     {
@@ -380,8 +281,6 @@ static void deleteexplosions()
     if(hemiebuf) { glDeleteBuffers_(1, &hemiebuf); hemiebuf = 0; }
     DELETEA(hemiverts);
     DELETEA(hemiindices);
-    if(expvbuf) { glDeleteBuffers_(1, &expvbuf); expvbuf = 0; }
-    DELETEA(expverts);
     if(spherevbuf) { glDeleteBuffers_(1, &spherevbuf); spherevbuf = 0; }
     if(sphereebuf) { glDeleteBuffers_(1, &sphereebuf); sphereebuf = 0; }
     DELETEA(sphereverts);
@@ -495,7 +394,7 @@ struct fireballrenderer : listrenderer
         float yaw = inside ? camera1->yaw : atan2(oc.y, oc.x)/RAD - 90,
         pitch = (inside ? camera1->pitch : asin(oc.z/oc.magnitude())/RAD) - 90;
         vec rotdir;
-        if(renderpath==R_FIXEDFUNCTION || explosion2d)
+        if(explosion2d)
         {
             glRotatef(yaw, 0, 0, 1);
             glRotatef(pitch, 1, 0, 0);
@@ -517,12 +416,9 @@ struct fireballrenderer : listrenderer
             setlocalparamf("texgenT", SHPARAM_VERTEX, 3, 0.5f*t.x, 0.5f*t.y, 0.5f*t.z, 0.5f);
         }
 
-        if(renderpath!=R_FIXEDFUNCTION)
-        {
-            setlocalparamf("center", SHPARAM_VERTEX, 0, o.x, o.y, o.z);
-            setlocalparamf("animstate", SHPARAM_VERTEX, 1, size, psize, pmax, float(lastmillis));
-            binddepthfxparams(depthfxblend, inside ? blend/(2*255.0f) : 0, 2*(p->size + pmax)*WOBBLE >= depthfxblend, p);
-        }
+        setlocalparamf("center", SHPARAM_VERTEX, 0, o.x, o.y, o.z);
+        setlocalparamf("animstate", SHPARAM_VERTEX, 1, size, psize, pmax, float(lastmillis));
+        binddepthfxparams(depthfxblend, inside ? blend/(2*255.0f) : 0, 2*(p->size + pmax)*WOBBLE >= depthfxblend, p);
 
         glRotatef(lastmillis/7.0f, -rotdir.x, rotdir.y, -rotdir.z);
         glScalef(-psize, psize, -psize);

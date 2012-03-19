@@ -112,10 +112,6 @@
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
-		<Unit filename="..\engine\cubeloader.cpp">
-			<Option target="default" />
-			<Option target="debug" />
-		</Unit>
 		<Unit filename="..\engine\decal.cpp">
 			<Option target="default" />
 			<Option target="debug" />

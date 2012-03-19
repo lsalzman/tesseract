@@ -1,5 +1,5 @@
 VARP(gpuskel, 0, 1, 1);
-VARP(matskel, 0, 1, 1);
+VARP(matskel, 0, 0, 1);
 
 #define BONEMASK_NOT  0x8000
 #define BONEMASK_END  0xFFFF
@@ -462,24 +462,6 @@ struct skelmodel : animmodel
         {
             if(!(as->cur.anim&ANIM_NOSKIN))
             {
-                if(s.multitextured())
-                {
-                    if(!enablemtc || lastmtcbuf!=lastvbuf)
-                    {
-                        glClientActiveTexture_(GL_TEXTURE1_ARB);
-                        if(!enablemtc) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                        if(lastmtcbuf!=lastvbuf)
-                        {
-                            vvert *vverts = hasVBO ? 0 : (vvert *)vc.vdata;
-                            glTexCoordPointer(2, GL_FLOAT, ((skelmeshgroup *)group)->vertsize, &vverts->u);
-                        }
-                        glClientActiveTexture_(GL_TEXTURE0_ARB);
-                        lastmtcbuf = lastvbuf;
-                        enablemtc = true;
-                    }
-                }
-                else if(enablemtc) disablemtc();
-
                 if(s.tangents())
                 {
                     if(!enabletangents || lastxbuf!=lastvbuf)
@@ -503,38 +485,12 @@ struct skelmodel : animmodel
                     }
                 }
                 else if(enabletangents) disabletangents();
-
-                if(renderpath==R_FIXEDFUNCTION && (s.scrollu || s.scrollv))
-                {
-                    glMatrixMode(GL_TEXTURE);
-                    glPushMatrix();
-                    glTranslatef(s.scrollu*lastmillis/1000.0f, s.scrollv*lastmillis/1000.0f, 0);
-
-                    if(s.multitextured())
-                    {
-                        glActiveTexture_(GL_TEXTURE1_ARB);
-                        glPushMatrix();
-                        glTranslatef(s.scrollu*lastmillis/1000.0f, s.scrollv*lastmillis/1000.0f, 0);
-                    }
-                }
             }
 
             if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, minvert, maxvert, elen, GL_UNSIGNED_SHORT, &((skelmeshgroup *)group)->edata[eoffset]);
             else glDrawElements(GL_TRIANGLES, elen, GL_UNSIGNED_SHORT, &((skelmeshgroup *)group)->edata[eoffset]);
             glde++;
             xtravertsva += numverts;
-
-            if(renderpath==R_FIXEDFUNCTION && !(as->cur.anim&ANIM_NOSKIN) && (s.scrollu || s.scrollv))
-            {
-                if(s.multitextured())
-                {
-                    glPopMatrix();
-                    glActiveTexture_(GL_TEXTURE0_ARB);
-                }
-
-                glPopMatrix();
-                glMatrixMode(GL_MODELVIEW);
-            }
 
             return;
         }
@@ -936,18 +892,9 @@ struct skelmodel : animmodel
             }
         }
 
-        int maxgpuparams() const
-        {
-            switch(renderpath)
-            {
-                case R_GLSLANG: return maxvsuniforms;
-                case R_ASMGLSLANG:
-                case R_ASMSHADER: return maxvpenvparams;
-                default: return 0;
-            }
-        }
+        int maxgpuparams() const { return maxvsuniforms; }
         int availgpubones() const { return (min(maxgpuparams() - reservevpparams, 256) - 10) / (matskel ? 3 : 2); }
-        bool gpuaccelerate() const { return renderpath!=R_FIXEDFUNCTION && numframes && gpuskel && numgpubones<=availgpubones(); }
+        bool gpuaccelerate() const { return numframes && gpuskel && numgpubones<=availgpubones(); }
 
         float calcdeviation(const vec &axis, const vec &forward, const dualquat &pose1, const dualquat &pose2)
         {
@@ -1265,32 +1212,6 @@ struct skelmodel : animmodel
             return *sc;
         }
 
-        void setasmbones(skelcacheentry &sc, int count = 0)
-        {
-            if(sc.dirty) sc.dirty = false;
-            else if((count ? lastbdata : lastsdata) == (usematskel ? (void *)sc.mdata : (void *)sc.bdata)) return;
-            int offset = count ? numgpubones : 0;
-            if(!offset) count = numgpubones;
-            if(hasPP)
-            {
-                if(usematskel) glProgramEnvParameters4fv_(GL_VERTEX_PROGRAM_ARB, 10 + 3*offset, 3*count, sc.mdata[offset].a.v);
-                else glProgramEnvParameters4fv_(GL_VERTEX_PROGRAM_ARB, 10 + 2*offset, 2*count, sc.bdata[offset].real.v);
-            }
-            else if(usematskel) loopi(count)
-            {
-                glProgramEnvParameter4fv_(GL_VERTEX_PROGRAM_ARB, 10 + 3*(offset+i), sc.mdata[offset+i].a.v);
-                glProgramEnvParameter4fv_(GL_VERTEX_PROGRAM_ARB, 11 + 3*(offset+i), sc.mdata[offset+i].b.v);
-                glProgramEnvParameter4fv_(GL_VERTEX_PROGRAM_ARB, 12 + 3*(offset+i), sc.mdata[offset+i].c.v);
-            }
-            else loopi(count)
-            {
-                glProgramEnvParameter4fv_(GL_VERTEX_PROGRAM_ARB, 10 + 2*(offset+i), sc.bdata[offset+i].real.v);
-                glProgramEnvParameter4fv_(GL_VERTEX_PROGRAM_ARB, 11 + 2*(offset+i), sc.bdata[offset+i].dual.v);
-            }
-            if(offset) lastbdata = usematskel ? (void *)sc.mdata : (void *)sc.bdata;
-            else lastsdata = usematskel ? (void *)sc.mdata : (void *)sc.bdata;
-        }
-
         void bindubo(UniformLoc &u, skelcacheentry &sc, skelcacheentry &bc, int count)
         {
             if(hasUBO)
@@ -1353,18 +1274,10 @@ struct skelmodel : animmodel
         void setgpubones(skelcacheentry &sc, blendcacheentry *bc, int count)
         {
             if(!Shader::lastshader) return;
-            if(Shader::lastshader->type & SHADER_GLSLANG) 
-            {
-                if(Shader::lastshader->uniformlocs.length() < 1) return;
-                UniformLoc &u = Shader::lastshader->uniformlocs[0];
-                if(u.size > 0 && (hasUBO || hasBUE)) bindubo(u, sc, bc ? *bc : sc, count);
-                else setglslbones(u, sc, bc ? *bc : sc, count);
-            }
-            else
-            {
-                setasmbones(sc);
-                if(bc) setasmbones(*bc, count);
-            }
+            if(Shader::lastshader->uniformlocs.length() < 1) return;
+            UniformLoc &u = Shader::lastshader->uniformlocs[0];
+            if(u.size > 0 && (hasUBO || hasBUE)) bindubo(u, sc, bc ? *bc : sc, count);
+            else setglslbones(u, sc, bc ? *bc : sc, count);
         }
     
         bool shouldcleanup() const

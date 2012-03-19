@@ -570,7 +570,7 @@ void renderbatchedmodel(model *m, batchedmodel &b)
     if(shadowmapping)
     {
         anim |= ANIM_NOSKIN; 
-        if(renderpath!=R_FIXEDFUNCTION) setenvparamf("shadowintensity", SHPARAM_VERTEX, 1, b.transparent);
+        setenvparamf("shadowintensity", SHPARAM_VERTEX, 1, b.transparent);
     }
     else 
     {
@@ -925,7 +925,7 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
     if(shadowmapping)
     {
         anim |= ANIM_NOSKIN;
-        if(renderpath!=R_FIXEDFUNCTION) setenvparamf("shadowintensity", SHPARAM_VERTEX, 1, trans);
+        setenvparamf("shadowintensity", SHPARAM_VERTEX, 1, trans);
     }
     else 
     {

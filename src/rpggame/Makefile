@@ -39,7 +39,6 @@ CLIENT_OBJS= \
 	../engine/client.o	\
 	../engine/command.o \
 	../engine/console.o \
-	../engine/cubeloader.o \
 	../engine/decal.o \
 	../engine/dynlight.o \
 	../engine/glare.o \
@@ -175,13 +174,6 @@ depend:
 ../engine/console.o: ../shared/iengine.h ../shared/igame.h ../engine/world.h
 ../engine/console.o: ../engine/octa.h ../engine/lightmap.h ../engine/bih.h
 ../engine/console.o: ../engine/texture.h ../engine/model.h ../engine/varray.h
-../engine/cubeloader.o: ../engine/engine.h ../shared/cube.h ../shared/tools.h
-../engine/cubeloader.o: ../shared/geom.h ../shared/ents.h ../shared/command.h
-../engine/cubeloader.o: ../shared/iengine.h ../shared/igame.h
-../engine/cubeloader.o: ../engine/world.h ../engine/octa.h
-../engine/cubeloader.o: ../engine/lightmap.h ../engine/bih.h
-../engine/cubeloader.o: ../engine/texture.h ../engine/model.h
-../engine/cubeloader.o: ../engine/varray.h
 ../engine/decal.o: ../engine/engine.h ../shared/cube.h ../shared/tools.h
 ../engine/decal.o: ../shared/geom.h ../shared/ents.h ../shared/command.h
 ../engine/decal.o: ../shared/iengine.h ../shared/igame.h ../engine/world.h
