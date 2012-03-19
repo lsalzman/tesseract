@@ -1,0 +1,19 @@
+/* Sauerbraten Stylesheet */
+body			{ margin: 50px 4%; width: 90%; background-color: #302c28; color: #ffffff; font-family: verdana,"trebuchet ms","zurich bt",tahoma,arial,helvetica,sans-serif; font-size: 8pt; }
+a				{ text-decoration: underline; color: #ffbb00; }
+a:visited		{ color: #ff9900; }
+a:hover			{ color: #ff9900; }
+h1,h2,h3		{ margin: 20px 1px 4px 1px; background-color: #662222; font-weight: bold; }
+h1				{ font-size: 120%; }
+h2				{ font-size: 100%; }
+h3				{ font-size: 90%; }
+pre,code		{ padding: 1px 10px 1px 10px; font-family: monospace; border: 2px dotted #662222 }
+table,tr,td		{ margin: 0px 0px 0px 0px; padding: 0px 0px 0px 0px; border: 2px solid #662222; }
+p				{ padding: 1px 10px 5px 10px; }
+div				{ padding: 1px 10px 1px 10px; }
+div.credits		{ letter-spacing: 8px; font-weight: bold; }
+div.contents, .wiki #toc
+				{ margin: 0px 0px 10px 20px; padding: 1px 10px 1px 1px; background-color: #302c28; border: 2px solid #662222; float: right; clear: right; width: 25%; }
+ul.contents		{ list-style-type: decimal; list-style-position: outside; }
+ul.contents2	{ list-style-type: disc; list-style-position: outside; }
+ul.contents3	{ list-style-type: square; list-style-position: outside; }
