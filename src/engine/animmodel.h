@@ -74,10 +74,10 @@ struct animmodel : model
         part *owner;
         Texture *tex, *masks, *envmap, *unlittex, *normalmap;
         Shader *shader;
-        float spec, ambient, glow, glowdelta, glowpulse, specglare, glowglare, fullbright, envmapmin, envmapmax, scrollu, scrollv, alphatest;
+        float spec, ambient, glow, glowdelta, glowpulse, fullbright, envmapmin, envmapmax, scrollu, scrollv, alphatest;
         bool alphablend, cullface;
 
-        skin() : owner(0), tex(notexture), masks(notexture), envmap(NULL), unlittex(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), specglare(1), glowglare(1), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(true), cullface(true) {}
+        skin() : owner(0), tex(notexture), masks(notexture), envmap(NULL), unlittex(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(true), cullface(true) {}
 
         bool envmapped() { return hasCM && envmapmax>0 && envmapmodels; }
         bool bumpmapped() { return normalmap && bumpmodels; }
@@ -109,7 +109,7 @@ struct animmodel : model
                 curpulse -= floor(curpulse);
                 curglow += glowdelta*2*fabs(curpulse - 0.5f);
             }
-            setenvparamf("maskscale", SHPARAM_PIXEL, 4, 0.5f*spec*lightmodels, 0.5f*curglow*glowmodels, 16*specglare, 4*glowglare);
+            setenvparamf("maskscale", SHPARAM_PIXEL, 4, 0.5f*spec*lightmodels, 0.5f*curglow*glowmodels);
             setenvparamf("texscroll", SHPARAM_VERTEX, 5, lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f);
             if(envmaptmu>=0 && envmapmax>0) setenvparamf("envmapscale", bumpmapped() ? SHPARAM_PIXEL : SHPARAM_VERTEX, 3, envmapmin-envmapmax, envmapmax);
         }
@@ -174,7 +174,6 @@ struct animmodel : model
                 if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
                 if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
                 if(enableenvmap) disableenvmap();
-                if(shadowmapping) SETMODELSHADER(b, shadowmapcaster);
                 else /*if(as->cur.anim&ANIM_SHADOW)*/ SETMODELSHADER(b, notexturemodel);
                 return;
             }
@@ -272,8 +271,7 @@ struct animmodel : model
 
         virtual void setshader(Shader *s) 
         { 
-            if(glaring) s->setvariant(0, 2);
-            else s->set(); 
+            s->set(); 
         }
 
         template<class V, class T> void smoothnorms(V *verts, int numverts, T *tris, int numtris, float limit, bool areaweight)
@@ -1088,17 +1086,6 @@ struct animmodel : model
         }
     }
 
-    void setglare(float specglare, float glowglare)
-    {
-        if(parts.empty()) loaddefaultparts();
-        loopv(parts) loopvj(parts[i]->skins)
-        {
-            skin &s = parts[i]->skins[j];
-            s.specglare = specglare;
-            s.glowglare = glowglare;
-        }
-    }
-
     void setalphatest(float alphatest)
     {
         if(parts.empty()) loaddefaultparts();
@@ -1307,11 +1294,6 @@ template<class MDL, class MESH> struct modelcommands
         loopskins(meshname, s, { s.glow = glow; s.glowdelta = glowdelta; s.glowpulse = glowpulse; });
     }
     
-    static void setglare(char *meshname, float *specglare, float *glowglare)
-    {
-        loopskins(meshname, s, { s.specglare = *specglare; s.glowglare = *glowglare; });
-    }
-    
     static void setalphatest(char *meshname, float *cutoff)
     {
         loopskins(meshname, s, s.alphatest = max(0.0f, min(1.0f, *cutoff)));
@@ -1383,7 +1365,6 @@ template<class MDL, class MESH> struct modelcommands
             modelcommand(setspec, "spec", "si");
             modelcommand(setambient, "ambient", "si");
             modelcommand(setglow, "glow", "siif");
-            modelcommand(setglare, "glare", "sff");
             modelcommand(setalphatest, "alphatest", "sf");
             modelcommand(setalphablend, "alphablend", "si");
             modelcommand(setcullface, "cullface", "si");

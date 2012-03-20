@@ -132,7 +132,7 @@ struct flarerenderer : partrenderer
 
     bool haswork()
     {
-        return (numflares != 0) && !glaring && !reflecting  && !refracting;
+        return (numflares != 0) && !reflecting  && !refracting;
     }
 
     void render()

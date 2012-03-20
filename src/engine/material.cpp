@@ -444,7 +444,6 @@ void setupmaterials(int start, int len)
     if(hasmat&(1<<MAT_LAVA)) 
     {
         useshaderbyname("lava");
-        useshaderbyname("lavaglare");
         lookupmaterialslot(MAT_LAVA);
     }
     if(hasmat&(1<<MAT_GLASS)) useshaderbyname("glass");
@@ -509,9 +508,7 @@ void sortmaterials(vector<materialsurface *> &vismats)
             {
                 if(m.material==MAT_WATER && (m.orient==O_TOP || (refracting<0 && reflectz>worldsize))) { i += m.skip; continue; }
                 if(m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
-                if(glaring && m.material!=MAT_LAVA) { i += m.skip; continue; }
             }
-            else if(glaring) continue;
             vismats.add(&m);
         }
     }
@@ -789,14 +786,11 @@ void rendermaterials()
                         float t = lastmillis/2000.0f;
                         t -= floor(t);
                         t = 1.0f - 2*fabs(t-0.5f);
-                        extern int glare;
-                        if(glare) t = 0.625f + 0.075f*t;
-                        else t = 0.5f + 0.5f*t;
+                        t = 0.5f + 0.5f*t;
                         glColor3f(t, t, t);
-                        static Shader *lavashader = NULL, *lavaglareshader = NULL;
+                        static Shader *lavashader = NULL;
                         if(!lavashader) lavashader = lookupshaderbyname("lava");
-                        if(!lavaglareshader) lavaglareshader = lookupshaderbyname("lavaglare");
-                        (glaring ? lavaglareshader : lavashader)->set();
+                        lavashader->set();
                         fogtype = 1;
                     }
                     if(textured!=GL_TEXTURE_2D)

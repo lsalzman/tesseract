@@ -669,9 +669,7 @@ void resetgl()
     cleanuptextures();
     cleanuplightmaps();
     cleanupblendmap();
-    cleanshadowmap();
     cleanreflections();
-    cleanupglare();
     cleanupdepthfx();
     cleanupshaders();
     cleanupgl();

@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false;
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
@@ -45,6 +45,9 @@ PFNGLGENFRAMEBUFFERSEXTPROC         glGenFramebuffers_         = NULL;
 PFNGLFRAMEBUFFERTEXTURE2DEXTPROC    glFramebufferTexture2D_    = NULL;
 PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbuffer_ = NULL;
 PFNGLGENERATEMIPMAPEXTPROC          glGenerateMipmap_          = NULL;
+
+// GL_ARB_draw_buffers
+PFNGLDRAWBUFFERSARBPROC glDrawBuffers_ = NULL;
 
 // GL_EXT_framebuffer_blit
 PFNGLBLITFRAMEBUFFEREXTPROC         glBlitFramebuffer_         = NULL;
@@ -253,9 +256,6 @@ void gl_checkextensions()
     {
         hasTF = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_float extension.");
-        shadowmap = 1;
-        extern int smoothshadowmappeel;
-        smoothshadowmappeel = 1;
     }
 
     if(hasext(exts, "GL_NV_float_buffer")) 
@@ -287,7 +287,19 @@ void gl_checkextensions()
             if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_framebuffer_blit extension.");
         }
     }
-    else conoutf(CON_WARN, "WARNING: No framebuffer object support. (reflective water may be slow)");
+    //else conoutf(CON_WARN, "WARNING: No framebuffer object support. (reflective water may be slow)");
+    else fatal("Framebuffer object support is required!");
+
+    if(hasext(exts, "GL_ARB_draw_buffers"))
+    {
+        glDrawBuffers_ = (PFNGLDRAWBUFFERSARBPROC)getprocaddress("glDrawBuffersARB");
+        hasDB = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_draw_buffers extension.");
+        GLint maxbufs = 0;
+        glGetIntegerv(GL_MAX_DRAW_BUFFERS_ARB, &maxbufs);
+        if(maxbufs < 3) fatal("Hardware does not support at least 3 draw buffers.");
+    }
+    else fatal("Draw buffers support is required!");
 
 #ifdef __APPLE__
     // Intel HD3000 broke occlusion queries - either causing software fallback, or returning wrong results
@@ -427,7 +439,8 @@ void gl_checkextensions()
         hasTR = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_rectangle extension.");
     }
-    else if(hasMT) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
+    //else if(hasMT) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
+    else fatal("Texture rectangle support is required!");
 
     if(hasext(exts, "GL_EXT_packed_depth_stencil") || hasext(exts, "GL_NV_packed_depth_stencil"))
     {
@@ -522,18 +535,14 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_SGIX_shadow extension.");
     }
 
-    if(!hasSGIDT && !hasSGISH) shadowmap = 0;
-
     if(hasext(exts, "GL_EXT_gpu_shader4"))
     {
         // on DX10 or above class cards (i.e. GF8 or RadeonHD) enable expensive features
-        extern int grass, glare, maxdynlights, depthfxsize, depthfxrect, depthfxfilter, blurdepthfx;
+        extern int grass, depthfxsize, depthfxrect, depthfxfilter, blurdepthfx;
         grass = 1;
         if(hasOQ)
         {
             waterfallrefract = 1;
-            glare = 1;
-            maxdynlights = MAXDYNLIGHTS;
             if(hasTR)
             {
                 depthfxsize = 10;
@@ -1140,52 +1149,6 @@ bool renderedgame = false;
 void rendergame(bool mainpass)
 {
     game::rendergame(mainpass);
-    if(!shadowmapping) renderedgame = true;
-}
-
-VARP(skyboxglare, 0, 1, 1);
-
-void drawglare()
-{
-    glaring = true;
-    refracting = -1;
-
-    float oldfogstart, oldfogend, oldfogcolor[4], zerofog[4] = { 0, 0, 0, 1 };
-    glGetFloatv(GL_FOG_START, &oldfogstart);
-    glGetFloatv(GL_FOG_END, &oldfogend);
-    glGetFloatv(GL_FOG_COLOR, oldfogcolor);
-
-    glFogf(GL_FOG_START, (fog+64)/8);
-    glFogf(GL_FOG_END, fog);
-    glFogfv(GL_FOG_COLOR, zerofog);
-
-    glClearColor(0, 0, 0, 1);
-    glClear((skyboxglare ? 0 : GL_COLOR_BUFFER_BIT) | GL_DEPTH_BUFFER_BIT);
-
-    rendergeom();
-
-    if(skyboxglare) drawskybox(farplane, false);
-
-    renderreflectedmapmodels();
-    rendergame();
-    if(!isthirdperson())
-    {
-        project(curavatarfov, aspect, farplane, false, false, false, avatardepth);
-        game::renderavatar();
-        project(fovy, aspect, farplane);
-    }
-
-    renderwater();
-    rendermaterials();
-    renderalphageom();
-    renderparticles();
-
-    glFogf(GL_FOG_START, oldfogstart);
-    glFogf(GL_FOG_END, oldfogend);
-    glFogfv(GL_FOG_COLOR, oldfogcolor);
-
-    refracting = 0;
-    glaring = false;
 }
 
 VARP(reflectmms, 0, 1, 1);
@@ -1661,11 +1624,59 @@ void gl_drawhud(int w, int h);
 
 int xtraverts, xtravertsva;
 
+int gw = -1, gh = -1;
+GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gaddtex = 0;
+
+void setupgbuffer()
+{
+    if(gw == screen->w && gh == screen->h) return;
+
+    gw = screen->w;
+    gh = screen->h;
+
+    if(!gdepthtex) glGenTextures(1, &gdepthtex);
+    if(!gcolortex) glGenTextures(1, &gcolortex);
+    if(!gnormaltex) glGenTextures(1, &gnormaltex);
+    if(!gaddtex) glGenTextures(1, &gaddtex);
+
+    if(!gfbo) glGenFramebuffers_(1, &gfbo);
+    
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+
+    static const GLenum drawbufs[3] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT };
+    glDrawBuffers_(3, drawbufs);
+
+    createtexture(gdepthtex, gw, gh, NULL, 3, 0, GL_DEPTH_COMPONENT24, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(gcolortex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(gnormaltex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(gaddtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+ 
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gaddtex, 0);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) 
+        fatal("failed allocating g-buffer!");
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+}
+
+void cleanupgbuffer()
+{
+    if(gfbo) { glDeleteFramebuffers_(1, &gfbo); gfbo = 0; }
+    if(gdepthtex) { glDeleteTextures(1, &gdepthtex); gdepthtex = 0; }
+    if(gcolortex) { glDeleteTextures(1, &gcolortex); gcolortex = 0; }
+    if(gnormaltex) { glDeleteTextures(1, &gnormaltex); gnormaltex = 0; }
+    if(gaddtex) { glDeleteTextures(1, &gaddtex); gaddtex = 0; }
+    gw = gh = -1;
+}
+ 
 void gl_drawframe(int w, int h)
 {
-    defaultshader->set();
+    setupgbuffer();
 
-    updatedynlights();
+    defaultshader->set();
 
     aspect = w/float(h);
     fovy = 2*atan2(tan(curfov/2*RAD), aspect)/RAD;
@@ -1708,33 +1719,82 @@ void gl_drawframe(int w, int h)
     {
         if(dopostfx)
         {
+#if 0
             drawglaretex();
             drawdepthfxtex();
             drawreflections();
+#endif
         }
         else dopostfx = true;
     }
 
     visiblecubes();
     
-    if(shadowmap && !hasFBO) rendershadowmap();
-
     glClear(GL_DEPTH_BUFFER_BIT|(wireframe && editmode ? GL_COLOR_BUFFER_BIT : 0)|(hasstencil ? GL_STENCIL_BUFFER_BIT : 0));
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); 
 
     if(limitsky()) drawskybox(farplane, true);
 
+    int deferred_weirdness_starts_here;
+
+    // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+
+    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
+
     rendergeom(causticspass);
 
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    int deferred_weirdness_ends_here;
+    
     extern int outline;
     if(!wireframe && editmode && outline) renderoutline();
 
-    queryreflections();
+    //queryreflections();
 
-    generategrass();
+    //generategrass();
 
     if(!limitsky()) drawskybox(farplane, false);
+
+#ifndef MORE_DEFERRED_WEIRDNESS
+    // really bad hack, just overwrite the framebuffer with the color tex for now to visualize it
+
+    rectshader->set();
+
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glColor3f(1, 1, 1);
+
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, 0);  glVertex2f(-1, -1);
+    glTexCoord2f(w, 0);  glVertex2f( 1, -1);
+    glTexCoord2f(0, h); glVertex2f(-1,  1);
+    glTexCoord2f(w, h); glVertex2f( 1,  1);
+    glEnd();
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+
+    defaultshader->set();
+#endif
 
     renderdecals(true);
 
@@ -1749,20 +1809,22 @@ void gl_drawframe(int w, int h)
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+#if 0
     if(hasFBO) 
     {
         drawglaretex();
         drawdepthfxtex();
         drawreflections();
     }
+#endif
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    renderwater();
-    rendergrass();
+    //renderwater();
+    //rendergrass();
 
-    rendermaterials();
-    renderalphageom();
+    //rendermaterials();
+    //renderalphageom();
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -1772,10 +1834,10 @@ void gl_drawframe(int w, int h)
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
 
-    addmotionblur();
-    addglare();
+    //addmotionblur();
+    //addglare();
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogblend, abovemat);
-    renderpostfx();
+    //renderpostfx();
 
     defaultshader->set();
     g3d_render();
@@ -2042,20 +2104,6 @@ void gl_drawhud(int w, int h)
     glLoadIdentity();
     
     glColor3f(1, 1, 1);
-
-    extern int debugsm;
-    if(debugsm)
-    {
-        extern void viewshadowmap();
-        viewshadowmap();
-    }
-
-    extern int debugglare;
-    if(debugglare)
-    {
-        extern void viewglaretex();
-        viewglaretex();
-    }
 
     extern int debugdepthfx;
     if(debugdepthfx)

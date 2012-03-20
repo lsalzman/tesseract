@@ -1,3 +1,4 @@
+#if 0
 #include "engine.h"
 #include "rendertarget.h"
 
@@ -383,4 +384,5 @@ void viewshadowmap()
     if(!shadowmap) return;
     shadowmaptex.debug();
 }
+#endif
 

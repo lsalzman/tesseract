@@ -1,3 +1,4 @@
+#if 0
 #include "engine.h"
 #include "rendertarget.h"
 
@@ -62,4 +63,5 @@ void addglare()
 
     glDisable(GL_BLEND);
 }
-     
+#endif     
+

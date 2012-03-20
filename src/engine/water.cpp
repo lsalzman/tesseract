@@ -313,7 +313,7 @@ void renderwater()
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, s.sts.inrange(3) ? s.sts[3].t->id : notexture->id);
 
-    if(!glaring && !minimapping)
+    if(!minimapping)
     {
         if(waterrefract)
         {
@@ -334,7 +334,7 @@ void renderwater()
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    if(!glaring && waterenvmap && !waterreflect && hasCM && !minimapping)
+    if(waterenvmap && !waterreflect && hasCM && !minimapping)
     {
         glDisable(GL_TEXTURE_2D);
         glEnable(GL_TEXTURE_CUBE_MAP_ARB);
@@ -352,8 +352,7 @@ void renderwater()
     } while(0)
 
     Shader *aboveshader = NULL;
-    if(glaring) SETWATERSHADER(above, waterglare);
-    else if(minimapping) aboveshader = notextureshader;
+    if(minimapping) aboveshader = notextureshader;
     else if(waterenvmap && !waterreflect && hasCM)
     {
         if(waterrefract)
@@ -372,7 +371,7 @@ void renderwater()
     else SETWATERSHADER(above, water);
 
     Shader *belowshader = NULL;
-    if(!glaring && !minimapping)
+    if(!minimapping)
     {
         if(waterrefract)
         {
@@ -392,7 +391,7 @@ void renderwater()
     {
         Reflection &ref = reflections[i];
         if(ref.height<0 || ref.lastused<totalmillis || ref.matsurfs.empty()) continue;
-        if(!glaring && hasOQ && oqfrags && oqwater && ref.query && ref.query->owner==&ref)
+        if(hasOQ && oqfrags && oqwater && ref.query && ref.query->owner==&ref)
         {
             if(!ref.prevquery || ref.prevquery->owner!=&ref || checkquery(ref.prevquery))
             {
@@ -408,7 +407,7 @@ void renderwater()
         }
         else aboveshader->set();
 
-        if(!glaring && !minimapping)
+        if(!minimapping)
         {
             if(waterreflect || waterrefract)
             {
@@ -448,7 +447,7 @@ void renderwater()
                 lastlight = light;
             }
 
-            if(!glaring && !waterrefract && m.depth!=lastdepth)
+            if(!waterrefract && m.depth!=lastdepth)
             {
                 if(varray::data.length()) varray::end();
                 float depth = !waterfog ? 1.0f : min(0.75f*m.depth/waterfog, 0.95f);
@@ -464,7 +463,7 @@ void renderwater()
 
     varray::disable();
 
-    if(!glaring && !minimapping)
+    if(!minimapping)
     {
         if(waterreflect || waterrefract)
         {
@@ -491,7 +490,7 @@ void renderwater()
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    if(!glaring && waterenvmap && !waterreflect && hasCM && !minimapping)
+    if(waterenvmap && !waterreflect && hasCM && !minimapping)
     {
         glDisable(GL_TEXTURE_CUBE_MAP_ARB);
         glEnable(GL_TEXTURE_2D);

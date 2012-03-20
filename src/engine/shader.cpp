@@ -719,8 +719,6 @@ static const char *findglslmain(const char *s)
     return s;
 }
 
-VAR(minimizedynlighttcusage, 1, 0, 0);
-
 static void gengenericvariant(Shader &s, const char *sname, const char *vs, const char *ps, int row)
 {
     bool vschanged = false, pschanged = false;
@@ -793,151 +791,6 @@ static void genwatervariant(Shader &s, const char *sname, const char *vs, const 
     vsw.put(vs, strlen(vs)+1);
     psw.put(ps, strlen(ps)+1);
     genwatervariant(s, sname, vsw, psw, row);
-}
-
-static void gendynlightvariant(Shader &s, const char *sname, const char *vs, const char *ps, int row = 0)
-{
-    int numlights = maxvaryings < 48 || minimizedynlighttcusage ? 1 : MAXDYNLIGHTS;
-
-    const char *vspragma = strstr(vs, "#pragma CUBE2_dynlight"), *pspragma = strstr(ps, "#pragma CUBE2_dynlight");
-    string pslight;
-    vspragma += strcspn(vspragma, "\n");
-    if(*vspragma) vspragma++;
-    
-    if(sscanf(pspragma, "#pragma CUBE2_dynlight %s", pslight)!=1) return;
-
-    pspragma += strcspn(pspragma, "\n"); 
-    if(*pspragma) pspragma++;
-
-    const char *vsmain = findglslmain(vs), *psmain = findglslmain(ps); 
-    if(vsmain > vspragma) vsmain = vs;
-    if(psmain > pspragma) psmain = ps;
-
-    vector<char> vsdl, psdl;
-    loopi(MAXDYNLIGHTS)
-    {
-        vsdl.setsize(0);
-        psdl.setsize(0);
-        if(vsmain >= vs) vsdl.put(vs, vsmain - vs);
-        if(psmain >= ps) psdl.put(ps, psmain - ps);
-        loopk(i+1)
-        {
-            defformatstring(pos)("%sdynlight%d%s%s", 
-                !k || k==numlights ? "uniform vec4 " : " ", 
-                k, 
-                k < numlights ? "pos" : "offset",
-                k==i || k+1==numlights ? ";\n" : ",");
-            if(k<numlights) vsdl.put(pos, strlen(pos));
-            else psdl.put(pos, strlen(pos));
-        }
-        loopk(i+1)
-        {
-            defformatstring(color)("%sdynlight%dcolor%s", !k ? "uniform vec4 " : " ", k, k==i ? ";\n" : ",");
-            psdl.put(color, strlen(color));
-        }
-        loopk(min(i+1, numlights))
-        {
-            defformatstring(dir)("%sdynlight%ddir%s", !k ? "varying vec3 " : " ", k, k==i || k+1==numlights ? ";\n" : ",");
-            vsdl.put(dir, strlen(dir));
-            psdl.put(dir, strlen(dir));
-        }
-            
-        vsdl.put(vsmain, vspragma-vsmain);
-        psdl.put(psmain, pspragma-psmain);
-
-        loopk(i+1)
-        {
-            string tc, dl;
-            formatstring(tc)(
-                k<numlights ? 
-                    "dynlight%ddir = gl_Vertex.xyz*dynlight%dpos.w + dynlight%dpos.xyz;\n" :
-                    "vec3 dynlight%ddir = dynlight0dir*dynlight%doffset.w + dynlight%doffset.xyz;\n",   
-                k, k, k);
-            if(k < numlights) vsdl.put(tc, strlen(tc));
-            else psdl.put(tc, strlen(tc));
-
-            formatstring(dl)(
-                "%s.rgb += dynlight%dcolor.rgb * (1.0 - clamp(dot(dynlight%ddir, dynlight%ddir), 0.0, 1.0));\n",
-                pslight, k, k, k);
-            psdl.put(dl, strlen(dl));
-        }
-
-        vsdl.put(vspragma, strlen(vspragma)+1);
-        psdl.put(pspragma, strlen(pspragma)+1);
-
-        defformatstring(name)("<dynlight %d>%s", i+1, sname);
-        Shader *variant = newshader(s.type, name, vsdl.getbuf(), psdl.getbuf(), &s, row); 
-        if(!variant) return;
-        if(row < 4) genwatervariant(s, name, vsdl, psdl, row+2);
-    }
-}
-
-static void genshadowmapvariant(Shader &s, const char *sname, const char *vs, const char *ps, int row = 1)
-{
-    const char *vspragma = strstr(vs, "#pragma CUBE2_shadowmap"), *pspragma = strstr(ps, "#pragma CUBE2_shadowmap");
-    string pslight;
-    vspragma += strcspn(vspragma, "\n");
-    if(*vspragma) vspragma++;
-
-    if(sscanf(pspragma, "#pragma CUBE2_shadowmap %s", pslight)!=1) return;
-
-    pspragma += strcspn(pspragma, "\n");
-    if(*pspragma) pspragma++;
-
-    const char *vsmain = findglslmain(vs), *psmain = findglslmain(ps);
-    if(vsmain > vspragma) vsmain = vs;
-    if(psmain > pspragma) psmain = ps;
-
-    vector<char> vssm, pssm;
-    if(vsmain >= vs) vssm.put(vs, vsmain - vs);
-    if(psmain >= ps) pssm.put(ps, psmain - ps);
-
-    const char *tcdef = "varying vec3 shadowmaptc;\n";
-    vssm.put(tcdef, strlen(tcdef));
-    pssm.put(tcdef, strlen(tcdef));
-    const char *smtex = 
-        "uniform sampler2D shadowmap;\n"
-        "uniform vec4 shadowmapambient;\n";
-    pssm.put(smtex, strlen(smtex));
-
-    vssm.put(vsmain, vspragma-vsmain);
-    pssm.put(psmain, pspragma-psmain);
-
-    extern int smoothshadowmappeel;
-    const char *tc = "shadowmaptc = vec3(gl_TextureMatrix[2] * gl_Vertex);\n";
-    vssm.put(tc, strlen(tc));
-    const char *sm =
-        smoothshadowmappeel ? 
-            "vec4 smvals = texture2D(shadowmap, shadowmaptc.xy);\n"
-            "vec2 smdiff = clamp(smvals.xz - shadowmaptc.zz*smvals.y, 0.0, 1.0);\n"
-            "float shadowed = clamp((smdiff.x > 0.0 ? smvals.w : 0.0) - 8.0*smdiff.y, 0.0, 1.0);\n" :
-
-            "vec4 smvals = texture2D(shadowmap, shadowmaptc.xy);\n"
-            "float smtest = shadowmaptc.z*smvals.y;\n"
-            "float shadowed = smtest < smvals.x && smtest > smvals.z ? smvals.w : 0.0;\n";
-    pssm.put(sm, strlen(sm));
-    defformatstring(smlight)(
-        "%s.rgb -= shadowed*clamp(%s.rgb - shadowmapambient.rgb, 0.0, 1.0);\n",
-        pslight, pslight, pslight);
-    pssm.put(smlight, strlen(smlight));
-
-    if(!hasFBO) for(char *s = pssm.getbuf();;)
-    {
-        s = strstr(s, "smvals.w");
-        if(!s) break;
-        s[7] = 'y';
-        s += 8;
-    }
-
-    vssm.put(vspragma, strlen(vspragma)+1);
-    pssm.put(pspragma, strlen(pspragma)+1);
-
-    defformatstring(name)("<shadowmap>%s", sname);
-    Shader *variant = newshader(s.type, name, vssm.getbuf(), pssm.getbuf(), &s, row);
-    if(!variant) return;
-    genwatervariant(s, name, vssm.getbuf(), pssm.getbuf(), row+2);
-
-    if(strstr(vs, "#pragma CUBE2_dynlight")) gendynlightvariant(s, name, vssm.getbuf(), pssm.getbuf(), row);
 }
 
 static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps)
@@ -1132,8 +985,6 @@ void shader(int *type, char *name, char *vs, char *ps)
     if(s)
     {
         if(strstr(vs, "#pragma CUBE2_water")) genwatervariant(*s, s->name, vs, ps);
-        if(strstr(vs, "#pragma CUBE2_shadowmap")) genshadowmapvariant(*s, s->name, vs, ps);
-        if(strstr(vs, "#pragma CUBE2_dynlight")) gendynlightvariant(*s, s->name, vs, ps);
     }
     curparams.shrink(0);
 }
@@ -1158,7 +1009,6 @@ void variantshader(int *type, char *name, int *row, char *vs, char *ps)
     Shader *v = newshader(*type, varname, vs, ps, s, *row);
     if(v)
     {
-        if(strstr(vs, "#pragma CUBE2_dynlight")) gendynlightvariant(*s, varname, vs, ps, *row);
         if(strstr(ps, "#pragma CUBE2_variant") || strstr(vs, "#pragma CUBE2_variant")) gengenericvariant(*s, varname, vs, ps, *row);
     }
 }

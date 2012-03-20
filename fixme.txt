@@ -1,0 +1,19 @@
+* Broken stuff that just needs to get removed:
+
+glare
+character shadows
+old dynlight system
+
+* Stuff that needs to be rethought carefully but definitely added back somehow
+
+water reflections/refractions
+transparent cubes
+materials
+grass?
+depthfx/soft particles
+postfx
+
+* Stuff that needs to be added but subsumes old functionality
+
+bloom (instead of the old glare stuff)
+

@@ -104,7 +104,6 @@ enum
     PT_RND4  = 1<<9,
     PT_LERP  = 1<<10, // use very sparingly - order of blending issues
     PT_TRACK = 1<<11,
-    PT_GLARE = 1<<12,
     PT_SOFT  = 1<<13,
     PT_HFLIP = 1<<14,
     PT_VFLIP = 1<<15,
@@ -831,20 +830,20 @@ static partrenderer *parts[] =
     new trailrenderer("packages/particles/base.png", PT_TRAIL|PT_LERP),                            // water, entity
     new quadrenderer("<grey>packages/particles/smoke.png", PT_PART|PT_FLIP|PT_LERP),               // smoke
     new quadrenderer("<grey>packages/particles/steam.png", PT_PART|PT_FLIP),                       // steam
-    new quadrenderer("<grey>packages/particles/flames.png", PT_PART|PT_HFLIP|PT_RND4|PT_GLARE),    // flame on - no flipping please, they have orientation
-    new quadrenderer("packages/particles/ball1.png", PT_PART|PT_FEW|PT_GLARE),                     // fireball1
-    new quadrenderer("packages/particles/ball2.png", PT_PART|PT_FEW|PT_GLARE),                     // fireball2
-    new quadrenderer("packages/particles/ball3.png", PT_PART|PT_FEW|PT_GLARE),                     // fireball3
-    new taperenderer("packages/particles/flare.jpg", PT_TAPE|PT_GLARE),                            // streak
+    new quadrenderer("<grey>packages/particles/flames.png", PT_PART|PT_HFLIP|PT_RND4),             // flame on - no flipping please, they have orientation
+    new quadrenderer("packages/particles/ball1.png", PT_PART|PT_FEW),                              // fireball1
+    new quadrenderer("packages/particles/ball2.png", PT_PART|PT_FEW),                              // fireball2
+    new quadrenderer("packages/particles/ball3.png", PT_PART|PT_FEW),                              // fireball3
+    new taperenderer("packages/particles/flare.jpg", PT_TAPE),                                     // streak
     &lightnings,                                                                                   // lightning
     &fireballs,                                                                                    // explosion fireball
     &bluefireballs,                                                                                // bluish explosion fireball
-    new quadrenderer("packages/particles/spark.png", PT_PART|PT_FLIP|PT_GLARE),                    // sparks
-    new quadrenderer("packages/particles/base.png",  PT_PART|PT_FLIP|PT_GLARE),                    // edit mode entities
+    new quadrenderer("packages/particles/spark.png", PT_PART|PT_FLIP),                             // sparks
+    new quadrenderer("packages/particles/base.png",  PT_PART|PT_FLIP),                             // edit mode entities
     new quadrenderer("<grey>packages/particles/snow.png", PT_PART|PT_FLIP|PT_RND4, -1),            // colliding snow
-    new quadrenderer("packages/particles/muzzleflash1.jpg", PT_PART|PT_FEW|PT_FLIP|PT_GLARE|PT_TRACK), // muzzle flash
-    new quadrenderer("packages/particles/muzzleflash2.jpg", PT_PART|PT_FEW|PT_FLIP|PT_GLARE|PT_TRACK), // muzzle flash
-    new quadrenderer("packages/particles/muzzleflash3.jpg", PT_PART|PT_FEW|PT_FLIP|PT_GLARE|PT_TRACK), // muzzle flash
+    new quadrenderer("packages/particles/muzzleflash1.jpg", PT_PART|PT_FEW|PT_FLIP|PT_TRACK),      // muzzle flash
+    new quadrenderer("packages/particles/muzzleflash2.jpg", PT_PART|PT_FEW|PT_FLIP|PT_TRACK),      // muzzle flash
+    new quadrenderer("packages/particles/muzzleflash3.jpg", PT_PART|PT_FEW|PT_FLIP|PT_TRACK),      // muzzle flash
     new quadrenderer("packages/hud/items.png", PT_PART|PT_FEW|PT_ICON),                            // hud icon
     new quadrenderer("<colorify:1/1/1>packages/hud/items.png", PT_PART|PT_FEW|PT_ICON),            // grey hud icon
     &texts,                                                                                        // text
@@ -909,15 +908,13 @@ void removetrackedparticles(physent *owner)
     loopi(sizeof(parts)/sizeof(parts[0])) parts[i]->resettracked(owner);
 }
 
-VARP(particleglare, 0, 2, 100);
-
 VAR(debugparticles, 0, 0, 1);
 
 void renderparticles(bool mainpass)
 {
     canstep = mainpass;
     //want to debug BEFORE the lastpass render (that would delete particles)
-    if(debugparticles && !glaring && !reflecting && !refracting) 
+    if(debugparticles && !reflecting && !refracting) 
     {
         int n = sizeof(parts)/sizeof(parts[0]);
         glMatrixMode(GL_PROJECTION);
@@ -935,7 +932,6 @@ void renderparticles(bool mainpass)
             int type = parts[i]->type;
             const char *title = parts[i]->texname ? strrchr(parts[i]->texname, '/')+1 : NULL;
             string info = "";
-            if(type&PT_GLARE) concatstring(info, "g,");
             if(type&PT_LERP) concatstring(info, "l,");
             if(type&PT_MOD) concatstring(info, "m,");
             if(type&PT_RND4) concatstring(info, "r,");
@@ -954,11 +950,8 @@ void renderparticles(bool mainpass)
         glPopMatrix();
     }
 
-    if(glaring && !particleglare) return;
-    
     loopi(sizeof(parts)/sizeof(parts[0])) 
     {
-        if(glaring && !(parts[i]->type&PT_GLARE)) continue;
         parts[i]->update();
     }
     
@@ -972,7 +965,6 @@ void renderparticles(bool mainpass)
     loopi(sizeof(parts)/sizeof(parts[0]))
     {
         partrenderer *p = parts[i];
-        if(glaring && !(p->type&PT_GLARE)) continue;
         if(!p->haswork()) continue;
     
         if(!rendered)
@@ -982,8 +974,7 @@ void renderparticles(bool mainpass)
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);             
 
-            if(glaring) setenvparamf("colorscale", SHPARAM_VERTEX, 4, particleglare, particleglare, particleglare, 1);
-            else setenvparamf("colorscale", SHPARAM_VERTEX, 4, 1, 1, 1, 1);
+            setenvparamf("colorscale", SHPARAM_VERTEX, 4, 1, 1, 1, 1);
 
             particleshader->set();
             glGetFloatv(GL_FOG_COLOR, oldfogc);
@@ -1102,7 +1093,7 @@ static void regularsplash(int type, int color, int radius, int num, int fade, co
 
 bool canaddparticles()
 {
-    return !renderedgame && !shadowmapping;
+    return !renderedgame;
 }
 
 void regular_particle_splash(int type, int num, int fade, const vec &p, int color, float size, int radius, int gravity, int delay) 

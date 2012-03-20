@@ -1290,7 +1290,7 @@ void writeobj(char *name)
             elementset &es = va.eslist[j];
             if(usedmtl.find(es.texture) < 0) usedmtl.add(es.texture);
             vector<ivec> &keys = mtls[es.texture];
-            loopk(es.length[1])
+            loopk(es.length)
             {
                 int n = idx[k] - va.voffset;
                 const vec &pos = ((const vertex *)&vdata[n*vtxsize])->pos;
@@ -1309,7 +1309,7 @@ void writeobj(char *name)
                 key.y = sharetc.access(tc, texcoords.length());
                 if(key.y == texcoords.length()) texcoords.add(tc);
             }
-            idx += es.length[1];
+            idx += es.length;
         }
         delete[] edata;
         delete[] vdata;

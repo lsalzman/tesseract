@@ -447,13 +447,7 @@ struct skelmodel : animmodel
         void setshader(Shader *s)
         {
             skelmeshgroup *g = (skelmeshgroup *)group;
-            if(glaring)
-            {
-                if(!g->skel->usegpuskel) s->setvariant(0, 2);
-                else if(g->skel->usematskel) s->setvariant(min(maxweights, g->vweights), 2);
-                else s->setvariant(min(maxweights, g->vweights)-1, 3);
-            }
-            else if(!g->skel->usegpuskel) s->set();
+            if(!g->skel->usegpuskel) s->set();
             else if(g->skel->usematskel) s->setvariant(min(maxweights, g->vweights)-1, 0);
             else s->setvariant(min(maxweights, g->vweights)-1, 1);
         }

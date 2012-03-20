@@ -567,16 +567,8 @@ void renderbatchedmodel(model *m, batchedmodel &b)
     if(b.attached>=0) a = &modelattached[b.attached];
 
     int anim = b.anim;
-    if(shadowmapping)
-    {
-        anim |= ANIM_NOSKIN; 
-        setenvparamf("shadowintensity", SHPARAM_VERTEX, 1, b.transparent);
-    }
-    else 
-    {
-        if(b.flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
-        if(b.flags&MDL_GHOST) anim |= ANIM_GHOST;
-    }
+    if(b.flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
+    if(b.flags&MDL_GHOST) anim |= ANIM_GHOST;
 
     m->render(anim, b.basetime, b.basetime2, b.pos, b.yaw, b.pitch, b.d, a, b.color, b.dir, b.transparent);
 }
@@ -639,7 +631,7 @@ void endmodelbatches()
                 query = bm.query;
                 if(query) startquery(query);
             }
-            if(bm.transparent < 1 && (!query || query->owner==bm.d) && !shadowmapping)
+            if(bm.transparent < 1 && (!query || query->owner==bm.d))
             {
                 transparentmodel &tm = transparent.add();
                 tm.m = b.m;
@@ -749,12 +741,11 @@ extern int oqfrags;
 
 void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, float yaw, float pitch, int flags, dynent *d, modelattach *a, int basetime, int basetime2, float trans)
 {
-    if(shadowmapping && !(flags&(MDL_SHADOW|MDL_DYNSHADOW))) return;
     model *m = loadmodel(mdl); 
     if(!m) return;
     vec center(0, 0, 0), bbradius(0, 0, 0);
     float radius = 0;
-    bool shadow = !shadowmap && !glaring && (flags&(MDL_SHADOW|MDL_DYNSHADOW)) && showblobs,
+    bool shadow = (flags&(MDL_SHADOW|MDL_DYNSHADOW)) && showblobs,
          doOQ = flags&MDL_CULL_QUERY && hasOQ && oqfrags && oqdynent;
     if(flags&(MDL_CULL_VFC|MDL_CULL_DIST|MDL_CULL_OCCLUDED|MDL_CULL_QUERY|MDL_SHADOW|MDL_DYNSHADOW))
     {
@@ -787,18 +778,8 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
                 if(center.dist(camera1->o)-radius>reflectdist) return;
             }
             if(isfoggedsphere(radius, center)) return;
-            if(shadowmapping && !isshadowmapcaster(center, radius)) return;
         }
-        if(shadowmapping)
-        {
-            if(d)
-            {
-                if(flags&MDL_CULL_OCCLUDED && d->occluded>=OCCLUDE_PARENT) return;
-                if(doOQ && d->occluded+1>=OCCLUDE_BB && d->query && d->query->owner==d && checkquery(d->query)) return;
-            }
-            if(!addshadowmapcaster(center, radius, radius)) return;
-        }
-        else if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
+        if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
         {
             if(!reflecting && !refracting && d)
             {
@@ -819,7 +800,7 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
     }
 
     if(flags&MDL_NORENDER) anim |= ANIM_NORENDER;
-    else if(showboundingbox && !shadowmapping && !reflecting && !refracting && editmode)
+    else if(showboundingbox && !reflecting && !refracting && editmode)
     {
         if(d && showboundingbox==1) 
         {
@@ -837,45 +818,41 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
         }
     }
 
-    vec lightcolor(1, 1, 1), lightdir(0, 0, 1);
-    if(!shadowmapping)
+    vec lightcolor(1, 1, 1), lightdir(0, 0, 1), pos = o;
+    if(d) 
     {
-        vec pos = o;
-        if(d) 
+        if(!reflecting && !refracting) d->occluded = OCCLUDE_NOTHING;
+        if(!light) light = &d->light;
+        if(flags&MDL_LIGHT && light->millis!=lastmillis)
         {
-            if(!reflecting && !refracting) d->occluded = OCCLUDE_NOTHING;
-            if(!light) light = &d->light;
-            if(flags&MDL_LIGHT && light->millis!=lastmillis)
+            if(d->ragdoll)
             {
-                if(d->ragdoll)
-                {
-                    pos = d->ragdoll->center;
-                    pos.z += radius/2;
-                }
-                else if(d->type < ENT_CAMERA) pos.z += 0.75f*(d->eyeheight + d->aboveeye);
-                lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
-                dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
-                game::lighteffects(d, light->color, light->dir);
-                light->millis = lastmillis;
+                pos = d->ragdoll->center;
+                pos.z += radius/2;
             }
+            else if(d->type < ENT_CAMERA) pos.z += 0.75f*(d->eyeheight + d->aboveeye);
+            lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
+            dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
+            game::lighteffects(d, light->color, light->dir);
+            light->millis = lastmillis;
         }
-        else if(flags&MDL_LIGHT)
-        {
-            if(!light) 
-            {
-                lightreaching(pos, lightcolor, lightdir, (flags&MDL_LIGHT_FAST)!=0);
-                dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
-            }
-            else if(light->millis!=lastmillis)
-            {
-                lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
-                dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
-                light->millis = lastmillis;
-            }
-        }
-        if(light) { lightcolor = light->color; lightdir = light->dir; }
-        if(flags&MDL_DYNLIGHT) dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
     }
+    else if(flags&MDL_LIGHT)
+    {
+        if(!light) 
+        {
+            lightreaching(pos, lightcolor, lightdir, (flags&MDL_LIGHT_FAST)!=0);
+            dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
+        }
+        else if(light->millis!=lastmillis)
+        {
+            lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
+            dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
+            light->millis = lastmillis;
+        }
+    }
+    if(light) { lightcolor = light->color; lightdir = light->dir; }
+    if(flags&MDL_DYNLIGHT) dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
 
     if(a) for(int i = 0; a[i].tag; i++)
     {
@@ -883,7 +860,7 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
         //if(a[i].m && a[i].m->type()!=m->type()) a[i].m = NULL;
     }
 
-    if(!d || reflecting || refracting || shadowmapping) doOQ = false;
+    if(!d || reflecting || refracting) doOQ = false;
   
     if(numbatches>=0)
     {
@@ -922,16 +899,8 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
 
     m->startrender();
 
-    if(shadowmapping)
-    {
-        anim |= ANIM_NOSKIN;
-        setenvparamf("shadowintensity", SHPARAM_VERTEX, 1, trans);
-    }
-    else 
-    {
-        if(flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
-        if(flags&MDL_GHOST) anim |= ANIM_GHOST;
-    }
+    if(flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
+    if(flags&MDL_GHOST) anim |= ANIM_GHOST;
 
     if(doOQ)
     {

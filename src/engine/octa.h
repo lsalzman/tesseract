@@ -4,7 +4,7 @@ struct elementset
 {
     ushort texture, lmid, envmap;
     uchar dim, layer;
-    ushort length[2], minvert[2], maxvert[2];
+    ushort length, minvert, maxvert;
 };
 
 enum
@@ -147,7 +147,6 @@ struct vtxarray
     ivec o;
     int size;                // location and size of cube.
     ivec geommin, geommax;   // BB of geom
-    ivec shadowmapmin, shadowmapmax; // BB of shadowmapped surfaces
     ivec matmin, matmax;     // BB of any materials
     ivec bbmin, bbmax;       // BB of everything including children
     uchar curvfc, occluded;
@@ -155,8 +154,6 @@ struct vtxarray
     vector<octaentities *> mapmodels;
     vector<grasstri> grasstris;
     int hasmerges, mergelevel;
-    uint dynlightmask;
-    bool shadowed;
 };
 
 struct cube;

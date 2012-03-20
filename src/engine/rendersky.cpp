@@ -397,7 +397,7 @@ void drawskyoutline()
     glDepthMask(GL_TRUE);
     glEnable(GL_TEXTURE_2D);
 
-    if(!glaring) defaultshader->set();
+    defaultshader->set();
 }
 
 VAR(clampsky, 0, 1, 1);
@@ -483,13 +483,7 @@ void drawskybox(int farplane, bool limited)
     }
     if(skyclip) skyclip = 0.5f + 0.5f*(skyclip-camera1->o.z)/float(worldsize); 
 
-    if(glaring)
-    {
-        static Shader *skyboxglareshader = NULL;
-        if(!skyboxglareshader) skyboxglareshader = lookupshaderbyname("skyboxglare");
-        skyboxglareshader->set();
-    }
-    else defaultshader->set();
+    defaultshader->set();
 
     glDisable(GL_FOG);
 
@@ -515,14 +509,14 @@ void drawskybox(int farplane, bool limited)
     draw_envbox(farplane/2, skyclip, topclip, yawskyfaces(renderedskyfaces, yawsky, spinsky), sky);
     glPopMatrix();
 
-    if(!glaring && fogdomemax && !fogdomeclouds)
+    if(fogdomemax && !fogdomeclouds)
     {
         if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
         drawfogdome(farplane);
         defaultshader->set();
     }
 
-    if(!glaring && cloudbox[0])
+    if(cloudbox[0])
     {
         if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 
@@ -543,7 +537,7 @@ void drawskybox(int farplane, bool limited)
         glDisable(GL_BLEND);
     }
 
-    if(!glaring && cloudlayer[0] && cloudheight && renderedskyfaces&(cloudheight < 0 ? 0x1F : 0x2F))
+    if(cloudlayer[0] && cloudheight && renderedskyfaces&(cloudheight < 0 ? 0x1F : 0x2F))
     {
         if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 
@@ -566,7 +560,7 @@ void drawskybox(int farplane, bool limited)
         glEnable(GL_CULL_FACE);
     }
 
-	if(!glaring && fogdomemax && fogdomeclouds)
+	if(fogdomemax && fogdomeclouds)
 	{
         if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
         drawfogdome(farplane);

@@ -155,11 +155,7 @@ static void setupexplosion()
     if(!expmodtex[1]) expmodtex[1] = createexpmodtex(64, 0.25f);
     lastexpmodtex = 0;
 
-    if(glaring)
-    {
-        if(explosion2d) SETSHADER(explosion2dglare); else SETSHADER(explosion3dglare);
-    }
-    else if(!reflecting && !refracting && depthfx && depthfxtex.rendertex && numdepthfxranges>0)
+    if(!reflecting && !refracting && depthfx && depthfxtex.rendertex && numdepthfxranges>0)
     {
         if(depthfxtex.target==GL_TEXTURE_RECTANGLE_ARB)
         {
@@ -292,7 +288,7 @@ static const float WOBBLE = 1.25f;
 struct fireballrenderer : listrenderer
 {
     fireballrenderer(const char *texname)
-        : listrenderer(texname, 0, PT_FIREBALL|PT_GLARE)
+        : listrenderer(texname, 0, PT_FIREBALL)
     {}
 
     void startrender()

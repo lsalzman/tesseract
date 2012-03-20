@@ -51,6 +51,9 @@ extern PFNGLFRAMEBUFFERTEXTURE2DEXTPROC    glFramebufferTexture2D_;
 extern PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbuffer_;
 extern PFNGLGENERATEMIPMAPEXTPROC          glGenerateMipmap_;
 
+// GL_ARB_draw_buffers
+extern PFNGLDRAWBUFFERSARBPROC glDrawBuffers_;
+
 // GL_EXT_framebuffer_blit
 #ifndef GL_EXT_framebuffer_blit
 #define GL_READ_FRAMEBUFFER_EXT           0x8CA8
@@ -169,20 +172,6 @@ extern void compactvslots(cube *c, int n = 8);
 extern void compactvslot(int &index);
 extern int compactvslots();
 
-// shadowmap
-
-extern int shadowmap, shadowmapcasters;
-extern bool shadowmapping;
-
-extern bool isshadowmapcaster(const vec &o, float rad);
-extern bool addshadowmapcaster(const vec &o, float xyrad, float zrad);
-extern bool isshadowmapreceiver(vtxarray *va);
-extern void rendershadowmap();
-extern void pushshadowmap();
-extern void popshadowmap();
-extern void rendershadowmapreceivers();
-extern void guessshadowdir();
-
 // pvs
 extern void clearpvs();
 extern bool pvsoccluded(const ivec &bborigin, const ivec &bbsize);
@@ -198,7 +187,7 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 }
 
 // rendergl
-extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasDS, hasTF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE;
+extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasDS, hasTF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB;
 extern int hasstencil;
 
 extern bool envmapping, minimapping, renderedgame;
@@ -353,14 +342,6 @@ extern void drawbb(const ivec &bo, const ivec &br, const vec &camera = camera1->
         if(ati_oq_bug) glFlush(); \
     }
 
-// dynlight
-
-extern void updatedynlights();
-extern int finddynlights();
-extern void calcdynlightmask(vtxarray *va);
-extern int setdynlights(vtxarray *va);
-extern bool getdynlight(int n, vec &o, float &radius, vec &color);
-
 // material
 
 extern int showmat;
@@ -388,12 +369,6 @@ extern void renderwater();
 extern void renderlava(const materialsurface &m, Texture *tex, float scale);
 extern void loadcaustics(bool force = false);
 extern void preloadwatershaders(bool force = false);
-
-// glare
-extern bool glaring;
-
-extern void drawglaretex();
-extern void addglare();
 
 // depthfx
 extern bool depthfxing;
