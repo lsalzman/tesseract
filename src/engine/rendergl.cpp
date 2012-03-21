@@ -1671,7 +1671,16 @@ void cleanupgbuffer()
     if(gglowtex) { glDeleteTextures(1, &gglowtex); gglowtex = 0; }
     gw = gh = -1;
 }
- 
+
+struct lighttile
+{
+    float sx1, sy1, sx2, sy2;
+    extentity *ent;
+};
+
+#define LIGHTTILE_W 6
+#define LIGHTTILE_H 8
+
 void gl_drawframe(int w, int h)
 {
     setupgbuffer();
@@ -1785,24 +1794,11 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_MODELVIEW);
 
     glDisable(GL_DEPTH_TEST);
-
-    extern bvec ambientcolor;
-    glColor3ubv(ambientcolor.v);
-
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex2f( 1, -1);
-    glVertex2f(-1, -1);
-    glVertex2f( 1,  1);
-    glVertex2f(-1,  1);
-    glEnd();
-
     glBlendFunc(GL_ONE, GL_ONE);
     glEnable(GL_BLEND);
 
-    setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
-
-    SETSHADER(deferredlight);
-    
+    vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
+ 
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
     {
@@ -1815,23 +1811,95 @@ void gl_drawframe(int w, int h)
             if(isvisiblesphere(l->attr1, l->o) >= VFC_NOT_VISIBLE) continue;
             calcspherescissor(l->o, l->attr1, sx1, sy1, sx2, sy2);
         }
-
-        setlocalparamf("light", SHPARAM_PIXEL, 2, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? l->attr1 : 1e16f);
-        glColor3f(l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
-
-        // FIXME: use depth bounds here in addition to scissor
-        pushscissor(sx1, sy1, sx2, sy2);
-
-        // FIXME: render light geometry here
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex2f( 1, -1);
-        glVertex2f(-1, -1);
-        glVertex2f( 1,  1);
-        glVertex2f(-1,  1);
-        glEnd();
-
-        popscissor();
+        
+        if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+        int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+            tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H); 
+        for(int y = ty1; y < ty2; y++)
+        {
+            for(int x = tx1; x < tx2; x++)
+            {
+                lighttile &t = tiles[y][x].add();
+                t.sx1 = sx1;
+                t.sy1 = sy1;
+                t.sx2 = sx2;
+                t.sy2 = sy2;
+                t.ent = l;
+            }
+        }
     }
+
+    static Shader *deferredlightshader = NULL;
+    if(!deferredlightshader) deferredlightshader = lookupshaderbyname("deferredlight");
+
+
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glEnable(GL_SCISSOR_TEST);
+
+    setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
+
+    loop(y, LIGHTTILE_H) loop(x, LIGHTTILE_W)
+    {
+        vector<lighttile> &lights = tiles[y][x];
+        
+        static const char * const lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos" };
+        static const char * const lightcolor[] = { "light0color", "light1color", "light2color", "light3color" };
+
+        for(int i = 0;;)
+        {
+            int n = min(lights.length() - i, 4);
+
+            if(n > 0) deferredlightshader->setvariant(n-1, 0);
+            else deferredlightshader->set();
+
+            if(!i)
+            {
+                extern bvec ambientcolor;
+                setlocalparamf("ambientscale", SHPARAM_PIXEL, 1, ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f);
+                setlocalparamf("glowscale", SHPARAM_PIXEL, 2, 1, 1, 1);
+            }
+            else
+            {
+                setlocalparamf("ambientscale", SHPARAM_PIXEL, 1, 0, 0, 0);
+                setlocalparamf("glowscale", SHPARAM_PIXEL, 2, 0, 0, 0);
+            }
+
+            float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1;
+            loopj(n)
+            {
+                lighttile &t = lights[i+j];
+                extentity *l = t.ent;
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 2*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? l->attr1 : 1e16f);
+                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 2*j, l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
+                sx1 = min(sx1, t.sx1);
+                sy1 = min(sy1, t.sy1);
+                sx2 = max(sx2, t.sx2);
+                sy2 = max(sy2, t.sy2);
+            }
+            if(!i || sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+
+            int tx1 = max(int(floor((sx1*0.5f+0.5f)*w)), (x*w)/LIGHTTILE_W), ty1 = max(int(floor((sy1*0.5f+0.5f)*h)), (y*h)/LIGHTTILE_H),
+                tx2 = min(int(ceil((sx2*0.5f+0.5f)*w)), ((x+1)*w)/LIGHTTILE_W), ty2 = min(int(ceil((sy2*0.5f+0.5f)*h)), ((y+1)*h)/LIGHTTILE_H);
+
+            // FIXME: use depth bounds here in addition to scissor
+            glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
+
+            // FIXME: render light geometry here
+            glBegin(GL_TRIANGLE_STRIP);
+            glVertex2f( 1, -1);
+            glVertex2f(-1, -1);
+            glVertex2f( 1,  1);
+            glVertex2f(-1,  1);
+            glEnd();
+    
+            i += n;
+            if(i >= lights.length()) break;
+        }
+    }
+
+    glDisable(GL_SCISSOR_TEST);
 
     glDisable(GL_BLEND);
 
