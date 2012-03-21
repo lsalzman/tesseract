@@ -12,6 +12,7 @@ materials
 grass?
 depthfx/soft particles
 postfx
+fogging
 
 * Stuff that needs to be added but subsumes old functionality
 

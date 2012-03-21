@@ -1625,7 +1625,7 @@ void gl_drawhud(int w, int h);
 int xtraverts, xtravertsva;
 
 int gw = -1, gh = -1;
-GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gaddtex = 0;
+GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0;
 
 void setupgbuffer()
 {
@@ -1637,7 +1637,7 @@ void setupgbuffer()
     if(!gdepthtex) glGenTextures(1, &gdepthtex);
     if(!gcolortex) glGenTextures(1, &gcolortex);
     if(!gnormaltex) glGenTextures(1, &gnormaltex);
-    if(!gaddtex) glGenTextures(1, &gaddtex);
+    if(!gglowtex) glGenTextures(1, &gglowtex);
 
     if(!gfbo) glGenFramebuffers_(1, &gfbo);
     
@@ -1649,12 +1649,12 @@ void setupgbuffer()
     createtexture(gdepthtex, gw, gh, NULL, 3, 0, GL_DEPTH_COMPONENT24, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gcolortex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gnormaltex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(gaddtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(gglowtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
  
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gaddtex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gglowtex, 0);
 
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) 
         fatal("failed allocating g-buffer!");
@@ -1668,7 +1668,7 @@ void cleanupgbuffer()
     if(gdepthtex) { glDeleteTextures(1, &gdepthtex); gdepthtex = 0; }
     if(gcolortex) { glDeleteTextures(1, &gcolortex); gcolortex = 0; }
     if(gnormaltex) { glDeleteTextures(1, &gnormaltex); gnormaltex = 0; }
-    if(gaddtex) { glDeleteTextures(1, &gaddtex); gaddtex = 0; }
+    if(gglowtex) { glDeleteTextures(1, &gglowtex); gglowtex = 0; }
     gw = gh = -1;
 }
  
@@ -1762,36 +1762,84 @@ void gl_drawframe(int w, int h)
 #ifndef MORE_DEFERRED_WEIRDNESS
     // really bad hack, just overwrite the framebuffer with the color tex for now to visualize it
 
-    rectshader->set();
+    SETSHADER(deferredambient);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+    glActiveTexture_(GL_TEXTURE1_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    glActiveTexture_(GL_TEXTURE2_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+    glActiveTexture_(GL_TEXTURE3_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
+    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_DEPTH_TEXTURE_MODE_ARB, GL_LUMINANCE);
+    glActiveTexture_(GL_TEXTURE0_ARB);
+
+    glMatrixMode(GL_TEXTURE);
+    glmatrixf screenmatrix, worldmatrix;
+    screenmatrix.identity();
+    screenmatrix.scale(2.0f/w, 2.0f/h, 2.0f);
+    screenmatrix.translate(-1.0f, -1.0f, -1.0f);
+    worldmatrix.mul(invmvpmatrix, screenmatrix);
+    glLoadMatrixf(worldmatrix.v);
+    glMatrixMode(GL_MODELVIEW);
 
     glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
-    glColor3f(1, 1, 1);
+    extern bvec ambientcolor;
+    glColor3ubv(ambientcolor.v);
 
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, 0);  glVertex2f(-1, -1);
-    glTexCoord2f(w, 0);  glVertex2f( 1, -1);
-    glTexCoord2f(0, h); glVertex2f(-1,  1);
-    glTexCoord2f(w, h); glVertex2f( 1,  1);
+    glVertex2f( 1, -1);
+    glVertex2f(-1, -1);
+    glVertex2f( 1,  1);
+    glVertex2f(-1,  1);
     glEnd();
 
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
+    glBlendFunc(GL_ONE, GL_ONE);
+    glEnable(GL_BLEND);
 
-    glEnable(GL_CULL_FACE);
+    setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
+
+    SETSHADER(deferredlight);
+    
+    const vector<extentity *> &ents = entities::getents();
+    loopv(ents)
+    {
+        extentity *l = ents[i];
+        if(l->type != ET_LIGHT) continue;
+
+        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
+        if(l->attr1 > 0) 
+        {
+            if(isvisiblesphere(l->attr1, l->o) >= VFC_NOT_VISIBLE) continue;
+            calcspherescissor(l->o, l->attr1, sx1, sy1, sx2, sy2);
+        }
+
+        setlocalparamf("light", SHPARAM_PIXEL, 2, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? l->attr1 : 1e16f);
+        glColor3f(l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
+
+        // FIXME: use depth bounds here in addition to scissor
+        pushscissor(sx1, sy1, sx2, sy2);
+
+        // FIXME: render light geometry here
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex2f( 1, -1);
+        glVertex2f(-1, -1);
+        glVertex2f( 1,  1);
+        glVertex2f(-1,  1);
+        glEnd();
+
+        popscissor();
+    }
+
+    glDisable(GL_BLEND);
+
     glEnable(GL_DEPTH_TEST);
+
+    glMatrixMode(GL_TEXTURE);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
 
     defaultshader->set();
 #endif

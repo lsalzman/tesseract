@@ -766,11 +766,8 @@ struct renderstate
     VSlot *vslot, *texgenvslot;
     float texgenscrollS, texgenscrollT;
     int texgendim;
-    //int visibledynlights;
-    //uint dynlightmask;
 
     renderstate() : colormask(true), depthmask(true), blending(false), alphaing(0), vbuf(0), diffusetmu(0), lightmaptmu(1), colorscale(1, 1, 1), alphascale(0), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
-    //, visibledynlights(0), dynlightmask(0)
     {
         loopk(4) color[k] = 1;
         loopk(8) textures[k] = 0;
@@ -799,7 +796,6 @@ enum
     RENDERPASS_LIGHTMAP = 0,
     RENDERPASS_Z,
     RENDERPASS_CAUSTICS,
-    RENDERPASS_FOG,
     RENDERPASS_LIGHTMAP_BLEND
 };
 
@@ -820,10 +816,6 @@ struct geombatch
     {
         if(va->vbuf < b.va->vbuf) return -1;
         if(va->vbuf > b.va->vbuf) return 1;
-#if 0
-        if(va->dynlightmask < b.va->dynlightmask) return -1;
-        if(va->dynlightmask > b.va->dynlightmask) return 1;
-#endif
         if(vslot.slot->shader < b.vslot.slot->shader) return -1;
         if(vslot.slot->shader > b.vslot.slot->shader) return 1;
         if(vslot.slot->params.length() < b.vslot.slot->params.length()) return -1;
@@ -994,7 +986,7 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         {
             cur.colorscale = vslot.colorscale;
             cur.alphascale = alpha;
-            setenvparamf("colorparams", SHPARAM_PIXEL, 6, 2*alpha*vslot.colorscale.x, 2*alpha*vslot.colorscale.y, 2*alpha*vslot.colorscale.z, alpha);
+            setenvparamf("colorparams", SHPARAM_PIXEL, 6, alpha*vslot.colorscale.x, alpha*vslot.colorscale.y, alpha*vslot.colorscale.z, alpha);
             GLfloat fogc[4] = { alpha*cur.fogcolor[0], alpha*cur.fogcolor[1], alpha*cur.fogcolor[2], cur.fogcolor[3] };
             glFogfv(GL_FOG_COLOR, fogc);
         }
@@ -1002,7 +994,7 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
     else if(cur.colorscale != vslot.colorscale)
     {
         cur.colorscale = vslot.colorscale;
-        setenvparamf("colorparams", SHPARAM_PIXEL, 6, 2*vslot.colorscale.x, 2*vslot.colorscale.y, 2*vslot.colorscale.z, 1);
+        setenvparamf("colorparams", SHPARAM_PIXEL, 6, vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1);
     }
     int tmu = cur.lightmaptmu+1, envmaptmu = -1;
     if(slot.shader->type&SHADER_NORMALSLMS) tmu++;
@@ -1150,8 +1142,6 @@ void renderzpass(renderstate &cur, vtxarray *va)
     drawvatris(va, 3*numtris, edata);
 }
 
-vector<vtxarray *> foggedvas;
-
 #define startvaquery(va, flush) \
     do { \
         if(va->query) \
@@ -1171,32 +1161,6 @@ vector<vtxarray *> foggedvas;
         } \
     } while(0)
 
-void renderfoggedvas(renderstate &cur, bool doquery = false)
-{
-    static Shader *fogshader = NULL;
-    if(!fogshader) fogshader = lookupshaderbyname("fogworld");
-    fogshader->set();
-
-    glDisable(GL_TEXTURE_2D);
-        
-    glColor3ubv(watercolor.v);
-
-    loopv(foggedvas)
-    {
-        vtxarray *va = foggedvas[i];
-        if(cur.vbuf!=va->vbuf) changevbuf(cur, RENDERPASS_FOG, va);
-
-        if(doquery) startvaquery(va, );
-        drawvatris(va, 3*va->tris, va->edata);
-        vtris += va->tris;
-        if(doquery) endvaquery(va, );
-    }
-
-    glEnable(GL_TEXTURE_2D);
-
-    foggedvas.setsize(0);
-}
-
 VAR(batchgeom, 0, 1, 1);
 
 void renderva(renderstate &cur, vtxarray *va, int pass = RENDERPASS_LIGHTMAP, bool fogpass = false, bool doquery = false)
@@ -1205,11 +1169,12 @@ void renderva(renderstate &cur, vtxarray *va, int pass = RENDERPASS_LIGHTMAP, bo
     {
         case RENDERPASS_LIGHTMAP:
             if(!cur.alphaing) vverts += va->verts;
+#if 0
             if(fogpass ? va->geommax.z<=reflectz-waterfog : va->curvfc==VFC_FOGGED)
             {
-                foggedvas.add(va);
                 break;
             }
+#endif
             if(doquery) startvaquery(va, { if(geombatches.length()) renderbatches(cur, pass); });
             mergetexs(cur, va);
             if(doquery) endvaquery(va, { if(geombatches.length()) renderbatches(cur, pass); });
@@ -1224,12 +1189,6 @@ void renderva(renderstate &cur, vtxarray *va, int pass = RENDERPASS_LIGHTMAP, bo
             else if(!batchgeom && geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
             break;
         }
-
-        case RENDERPASS_FOG:
-            if(cur.vbuf!=va->vbuf) changevbuf(cur, pass, va);
-            drawvatris(va, 3*va->tris, va->edata);
-            xtravertsva += va->verts;
-            break;
 
         case RENDERPASS_CAUSTICS:
             if(cur.vbuf!=va->vbuf) changevbuf(cur, pass, va);
@@ -1553,8 +1512,6 @@ void rendergeom(float causticspass, bool fogpass)
     }
 
     cleanupTMUs(cur, causticspass, fogpass);
-
-    if(foggedvas.length()) renderfoggedvas(cur, doOQ && !zpass);
 
     if(causticspass)
     {
