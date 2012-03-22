@@ -1627,9 +1627,9 @@ int xtraverts, xtravertsva;
 int gw = -1, gh = -1;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0;
 
-void setupgbuffer()
+void setupgbuffer(int w, int h)
 {
-    if(gw == screen->w && gh == screen->h) return;
+    if(gw == w && gh == h) return;
 
     gw = screen->w;
     gh = screen->h;
@@ -1678,12 +1678,12 @@ struct lighttile
     extentity *ent;
 };
 
-#define LIGHTTILE_W 6
-#define LIGHTTILE_H 8
+#define LIGHTTILE_W 10
+#define LIGHTTILE_H 10
 
 void gl_drawframe(int w, int h)
 {
-    setupgbuffer();
+    setupgbuffer(w, h);
 
     defaultshader->set();
 
@@ -1871,7 +1871,7 @@ void gl_drawframe(int w, int h)
             {
                 lighttile &t = lights[i+j];
                 extentity *l = t.ent;
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 2*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? l->attr1 : 1e16f);
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 2*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 0);
                 setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 2*j, l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
                 sx1 = min(sx1, t.sx1);
                 sy1 = min(sy1, t.sy1);
