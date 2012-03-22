@@ -1769,10 +1769,11 @@ void gl_drawframe(int w, int h)
     if(!limitsky()) drawskybox(farplane, false);
 
 #ifndef MORE_DEFERRED_WEIRDNESS
+    #define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); } while(0)
+
     // really bad hack, just overwrite the framebuffer with the color tex for now to visualize it
 
-    SETSHADER(deferredambient);
-
+    CHECKERROR();
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
@@ -1910,6 +1911,8 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_MODELVIEW);
 
     defaultshader->set();
+    CHECKERROR();
+
 #endif
 
     renderdecals(true);
