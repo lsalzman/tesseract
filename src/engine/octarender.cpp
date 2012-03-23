@@ -838,7 +838,7 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         }
         else
         {
-            v.norm = vinfo && vinfo[k].norm && envmap != EMID_NONE ? bvec(decodenormal(vinfo[k].norm)) : bvec(128, 128, 128);
+            v.norm = bvec(128, 128, 128);
             v.tangent = bvec(128, 128, 128);
             v.bitangent = 128;
         }
