@@ -1786,7 +1786,10 @@ FVAR(smbias, -1e3, 0, 1e3);
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
 
-VAR(sidecull, 0, 1, 1);
+VAR(smsidecull, 0, 1, 1);
+VAR(smviscull, 0, 1, 1);
+VAR(smborder, 0, 2, 16);
+VAR(smsize, 1, 256, 1024);
 
 void gl_drawframe(int w, int h)
 {
@@ -1895,8 +1898,6 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
-    int smborder = 2;
-
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
     {
@@ -1906,13 +1907,18 @@ void gl_drawframe(int w, int h)
         float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
         if(l->attr1 > 0) 
         {
-            if(isvisiblesphere(l->attr1, l->o) >= VFC_NOT_VISIBLE) continue;
+            if(smviscull)
+            {
+                if(isvisiblesphere(l->attr1, l->o) >= VFC_NOT_VISIBLE) continue;
+                ivec bo = ivec(l->o).sub(l->attr1), br = ivec(l->attr1*2+1, l->attr1*2+1, l->attr1*2+1);
+                if(pvsoccluded(bo, br) || bboccluded(bo, br)) continue;
+            }
             calcspherescissor(l->o, l->attr1, sx1, sy1, sx2, sy2);
         }
         if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
 
         // just hardcode to some smallish value for now, but scale this in some intelligent way based on distance later
-        int smsize = SHADOWATLAS_SIZE/32, smw = smsize*3, smh = smsize*2;
+        int smw = smsize*3, smh = smsize*2;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
@@ -1946,7 +1952,7 @@ void gl_drawframe(int w, int h)
         int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
 
         extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
-        int sidemask = sidecull ? cullfrustumsides(l->o, smradius, sm->size, smborder) : 0x3F;
+        int sidemask = smsidecull ? cullfrustumsides(l->o, smradius, sm->size, smborder) : 0x3F;
         if(!sidemask) continue;
 
         float smnearclip = 1.0f / smradius, smfarclip = 1.0f;
