@@ -1672,7 +1672,7 @@ void cleanupgbuffer()
     gw = gh = -1;
 }
 
-#define SHADOWATLAS_SIZE 4096
+#define SHADOWATLAS_SIZE 8192
 
 PackNode shadowatlaspacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
 
@@ -1779,6 +1779,10 @@ struct shadowmapinfo
     ushort x, y, size;
 };
 
+FVAR(smpolyfactor, -1e3, 0, 1e3);
+FVAR(smpolyoffset, -1e3, 0, 1e3);
+FVAR(smbias, 0, 0, 1e3);
+
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
 
@@ -1880,6 +1884,9 @@ void gl_drawframe(int w, int h)
  
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     glEnable(GL_SCISSOR_TEST);
+
+    glPolygonOffset(smpolyfactor, smpolyoffset);
+    glEnable(GL_POLYGON_OFFSET_FILL);
  
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -1983,6 +1990,7 @@ void gl_drawframe(int w, int h)
 
     glViewport(0, 0, w, h);
 
+    glDisable(GL_POLYGON_OFFSET_FILL);
     glCullFace(GL_BACK);
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -2073,7 +2081,7 @@ void gl_drawframe(int w, int h)
                     shadowmapinfo &sm = shadowmaps[lights[i+j].shadowmap];
                     int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
                     float smnearclip = 1.0f / smradius, smfarclip = 1.0f, 
-                          bias = 0.03f * smnearclip * (1024.0f / sm.size);
+                          bias = smbias * smnearclip * (1024.0f / sm.size);
                     setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 5 + 4*j, 
                         -0.5f * (sm.size - smborder), 
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias, 
