@@ -1781,7 +1781,7 @@ struct shadowmapinfo
 
 FVAR(smpolyfactor, -1e3, 0, 1e3);
 FVAR(smpolyoffset, -1e3, 0, 1e3);
-FVAR(smbias, 0, 0, 1e3);
+FVAR(smbias, -1e3, 0, 1e3);
 
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
@@ -2056,8 +2056,8 @@ void gl_drawframe(int w, int h)
             }
             
             if(shadowmap) deferredshadowshader->setvariant(n-1, 0);
-
-            if(!shadowmap) { i += n; if(i >= lights.length()) break; continue; }
+            else if(n > 0) deferredlightshader->setvariant(n-1, 0);
+            else deferredlightshader->set();
 
             if(!i)
             {
