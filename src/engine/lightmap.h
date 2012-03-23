@@ -14,15 +14,27 @@ struct PackNode
     PackNode() : child1(0), child2(0), x(0), y(0), w(LM_PACKW), h(LM_PACKH), available(min(LM_PACKW, LM_PACKH)) {}
     PackNode(ushort x, ushort y, ushort w, ushort h) : child1(0), child2(0), x(x), y(y), w(w), h(h), available(min(w, h)) {}
 
-    void clear()
+    void discardchildren()
     {
         DELETEP(child1);
         DELETEP(child2);
     }
 
+    void forceempty()
+    {
+        discardchildren();
+        available = 0;
+    }
+
+    void reset()
+    {
+        discardchildren();
+        available = min(w, h);
+    }
+
     ~PackNode()
     {
-        clear();
+        discardchildren();
     }
 
     bool insert(ushort &tx, ushort &ty, ushort tw, ushort th);
@@ -61,8 +73,7 @@ struct LightMap
 
     void finalize()
     {
-        packroot.clear();
-        packroot.available = 0;
+        packroot.forceempty();
     }
 
     void copy(ushort tx, ushort ty, uchar *src, ushort tw, ushort th);

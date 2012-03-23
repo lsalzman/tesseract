@@ -912,6 +912,8 @@ int cullfrustumsides(const vec &lightpos, float lightradius, float size, float b
     return sides & masks[0] & masks[1] & masks[2] & masks[3] & masks[4] & masks[5];
 }
 
+VAR(smbbcull, 0, 1, 1);
+
 void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
 {
     SETSHADER(shadowmapworld);
@@ -924,7 +926,7 @@ void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
         vtxarray *va = valist[i];
         if(!va->tris) continue;
 
-        if(!(calcbbsidemask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
+        if(smbbcull && !(calcbbsidemask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
             continue;
  
         if(!prev || va->vbuf != prev->vbuf)

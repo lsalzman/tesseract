@@ -283,7 +283,7 @@ bool PackNode::insert(ushort &tx, ushort &ty, ushort tw, ushort th)
         bool inserted = child1->insert(tx, ty, tw, th) ||
                         child2->insert(tx, ty, tw, th);
         available = max(child1->available, child2->available);
-        if(!available) clear();
+        if(!available) discardchildren();
         return inserted;    
     }
     if(w == tw && h == th)

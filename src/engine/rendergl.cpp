@@ -1678,7 +1678,7 @@ void cleanupgbuffer()
     gw = gh = -1;
 }
 
-#define SHADOWATLAS_SIZE 8192
+#define SHADOWATLAS_SIZE 4096
 
 PackNode shadowatlaspacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
 
@@ -1688,7 +1688,7 @@ void setupshadowatlas()
 {
     if(!shadowatlastex) glGenTextures(1, &shadowatlastex);
 
-    createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT24, GL_TEXTURE_2D);
+    createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT16, GL_TEXTURE_2D);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
     glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE_ARB, GL_LUMINANCE);
@@ -1783,6 +1783,8 @@ struct lighttile
 struct shadowmapinfo
 {
     ushort x, y, size;
+    extentity *ent;
+    occludequery *query;
 };
 
 FVAR(smpolyfactor, -1e3, 0, 1e3);
@@ -1796,9 +1798,11 @@ FVAR(smprec, 1e-3f, 1, 1e3);
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
 VAR(smborder, 0, 2, 16);
+VAR(smminradius, 0, 16, 10000);
 VAR(smminsize, 1, 96, 1024);
 VAR(smmaxsize, 1, 384, 1024);
 VAR(smused, 1, 0, 0);
+VAR(smquery, 0, 1, 1);
 
 void gl_drawframe(int w, int h)
 {
@@ -1875,40 +1879,27 @@ void gl_drawframe(int w, int h)
 
     rendergeom(causticspass);
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
-
     int deferred_weirdness_ends_here;
     
-    extern int outline;
-    if(!wireframe && editmode && outline) renderoutline();
+    //extern int outline;
+    //if(!wireframe && editmode && outline) renderoutline();
 
     //queryreflections();
 
     //generategrass();
 
-    if(!limitsky()) drawskybox(farplane, false);
+    //if(!limitsky()) drawskybox(farplane, false);
 
 #ifndef MORE_DEFERRED_WEIRDNESS
     vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
     vector<shadowmapinfo> shadowmaps;
  
-    shadowatlaspacker.clear();
+    shadowatlaspacker.reset();
   
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
- 
+    glDepthMask(GL_FALSE);
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    glEnable(GL_SCISSOR_TEST);
 
-    if(smpolyfactor || smpolyoffset)
-    {
-        glPolygonOffset(smpolyfactor, smpolyoffset);
-        glEnable(GL_POLYGON_OFFSET_FILL);
-    }
- 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
+    nocolorshader->set();
 
     smused = 0;
     const vector<extentity *> &ents = entities::getents();
@@ -1936,13 +1927,31 @@ void gl_drawframe(int w, int h)
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
-        if(shadowatlaspacker.insert(smx, smy, smw, smh))
+        if(smradius > smminradius && shadowatlaspacker.insert(smx, smy, smw, smh))
         {
             smidx = shadowmaps.length();
             sm = &shadowmaps.add();
             sm->x = smx;
             sm->y = smy;
             sm->size = smsize;
+            sm->ent = l;
+            sm->query = NULL;
+            if(smquery && l->attr1 > 0)
+            {
+                ivec bo = ivec(l->o).sub(l->attr1), br(l->attr1*2+1, l->attr1*2+1, l->attr1*2+1);
+                if(camera1->o.x < bo.x || camera1->o.x > bo.x + br.x ||
+                   camera1->o.y < bo.y || camera1->o.y > bo.y + br.y ||
+                   camera1->o.z < bo.z || camera1->o.z > bo.z + br.z)
+                { 
+                    sm->query = newquery(l);
+                    if(sm->query)
+                    {
+                        startquery(sm->query);
+                        drawbb(bo, br);
+                        endquery(sm->query);
+                    }
+                }
+            }
             smused += smsize*smsize*6;
         }
         
@@ -1961,18 +1970,42 @@ void gl_drawframe(int w, int h)
                 t.shadowmap = smidx;
             }
         }
+    }
 
-        if(smidx < 0) continue;
+    glDepthMask(GL_TRUE);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
+
+    glEnable(GL_SCISSOR_TEST);
+
+    if(smpolyfactor || smpolyoffset)
+    {
+        glPolygonOffset(smpolyfactor, smpolyoffset);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+    }
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    loopv(shadowmaps)
+    {
+        shadowmapinfo &sm = shadowmaps[i];
+        extentity *l = sm.ent;
+
+        int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
 
         extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
-        int sidemask = smsidecull ? cullfrustumsides(l->o, smradius, sm->size, smborder) : 0x3F;
-        if(!sidemask) continue;
+        int sidemask = smsidecull ? cullfrustumsides(l->o, smradius, sm.size, smborder) : 0x3F;
+        if(!sidemask || (sm.query && sm.query->owner == l && checkquery(sm.query))) continue;
 
+        int smw = sm.size*3, smh = sm.size*2;
         float smnearclip = 1.0f / smradius, smfarclip = 1.0f;
         GLfloat smprojmatrix[16] =
         {
-            float(smsize - smborder) / smsize, 0, 0, 0,
-            0, float(smsize - smborder) / smsize, 0, 0,
+            float(sm.size - smborder) / sm.size, 0, 0, 0,
+            0, float(sm.size - smborder) / sm.size, 0, 0,
             0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -1,
             0, 0, -2*smnearclip*smfarclip / (smfarclip - smnearclip), 0
         };
@@ -1984,7 +2017,7 @@ void gl_drawframe(int w, int h)
             -l->o.x/smradius, -l->o.y/smradius, -l->o.z/smradius, 1
         };
 
-        glScissor(smx, smy, smw, smh);
+        glScissor(sm.x, sm.y, smw, smh);
         glClear(GL_DEPTH_BUFFER_BIT);
 
         glMatrixMode(GL_PROJECTION);
@@ -1994,9 +2027,9 @@ void gl_drawframe(int w, int h)
         glmatrixf smviewmatrix;
         loop(side, 6) if(sidemask&(1<<side))
         {
-            int sidex = (side>>1)*smsize, sidey = (side&1)*smsize;
-            glViewport(smx + sidex, smy + sidey, smsize, smsize);
-            glScissor(smx + sidex, smy + sidey, smsize, smsize);
+            int sidex = (side>>1)*sm.size, sidey = (side&1)*sm.size;
+            glViewport(sm.x + sidex, sm.y + sidey, sm.size, sm.size);
+            glScissor(sm.x + sidex, sm.y + sidey, sm.size, sm.size);
 
             smviewmatrix.mul(cubeshadowviewmatrix[side], lightmatrix);
             glLoadMatrixf(smviewmatrix.v);
@@ -2004,7 +2037,7 @@ void gl_drawframe(int w, int h)
             glCullFace((side & 1) ^ (side >> 2) ? GL_FRONT : GL_BACK);
 
             extern void rendershadowmapworld(const vec &pos, float radius, int side, float bias);
-            rendershadowmapworld(l->o, smradius, side, smborder / float(smsize - smborder));
+            rendershadowmapworld(l->o, smradius, side, smborder / float(sm.size - smborder));
         }   
     }
 
