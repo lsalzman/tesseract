@@ -613,6 +613,12 @@ void cleanupgl()
 
     extern void clearminimap();
     clearminimap();
+
+    extern void cleanupgbuffer();
+    cleanupgbuffer();
+
+    extern void cleanupshadowatlas();
+    cleanupshadowatlas();
 }
 
 #define VARRAY_INTERNAL
@@ -1782,6 +1788,7 @@ struct shadowmapinfo
 FVAR(smpolyfactor, -1e3, 0, 1e3);
 FVAR(smpolyoffset, -1e3, 0, 1e3);
 FVAR(smbias, -1e3, 0, 1e3);
+FVAR(smprec, 1e-3f, 1, 1e3);
 
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
@@ -1789,7 +1796,9 @@ FVAR(smbias, -1e3, 0, 1e3);
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
 VAR(smborder, 0, 2, 16);
-VAR(smsize, 1, 256, 1024);
+VAR(smminsize, 1, 96, 1024);
+VAR(smmaxsize, 1, 384, 1024);
+VAR(smused, 1, 0, 0);
 
 void gl_drawframe(int w, int h)
 {
@@ -1890,14 +1899,18 @@ void gl_drawframe(int w, int h)
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     glEnable(GL_SCISSOR_TEST);
 
-    glPolygonOffset(smpolyfactor, smpolyoffset);
-    glEnable(GL_POLYGON_OFFSET_FILL);
+    if(smpolyfactor || smpolyoffset)
+    {
+        glPolygonOffset(smpolyfactor, smpolyoffset);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+    }
  
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
+    smused = 0;
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
     {
@@ -1917,8 +1930,9 @@ void gl_drawframe(int w, int h)
         }
         if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
 
-        // just hardcode to some smallish value for now, but scale this in some intelligent way based on distance later
-        int smw = smsize*3, smh = smsize*2;
+        int smradius = l->attr1 > 0 ? l->attr1 : worldsize,
+            smsize = clamp(int(ceil(smradius * smprec / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)))), smminsize, smmaxsize),
+            smw = smsize*3, smh = smsize*2;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
@@ -1929,6 +1943,7 @@ void gl_drawframe(int w, int h)
             sm->x = smx;
             sm->y = smy;
             sm->size = smsize;
+            smused += smsize*smsize*6;
         }
         
         int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
@@ -1948,8 +1963,6 @@ void gl_drawframe(int w, int h)
         }
 
         if(smidx < 0) continue;
-
-        int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
 
         extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
         int sidemask = smsidecull ? cullfrustumsides(l->o, smradius, sm->size, smborder) : 0x3F;
@@ -2002,7 +2015,7 @@ void gl_drawframe(int w, int h)
 
     glViewport(0, 0, w, h);
 
-    glDisable(GL_POLYGON_OFFSET_FILL);
+    if(smpolyfactor || smpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
     glCullFace(GL_BACK);
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
