@@ -2074,7 +2074,7 @@ void gl_drawframe(int w, int h)
             {
                 lighttile &t = lights[i+j];
                 extentity *l = t.ent;
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 4*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 0);
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 4*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 1.0f/worldsize);
                 setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 4*j, l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
                 if(shadowmap)
                 {

@@ -387,7 +387,6 @@ struct vacollect : verthash
                     t.unlit = -1;
                 }
                 texs.add(k);
-                break;
             }
         );
         texs.sort(texsort);
