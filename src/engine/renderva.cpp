@@ -747,7 +747,172 @@ void renderdepthobstacles(const vec &bbmin, const vec &bbmax, float scale, float
     defaultshader->set();
 }
 
-void rendershadowmapworld()
+static int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
+{
+    vec pmin = vec(bbmin).sub(lightpos).div(lightradius), pmax = vec(bbmax).sub(lightpos).div(lightradius);
+    int mask = 0x3F;
+    float dp1 = pmax.x + pmax.y, dn1 = pmax.x - pmin.y, ap1 = fabs(dp1), an1 = fabs(dn1),
+          dp2 = pmin.x + pmin.y, dn2 = pmin.x - pmax.y, ap2 = fabs(dp2), an2 = fabs(dn2);
+    if(ap1 > bias*an1 && ap2 > bias*an2)
+        mask &= (3<<4)
+            | (dp1 >= 0 ? (1<<0)|(1<<2) : (2<<0)|(2<<2))
+            | (dp2 >= 0 ? (1<<0)|(1<<2) : (2<<0)|(2<<2));
+    if(an1 > bias*ap1 && an2 > bias*ap2)
+        mask &= (3<<4)
+            | (dn1 >= 0 ? (1<<0)|(2<<2) : (2<<0)|(1<<2))
+            | (dn2 >= 0 ? (1<<0)|(2<<2) : (2<<0)|(1<<2));
+
+    dp1 = pmax.y + pmax.z, dn1 = pmax.y - pmin.z, ap1 = fabs(dp1), an1 = fabs(dn1),
+    dp2 = pmin.y + pmin.z, dn2 = pmin.y - pmax.z, ap2 = fabs(dp2), an2 = fabs(dn2);
+    if(ap1 > bias*an1 && ap2 > bias*an2)
+        mask &= (3<<0)
+            | (dp1 >= 0 ? (1<<2)|(1<<4) : (2<<2)|(2<<4))
+            | (dp2 >= 0 ? (1<<2)|(1<<4) : (2<<2)|(2<<4));
+    if(an1 > bias*ap1 && an2 > bias*ap2)
+        mask &= (3<<0)
+            | (dn1 >= 0 ? (1<<2)|(2<<4) : (2<<2)|(1<<4))
+            | (dn2 >= 0 ? (1<<2)|(2<<4) : (2<<2)|(1<<4));
+
+    dp1 = pmax.z + pmax.x, dn1 = pmax.z - pmin.x, ap1 = fabs(dp1), an1 = fabs(dn1),
+    dp2 = pmin.z + pmin.x, dn2 = pmin.z - pmax.x, ap2 = fabs(dp2), an2 = fabs(dn2);
+    if(ap1 > bias*an1 && ap2 > bias*an2)
+        mask &= (3<<2)
+            | (dp1 >= 0 ? (1<<4)|(1<<0) : (2<<4)|(2<<0))
+            | (dp2 >= 0 ? (1<<4)|(1<<0) : (2<<4)|(2<<0));
+    if(an1 > bias*ap1 && an2 > bias*ap2)
+        mask &= (3<<2)
+            | (dn1 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0))
+            | (dn2 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0));
+
+    return mask;
+}
+
+static int calcspheresidemask(const vec &p, float radius, float bias)
+{
+    // p is in the cubemap's local coordinate system
+    // bias = border/(size - border)
+    float dxyp = p.x + p.y, dxyn = p.x - p.y, axyp = fabs(dxyp), axyn = fabs(dxyn),
+          dyzp = p.y + p.z, dyzn = p.y - p.z, ayzp = fabs(dyzp), ayzn = fabs(dyzn),
+          dzxp = p.z + p.x, dzxn = p.z - p.x, azxp = fabs(dzxp), azxn = fabs(dzxn);
+    int mask = 0x3F;
+    if(axyp > bias*axyn + radius) mask &= dxyp < 0 ? ~((1<<0)|(1<<2)) : ~((2<<0)|(2<<2));
+    if(axyn > bias*axyp + radius) mask &= dxyn < 0 ? ~((1<<0)|(2<<2)) : ~((2<<0)|(1<<2));
+    if(ayzp > bias*ayzn + radius) mask &= dyzp < 0 ? ~((1<<2)|(1<<4)) : ~((2<<2)|(2<<4));
+    if(ayzn > bias*ayzp + radius) mask &= dyzn < 0 ? ~((1<<2)|(2<<4)) : ~((2<<2)|(1<<4));
+    if(azxp > bias*azxn + radius) mask &= dzxp < 0 ? ~((1<<4)|(1<<0)) : ~((2<<4)|(2<<0));
+    if(azxn > bias*azxp + radius) mask &= dzxn < 0 ? ~((1<<4)|(2<<0)) : ~((2<<4)|(1<<0));
+    return mask;
+}
+
+int calctrisidemask(const vec &p1, const vec &p2, const vec &p3, float bias)
+{
+    // p1, p2, p3 are in the cubemap's local coordinate system
+    // bias = border/(size - border)
+    int mask = 0x3F;
+    float dp1 = p1.x + p1.y, dn1 = p1.x - p1.y, ap1 = fabs(dp1), an1 = fabs(dn1),
+          dp2 = p2.x + p2.y, dn2 = p2.x - p2.y, ap2 = fabs(dp2), an2 = fabs(dn2),
+          dp3 = p3.x + p3.y, dn3 = p3.x - p3.y, ap3 = fabs(dp3), an3 = fabs(dn3);
+    if(ap1 > bias*an1 && ap2 > bias*an2 && ap3 > bias*an3)
+        mask &= (3<<4)
+            | (dp1 >= 0 ? (1<<0)|(1<<2) : (2<<0)|(2<<2))
+            | (dp2 >= 0 ? (1<<0)|(1<<2) : (2<<0)|(2<<2))
+            | (dp3 >= 0 ? (1<<0)|(1<<2) : (2<<0)|(2<<2));
+    if(an1 > bias*ap1 && an2 > bias*ap2 && an3 > bias*ap3)
+        mask &= (3<<4)
+            | (dn1 >= 0 ? (1<<0)|(2<<2) : (2<<0)|(1<<2))
+            | (dn2 >= 0 ? (1<<0)|(2<<2) : (2<<0)|(1<<2))
+            | (dn3 >= 0 ? (1<<0)|(2<<2) : (2<<0)|(1<<2));
+
+    dp1 = p1.y + p1.z, dn1 = p1.y - p1.z, ap1 = fabs(dp1), an1 = fabs(dn1),
+    dp2 = p2.y + p2.z, dn2 = p2.y - p2.z, ap2 = fabs(dp2), an2 = fabs(dn2),
+    dp3 = p3.y + p3.z, dn3 = p3.y - p3.z, ap3 = fabs(dp3), an3 = fabs(dn3);
+    if(ap1 > bias*an1 && ap2 > bias*an2 && ap3 > bias*an3)
+        mask &= (3<<0)
+            | (dp1 >= 0 ? (1<<2)|(1<<4) : (2<<2)|(2<<4))
+            | (dp2 >= 0 ? (1<<2)|(1<<4) : (2<<2)|(2<<4))
+            | (dp3 >= 0 ? (1<<2)|(1<<4) : (2<<2)|(2<<4));
+    if(an1 > bias*ap1 && an2 > bias*ap2 && an3 > bias*ap3)
+        mask &= (3<<0)
+            | (dn1 >= 0 ? (1<<2)|(2<<4) : (2<<2)|(1<<4))
+            | (dn2 >= 0 ? (1<<2)|(2<<4) : (2<<2)|(1<<4))
+            | (dn3 >= 0 ? (1<<2)|(2<<4) : (2<<2)|(1<<4));
+
+    dp1 = p1.z + p1.x, dn1 = p1.z - p1.x, ap1 = fabs(dp1), an1 = fabs(dn1),
+    dp2 = p2.z + p2.x, dn2 = p2.z - p2.x, ap2 = fabs(dp2), an2 = fabs(dn2),
+    dp3 = p3.z + p3.x, dn3 = p3.z - p3.x, ap3 = fabs(dp3), an3 = fabs(dn3);
+    if(ap1 > bias*an1 && ap2 > bias*an2 && ap3 > bias*an3)
+        mask &= (3<<2)
+            | (dp1 >= 0 ? (1<<4)|(1<<0) : (2<<4)|(2<<0))
+            | (dp2 >= 0 ? (1<<4)|(1<<0) : (2<<4)|(2<<0))
+            | (dp3 >= 0 ? (1<<4)|(1<<0) : (2<<4)|(2<<0));
+    if(an1 > bias*ap1 && an2 > bias*ap2 && an3 > bias*ap3)
+        mask &= (3<<2)
+            | (dn1 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0))
+            | (dn2 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0))
+            | (dn3 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0));
+
+    return mask;
+}
+
+int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border)
+{
+    int sides = 0x3F, masks[6] = { 3<<4, 3<<4, 3<<0, 3<<0, 3<<2, 3<<2 };
+    float scale = (size - 2*border)/size, bias = border / (float)(size - border);
+    // check if cone enclosing side would cross frustum plane 
+    scale = 2 / (scale*scale + 2);
+    loopi(5) if(vfcP[i].dist(lightpos) <= -0.03125f)
+    {
+        vec n = vec(vfcP[i]).div(lightradius);
+        float len = scale*n.squaredlen();
+        if(n.x*n.x > len) sides &= n.x < 0 ? ~(1<<0) : ~(2 << 0);
+        if(n.y*n.y > len) sides &= n.y < 0 ? ~(1<<2) : ~(2 << 2);
+        if(n.z*n.z > len) sides &= n.z < 0 ? ~(1<<4) : ~(2 << 4);
+    }
+    if (vfcP[4].dist(lightpos) >= vfcDfog + 0.03125f)
+    {
+        vec n = vec(vfcP[4]).div(lightradius);
+        float len = scale*n.squaredlen();
+        if(n.x*n.x > len) sides &= n.x >= 0 ? ~(1<<0) : ~(2 << 0);
+        if(n.y*n.y > len) sides &= n.y >= 0 ? ~(1<<2) : ~(2 << 2);
+        if(n.z*n.z > len) sides &= n.z >= 0 ? ~(1<<4) : ~(2 << 4);
+    }
+    // this next test usually clips off more sides than the former, but occasionally clips fewer/different ones, so do both and combine results
+    // check if frustum corners/origin cross plane sides
+    // infinite version, assumes frustum corners merely give direction and extend to infinite distance
+    vec p = vec(camera1->o).sub(lightpos).div(lightradius);
+    float dp = p.x + p.y, dn = p.x - p.y, ap = fabs(dp), an = fabs(dn);
+    masks[0] |= ap <= bias*an ? 0x3F : (dp >= 0 ? (1<<0)|(1<<2) : (2<<0)|(2<<2));
+    masks[1] |= an <= bias*ap ? 0x3F : (dn >= 0 ? (1<<0)|(2<<2) : (2<<0)|(1<<2));
+    dp = p.y + p.z, dn = p.y - p.z, ap = fabs(dp), an = fabs(dn);
+    masks[2] |= ap <= bias*an ? 0x3F : (dp >= 0 ? (1<<2)|(1<<4) : (2<<2)|(2<<4));
+    masks[3] |= an <= bias*ap ? 0x3F : (dn >= 0 ? (1<<2)|(2<<4) : (2<<2)|(1<<4));
+    dp = p.z + p.x, dn = p.z - p.x, ap = fabs(dp), an = fabs(dn);
+    masks[4] |= ap <= bias*an ? 0x3F : (dp >= 0 ? (1<<4)|(1<<0) : (2<<4)|(2<<0));
+    masks[5] |= an <= bias*ap ? 0x3F : (dn >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0));
+    loopi(4)
+    {
+        vec n;
+        switch(i)
+        {
+            case 0: n.cross(vfcP[0], vfcP[2]); break;
+            case 1: n.cross(vfcP[3], vfcP[0]); break;
+            case 2: n.cross(vfcP[2], vfcP[1]); break;
+            case 3: n.cross(vfcP[1], vfcP[3]); break;
+        }
+        dp = n.x + n.y, dn = n.x - n.y, ap = fabs(dp), an = fabs(dn);
+        if(ap > 0) masks[0] |= dp >= 0 ? (1<<0)|(1<<2) : (2<<0)|(2<<2);
+        if(an > 0) masks[1] |= dn >= 0 ? (1<<0)|(2<<2) : (2<<0)|(1<<2);
+        dp = n.y + n.z, dn = n.y - n.z, ap = fabs(dp), an = fabs(dn);
+        if(ap > 0) masks[2] |= dp >= 0 ? (1<<2)|(1<<4) : (2<<2)|(2<<4);
+        if(an > 0) masks[3] |= dn >= 0 ? (1<<2)|(2<<4) : (2<<2)|(1<<4);
+        dp = n.z + n.x, dn = n.z - n.x, ap = fabs(dp), an = fabs(dn);
+        if(ap > 0) masks[4] |= dp >= 0 ? (1<<4)|(1<<0) : (2<<4)|(2<<0);
+        if(an > 0) masks[5] |= dn >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0);
+    }
+    return sides & masks[0] & masks[1] & masks[2] & masks[3] & masks[4] & masks[5];
+}
+
+void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
 {
     SETSHADER(shadowmapworld);
 
@@ -759,6 +924,9 @@ void rendershadowmapworld()
         vtxarray *va = valist[i];
         if(!va->tris) continue;
 
+        if(!(calcbbsidemask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
+            continue;
+ 
         if(!prev || va->vbuf != prev->vbuf)
         {
             if(hasVBO)

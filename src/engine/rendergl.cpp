@@ -1786,6 +1786,8 @@ FVAR(smbias, -1e3, 0, 1e3);
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
 
+VAR(sidecull, 0, 1, 1);
+
 void gl_drawframe(int w, int h)
 {
     setupgbuffer(w, h);
@@ -1942,6 +1944,11 @@ void gl_drawframe(int w, int h)
         if(smidx < 0) continue;
 
         int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
+
+        extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
+        int sidemask = sidecull ? cullfrustumsides(l->o, smradius, sm->size, smborder) : 0x3F;
+        if(!sidemask) continue;
+
         float smnearclip = 1.0f / smradius, smfarclip = 1.0f;
         GLfloat smprojmatrix[16] =
         {
@@ -1966,7 +1973,7 @@ void gl_drawframe(int w, int h)
         glMatrixMode(GL_MODELVIEW);
 
         glmatrixf smviewmatrix;
-        loop(side, 6)
+        loop(side, 6) if(sidemask&(1<<side))
         {
             int sidex = (side>>1)*smsize, sidey = (side&1)*smsize;
             glViewport(smx + sidex, smy + sidey, smsize, smsize);
@@ -1977,9 +1984,8 @@ void gl_drawframe(int w, int h)
 
             glCullFace((side & 1) ^ (side >> 2) ? GL_FRONT : GL_BACK);
 
-            // really stupid bad hack for now, just renders the entire world and doesn't cull anything
-            extern void rendershadowmapworld();
-            rendershadowmapworld();
+            extern void rendershadowmapworld(const vec &pos, float radius, int side, float bias);
+            rendershadowmapworld(l->o, smradius, side, smborder / float(smsize - smborder));
         }   
     }
 
