@@ -747,6 +747,44 @@ void renderdepthobstacles(const vec &bbmin, const vec &bbmax, float scale, float
     defaultshader->set();
 }
 
+void rendershadowmapworld()
+{
+    SETSHADER(shadowmapworld);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+
+    vtxarray *prev = NULL;
+    loopv(valist)
+    {
+        vtxarray *va = valist[i];
+        if(!va->tris) continue;
+
+        if(!prev || va->vbuf != prev->vbuf)
+        {
+            if(hasVBO)
+            {
+                glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+            }
+            glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
+        }
+
+        drawvatris(va, 3*va->tris, va->edata);
+        xtravertsva += va->verts;
+
+        prev = va;
+    }
+
+    if(hasVBO)
+    {
+        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    }
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    defaultshader->set();
+}
+
 VAR(oqdist, 0, 256, 1024);
 VAR(zpass, 0, 1, 1);
 VAR(glowpass, 0, 1, 1);

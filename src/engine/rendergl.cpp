@@ -1672,10 +1672,111 @@ void cleanupgbuffer()
     gw = gh = -1;
 }
 
+#define SHADOWATLAS_SIZE 4096
+
+PackNode shadowatlaspacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
+
+GLuint shadowatlastex = 0, shadowatlasfbo = 0;
+
+void setupshadowatlas()
+{
+    if(!shadowatlastex) glGenTextures(1, &shadowatlastex);
+
+    createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT24, GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
+    glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE_ARB, GL_LUMINANCE);
+
+    if(!shadowatlasfbo) glGenFramebuffers_(1, &shadowatlasfbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
+
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, shadowatlastex, 0);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating shadow atlas!");
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+    
+}
+
+void cleanupshadowatlas()
+{
+    if(shadowatlastex) { glDeleteTextures(1, &shadowatlastex); shadowatlastex = 0; }
+    if(shadowatlasfbo) { glDeleteFramebuffers_(1, &shadowatlasfbo); shadowatlasfbo = 0; }
+}
+
+VAR(debugshadowatlas, 0, 0, 1);
+
+void viewshadowatlas()
+{
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    defaultshader->set();
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, 0); glVertex2i(0, 0);
+    glTexCoord2f(1, 0); glVertex2i(w, 0);
+    glTexCoord2f(0, 1); glVertex2i(0, h);
+    glTexCoord2f(1, 1); glVertex2i(w, h);
+    glEnd();
+    notextureshader->set();
+}
+
+const float cubeshadowviewmatrix[6][16] =
+{
+    // sign-preserving cubemap projections
+    { // +X
+         0, 0,-1, 0,
+         0, 1, 0, 0,
+         1, 0, 0, 0,
+         0, 0, 0, 1,
+    },
+    { // -X
+         0, 0, 1, 0,
+         0, 1, 0, 0,
+         1, 0, 0, 0,
+         0, 0, 0, 1,
+    },
+    { // +Y
+         1, 0, 0, 0,
+         0, 0,-1, 0,
+         0, 1, 0, 0,
+         0, 0, 0, 1,
+    },
+    { // -Y
+         1, 0, 0, 0,
+         0, 0, 1, 0,
+         0, 1, 0, 0,
+         0, 0, 0, 1,
+    },
+    { // +Z
+         1, 0, 0, 0,
+         0, 1, 0, 0,
+         0, 0,-1, 0,
+         0, 0, 0, 1,
+    },
+    { // -Z
+         1, 0, 0, 0,
+         0, 1, 0, 0,
+         0, 0, 1, 0,
+         0, 0, 0, 1,
+    },
+};
+
 struct lighttile
 {
     float sx1, sy1, sx2, sy2;
     extentity *ent;
+    int shadowmap;
+};
+
+struct shadowmapinfo
+{
+    ushort x, y, size;
 };
 
 #define LIGHTTILE_W 10
@@ -1684,6 +1785,7 @@ struct lighttile
 void gl_drawframe(int w, int h)
 {
     setupgbuffer(w, h);
+    if(!shadowatlastex || !shadowatlasfbo) setupshadowatlas();
 
     defaultshader->set();
 
@@ -1769,9 +1871,125 @@ void gl_drawframe(int w, int h)
     if(!limitsky()) drawskybox(farplane, false);
 
 #ifndef MORE_DEFERRED_WEIRDNESS
-    #define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); } while(0)
+    vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
+    vector<shadowmapinfo> shadowmaps;
+ 
+    shadowatlaspacker.clear();
+  
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
+ 
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glEnable(GL_SCISSOR_TEST);
+ 
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
 
-    // really bad hack, just overwrite the framebuffer with the color tex for now to visualize it
+    int smborder = 2;
+
+    const vector<extentity *> &ents = entities::getents();
+    loopv(ents)
+    {
+        extentity *l = ents[i];
+        if(l->type != ET_LIGHT) continue;
+
+        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
+        if(l->attr1 > 0) 
+        {
+            if(isvisiblesphere(l->attr1, l->o) >= VFC_NOT_VISIBLE) continue;
+            calcspherescissor(l->o, l->attr1, sx1, sy1, sx2, sy2);
+        }
+        if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+
+        // just hardcode to some smallish value for now, but scale this in some intelligent way based on distance later
+        int smsize = SHADOWATLAS_SIZE/32, smw = smsize*3, smh = smsize*2;
+        ushort smx = USHRT_MAX, smy = USHRT_MAX;
+        shadowmapinfo *sm = NULL;
+        int smidx = -1;
+        if(shadowatlaspacker.insert(smx, smy, smw, smh))
+        {
+            smidx = shadowmaps.length();
+            sm = &shadowmaps.add();
+            sm->x = smx;
+            sm->y = smy;
+            sm->size = smsize;
+        }
+        
+        int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+            tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H); 
+        for(int y = ty1; y < ty2; y++)
+        {
+            for(int x = tx1; x < tx2; x++)
+            {
+                lighttile &t = tiles[y][x].add();
+                t.sx1 = sx1;
+                t.sy1 = sy1;
+                t.sx2 = sx2;
+                t.sy2 = sy2;
+                t.ent = l;
+                t.shadowmap = smidx;
+            }
+        }
+
+        if(smidx < 0) continue;
+
+        int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
+        float smnearclip = 1.0f / smradius, smfarclip = 1.0f;
+        GLfloat smprojmatrix[16] =
+        {
+            float(smsize - smborder) / smsize, 0, 0, 0,
+            0, float(smsize - smborder) / smsize, 0, 0,
+            0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -1,
+            0, 0, -2*smnearclip*smfarclip / (smfarclip - smnearclip), 0
+        };
+        GLfloat lightmatrix[16] =
+        {
+            1.0f/smradius, 0, 0, 0,
+            0, 1.0f/smradius, 0, 0,
+            0, 0, 1.0f/smradius, 0,
+            -l->o.x/smradius, -l->o.y/smradius, -l->o.z/smradius, 1
+        };
+
+        glScissor(smx, smy, smw, smh);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadMatrixf(smprojmatrix);
+        glMatrixMode(GL_MODELVIEW);
+
+        glmatrixf smviewmatrix;
+        loop(side, 6)
+        {
+            int sidex = (side>>1)*smsize, sidey = (side&1)*smsize;
+            glViewport(smx + sidex, smy + sidey, smsize, smsize);
+            glScissor(smx + sidex, smy + sidey, smsize, smsize);
+
+            smviewmatrix.mul(cubeshadowviewmatrix[side], lightmatrix);
+            glLoadMatrixf(smviewmatrix.v);
+
+            glCullFace((side & 1) ^ (side >> 2) ? GL_FRONT : GL_BACK);
+
+            // really stupid bad hack for now, just renders the entire world and doesn't cull anything
+            extern void rendershadowmapworld();
+            rendershadowmapworld();
+        }   
+    }
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+
+    glViewport(0, 0, w, h);
+
+    glCullFace(GL_BACK);
+    glDisable(GL_SCISSOR_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    #define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); } while(0)
 
     CHECKERROR();
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
@@ -1781,8 +1999,8 @@ void gl_drawframe(int w, int h)
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
     glActiveTexture_(GL_TEXTURE3_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
-    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_DEPTH_TEXTURE_MODE_ARB, GL_LUMINANCE);
+    glActiveTexture_(GL_TEXTURE4_ARB);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
@@ -1798,41 +2016,9 @@ void gl_drawframe(int w, int h)
     glBlendFunc(GL_ONE, GL_ONE);
     glEnable(GL_BLEND);
 
-    vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
- 
-    const vector<extentity *> &ents = entities::getents();
-    loopv(ents)
-    {
-        extentity *l = ents[i];
-        if(l->type != ET_LIGHT) continue;
-
-        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
-        if(l->attr1 > 0) 
-        {
-            if(isvisiblesphere(l->attr1, l->o) >= VFC_NOT_VISIBLE) continue;
-            calcspherescissor(l->o, l->attr1, sx1, sy1, sx2, sy2);
-        }
-        
-        if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
-        int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
-            tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H); 
-        for(int y = ty1; y < ty2; y++)
-        {
-            for(int x = tx1; x < tx2; x++)
-            {
-                lighttile &t = tiles[y][x].add();
-                t.sx1 = sx1;
-                t.sy1 = sy1;
-                t.sx2 = sx2;
-                t.sy2 = sy2;
-                t.ent = l;
-            }
-        }
-    }
-
-    static Shader *deferredlightshader = NULL;
+    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL;
     if(!deferredlightshader) deferredlightshader = lookupshaderbyname("deferredlight");
-
+    if(!deferredshadowshader) deferredshadowshader = lookupshaderbyname("deferredshadow");
 
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -1840,6 +2026,7 @@ void gl_drawframe(int w, int h)
     glEnable(GL_SCISSOR_TEST);
 
     setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
+    setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
 
     loop(y, LIGHTTILE_H) loop(x, LIGHTTILE_W)
     {
@@ -1847,24 +2034,31 @@ void gl_drawframe(int w, int h)
         
         static const char * const lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos" };
         static const char * const lightcolor[] = { "light0color", "light1color", "light2color", "light3color" };
+        static const char * const shadowparams[] = { "shadow0params", "shadow1params", "shadow2params", "shadow3params" };
+        static const char * const shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset" };
 
         for(int i = 0;;)
         {
             int n = min(lights.length() - i, 4);
 
-            if(n > 0) deferredlightshader->setvariant(n-1, 0);
-            else deferredlightshader->set();
+            bool shadowmap = n > 0 && lights[i].shadowmap >= 0;
+            loopj(n)
+            {
+                if((lights[i+j].shadowmap >= 0) != shadowmap) { n = j; break; }
+            }
+            
+            if(shadowmap) deferredshadowshader->setvariant(n-1, 0);
+
+            if(!shadowmap) { i += n; if(i >= lights.length()) break; continue; }
 
             if(!i)
             {
                 extern bvec ambientcolor;
-                setlocalparamf("ambientscale", SHPARAM_PIXEL, 1, ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f);
-                setlocalparamf("glowscale", SHPARAM_PIXEL, 2, 1, 1, 1);
+                setlocalparamf("lightscale", SHPARAM_PIXEL, 2, ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f, 1);
             }
             else
             {
-                setlocalparamf("ambientscale", SHPARAM_PIXEL, 1, 0, 0, 0);
-                setlocalparamf("glowscale", SHPARAM_PIXEL, 2, 0, 0, 0);
+                setlocalparamf("lightscale", SHPARAM_PIXEL, 2, 0, 0, 0, 0);
             }
 
             float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1;
@@ -1872,8 +2066,21 @@ void gl_drawframe(int w, int h)
             {
                 lighttile &t = lights[i+j];
                 extentity *l = t.ent;
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 2*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 0);
-                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 2*j, l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 4*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 0);
+                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 4*j, l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
+                if(shadowmap)
+                {
+                    shadowmapinfo &sm = shadowmaps[lights[i+j].shadowmap];
+                    int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
+                    float smnearclip = 1.0f / smradius, smfarclip = 1.0f, 
+                          bias = 0.03f * smnearclip * (1024.0f / sm.size);
+                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 5 + 4*j, 
+                        -0.5f * (sm.size - smborder), 
+                        -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias, 
+                        sm.size, 
+                        0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 6 + 4*j, sm.x, sm.y);
+                }
                 sx1 = min(sx1, t.sx1);
                 sy1 = min(sy1, t.sy1);
                 sx2 = max(sx2, t.sx2);
@@ -2230,6 +2437,8 @@ void gl_drawhud(int w, int h)
         extern void viewdepthfxtex();
         viewdepthfxtex();
     }
+
+    if(debugshadowatlas) viewshadowatlas();
 
     glEnable(GL_BLEND);
     
