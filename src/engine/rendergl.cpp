@@ -2211,14 +2211,14 @@ void gl_drawframe(int w, int h)
     {
         vector<lighttile> &lights = tiles[y][x];
         
-        static const char * const lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos" };
-        static const char * const lightcolor[] = { "light0color", "light1color", "light2color", "light3color" };
-        static const char * const shadowparams[] = { "shadow0params", "shadow1params", "shadow2params", "shadow3params" };
-        static const char * const shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset" };
+        static const char * const lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos", "light4pos", "light5pos", "light6pos", "light7pos" };
+        static const char * const lightcolor[] = { "light0color", "light1color", "light2color", "light3color", "light4color", "light5color", "light6color", "light7color" };
+        static const char * const shadowparams[] = { "shadow0params", "shadow1params", "shadow2params", "shadow3params", "shadow4params", "shadow5params", "shadow6params", "shadow7params" };
+        static const char * const shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset", "shadow4offset", "shadow5offset", "shadow6offset", "shadow7offset" };
 
         for(int i = 0;;)
         {
-            int n = min(lights.length() - i, 4);
+            int n = min(lights.length() - i, 7);
 
             bool shadowmap = n > 0 && lights[i].shadowmap >= 0;
             loopj(n)
