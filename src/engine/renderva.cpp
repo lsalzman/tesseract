@@ -1134,6 +1134,57 @@ void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
     defaultshader->set();
 }
 
+void rendershadowmapmodels(const vec &pos, float radius, int side, float bias)
+{
+    const vector<extentity *> &ents = entities::getents();
+    static vector<octaentities *> vismms;
+    vismms.setsize(0);
+    loopv(valist)
+    {
+        vtxarray *va = valist[i];
+        if(va->mapmodels.empty()) continue;
+
+        loopvj(va->mapmodels)
+        {
+            octaentities *oe = va->mapmodels[j];
+            if(smbbcull)
+            {
+                if(smtetra)
+                {
+                    if(!(calcbbtetramask(oe->bbmin.tovec(), oe->bbmax.tovec(), pos, radius, bias)&(1<<side)))
+                        continue;
+                }
+                else if(!(calcbbsidemask(oe->bbmin.tovec(), oe->bbmax.tovec(), pos, radius, bias)&(1<<side)))
+                    continue;
+            }
+            int visible = 0;
+            loopvk(oe->mapmodels)
+            {
+                extentity &e = *ents[oe->mapmodels[k]];
+                if(e.flags&extentity::F_NOVIS) continue;
+                e.visible = true;
+                ++visible;
+            }
+            if(!visible) continue;
+            vismms.add(oe);
+        }
+    }
+    if(vismms.empty()) return;
+    startmodelbatches();
+    loopv(vismms)
+    {
+        octaentities *oe = vismms[i];
+        loopvj(oe->mapmodels)
+        {
+            extentity &e = *ents[oe->mapmodels[j]];
+            if(!e.visible) continue;
+            rendermapmodel(e);
+            e.visible = false;
+        }
+    }
+    endmodelbatches();
+}
+
 VAR(oqdist, 0, 256, 1024);
 VAR(zpass, 0, 1, 1);
 VAR(glowpass, 0, 1, 1);

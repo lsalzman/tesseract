@@ -282,6 +282,10 @@ static inline cubeext &ext(cube &c)
     return *(c.ext ? c.ext : newcubeext(c));
 }
 
+// shadowmap
+
+extern bool shadowmapping;
+
 // ents
 extern char *entname(entity &e);
 extern bool haveselent();

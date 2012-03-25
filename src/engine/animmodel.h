@@ -77,15 +77,20 @@ struct animmodel : model
         float spec, ambient, glow, glowdelta, glowpulse, fullbright, envmapmin, envmapmax, scrollu, scrollv, alphatest;
         bool alphablend, cullface;
 
-        skin() : owner(0), tex(notexture), masks(notexture), envmap(NULL), unlittex(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(true), cullface(true) {}
+        skin() : owner(0), tex(notexture), masks(notexture), envmap(NULL), unlittex(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(false), cullface(true) {}
 
         bool envmapped() { return hasCM && envmapmax>0 && envmapmodels; }
         bool bumpmapped() { return normalmap && bumpmodels; }
         bool normals() { return true; }
         bool tangents() { return bumpmapped(); }
+        bool alphatested() { return alphatest > 0 && (bumpmapped() && unlittex ? unlittex : tex)->type&Texture::ALPHA; }
 
-        void setshaderparams(mesh *m, const animstate *as, bool masked)
+        void setshaderparams(mesh *m, const animstate *as, bool masked, bool skinned = true)
         {
+            setenvparamf("texscroll", SHPARAM_VERTEX, 5, lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f);
+
+            if(!skinned) return;
+                
             if(fullbright)
             {
                 glColor4f(fullbright/2, fullbright/2, fullbright/2, transparent);
@@ -110,7 +115,6 @@ struct animmodel : model
                 curglow += glowdelta*2*fabs(curpulse - 0.5f);
             }
             setenvparamf("maskscale", SHPARAM_PIXEL, 4, 0.5f*spec*lightmodels, 0.5f*curglow*glowmodels);
-            setenvparamf("texscroll", SHPARAM_VERTEX, 5, lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f);
             if(envmaptmu>=0 && envmapmax>0) setenvparamf("envmapscale", bumpmapped() ? SHPARAM_PIXEL : SHPARAM_VERTEX, 3, envmapmin-envmapmax, envmapmax);
         }
 
@@ -169,16 +173,36 @@ struct animmodel : model
             if(!cullface && enablecullface) { glDisable(GL_CULL_FACE); enablecullface = false; }
             else if(cullface && !enablecullface) { glEnable(GL_CULL_FACE); enablecullface = true; }
 
+            Texture *s = bumpmapped() && unlittex ? unlittex : tex;
+
             if(as->cur.anim&ANIM_NOSKIN)
             {
-                if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
                 if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
                 if(enableenvmap) disableenvmap();
-                /*if(as->cur.anim&ANIM_SHADOW)*/ SETMODELSHADER(b, notexturemodel);
+                if(alphatest > 0 && s->type&Texture::ALPHA)
+                {
+                    if(s!=lasttex)
+                    {
+                        glBindTexture(GL_TEXTURE_2D, s->id);
+                        lasttex = s;
+                    }
+                    if(!enablealphatest) { glEnable(GL_ALPHA_TEST); enablealphatest = true; }
+                    if(lastalphatest!=alphatest)
+                    {
+                        glAlphaFunc(GL_GREATER, alphatest);
+                        lastalphatest = alphatest;
+                    }
+                    setshaderparams(b, as, false, false);
+                    /*if(as->cur.anim&ANIM_SHADOW)*/ SETMODELSHADER(b, alphashadowmodel); 
+                }
+                else
+                {
+                    if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
+                    /*if(as->cur.anim&ANIM_SHADOW)*/ SETMODELSHADER(b, nocolormodel);
+                }
                 return;
             }
-            Texture *s = bumpmapped() && unlittex ? unlittex : tex, 
-                    *m = masks, 
+            Texture *m = masks, 
                     *n = bumpmapped() ? normalmap : NULL;
             if(!lightmodels && !glowmodels && (!envmapmodels || envmaptmu<0 || envmapmax<=0))
                 m = notexture;
@@ -430,6 +454,80 @@ struct animmodel : model
 
         virtual void cleanup() {}
         virtual void render(const animstate *as, float pitch, const vec &axis, const vec &forward, dynent *d, part *p) {}
+
+        void bindpos(GLuint ebuf, GLuint vbuf, void *v, int stride)
+        {
+            if(hasVBO && lastebuf!=ebuf)
+            {
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
+                lastebuf = ebuf;
+            }
+            if(lastvbuf != (hasVBO ? (void *)(size_t)vbuf : v))
+            {
+                if(hasVBO) glBindBuffer_(GL_ARRAY_BUFFER_ARB, vbuf);
+                if(!lastvbuf) glEnableClientState(GL_VERTEX_ARRAY);
+                glVertexPointer(3, GL_FLOAT, stride, v);
+                lastvbuf = (hasVBO ? (void *)(size_t)vbuf : v);
+            }
+        }
+
+        void bindtc(void *v, int stride)
+        {
+            if(!enabletc)
+            {
+                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+                enabletc = true;
+            }
+            if(lasttcbuf!=lastvbuf)
+            {
+                glTexCoordPointer(2, GL_FLOAT, stride, v);
+                lasttcbuf = lastvbuf;
+            }
+        }
+
+        void bindnorm(void *v, int stride)
+        {
+            if(!enablenormals)
+            {
+                glEnableClientState(GL_NORMAL_ARRAY);
+                enablenormals = true;
+            }
+            if(lastnbuf!=lastvbuf)
+            {
+                glNormalPointer(GL_FLOAT, stride, v);
+                lastnbuf = lastvbuf;
+            }
+        }
+   
+        void bindtangents(void *v, int stride)
+        {
+            if(!enabletangents)
+            {
+                glEnableVertexAttribArray_(1);
+                enabletangents = true;
+            }
+            if(lastxbuf!=lastvbuf)
+            {
+                glVertexAttribPointer_(1, 4, GL_FLOAT, GL_FALSE, stride, v);
+                lastxbuf = lastvbuf;
+            }
+        }
+ 
+        void bindbones(void *wv, void *bv, int stride)
+        {
+            if(!enablebones)
+            {
+                glEnableVertexAttribArray_(6);
+                glEnableVertexAttribArray_(7);
+                enablebones = true;
+            }
+            if(lastbbuf!=lastvbuf)
+            {
+                glVertexAttribPointer_(6, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride, wv);
+                glVertexAttribPointer_(7, 4, GL_UNSIGNED_BYTE, GL_FALSE, stride, bv);
+                lastbbuf = lastvbuf;
+            }
+        }
     };
 
     virtual meshgroup *loadmeshes(char *name, va_list args) { return NULL; }
@@ -555,6 +653,24 @@ struct animmodel : model
                 s.tex = tex;
                 s.masks = masks;
             }
+        }
+
+        bool hasnormals()
+        {
+            loopv(skins) if(skins[i].normals()) return true;
+            return false;
+        }
+
+        bool hastangents()
+        {
+            loopv(skins) if(skins[i].tangents()) return true;
+            return false;
+        }
+
+        bool alphatested()
+        {
+            loopv(skins) if(skins[i].alphatested()) return true;
+            return false;
         }
 
         void preloadBIH()
@@ -712,12 +828,9 @@ struct animmodel : model
                 glMultMatrixf(matrixstack[matrixpos].v);
                 if(model->scale!=1) glScalef(model->scale, model->scale, model->scale);
                 if(!translate.iszero()) glTranslatef(translate.x, translate.y, translate.z);
-                if(envmaptmu>=0)
-                {
-                    glMatrixMode(GL_TEXTURE);
-                    glLoadMatrixf(matrixstack[matrixpos].v);
-                    glMatrixMode(GL_MODELVIEW);
-                }
+                glMatrixMode(GL_TEXTURE);
+                glLoadMatrixf(matrixstack[matrixpos].v);
+                glMatrixMode(GL_MODELVIEW);
             }
 
             if(!(anim&(ANIM_NOSKIN|ANIM_NORENDER)))

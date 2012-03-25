@@ -567,8 +567,12 @@ void renderbatchedmodel(model *m, batchedmodel &b)
     if(b.attached>=0) a = &modelattached[b.attached];
 
     int anim = b.anim;
-    if(b.flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
-    if(b.flags&MDL_GHOST) anim |= ANIM_GHOST;
+    if(shadowmapping) anim |= ANIM_NOSKIN;
+    else
+    {
+        if(b.flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
+        if(b.flags&MDL_GHOST) anim |= ANIM_GHOST;
+    }
 
     m->render(anim, b.basetime, b.basetime2, b.pos, b.yaw, b.pitch, b.d, a, b.color, b.dir, b.transparent);
 }
@@ -631,7 +635,7 @@ void endmodelbatches()
                 query = bm.query;
                 if(query) startquery(query);
             }
-            if(bm.transparent < 1 && (!query || query->owner==bm.d))
+            if(bm.transparent < 1 && (!query || query->owner==bm.d) && !shadowmapping)
             {
                 transparentmodel &tm = transparent.add();
                 tm.m = b.m;
@@ -761,46 +765,53 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
             center.rotate_around_z(yaw*RAD);
             center.add(o);
         }
-        if(flags&MDL_CULL_DIST && center.dist(camera1->o)/radius>maxmodelradiusdistance) return;
-        if(flags&MDL_CULL_VFC)
+        if(shadowmapping)
         {
-            if(reflecting || refracting)
-            {
-                if(reflecting || refracting>0) 
-                {
-                    if(center.z+radius<=reflectz) return;
-                }
-                else
-                {
-                    if(fogging && center.z+radius<reflectz-waterfog) return;
-                    if(!shadow && center.z-radius>=reflectz) return;
-                }
-                if(center.dist(camera1->o)-radius>reflectdist) return;
-            }
-            if(isfoggedsphere(radius, center)) return;
+            int FIXME_DO_BETTER_MODEL_CULLING_HERE = 42;
         }
-        if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
+        else
         {
-            if(!reflecting && !refracting && d)
+            if(flags&MDL_CULL_DIST && center.dist(camera1->o)/radius>maxmodelradiusdistance) return;
+            if(flags&MDL_CULL_VFC)
             {
-                d->occluded = OCCLUDE_PARENT;
-                if(doOQ) rendermodelquery(m, d, center, radius);
+                if(reflecting || refracting)
+                {
+                    if(reflecting || refracting>0) 
+                    {
+                        if(center.z+radius<=reflectz) return;
+                    }
+                    else
+                    {
+                        if(fogging && center.z+radius<reflectz-waterfog) return;
+                        if(!shadow && center.z-radius>=reflectz) return;
+                    }
+                    if(center.dist(camera1->o)-radius>reflectdist) return;
+                }
+                if(isfoggedsphere(radius, center)) return;
             }
-            return;
-        }
-        else if(doOQ && d && d->query && d->query->owner==d && checkquery(d->query))
-        {
-            if(!reflecting && !refracting) 
+            if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
             {
-                if(d->occluded<OCCLUDE_BB) d->occluded++;
-                rendermodelquery(m, d, center, radius);
+                if(!reflecting && !refracting && d)
+                {
+                    d->occluded = OCCLUDE_PARENT;
+                    if(doOQ) rendermodelquery(m, d, center, radius);
+                }
+                return;
             }
-            return;
+            else if(doOQ && d && d->query && d->query->owner==d && checkquery(d->query))
+            {
+                if(!reflecting && !refracting) 
+                {
+                    if(d->occluded<OCCLUDE_BB) d->occluded++;
+                    rendermodelquery(m, d, center, radius);
+                }
+                return;
+            }
         }
     }
 
     if(flags&MDL_NORENDER) anim |= ANIM_NORENDER;
-    else if(showboundingbox && !reflecting && !refracting && editmode)
+    else if(showboundingbox && !shadowmapping && !reflecting && !refracting && editmode)
     {
         if(d && showboundingbox==1) 
         {
@@ -819,40 +830,43 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
     }
 
     vec lightcolor(1, 1, 1), lightdir(0, 0, 1), pos = o;
-    if(d) 
+    if(!shadowmapping)
     {
-        if(!reflecting && !refracting) d->occluded = OCCLUDE_NOTHING;
-        if(!light) light = &d->light;
-        if(flags&MDL_LIGHT && light->millis!=lastmillis)
+        if(d) 
         {
-            if(d->ragdoll)
+            if(!reflecting && !refracting) d->occluded = OCCLUDE_NOTHING;
+            if(!light) light = &d->light;
+            if(flags&MDL_LIGHT && light->millis!=lastmillis)
             {
-                pos = d->ragdoll->center;
-                pos.z += radius/2;
+                if(d->ragdoll)
+                {
+                    pos = d->ragdoll->center;
+                    pos.z += radius/2;
+                }
+                else if(d->type < ENT_CAMERA) pos.z += 0.75f*(d->eyeheight + d->aboveeye);
+                lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
+                dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
+                game::lighteffects(d, light->color, light->dir);
+                light->millis = lastmillis;
             }
-            else if(d->type < ENT_CAMERA) pos.z += 0.75f*(d->eyeheight + d->aboveeye);
-            lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
-            dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
-            game::lighteffects(d, light->color, light->dir);
-            light->millis = lastmillis;
         }
-    }
-    else if(flags&MDL_LIGHT)
-    {
-        if(!light) 
+        else if(flags&MDL_LIGHT)
         {
-            lightreaching(pos, lightcolor, lightdir, (flags&MDL_LIGHT_FAST)!=0);
-            dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
+            if(!light) 
+            {
+                lightreaching(pos, lightcolor, lightdir, (flags&MDL_LIGHT_FAST)!=0);
+                dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
+            }
+            else if(light->millis!=lastmillis)
+            {
+                lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
+                dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
+                light->millis = lastmillis;
+            }
         }
-        else if(light->millis!=lastmillis)
-        {
-            lightreaching(pos, light->color, light->dir, (flags&MDL_LIGHT_FAST)!=0);
-            dynlightreaching(pos, light->color, light->dir, (flags&MDL_HUD)!=0);
-            light->millis = lastmillis;
-        }
+        if(light) { lightcolor = light->color; lightdir = light->dir; }
+        if(flags&MDL_DYNLIGHT) dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
     }
-    if(light) { lightcolor = light->color; lightdir = light->dir; }
-    if(flags&MDL_DYNLIGHT) dynlightreaching(pos, lightcolor, lightdir, (flags&MDL_HUD)!=0);
 
     if(a) for(int i = 0; a[i].tag; i++)
     {
@@ -860,7 +874,7 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
         //if(a[i].m && a[i].m->type()!=m->type()) a[i].m = NULL;
     }
 
-    if(!d || reflecting || refracting) doOQ = false;
+    if(!d || reflecting || refracting || shadowmapping) doOQ = false;
   
     if(numbatches>=0)
     {
@@ -899,8 +913,12 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
 
     m->startrender();
 
-    if(flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
-    if(flags&MDL_GHOST) anim |= ANIM_GHOST;
+    if(shadowmapping) anim |= ANIM_NOSKIN;
+    else
+    {
+        if(flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
+        if(flags&MDL_GHOST) anim |= ANIM_GHOST;
+    }
 
     if(doOQ)
     {

@@ -239,31 +239,10 @@ struct vertmodel : animmodel
 
         void render(const animstate *as, skin &s, vbocacheentry &vc)
         {
-            if(!(as->cur.anim&ANIM_NOSKIN))
-            {
-                if(s.tangents())
-                {
-                    if(!enabletangents || lastxbuf!=lastvbuf)
-                    {
-                        if(!enabletangents) glEnableVertexAttribArray_(1);
-                        if(lastxbuf!=lastvbuf)
-                        {
-                            vvertbump *vverts = hasVBO ? 0 : (vvertbump *)vc.vdata;
-                            glVertexAttribPointer_(1, 4, GL_FLOAT, GL_FALSE, ((vertmeshgroup *)group)->vertsize, &vverts->tangent.x);
-                        }
-                        lastxbuf = lastvbuf;
-                        enabletangents = true;
-                    }
-                }
-                else if(enabletangents) disabletangents();
-            }
-
             if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, minvert, maxvert, elen, GL_UNSIGNED_SHORT, &((vertmeshgroup *)group)->edata[eoffset]);
             else glDrawElements(GL_TRIANGLES, elen, GL_UNSIGNED_SHORT, &((vertmeshgroup *)group)->edata[eoffset]);
             glde++;
             xtravertsva += numverts;
-
-            return;
         }
     };
 
@@ -419,53 +398,27 @@ struct vertmodel : animmodel
             #undef ALLOCVDATA
         }
 
-        void bindvbo(const animstate *as, vbocacheentry &vc)
+        void bindvbo(const animstate *as, part *p, vbocacheentry &vc)
         {
             vvert *vverts = hasVBO ? 0 : (vvert *)vc.vdata;
-            if(hasVBO && lastebuf!=ebuf)
-            {
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
-                lastebuf = ebuf;
-            }
-            if(lastvbuf != (hasVBO ? (void *)(size_t)vc.vbuf : vc.vdata))
-            {
-                if(hasVBO) glBindBuffer_(GL_ARRAY_BUFFER_ARB, vc.vbuf);
-                if(!lastvbuf) glEnableClientState(GL_VERTEX_ARRAY);
-                glVertexPointer(3, GL_FLOAT, vertsize, &vverts->pos);
-                lastvbuf = hasVBO ? (void *)(size_t)vc.vbuf : vc.vdata;
-            }
+            bindpos(ebuf, vc.vbuf, &vverts->pos, vertsize);
             if(as->cur.anim&ANIM_NOSKIN)
             {
-                if(enabletc) disabletc();
                 if(enablenormals) disablenormals();
+                if(enabletangents) disabletangents();
+
+                if(p->alphatested()) bindtc(&vverts->u, vertsize);              
+                else if(enabletc) disabletc();              
             }
             else
             {
-                if(vnorms || vtangents)
-                {
-                    if(!enablenormals)
-                    {
-                        glEnableClientState(GL_NORMAL_ARRAY);
-                        enablenormals = true;
-                    }
-                    if(lastnbuf!=lastvbuf)
-                    {
-                        glNormalPointer(GL_FLOAT, vertsize, &vverts->norm);
-                        lastnbuf = lastvbuf;
-                    }
-                }
+                if(vnorms || vtangents) bindnorm(&vverts->norm, vertsize);
                 else if(enablenormals) disablenormals();
 
-                if(!enabletc)
-                {
-                    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                    enabletc = true;
-                }
-                if(lasttcbuf!=lastvbuf)
-                {
-                    glTexCoordPointer(2, GL_FLOAT, vertsize, &vverts->u);
-                    lasttcbuf = lastnbuf;
-                }
+                if(vtangents) bindtangents(&((vvertbump *)vverts)->tangent.x, vertsize);
+                else if(enabletangents) disabletangents();
+                
+                bindtc(&vverts->u, vertsize);
             }
             if(enablebones) disablebones();
         }
@@ -491,12 +444,7 @@ struct vertmodel : animmodel
                 return;
             }
 
-            bool norms = false, tangents = false;
-            loopv(p->skins) 
-            {
-                if(p->skins[i].normals()) norms = true;
-                if(p->skins[i].tangents()) tangents = true;
-            }
+            bool norms = p->hasnormals(), tangents = p->hastangents();
             if(norms!=vnorms || tangents!=vtangents) { cleanup(); disablevbo(); }
             vbocacheentry *vc = NULL;
             if(numframes<=1) vc = vbocache;
@@ -531,7 +479,7 @@ struct vertmodel : animmodel
                 vc->millis = lastmillis;
             }
         
-            bindvbo(as, *vc);
+            bindvbo(as, p, *vc);
             loopv(meshes)
             {
                 vertmesh *m = (vertmesh *)meshes[i];

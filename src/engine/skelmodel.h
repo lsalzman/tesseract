@@ -454,39 +454,10 @@ struct skelmodel : animmodel
 
         void render(const animstate *as, skin &s, vbocacheentry &vc)
         {
-            if(!(as->cur.anim&ANIM_NOSKIN))
-            {
-                if(s.tangents())
-                {
-                    if(!enabletangents || lastxbuf!=lastvbuf)
-                    {
-                        if(!enabletangents) glEnableVertexAttribArray_(1);
-                        if(lastxbuf!=lastvbuf)
-                        {
-                            if(((skelmeshgroup *)group)->vertsize==sizeof(vvertbumpw))
-                            {
-                                vvertbumpw *vverts = hasVBO ? 0 : (vvertbumpw *)vc.vdata;
-                                glVertexAttribPointer_(1, 4, GL_FLOAT, GL_FALSE, ((skelmeshgroup *)group)->vertsize, &vverts->tangent.x);
-                            }
-                            else
-                            {
-                                vvertbump *vverts = hasVBO ? 0 : (vvertbump *)vc.vdata;
-                                glVertexAttribPointer_(1, 4, GL_FLOAT, GL_FALSE, ((skelmeshgroup *)group)->vertsize, &vverts->tangent.x);
-                            }
-                        }
-                        lastxbuf = lastvbuf;
-                        enabletangents = true;
-                    }
-                }
-                else if(enabletangents) disabletangents();
-            }
-
             if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, minvert, maxvert, elen, GL_UNSIGNED_SHORT, &((skelmeshgroup *)group)->edata[eoffset]);
             else glDrawElements(GL_TRIANGLES, elen, GL_UNSIGNED_SHORT, &((skelmeshgroup *)group)->edata[eoffset]);
             glde++;
             xtravertsva += numverts;
-
-            return;
         }
     };
 
@@ -1477,71 +1448,30 @@ struct skelmodel : animmodel
             #undef ALLOCVDATA
         }
 
-        void bindvbo(const animstate *as, vbocacheentry &vc, skelcacheentry *sc = NULL, blendcacheentry *bc = NULL)
+        void bindvbo(const animstate *as, part *p, vbocacheentry &vc, skelcacheentry *sc = NULL, blendcacheentry *bc = NULL)
         {
             vvertn *vverts = hasVBO ? 0 : (vvertn *)vc.vdata;
-            if(hasVBO && lastebuf!=ebuf)
-            {
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
-                lastebuf = ebuf;
-            }
-            if(lastvbuf != (hasVBO ? (void *)(size_t)vc.vbuf : vc.vdata))
-            {
-                if(hasVBO) glBindBuffer_(GL_ARRAY_BUFFER_ARB, vc.vbuf);
-                if(!lastvbuf) glEnableClientState(GL_VERTEX_ARRAY);
-                glVertexPointer(3, GL_FLOAT, vertsize, &vverts->pos);
-                lastvbuf = hasVBO ? (void *)(size_t)vc.vbuf : vc.vdata;
-            }
+            bindpos(ebuf, vc.vbuf, &vverts->pos, vertsize);
             if(as->cur.anim&ANIM_NOSKIN)
             {
-                if(enabletc) disabletc();
                 if(enablenormals) disablenormals();
+                if(enabletangents) disabletangents();
+
+                if(p->alphatested()) bindtc(&vverts->u, vertsize);
+                else if(enabletc) disabletc();
             }
             else
             {
-                if(vnorms || vtangents)
-                {
-                    if(!enablenormals)
-                    {
-                        glEnableClientState(GL_NORMAL_ARRAY);
-                        enablenormals = true;
-                    }
-                    if(lastnbuf!=lastvbuf)
-                    {
-                        glNormalPointer(GL_FLOAT, vertsize, &vverts->norm);
-                        lastnbuf = lastvbuf;
-                    }
-                }
+                if(vnorms || vtangents) bindnorm(&vverts->norm, vertsize);
                 else if(enablenormals) disablenormals();
 
-                if(!enabletc)
-                {
-                    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                    enabletc = true;
-                }
-                if(lasttcbuf!=lastvbuf)
-                {
-                    glTexCoordPointer(2, GL_FLOAT, vertsize, &vverts->u);
-                    lasttcbuf = lastnbuf;
-                }
+                if(vtangents) bindtangents(vertsize == sizeof(vvertbumpw) ? &((vvertbumpw *)vverts)->tangent.x : &((vvertbump *)vverts)->tangent.x, vertsize);
+                else if(enabletangents) disabletangents();
+
+                bindtc(&vverts->u, vertsize);
             }
-            if(!sc || !skel->usegpuskel)
-            {
-                if(enablebones) disablebones();
-                return;
-            }
-            if(!enablebones)
-            {
-                glEnableVertexAttribArray_(6);
-                glEnableVertexAttribArray_(7);
-                enablebones = true;
-            }
-            if(lastbbuf!=lastvbuf)
-            {
-                glVertexAttribPointer_(6, 4, GL_UNSIGNED_BYTE, GL_TRUE, vertsize, &((vvertw *)vverts)->weights);
-                glVertexAttribPointer_(7, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertsize, &((vvertw *)vverts)->bones);
-                lastbbuf = lastvbuf;
-            }
+            if(sc && skel->usegpuskel) bindbones(&((vvertw *)vverts)->weights, &((vvertw *)vverts)->bones, vertsize);
+            else if(enablebones) disablebones();
         }
 
         void concattagtransform(part *p, int frame, int i, const matrix3x4 &m, matrix3x4 &n)
@@ -1681,12 +1611,7 @@ struct skelmodel : animmodel
 
         void render(const animstate *as, float pitch, const vec &axis, const vec &forward, dynent *d, part *p)
         {
-            bool norms = false, tangents = false;
-            loopv(p->skins)
-            {
-                if(p->skins[i].normals()) norms = true;
-                if(p->skins[i].tangents()) tangents = true;
-            }
+            bool norms = p->hasnormals(), tangents = p->hastangents();
             if(skel->shouldcleanup()) { skel->cleanup(); disablevbo(); }
             else if(norms!=vnorms || tangents!=vtangents) { cleanup(); disablevbo(); }
 
@@ -1695,7 +1620,7 @@ struct skelmodel : animmodel
                 if(!(as->cur.anim&ANIM_NORENDER))
                 {
                     if(hasVBO ? !vbocache->vbuf : !vbocache->vdata) genvbo(norms, tangents, *vbocache);
-                    bindvbo(as, *vbocache);
+                    bindvbo(as, p, *vbocache);
                     loopv(meshes) 
                     {
                         skelmesh *m = (skelmesh *)meshes[i];
@@ -1744,7 +1669,7 @@ struct skelmodel : animmodel
                     }
                 }
 
-                bindvbo(as, vc, &sc, bc);
+                bindvbo(as, p, vc, &sc, bc);
                 loopv(meshes) 
                 {
                     skelmesh *m = (skelmesh *)meshes[i];

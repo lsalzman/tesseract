@@ -1850,6 +1850,8 @@ FVAR(smtetraborder, 0, 0, 1e3);
 VAR(smcullside, 0, 0, 1);
 VAR(smgather, 0, 0, 1);
 
+bool shadowmapping = false;
+
 void gl_drawframe(int w, int h)
 {
     setupgbuffer(w, h);
@@ -1924,6 +1926,7 @@ void gl_drawframe(int w, int h)
     glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
 
     rendergeom(causticspass);
+    rendermapmodels();
 
     int deferred_weirdness_ends_here;
     
@@ -2037,6 +2040,8 @@ void gl_drawframe(int w, int h)
 
     if(smtetra && smtetraclip) glEnable(GL_CLIP_PLANE0);
 
+    shadowmapping = true;
+
     loopv(shadowmaps)
     {
         shadowmapinfo &sm = shadowmaps[i];
@@ -2102,8 +2107,11 @@ void gl_drawframe(int w, int h)
                     setenvparamf("tetraclip", SHPARAM_VERTEX, 1, clipdir.x, clipdir.y, clipdir.z, smtetraborder/(0.5f*sm.size) - clipdir.dot(l->o));
                 }
 
+                float borderbias = smborder / float(sm.size - smborder);
                 extern void rendershadowmapworld(const vec &pos, float radius, int side, float bias);
-                rendershadowmapworld(l->o, smradius, side, smborder / float(sm.size - smborder));
+                rendershadowmapworld(l->o, smradius, side, borderbias);
+                extern void rendershadowmapmodels(const vec &pos, float radius, int side, float bias);
+                rendershadowmapmodels(l->o, smradius, side, borderbias);
             }
 
             continue; 
@@ -2132,10 +2140,15 @@ void gl_drawframe(int w, int h)
 
             glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
 
+            float borderbias = smborder / float(sm.size - smborder);  
             extern void rendershadowmapworld(const vec &pos, float radius, int side, float bias);
-            rendershadowmapworld(l->o, smradius, side, smborder / float(sm.size - smborder));
+            rendershadowmapworld(l->o, smradius, side, borderbias);
+            extern void rendershadowmapmodels(const vec &pos, float radius, int side, float bias);
+            rendershadowmapmodels(l->o, smradius, side, borderbias);
         }   
     }
+
+    shadowmapping = false;
 
     if(smtetra && smtetraclip) glDisable(GL_CLIP_PLANE0);
 
@@ -2302,7 +2315,6 @@ void gl_drawframe(int w, int h)
 
     renderdecals(true);
 
-    rendermapmodels();
     rendergame(true);
     if(!isthirdperson())
     {
