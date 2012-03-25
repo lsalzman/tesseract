@@ -1773,6 +1773,34 @@ const float cubeshadowviewmatrix[6][16] =
     },
 };
 
+const float tetrashadowviewmatrix[4][16] =
+{
+    { // +1, +1, +1
+        1, 0,-1, 0,
+        0, 1,-1, 0,
+        0, 0,-1, 0,
+        0, 0, 0, 1
+    },
+    { // -1, -1, +1
+        1, 0, 1, 0,
+        0, 1, 1, 0,
+        0, 0,-1, 0,
+        0, 0, 0, 1
+    },
+    { // +1, -1, -1
+        1, 0,-1, 0,
+        0, 1, 1, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    },
+    { // -1, +1, -1
+        1, 0, 1, 0,
+        0, 1,-1, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    }
+};
+
 struct lighttile
 {
     float sx1, sy1, sx2, sy2;
@@ -1803,6 +1831,10 @@ VAR(smminsize, 1, 96, 1024);
 VAR(smmaxsize, 1, 384, 1024);
 VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
+VAR(smtetra, 0, 0, 1);
+VAR(smtetraclip, 0, 1, 1);
+FVAR(smtetraborder, 0, 0, 1e3);
+VAR(smcullside, 0, 0, 1);
 
 void gl_drawframe(int w, int h)
 {
@@ -1952,7 +1984,7 @@ void gl_drawframe(int w, int h)
                     }
                 }
             }
-            smused += smsize*smsize*6;
+            smused += smsize*smsize*(smtetra ? 2 : 6);
         }
         
         int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
@@ -1989,18 +2021,26 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
+    if(smtetra && smtetraclip) glEnable(GL_CLIP_PLANE0);
+
     loopv(shadowmaps)
     {
         shadowmapinfo &sm = shadowmaps[i];
         extentity *l = sm.ent;
 
-        int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
-
-        extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
-        int sidemask = smsidecull ? cullfrustumsides(l->o, smradius, sm.size, smborder) : 0x3F;
+        int smradius = l->attr1 > 0 ? l->attr1 : worldsize, sidemask;
+        if(smtetra)
+        {
+            extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
+            sidemask = smsidecull ? cullfrustumtetra(l->o, smradius, sm.size, smborder) : 0xF;
+        }
+        else
+        {
+            extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
+            sidemask = smsidecull ? cullfrustumsides(l->o, smradius, sm.size, smborder) : 0x3F;
+        }
         if(!sidemask || (sm.query && sm.query->owner == l && checkquery(sm.query))) continue;
 
-        int smw = sm.size*3, smh = sm.size*2;
         float smnearclip = 1.0f / smradius, smfarclip = 1.0f;
         GLfloat smprojmatrix[16] =
         {
@@ -2017,7 +2057,49 @@ void gl_drawframe(int w, int h)
             -l->o.x/smradius, -l->o.y/smradius, -l->o.z/smradius, 1
         };
 
-        glScissor(sm.x, sm.y, smw, smh);
+        if(smtetra)
+        {
+            int smw = sm.size*2, smh = sm.size;
+            glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, smw + (sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size), smh);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            glMatrixMode(GL_PROJECTION);
+            glLoadMatrixf(smprojmatrix);
+            glMatrixMode(GL_MODELVIEW);
+
+            glmatrixf smviewmatrix;
+            loop(side, 4) if(sidemask&(1<<side))
+            {
+                int sidex = (side>>1)*sm.size;
+                if(!(side&1) || !(sidemask&(1<<(side-1))))
+                {
+                    glViewport(sm.x + sidex, sm.y, sm.size, sm.size);
+                    glScissor(sm.x + sidex, sm.y, sm.size, sm.size);
+                }
+
+                smviewmatrix.mul(tetrashadowviewmatrix[side], lightmatrix);
+                glLoadMatrixf(smviewmatrix.v);
+
+                glCullFace((side>>1) ^ smcullside ? GL_BACK : GL_FRONT);
+   
+                if(smtetraclip)
+                {
+                    vec clipdir(-smviewmatrix.v[2], -smviewmatrix.v[6], 0);
+                    setenvparamf("tetraclip", SHPARAM_VERTEX, 1, clipdir.x, clipdir.y, clipdir.z, smtetraborder/(0.5f*sm.size) - clipdir.dot(l->o));
+                }
+
+                extern void rendershadowmapworld(const vec &pos, float radius, int side, float bias);
+                rendershadowmapworld(l->o, smradius, side, smborder / float(sm.size - smborder));
+            }
+
+            continue; 
+        }
+
+        int cx1 = sidemask & 0x03 ? 0 : (sidemask & 0xC ? sm.size : 2 * sm.size),
+            cx2 = sidemask & 0x30 ? 3 * sm.size : (sidemask & 0xC ? 2 * sm.size : sm.size),
+            cy1 = sidemask & 0x15 ? 0 : sm.size,
+            cy2 = sidemask & 0x2A ? 2 * sm.size : sm.size;
+        glScissor(sm.x + cx1, sm.y + cy1, cx2 - cx1, cy2 - cy1);
         glClear(GL_DEPTH_BUFFER_BIT);
 
         glMatrixMode(GL_PROJECTION);
@@ -2034,12 +2116,16 @@ void gl_drawframe(int w, int h)
             smviewmatrix.mul(cubeshadowviewmatrix[side], lightmatrix);
             glLoadMatrixf(smviewmatrix.v);
 
-            glCullFace((side & 1) ^ (side >> 2) ? GL_FRONT : GL_BACK);
+            glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
 
             extern void rendershadowmapworld(const vec &pos, float radius, int side, float bias);
             rendershadowmapworld(l->o, smradius, side, smborder / float(sm.size - smborder));
         }   
     }
+
+    if(smtetra && smtetraclip) glDisable(GL_CLIP_PLANE0);
+
+    glEnable(GL_CULL_FACE);
 
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -2082,9 +2168,10 @@ void gl_drawframe(int w, int h)
     glBlendFunc(GL_ONE, GL_ONE);
     glEnable(GL_BLEND);
 
-    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL;
+    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL, *deferredtetrashader = NULL;
     if(!deferredlightshader) deferredlightshader = lookupshaderbyname("deferredlight");
     if(!deferredshadowshader) deferredshadowshader = lookupshaderbyname("deferredshadow");
+    if(!deferredtetrashader) deferredtetrashader = lookupshaderbyname("deferredtetra");
 
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -2113,7 +2200,7 @@ void gl_drawframe(int w, int h)
                 if((lights[i+j].shadowmap >= 0) != shadowmap) { n = j; break; }
             }
             
-            if(shadowmap) deferredshadowshader->setvariant(n-1, 0);
+            if(shadowmap) (smtetra ? deferredtetrashader : deferredshadowshader)->setvariant(n-1, 0);
             else if(n > 0) deferredlightshader->setvariant(n-1, 0);
             else deferredlightshader->set();
 
@@ -2141,11 +2228,11 @@ void gl_drawframe(int w, int h)
                     float smnearclip = 1.0f / smradius, smfarclip = 1.0f, 
                           bias = smbias * smnearclip * (1024.0f / sm.size);
                     setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 5 + 4*j, 
-                        -0.5f * (sm.size - smborder), 
+                        0.5f * (sm.size - smborder), 
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias, 
                         sm.size, 
                         0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
-                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 6 + 4*j, sm.x, sm.y);
+                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 6 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
                 sx1 = min(sx1, t.sx1);
                 sy1 = min(sy1, t.sy1);

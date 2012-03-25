@@ -787,6 +787,45 @@ static int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpo
     return mask;
 }
 
+static int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
+{
+    // top 1: +1, +1, +1
+    // top 2: -1, -1, +1
+    // bot 1: +1, -1, -1,
+    // bot 2: -1, +1, -1
+
+    vec pmin = vec(bbmin).sub(lightpos).div(lightradius), pmax = vec(bbmax).sub(lightpos).div(lightradius);
+    int mask = 0xF;
+
+    bias *= 2;
+
+    // +x,+y top split, no bias
+    if(pmin.x + pmin.y > 0) mask &= ~(1<<1);
+    else if(pmax.x + pmax.y < 0) mask &= ~(1<<0);
+
+    // +x,-y bottom split, no bias
+    if(pmin.x - pmax.y > 0) mask &= ~(1<<3);
+    else if(pmax.x - pmin.y < 0) mask &= ~(1<<2);
+
+    // +x,-y,+z % +x,+y,-z = +y,+z top 1/bottom 1 split
+    if(pmin.y + pmin.z > bias) mask &= ~(1<<2);
+    else if(pmax.y + pmax.z < -bias) mask &= ~(1<<0);
+
+    // +x,+y,-z % -x,+y,+z = +x,+z top 1/bottom 2 split
+    if(pmin.x + pmin.z > bias) mask &= ~(1<<3);
+    else if(pmax.x + pmax.z < -bias) mask &= ~(1<<0);
+
+    // -x,-y,-z % +x,-y,+z = -x,+z top 2/bottom 1 split
+    if(pmin.z - pmax.x > bias) mask &= ~(1<<2);
+    else if(pmax.z - pmin.x < -bias) mask &= ~(1<<1);
+
+    // -x,+y,+z % -x,-y,-z = -y,+z top 2/bottom 2 split
+    if(pmin.z - pmax.y > bias) mask &= ~(1<<3);
+    else if(pmax.z - pmin.y < -bias) mask &= ~(1<<1);
+
+    return mask;
+}
+
 static int calcspheresidemask(const vec &p, float radius, float bias)
 {
     // p is in the cubemap's local coordinate system
@@ -795,12 +834,48 @@ static int calcspheresidemask(const vec &p, float radius, float bias)
           dyzp = p.y + p.z, dyzn = p.y - p.z, ayzp = fabs(dyzp), ayzn = fabs(dyzn),
           dzxp = p.z + p.x, dzxn = p.z - p.x, azxp = fabs(dzxp), azxn = fabs(dzxn);
     int mask = 0x3F;
+    radius *= SQRT2;
     if(axyp > bias*axyn + radius) mask &= dxyp < 0 ? ~((1<<0)|(1<<2)) : ~((2<<0)|(2<<2));
     if(axyn > bias*axyp + radius) mask &= dxyn < 0 ? ~((1<<0)|(2<<2)) : ~((2<<0)|(1<<2));
     if(ayzp > bias*ayzn + radius) mask &= dyzp < 0 ? ~((1<<2)|(1<<4)) : ~((2<<2)|(2<<4));
     if(ayzn > bias*ayzp + radius) mask &= dyzn < 0 ? ~((1<<2)|(2<<4)) : ~((2<<2)|(1<<4));
     if(azxp > bias*azxn + radius) mask &= dzxp < 0 ? ~((1<<4)|(1<<0)) : ~((2<<4)|(2<<0));
     if(azxn > bias*azxp + radius) mask &= dzxn < 0 ? ~((1<<4)|(2<<0)) : ~((2<<4)|(1<<0));
+    return mask;
+}
+
+static int calcspheretetramask(const vec &p, float radius, float bias)
+{
+    // p is in the cubemap's local coordinate system
+    // bias = border/(size - border)
+    int mask = 0xF;
+
+    bias *= 2;
+    radius *= SQRT2;
+
+    // +x,+y top split, no bias
+    float d = p.x + p.y;
+    if(fabs(d) > radius) mask &= d >= 0 ? ~(1<<1) : ~(1<<0);
+    // +x,-y bottom split, no bias
+    d = p.x - p.y;
+    if(fabs(d) > radius) mask &= d >= 0 ? ~(1<<3) : ~(1<<2);
+
+    // +x,-y,+z % +x,+y,-z = +y,+z top 1/bottom 1 split
+    d = p.y + p.z;
+    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<2) : ~(1<<0);
+
+    // +x,+y,-z % -x,+y,+z = +x,+z top 1/bottom 2 split
+    d = p.x + p.z;
+    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<3) : ~(1<<0);
+
+    // -x,-y,-z % +x,-y,+z = -x,+z top 2/bottom 1 split
+    d = p.z - p.x;
+    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<2) : ~(1<<1);
+
+    // -x,+y,+z % -x,-y,-z = -y,+z top 2/bottom 2 split
+    d = p.z - p.y;
+    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<3) : ~(1<<1);
+
     return mask;
 }
 
@@ -850,6 +925,65 @@ int calctrisidemask(const vec &p1, const vec &p2, const vec &p3, float bias)
             | (dn1 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0))
             | (dn2 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0))
             | (dn3 >= 0 ? (1<<4)|(2<<0) : (2<<4)|(1<<0));
+
+    return mask;
+}
+
+int calctritetramask(const vec &p1, const vec &p2, const vec &p3, float bias)
+{
+    // p1, p2, p3 are in the cubemap's local coordinate system
+    // bias = border/(size - border)
+    int mask = 0xF;
+
+    bias *= 2;
+
+    // +x,+y top split, no bias
+    float d1 = p1.x + p1.y, d2 = p2.x + p2.y, d3 = p3.x + p3.y;
+    if(d1 > 0)
+    {
+        if(d2 > 0 && d3 > 0) mask &= ~(1<<1);
+    }
+    else if(d1 < 0 && d2 < 0 && d3 < 0) mask &= ~(1<<0);
+
+    // +x,-y bottom split, no bias
+    d1 = p1.x - p1.y, d2 = p2.x - p2.y, d3 = p3.x - p3.y;
+    if(d1 > 0)
+    {
+        if(d2 > 0 && d3 > 0) mask &= ~(1<<3);
+    }
+    else if(d1 < 0 && d2 < 0 && d3 < 0) mask &= ~(1<<2);
+
+    // +x,-y,+z % +x,+y,-z = +y,+z top 1/bottom 1 split
+    d1 = p1.y + p1.z, d2 = p2.y + p2.z, d3 = p3.y + p3.z;
+    if(d1 > bias)
+    {
+         if(d2 > bias && d3 > bias) mask &= ~(1<<2);
+    }
+    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<0);
+
+    // +x,+y,-z % -x,+y,+z = +x,+z top 1/bottom 2 split
+    d1 = p1.x + p1.z, d2 = p2.x + p2.z, d3 = p3.x + p3.z;
+    if(d1 > bias)
+    {
+        if(d2 > bias && d3 > bias) mask &= ~(1<<3);
+    }
+    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<0);
+
+    // -x,-y,-z % +x,-y,+z = -x,+z top 2/bottom 1 split
+    d1 = p1.z - p1.x, d2 = p2.z - p2.x, d3 = p3.z - p3.x;
+    if(d1 > bias)
+    {
+        if(d2 > bias && d3 > bias) mask &= ~(1<<2);
+    }
+    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<1);
+
+    // -x,+y,+z % -x,-y,-z = -y,+z top 2/bottom 2 split
+    d1 = p1.z - p1.y, d2 = p2.z - p2.y, d3 = p3.z - p3.y;
+    if(d1 > bias)
+    {
+        if(d2 > bias && d3 > bias) mask &= ~(1<<3);
+    }
+    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<1);
 
     return mask;
 }
@@ -912,11 +1046,48 @@ int cullfrustumsides(const vec &lightpos, float lightradius, float size, float b
     return sides & masks[0] & masks[1] & masks[2] & masks[3] & masks[4] & masks[5];
 }
 
+int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border)
+{
+    int outside[5] = { 0, 0, 0, 0 };
+    loopi(4) if(vfcP[i].dist(lightpos) < 0) outside[4] |= 1<<i;
+    float dist = vfcP[4].dist(lightpos);
+    if(dist < 0) outside[4] |= 1<<4; 
+    if(dist > vfcDfog) outside[4] |= 1<<5;
+    if(!outside[4]) return 0xF;
+
+    float pr = SQRT3*lightradius;
+    vec p[4] =
+    {
+        vec(lightpos).add(vec(-pr, pr, pr)),
+        vec(lightpos).add(vec(pr, -pr, pr)),
+        vec(lightpos).add(vec(pr, pr, -pr)),
+        vec(lightpos).add(vec(-pr, -pr, -pr))
+    }; 
+    loopk(4)
+    {
+        loopi(4) if(vfcP[i].dist(p[k]) < 0) outside[k] |= 1<<i;
+        float dist = vfcP[k].dist(p[k]);
+        if(dist < 0) outside[k] |= 1<<4; 
+        if(dist > vfcDfog) outside[k] |= 1<<5;
+    }
+
+    int mask = 0xF;
+    if(outside[4] & outside[0] & outside[1] & outside[2]) mask &= ~(1<<0);
+    if(outside[4] & outside[0] & outside[1] & outside[3]) mask &= ~(1<<1);
+    if(outside[4] & outside[1] & outside[2] & outside[3]) mask &= ~(1<<2);
+    if(outside[4] & outside[0] & outside[2] & outside[3]) mask &= ~(1<<3);
+    return mask;
+}
+
 VAR(smbbcull, 0, 1, 1);
+VAR(smnodraw, 0, 0, 1);
+
+extern int smtetra, smtetraclip;
 
 void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
 {
-    SETSHADER(shadowmapworld);
+    if(smtetra && smtetraclip) SETSHADER(tetraworld);
+    else SETSHADER(shadowmapworld);
 
     glEnableClientState(GL_VERTEX_ARRAY);
 
@@ -926,8 +1097,16 @@ void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
         vtxarray *va = valist[i];
         if(!va->tris) continue;
 
-        if(smbbcull && !(calcbbsidemask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
-            continue;
+        if(smbbcull)
+        {
+            if(smtetra)
+            {
+                if(!(calcbbtetramask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
+                    continue;
+            }
+            else if(!(calcbbsidemask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
+                continue;
+        }
  
         if(!prev || va->vbuf != prev->vbuf)
         {
@@ -939,7 +1118,7 @@ void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
             glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
         }
 
-        drawvatris(va, 3*va->tris, va->edata);
+        if(!smnodraw) drawvatris(va, 3*va->tris, va->edata);
         xtravertsva += va->verts;
 
         prev = va;

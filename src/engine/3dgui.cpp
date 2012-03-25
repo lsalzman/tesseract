@@ -151,6 +151,13 @@ struct gui : g3d_gui
         else
         {
             curlist = nextlist++;
+            if(curlist >= lists.length()) // should never get here unless script code doesn't use same amount of lists in layout and render passes
+            {
+                list &l = lists.add();
+                l.parent = curlist;
+                l.springs = 0;
+                l.w = l.h = 0;
+            }
             list &l = lists[curlist];
             l.curspring = 0;
             if(l.springs > 0)
@@ -168,6 +175,7 @@ struct gui : g3d_gui
 
     void poplist()
     {
+        if(!lists.inrange(curlist)) return;
         list &l = lists[curlist];
         if(layoutpass)
         {
@@ -176,7 +184,7 @@ struct gui : g3d_gui
         }
         curlist = l.parent;
         curdepth--;
-        if(curlist>=0)
+        if(lists.inrange(curlist))
         {   
             int w = xsize, h = ysize;
             if(ishorizontal()) cury -= h; else curx -= w;
