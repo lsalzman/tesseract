@@ -1655,7 +1655,7 @@ void setupTMUs(renderstate &cur, float causticspass, bool fogpass)
     glEnableClientState(GL_COLOR_ARRAY);
     loopi(8-2) { glActiveTexture_(GL_TEXTURE2_ARB+i); glEnable(GL_TEXTURE_2D); }
     glActiveTexture_(GL_TEXTURE0_ARB);
-    setenvparamf("colorparams", SHPARAM_PIXEL, 6, 2, 2, 2, 1);
+    setenvparamf("colorparams", SHPARAM_PIXEL, 6, 1, 1, 1, 1);
     setenvparamf("camera", SHPARAM_VERTEX, 4, camera1->o.x, camera1->o.y, camera1->o.z, 1);
     setenvparamf("ambient", SHPARAM_PIXEL, 5, ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f);
     setenvparamf("millis", SHPARAM_VERTEX, 6, lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f);
