@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false;
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
@@ -134,6 +134,7 @@ VAR(usebue, 1, 0, 0);
 VAR(rtscissor, 0, 1, 1);
 VAR(blurtile, 0, 1, 1);
 VAR(rtsharefb, 0, 1, 1);
+VAR(usetexgather, 1, 0, 0);
 
 static bool checkseries(const char *s, int low, int high)
 {
@@ -534,6 +535,18 @@ void gl_checkextensions()
         hasSGISH = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_SGIX_shadow extension.");
     }
+
+    if(hasext(exts, "GL_ARB_texture_gather"))
+    {
+        hasTG = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_gather extension.");
+    }
+    else if(hasext(exts, "GL_AMD_texture_texture4"))
+    {
+        hasT4 = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_AMD_texture_texture4 extension.");
+    }
+    if(hasTG || hasT4) usetexgather = 1;
 
     if(hasext(exts, "GL_EXT_gpu_shader4"))
     {
@@ -1825,7 +1838,7 @@ FVAR(smprec, 1e-3f, 1, 1e3);
 
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
-VAR(smborder, 0, 2, 16);
+VAR(smborder, 0, 4, 16);
 VAR(smminradius, 0, 16, 10000);
 VAR(smminsize, 1, 96, 1024);
 VAR(smmaxsize, 1, 384, 1024);
@@ -1835,6 +1848,7 @@ VAR(smtetra, 0, 0, 1);
 VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3);
 VAR(smcullside, 0, 0, 1);
+VAR(smgather, 0, 0, 1);
 
 void gl_drawframe(int w, int h)
 {
@@ -2041,7 +2055,7 @@ void gl_drawframe(int w, int h)
         }
         if(!sidemask || (sm.query && sm.query->owner == l && checkquery(sm.query))) continue;
 
-        float smnearclip = 1.0f / smradius, smfarclip = 1.0f;
+        float smnearclip = SQRT3 / smradius, smfarclip = SQRT3;
         GLfloat smprojmatrix[16] =
         {
             float(sm.size - smborder) / sm.size, 0, 0, 0,
@@ -2153,6 +2167,18 @@ void gl_drawframe(int w, int h)
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE4_ARB);
     glBindTexture(GL_TEXTURE_2D, shadowatlastex);
+    if(smgather && (hasTG || hasT4))
+    {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    }
+    else
+    {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
@@ -2200,7 +2226,7 @@ void gl_drawframe(int w, int h)
                 if((lights[i+j].shadowmap >= 0) != shadowmap) { n = j; break; }
             }
             
-            if(shadowmap) (smtetra ? deferredtetrashader : deferredshadowshader)->setvariant(n-1, 0);
+            if(shadowmap) (smtetra ? deferredtetrashader : deferredshadowshader)->setvariant(n-1, smgather && (hasTG || hasT4) ? 1 : 0);
             else if(n > 0) deferredlightshader->setvariant(n-1, 0);
             else deferredlightshader->set();
 
@@ -2225,7 +2251,7 @@ void gl_drawframe(int w, int h)
                 {
                     shadowmapinfo &sm = shadowmaps[lights[i+j].shadowmap];
                     int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
-                    float smnearclip = 1.0f / smradius, smfarclip = 1.0f, 
+                    float smnearclip = SQRT3 / smradius, smfarclip = SQRT3, 
                           bias = smbias * smnearclip * (1024.0f / sm.size);
                     setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 5 + 4*j, 
                         0.5f * (sm.size - smborder), 
