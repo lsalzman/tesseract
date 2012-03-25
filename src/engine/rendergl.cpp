@@ -1969,7 +1969,7 @@ void gl_drawframe(int w, int h)
 
         int smradius = l->attr1 > 0 ? l->attr1 : worldsize,
             smsize = clamp(int(ceil(smradius * smprec / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)))), smminsize, smmaxsize),
-            smw = smsize*3, smh = smsize*2;
+            smw = smtetra ? smsize*2 : smsize*3, smh = smtetra ? smsize : smsize*2;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
@@ -2194,10 +2194,9 @@ void gl_drawframe(int w, int h)
     glBlendFunc(GL_ONE, GL_ONE);
     glEnable(GL_BLEND);
 
-    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL, *deferredtetrashader = NULL;
+    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL;
     if(!deferredlightshader) deferredlightshader = lookupshaderbyname("deferredlight");
     if(!deferredshadowshader) deferredshadowshader = lookupshaderbyname("deferredshadow");
-    if(!deferredtetrashader) deferredtetrashader = lookupshaderbyname("deferredtetra");
 
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -2226,7 +2225,7 @@ void gl_drawframe(int w, int h)
                 if((lights[i+j].shadowmap >= 0) != shadowmap) { n = j; break; }
             }
             
-            if(shadowmap) (smtetra ? deferredtetrashader : deferredshadowshader)->setvariant(n-1, smgather && (hasTG || hasT4) ? 1 : 0);
+            if(shadowmap) deferredshadowshader->setvariant(n-1, (smtetra ? 1 : 0) + (smgather && (hasTG || hasT4) ? 2 : 0));
             else if(n > 0) deferredlightshader->setvariant(n-1, 0);
             else deferredlightshader->set();
 
