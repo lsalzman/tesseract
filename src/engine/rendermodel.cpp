@@ -767,7 +767,11 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
         }
         if(shadowmapping)
         {
-            int FIXME_DO_BETTER_MODEL_CULLING_HERE = 42;
+            if(center.dist(shadoworigin) >= radius + shadowradius) return;
+            int sidemask = smtetra ?
+                calcspheretetramask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias) :
+                calcspheresidemask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
+            if(!(sidemask&(1<<shadowside))) return;
         }
         else
         {

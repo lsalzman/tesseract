@@ -750,7 +750,7 @@ void renderdepthobstacles(const vec &bbmin, const vec &bbmax, float scale, float
     defaultshader->set();
 }
 
-static int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
+int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
 {
     vec pmin = vec(bbmin).sub(lightpos).div(lightradius), pmax = vec(bbmax).sub(lightpos).div(lightradius);
     int mask = 0x3F;
@@ -790,7 +790,7 @@ static int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpo
     return mask;
 }
 
-static int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
+int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
 {
     // top 1: +1, +1, +1
     // top 2: -1, -1, +1
@@ -829,7 +829,7 @@ static int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightp
     return mask;
 }
 
-static int calcspheresidemask(const vec &p, float radius, float bias)
+int calcspheresidemask(const vec &p, float radius, float bias)
 {
     // p is in the cubemap's local coordinate system
     // bias = border/(size - border)
@@ -847,7 +847,7 @@ static int calcspheresidemask(const vec &p, float radius, float bias)
     return mask;
 }
 
-static int calcspheretetramask(const vec &p, float radius, float bias)
+int calcspheretetramask(const vec &p, float radius, float bias)
 {
     // p is in the cubemap's local coordinate system
     // bias = border/(size - border)

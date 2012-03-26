@@ -1974,7 +1974,7 @@ void gl_drawframe(int w, int h)
         if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
 
         int smradius = l->attr1 > 0 ? l->attr1 : worldsize,
-            smsize = clamp(int(ceil(smradius * smprec * 6.0f / (smtetra ? 2 : 6) / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)))), smminsize, smmaxsize),
+            smsize = clamp(int(ceil(smradius * smprec * (smtetra ? 1/3.0f : 1) / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)))), smminsize, smmaxsize),
             smw = smtetra ? smsize*2 : smsize*3, smh = smtetra ? smsize : smsize*2;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;

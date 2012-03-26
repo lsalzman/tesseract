@@ -295,6 +295,11 @@ extern int shadowside;
 extern void findshadowvas();
 extern void findshadowmms();
 
+extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
+extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
+extern int calcspheresidemask(const vec &p, float radius, float bias);
+extern int calcspheretetramask(const vec &p, float radius, float bias);
+
 // ents
 extern char *entname(entity &e);
 extern bool haveselent();
