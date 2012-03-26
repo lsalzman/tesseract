@@ -16,11 +16,13 @@ static inline void drawvatris(vtxarray *va, GLsizei numindices, const GLvoid *in
 
 ///////// view frustrum culling ///////////////////////
 
+extern vector<vtxarray *> varoot, valist;
+
 plane vfcP[5];  // perpindictular vectors to view frustrum bounding planes
 float vfcDfog;  // far plane culling distance (fog limit).
 float vfcDnear[5], vfcDfar[5];
 
-vtxarray *visibleva;
+vtxarray *visibleva = NULL;
 
 bool isfoggedsphere(float rad, const vec &cv)
 {
@@ -80,7 +82,7 @@ int isvisiblecube(const ivec &o, int size)
     return v;
 }
 
-float vadist(vtxarray *va, const vec &p)
+static inline float vadist(vtxarray *va, const vec &p)
 {
     return p.dist_to_bb(va->bbmin, va->bbmax);
 }
@@ -145,6 +147,13 @@ void findvisiblevas(vector<vtxarray *> &vas, bool resetocclude = false)
     }
 }
 
+void findvisiblevas()
+{
+    memset(vasort, 0, sizeof(vasort));
+    findvisiblevas(varoot);
+    sortvisiblevas();
+}
+
 void calcvfcD()
 {
     loopi(5)
@@ -184,17 +193,12 @@ void restorevfcP()
     calcvfcD();
 }
 
-extern vector<vtxarray *> varoot, valist;
-
 void visiblecubes(bool cull)
 {
-    memset(vasort, 0, sizeof(vasort));
-
     if(cull)
     {
         setvfcP();
-        findvisiblevas(varoot);
-        sortvisiblevas();
+        findvisiblevas();
     }
     else
     {
@@ -338,6 +342,8 @@ static inline bool insideoe(const octaentities *oe, const vec &v, int margin = 1
 
 void findvisiblemms(const vector<extentity *> &ents)
 {
+    visiblemms = NULL;
+    lastvisiblemms = &visiblemms;
     for(vtxarray *va = visibleva; va; va = va->next)
     {
         if(va->mapmodels.empty() || va->curvfc >= VFC_FOGGED || va->occluded >= OCCLUDE_BB) continue;
@@ -451,9 +457,6 @@ void renderreflectedmapmodels()
 void rendermapmodels()
 {
     const vector<extentity *> &ents = entities::getents();
-
-    visiblemms = NULL;
-    lastvisiblemms = &visiblemms;
     findvisiblemms(ents);
 
     static int skipoq = 0;
@@ -1083,9 +1086,70 @@ VAR(smbbcull, 0, 1, 1);
 VAR(smdistcull, 0, 1, 1);
 VAR(smnodraw, 0, 0, 1);
 
-extern int smtetra, smtetraclip;
+vec shadoworigin(0, 0, 0);
+float shadowradius = 0, shadowbias = 0;
+int shadowside = 0;
 
-void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
+vtxarray *shadowva = NULL;
+
+void addshadowva(vtxarray *va, float dist)
+{
+    va->rdistance = int(dist);
+
+    int hash = min(int(dist*VASORTSIZE/worldsize), VASORTSIZE-1);
+    vtxarray **prev = &vasort[hash], *cur = vasort[hash];
+
+    while(cur && va->rdistance >= cur->rdistance)
+    {
+        prev = &cur->rnext;
+        cur = cur->rnext;
+    }
+
+    va->rnext = *prev;
+    *prev = va;
+}
+
+void sortshadowvas()
+{
+    visibleva = NULL;
+    vtxarray **last = &shadowva;
+    loopi(VASORTSIZE) if(vasort[i])
+    {
+        vtxarray *va = vasort[i];
+        *last = va;
+        while(va->rnext) va = va->rnext;
+        last = &va->rnext;
+    }
+}
+
+void findshadowvas(vector<vtxarray *> &vas)
+{
+    loopv(vas)
+    {
+        vtxarray &v = *vas[i];
+        float dist = vadist(&v, shadoworigin);
+        if(dist < shadowradius || !smdistcull)
+        {
+            vec bbmin = v.geommin.tovec(), bbmax = v.geommax.tovec();
+            if(smbbcull)
+                v.shadowmask = smtetra ? 
+                    calcbbtetramask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias) : 
+                    calcbbsidemask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias);
+            else v.shadowmask = smtetra ? 0xF : 0x3F;
+            addshadowva(&v, dist);
+            if(v.children.length()) findshadowvas(v.children);
+        }
+    }
+}
+
+void findshadowvas()
+{
+    memset(vasort, 0, sizeof(vasort));
+    findshadowvas(varoot);
+    sortshadowvas();
+}
+
+void rendershadowmapworld()
 {
     if(smtetra && smtetraclip) SETSHADER(tetraworld);
     else SETSHADER(shadowmapworld);
@@ -1093,27 +1157,10 @@ void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
     glEnableClientState(GL_VERTEX_ARRAY);
 
     vtxarray *prev = NULL;
-    loopv(valist)
+    for(vtxarray *va = shadowva; va; va = va->rnext)
     {
-        vtxarray *va = valist[i];
-        if(!va->tris) continue;
+        if(!va->tris || !(va->shadowmask&(1<<shadowside))) continue;
 
-        vec bbmin = va->geommin.tovec(), bbmax = va->geommax.tovec();
-        if(smdistcull)
-        {
-            if(pos.dist_to_bb(bbmin, bbmax) >= radius) continue;
-        }
-        if(smbbcull)
-        {
-            if(smtetra)
-            {
-                if(!(calcbbtetramask(bbmin, bbmax, pos, radius, bias)&(1<<side)))
-                    continue;
-            }
-            else if(!(calcbbsidemask(bbmin, bbmax, pos, radius, bias)&(1<<side)))
-                continue;
-        }
- 
         if(!prev || va->vbuf != prev->vbuf)
         {
             if(hasVBO)
@@ -1140,46 +1187,52 @@ void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
     defaultshader->set();
 }
 
-void rendershadowmapmodels(const vec &pos, float radius, int side, float bias)
-{
-    const vector<extentity *> &ents = entities::getents();
-    static vector<octaentities *> vismms;
-    vismms.setsize(0);
-    loopv(valist)
-    {
-        vtxarray *va = valist[i];
-        if(va->mapmodels.empty()) continue;
+static octaentities *shadowmms = NULL;
 
+void findshadowmms()
+{
+    shadowmms = NULL;
+    octaentities **lastmms = &shadowmms; 
+    for(vtxarray *va = shadowva; va; va = va->rnext)
+    {
         loopvj(va->mapmodels)
         {
             octaentities *oe = va->mapmodels[j];
-            if(smbbcull)
+            if(smdistcull)
             {
-                if(smtetra)
-                {
-                    if(!(calcbbtetramask(oe->bbmin.tovec(), oe->bbmax.tovec(), pos, radius, bias)&(1<<side)))
-                        continue;
-                }
-                else if(!(calcbbsidemask(oe->bbmin.tovec(), oe->bbmax.tovec(), pos, radius, bias)&(1<<side)))
+                if(shadoworigin.dist_to_bb(oe->bbmin, oe->bbmax) >= shadowradius)
                     continue;
             }
-            int visible = 0;
-            loopvk(oe->mapmodels)
-            {
-                extentity &e = *ents[oe->mapmodels[k]];
-                if(e.flags&extentity::F_NOVIS) continue;
-                e.visible = true;
-                ++visible;
-            }
-            if(!visible) continue;
-            vismms.add(oe);
+            if(smbbcull)
+                oe->shadowmask = smtetra ?
+                    calcbbtetramask(oe->bbmin.tovec(), oe->bbmax.tovec(), shadoworigin, shadowradius, shadowbias) :
+                    calcbbsidemask(oe->bbmin.tovec(), oe->bbmax.tovec(), shadoworigin, shadowradius, shadowbias);
+            else oe->shadowmask = smtetra ? 0xF : 0x3F;
+            oe->rnext = NULL;
+            *lastmms = oe;
+            lastmms = &oe->rnext;
         }
     }
-    if(vismms.empty()) return;
-    startmodelbatches();
-    loopv(vismms)
+}
+
+void rendershadowmapmodels()
+{
+    if(!shadowmms) return;
+    const vector<extentity *> &ents = entities::getents();
+    for(octaentities *oe = shadowmms; oe; oe = oe->rnext)
     {
-        octaentities *oe = vismms[i];
+        if(!(oe->shadowmask&(1<<shadowside))) continue;
+        loopvk(oe->mapmodels)
+        {
+            extentity &e = *ents[oe->mapmodels[k]];
+            if(e.flags&extentity::F_NOVIS) continue;
+            e.visible = true;
+        }
+    }
+    startmodelbatches();
+    for(octaentities *oe = shadowmms; oe; oe = oe->rnext)
+    {
+        if(!(oe->shadowmask&(1<<shadowside))) continue;
         loopvj(oe->mapmodels)
         {
             extentity &e = *ents[oe->mapmodels[j]];

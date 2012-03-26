@@ -286,6 +286,15 @@ static inline cubeext &ext(cube &c)
 
 extern bool shadowmapping;
 
+extern int smtetra, smtetraclip;
+
+extern vec shadoworigin;
+extern float shadowradius, shadowbias;
+extern int shadowside;
+
+extern void findshadowvas();
+extern void findshadowmms();
+
 // ents
 extern char *entname(entity &e);
 extern bool haveselent();

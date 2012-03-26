@@ -108,6 +108,7 @@ struct octaentities
     ivec o;
     int size;
     ivec bbmin, bbmax;
+    int shadowmask;
 
     octaentities(const ivec &o, int size) : query(0), o(o), size(size), bbmin(o), bbmax(o)
     {
@@ -142,7 +143,7 @@ struct vtxarray
     ushort minvert, maxvert; // DRE info
     elementset *eslist;      // List of element indices sets (range) per texture
     materialsurface *matbuf; // buffer of material surfaces
-    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, texmask, sky, explicitsky, skyfaces, skyclip, matsurfs, distance;
+    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, texmask, sky, explicitsky, skyfaces, skyclip, matsurfs, distance, rdistance;
     double skyarea;
     ivec o;
     int size;                // location and size of cube.
@@ -154,6 +155,7 @@ struct vtxarray
     vector<octaentities *> mapmodels;
     vector<grasstri> grasstris;
     int hasmerges, mergelevel;
+    int shadowmask;
 };
 
 struct cube;

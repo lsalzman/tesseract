@@ -179,7 +179,6 @@ struct animmodel : model
             {
                 if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
                 if(enableenvmap) disableenvmap();
-                extern int smtetra, smtetraclip;
                 if(alphatest > 0 && s->type&Texture::ALPHA)
                 {
                     if(s!=lasttex)
