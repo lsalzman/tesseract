@@ -179,6 +179,7 @@ struct animmodel : model
             {
                 if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
                 if(enableenvmap) disableenvmap();
+                extern int smtetra, smtetraclip;
                 if(alphatest > 0 && s->type&Texture::ALPHA)
                 {
                     if(s!=lasttex)
@@ -193,12 +194,16 @@ struct animmodel : model
                         lastalphatest = alphatest;
                     }
                     setshaderparams(b, as, false, false);
-                    /*if(as->cur.anim&ANIM_SHADOW)*/ SETMODELSHADER(b, alphashadowmodel); 
+                    /*if(as->cur.anim&ANIM_SHADOW)*/ 
+                    if(smtetra && smtetraclip) SETMODELSHADER(b, alphashadowtetramodel);
+                    else SETMODELSHADER(b, alphashadowmodel); 
                 }
                 else
                 {
                     if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
-                    /*if(as->cur.anim&ANIM_SHADOW)*/ SETMODELSHADER(b, nocolormodel);
+                    /*if(as->cur.anim&ANIM_SHADOW)*/ 
+                    if(smtetra && smtetraclip) SETMODELSHADER(b, tetramodel);
+                    else SETMODELSHADER(b, nocolormodel);
                 }
                 return;
             }
