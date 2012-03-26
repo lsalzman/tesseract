@@ -1833,6 +1833,8 @@ FVAR(smpolyfactor, -1e3, 0, 1e3);
 FVAR(smpolyoffset, -1e3, 0, 1e3);
 FVAR(smbias, -1e3, 0, 1e3);
 FVAR(smprec, 1e-3f, 1, 1e3);
+FVAR(smtetraprec, 1e-3f, SQRT3, 1e3);
+FVAR(smcubeprec, 1e-3f, 1, 1e3);
 
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
@@ -1853,6 +1855,8 @@ VAR(smgather, 0, 0, 1);
 VAR(smnoshadow, 0, 0, 2);
 
 bool shadowmapping = false;
+
+plane smtetraclipplane;
 
 void gl_drawframe(int w, int h)
 {
@@ -1973,8 +1977,9 @@ void gl_drawframe(int w, int h)
         }
         if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
 
-        int smradius = l->attr1 > 0 ? l->attr1 : worldsize,
-            smsize = clamp(int(ceil(smradius * smprec * (smtetra ? 1/3.0f : 1) / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)))), smminsize, smmaxsize),
+        int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
+        float smlod = clamp(smradius * smprec / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)), float(smminsize), float(smmaxsize));
+        int smsize = clamp(int(ceil(smlod * (smtetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (smtetra ? 2 : 3)),
             smw = smtetra ? smsize*2 : smsize*3, smh = smtetra ? smsize : smsize*2;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
@@ -2113,8 +2118,9 @@ void gl_drawframe(int w, int h)
    
                 if(smtetraclip)
                 {
-                    vec clipdir(-smviewmatrix.v[2], -smviewmatrix.v[6], 0);
-                    setenvparamf("tetraclip", SHPARAM_VERTEX, 1, clipdir.x, clipdir.y, clipdir.z, smtetraborder/(0.5f*sm.size) - clipdir.dot(l->o));
+                    smtetraclipplane.toplane(vec(-smviewmatrix.v[2], -smviewmatrix.v[6], 0), l->o);
+                    smtetraclipplane.offset += smtetraborder/(0.5f*sm.size);
+                    setenvparamf("tetraclip", SHPARAM_VERTEX, 1, smtetraclipplane.x, smtetraclipplane.y, smtetraclipplane.z, smtetraclipplane.offset);
                 }
 
                 shadowside = side;

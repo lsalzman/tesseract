@@ -287,6 +287,7 @@ static inline cubeext &ext(cube &c)
 extern bool shadowmapping;
 
 extern int smtetra, smtetraclip;
+extern plane smtetraclipplane;
 
 extern vec shadoworigin;
 extern float shadowradius, shadowbias;

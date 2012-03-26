@@ -832,20 +832,31 @@ struct animmodel : model
                 glMultMatrixf(matrixstack[matrixpos].v);
                 if(model->scale!=1) glScalef(model->scale, model->scale, model->scale);
                 if(!translate.iszero()) glTranslatef(translate.x, translate.y, translate.z);
-                glMatrixMode(GL_TEXTURE);
-                glLoadMatrixf(matrixstack[matrixpos].v);
-                glMatrixMode(GL_MODELVIEW);
-            }
-
-            if(!(anim&(ANIM_NOSKIN|ANIM_NORENDER)))
-            {
-                vec odir, ocampos;
-                matrixstack[matrixpos].transposedtransformnormal(lightdir, odir);
-                setenvparamf("lightdir", SHPARAM_VERTEX, 0, odir.x, odir.y, odir.z);
-                setenvparamf("lightdir", SHPARAM_PIXEL, 0, odir.x, odir.y, odir.z);
-                matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
-                ocampos.div(model->scale).sub(translate);
-                setenvparamf("camera", SHPARAM_VERTEX, 1, ocampos.x, ocampos.y, ocampos.z, 1);
+                if(anim&ANIM_NOSKIN)
+                {
+                    if(smtetra && smtetraclip)
+                    {
+                        plane p;
+                        matrixstack[matrixpos].transposedtransform(smtetraclipplane, p);
+                        p.scale(model->scale);
+                        p.translate(translate);
+                        setenvparamf("tetramodelclip", SHPARAM_VERTEX, 2, p.x, p.y, p.z, p.offset); 
+                    }
+                }
+                else
+                {
+                    glMatrixMode(GL_TEXTURE);
+                    glLoadMatrixf(matrixstack[matrixpos].v);
+                    glMatrixMode(GL_MODELVIEW);
+                
+                    vec odir, ocampos;
+                    matrixstack[matrixpos].transposedtransformnormal(lightdir, odir);
+                    setenvparamf("lightdir", SHPARAM_VERTEX, 0, odir.x, odir.y, odir.z);
+                    setenvparamf("lightdir", SHPARAM_PIXEL, 0, odir.x, odir.y, odir.z);
+                    matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
+                    ocampos.div(model->scale).sub(translate);
+                    setenvparamf("camera", SHPARAM_VERTEX, 1, ocampos.x, ocampos.y, ocampos.z, 1);
+                }
             }
 
             meshes->render(as, pitch, oaxis, oforward, d, this);

@@ -524,41 +524,41 @@ struct batchedmodel
     dynent *d;
     int attached;
     occludequery *query;
+    int next;
 };  
 struct modelbatch
 {
     model *m;
-    int flags;
-    vector<batchedmodel> batched;
+    int flags, batched;
 };  
-static vector<modelbatch *> batches;
+static vector<batchedmodel> batchedmodels;
+static vector<modelbatch> batches;
 static vector<modelattach> modelattached;
-static int numbatches = -1;
 static occludequery *modelquery = NULL;
-
+static bool batching = false;
+ 
 void startmodelbatches()
 {
-    numbatches = 0;
+    batching = true;
+    batches.setsize(0);
     modelattached.setsize(0);
 }
 
-modelbatch &addbatchedmodel(model *m)
+void addbatchedmodel(model *m, batchedmodel &bm, int idx)
 {
     modelbatch *b = NULL;
-    if(m->batch>=0 && m->batch<numbatches && batches[m->batch]->m==m) b = batches[m->batch];
+    if(batches.inrange(m->batch) && batches[m->batch].m == m) b = &batches[m->batch];
     else
     {
-        if(numbatches<batches.length())
-        {
-            b = batches[numbatches];
-            b->batched.setsize(0);
-        }
-        else b = batches.add(new modelbatch);
+        m->batch = batches.length();
+        b = &batches.add();
         b->m = m;
         b->flags = 0;
-        m->batch = numbatches++;
+        b->batched = -1;
     }
-    return *b;
+    b->flags |= bm.flags;
+    bm.next = b->batched;
+    b->batched = idx;
 }
 
 void renderbatchedmodel(model *m, batchedmodel &b)
@@ -592,17 +592,18 @@ static inline bool sorttransparentmodels(const transparentmodel &x, const transp
 void endmodelbatches()
 {
     vector<transparentmodel> transparent;
-    loopi(numbatches)
+    loopv(batches)
     {
-        modelbatch &b = *batches[i];
-        if(b.batched.empty()) continue;
+        modelbatch &b = batches[i];
+        if(b.batched < 0) continue;
         if(b.flags&(MDL_SHADOW|MDL_DYNSHADOW))
         {
             vec center, bbradius;
             b.m->boundbox(0/*frame*/, center, bbradius); // FIXME
-            loopvj(b.batched)
+            for(int j = b.batched; j >= 0;)
             {
-                batchedmodel &bm = b.batched[j];
+                batchedmodel &bm = batchedmodels[j];
+                j = bm.next;
                 if(bm.flags&(MDL_SHADOW|MDL_DYNSHADOW))
                     renderblob(bm.flags&MDL_DYNSHADOW ? BLOB_DYNAMIC : BLOB_STATIC, bm.d && bm.d->ragdoll ? bm.d->ragdoll->center : bm.pos, bm.d ? bm.d->radius : max(bbradius.x, bbradius.y), bm.transparent);
             }
@@ -612,9 +613,10 @@ void endmodelbatches()
         occludequery *query = NULL;
         if(b.flags&MDL_GHOST)
         {
-            loopvj(b.batched)
+            for(int j = b.batched; j >= 0;)
             {
-                batchedmodel &bm = b.batched[j];
+                batchedmodel &bm = batchedmodels[j];
+                j = bm.next;
                 if((bm.flags&(MDL_CULL_VFC|MDL_GHOST))!=MDL_GHOST || bm.query) continue;
                 if(!rendered) { b.m->startrender(); rendered = true; }
                 renderbatchedmodel(b.m, bm);
@@ -625,9 +627,10 @@ void endmodelbatches()
                 rendered = false;
             }
         }
-        loopvj(b.batched) 
+        for(int j = b.batched; j >= 0;)
         {
-            batchedmodel &bm = b.batched[j];
+            batchedmodel &bm = batchedmodels[j];
+            j = bm.next;
             if(bm.flags&(MDL_CULL_VFC|MDL_GHOST)) continue;
             if(bm.query!=query)
             {
@@ -673,7 +676,7 @@ void endmodelbatches()
         if(query) endquery(query);
         if(lastmodel) lastmodel->endrender();
     }
-    numbatches = -1;
+    batching = false;
 }
 
 void startmodelquery(occludequery *query)
@@ -684,10 +687,10 @@ void startmodelquery(occludequery *query)
 void endmodelquery()
 {
     int querybatches = 0;
-    loopi(numbatches)
+    loopv(batches)
     {
-        modelbatch &b = *batches[i];
-        if(b.batched.empty() || b.batched.last().query!=modelquery) continue;
+        modelbatch &b = batches[i];
+        if(b.batched < 0 || batchedmodels[b.batched].query != modelquery) continue;
         querybatches++;
     }
     if(querybatches<=1)
@@ -698,18 +701,22 @@ void endmodelquery()
     }
     int minattached = modelattached.length();
     startquery(modelquery);
-    loopi(numbatches)
+    loopv(batches)
     {
-        modelbatch &b = *batches[i];
-        if(b.batched.empty() || b.batched.last().query!=modelquery) continue;
+        modelbatch &b = batches[i];
+        int j = b.batched;
+        if(j < 0 || batchedmodels[j].query != modelquery) continue;
         b.m->startrender();
         do
         {
-            batchedmodel &bm = b.batched.pop();
+            batchedmodel &bm = batchedmodels[j];
+            if(bm.query != modelquery) break;
+            j = bm.next;
             if(bm.attached>=0) minattached = min(minattached, bm.attached);
             renderbatchedmodel(b.m, bm);
         }
-        while(b.batched.length() && b.batched.last().query==modelquery);
+        while(j >= 0);
+        b.batched = j;
         b.m->endrender();
     }
     endquery(modelquery);
@@ -880,10 +887,9 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
 
     if(!d || reflecting || refracting || shadowmapping) doOQ = false;
   
-    if(numbatches>=0)
+    if(batching)
     {
-        modelbatch &mb = addbatchedmodel(m);
-        batchedmodel &b = mb.batched.add();
+        batchedmodel &b = batchedmodels.add();
         b.query = modelquery;
         b.pos = o;
         b.color = lightcolor;
@@ -900,11 +906,11 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
             b.flags &= ~(MDL_SHADOW|MDL_DYNSHADOW);
             if((flags&MDL_CULL_VFC) && refracting<0 && center.z-radius>=reflectz) b.flags |= MDL_CULL_VFC;
         }
-        mb.flags |= b.flags;
         b.d = d;
         b.attached = a ? modelattached.length() : -1;
         if(a) for(int i = 0;; i++) { modelattached.add(a[i]); if(!a[i].tag) break; }
         if(doOQ) d->query = b.query = newquery(d);
+        addbatchedmodel(m, b, batchedmodels.length()-1);
         return;
     }
 
