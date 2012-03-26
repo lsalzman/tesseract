@@ -1168,6 +1168,7 @@ bool renderedgame = false;
 void rendergame(bool mainpass)
 {
     game::rendergame(mainpass);
+    if(!shadowmapping) renderedgame = true;
 }
 
 VARP(reflectmms, 0, 1, 1);
@@ -1849,6 +1850,7 @@ VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3);
 VAR(smcullside, 0, 0, 1);
 VAR(smgather, 0, 0, 1);
+VAR(smnoshadow, 0, 0, 2);
 
 bool shadowmapping = false;
 
@@ -1927,6 +1929,7 @@ void gl_drawframe(int w, int h)
 
     rendergeom(causticspass);
     rendermapmodels();
+    rendergame(true);
 
     int deferred_weirdness_ends_here;
     
@@ -1976,7 +1979,7 @@ void gl_drawframe(int w, int h)
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
-        if(smradius > smminradius && shadowatlaspacker.insert(smx, smy, smw, smh))
+        if(smnoshadow <= 1 && smradius > smminradius && shadowatlaspacker.insert(smx, smy, smw, smh))
         {
             smidx = shadowmaps.length();
             sm = &shadowmaps.add();
@@ -2112,6 +2115,7 @@ void gl_drawframe(int w, int h)
                 rendershadowmapworld(l->o, smradius, side, borderbias);
                 extern void rendershadowmapmodels(const vec &pos, float radius, int side, float bias);
                 rendershadowmapmodels(l->o, smradius, side, borderbias);
+                rendergame();
             }
 
             continue; 
@@ -2145,6 +2149,7 @@ void gl_drawframe(int w, int h)
             rendershadowmapworld(l->o, smradius, side, borderbias);
             extern void rendershadowmapmodels(const vec &pos, float radius, int side, float bias);
             rendershadowmapmodels(l->o, smradius, side, borderbias);
+            rendergame();
         }   
     }
 
@@ -2238,7 +2243,7 @@ void gl_drawframe(int w, int h)
                 if((lights[i+j].shadowmap >= 0) != shadowmap) { n = j; break; }
             }
             
-            if(shadowmap) deferredshadowshader->setvariant(n-1, (smtetra ? 1 : 0) + (smgather && (hasTG || hasT4) ? 2 : 0));
+            if(shadowmap && !smnoshadow) deferredshadowshader->setvariant(n-1, (smtetra ? 1 : 0) + (smgather && (hasTG || hasT4) ? 2 : 0));
             else if(n > 0) deferredlightshader->setvariant(n-1, 0);
             else deferredlightshader->set();
 
@@ -2315,7 +2320,6 @@ void gl_drawframe(int w, int h)
 
     renderdecals(true);
 
-    rendergame(true);
     if(!isthirdperson())
     {
         project(curavatarfov, aspect, farplane, false, false, false, avatardepth);
