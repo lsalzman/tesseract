@@ -1203,11 +1203,6 @@ void findshadowmms()
                 if(shadoworigin.dist_to_bb(oe->bbmin, oe->bbmax) >= shadowradius)
                     continue;
             }
-            if(smbbcull)
-                oe->shadowmask = smtetra ?
-                    calcbbtetramask(oe->bbmin.tovec(), oe->bbmax.tovec(), shadoworigin, shadowradius, shadowbias) :
-                    calcbbsidemask(oe->bbmin.tovec(), oe->bbmax.tovec(), shadoworigin, shadowradius, shadowbias);
-            else oe->shadowmask = smtetra ? 0xF : 0x3F;
             oe->rnext = NULL;
             *lastmms = oe;
             lastmms = &oe->rnext;
@@ -1221,7 +1216,6 @@ void rendershadowmapmodels()
     const vector<extentity *> &ents = entities::getents();
     for(octaentities *oe = shadowmms; oe; oe = oe->rnext)
     {
-        if(!(oe->shadowmask&(1<<shadowside))) continue;
         loopvk(oe->mapmodels)
         {
             extentity &e = *ents[oe->mapmodels[k]];
@@ -1232,7 +1226,6 @@ void rendershadowmapmodels()
     startmodelbatches();
     for(octaentities *oe = shadowmms; oe; oe = oe->rnext)
     {
-        if(!(oe->shadowmask&(1<<shadowside))) continue;
         loopvj(oe->mapmodels)
         {
             extentity &e = *ents[oe->mapmodels[j]];

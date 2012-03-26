@@ -1977,7 +1977,7 @@ void gl_drawframe(int w, int h)
         }
         if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
 
-        int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
+        int smradius = l->attr1 > 0 ? l->attr1 : 2*worldsize;
         float smlod = clamp(smradius * smprec / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)), float(smminsize), float(smmaxsize));
         int smsize = clamp(int(ceil(smlod * (smtetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (smtetra ? 2 : 3)),
             smw = smtetra ? smsize*2 : smsize*3, smh = smtetra ? smsize : smsize*2;
@@ -2055,7 +2055,7 @@ void gl_drawframe(int w, int h)
         shadowmapinfo &sm = shadowmaps[i];
         extentity *l = sm.ent;
 
-        int smradius = l->attr1 > 0 ? l->attr1 : worldsize, sidemask;
+        int smradius = l->attr1 > 0 ? l->attr1 : 2*worldsize, sidemask;
         if(smtetra)
         {
             extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
@@ -2090,6 +2090,12 @@ void gl_drawframe(int w, int h)
 
         findshadowvas();
         findshadowmms();
+
+        lockmodelbatches();
+        extern void rendershadowmapmodels();
+        rendershadowmapmodels();
+        rendergame();
+        unlockmodelbatches();
 
         if(smtetra)
         {
@@ -2127,9 +2133,7 @@ void gl_drawframe(int w, int h)
 
                 extern void rendershadowmapworld();
                 rendershadowmapworld();
-                extern void rendershadowmapmodels();
-                rendershadowmapmodels();
-                rendergame();
+                rendermodelbatches();
             }
 
             continue; 
@@ -2162,9 +2166,7 @@ void gl_drawframe(int w, int h)
 
             extern void rendershadowmapworld();
             rendershadowmapworld();
-            extern void rendershadowmapmodels();
-            rendershadowmapmodels();
-            rendergame();
+            rendermodelbatches();
         }   
     }
 
@@ -2277,12 +2279,12 @@ void gl_drawframe(int w, int h)
             {
                 lighttile &t = lights[i+j];
                 extentity *l = t.ent;
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 4*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 1.0f/worldsize);
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 4*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 0.5f/worldsize);
                 setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 4*j, l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[lights[i+j].shadowmap];
-                    int smradius = l->attr1 > 0 ? l->attr1 : worldsize;
+                    int smradius = l->attr1 > 0 ? l->attr1 : 2*worldsize;
                     float smnearclip = SQRT3 / smradius, smfarclip = SQRT3, 
                           bias = smbias * smnearclip * (1024.0f / sm.size);
                     setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 5 + 4*j, 

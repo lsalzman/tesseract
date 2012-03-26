@@ -524,7 +524,7 @@ struct batchedmodel
     dynent *d;
     int attached;
     occludequery *query;
-    int next;
+    int next, shadowmask;
 };  
 struct modelbatch
 {
@@ -535,13 +535,20 @@ static vector<batchedmodel> batchedmodels;
 static vector<modelbatch> batches;
 static vector<modelattach> modelattached;
 static occludequery *modelquery = NULL;
-static bool batching = false;
- 
+static bool batching = false, locking = false;
+
 void startmodelbatches()
 {
+    if(locking) return;
     batching = true;
     batches.setsize(0);
     modelattached.setsize(0);
+}
+
+void lockmodelbatches()
+{
+    startmodelbatches();
+    locking = true;
 }
 
 void addbatchedmodel(model *m, batchedmodel &bm, int idx)
@@ -589,7 +596,7 @@ static inline bool sorttransparentmodels(const transparentmodel &x, const transp
     return x.dist < y.dist;
 }
 
-void endmodelbatches()
+void rendermodelbatches()
 {
     vector<transparentmodel> transparent;
     loopv(batches)
@@ -632,6 +639,7 @@ void endmodelbatches()
             batchedmodel &bm = batchedmodels[j];
             j = bm.next;
             if(bm.flags&(MDL_CULL_VFC|MDL_GHOST)) continue;
+            if(shadowmapping && !(bm.shadowmask&(1<<shadowside))) continue;
             if(bm.query!=query)
             {
                 if(query) endquery(query);
@@ -676,7 +684,18 @@ void endmodelbatches()
         if(query) endquery(query);
         if(lastmodel) lastmodel->endrender();
     }
+}
+
+void endmodelbatches()
+{
+    if(locking) return;
+    rendermodelbatches();
     batching = false;
+}
+
+void unlockmodelbatches()
+{
+    locking = batching = false;
 }
 
 void startmodelquery(occludequery *query)
@@ -775,10 +794,6 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
         if(shadowmapping)
         {
             if(center.dist(shadoworigin) >= radius + shadowradius) return;
-            int sidemask = smtetra ?
-                calcspheretetramask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias) :
-                calcspheresidemask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
-            if(!(sidemask&(1<<shadowside))) return;
         }
         else
         {
@@ -901,6 +916,10 @@ void rendermodel(entitylight *light, const char *mdl, int anim, const vec &o, fl
         b.basetime2 = basetime2;
         b.transparent = trans;
         b.flags = flags & ~(MDL_CULL_VFC | MDL_CULL_DIST | MDL_CULL_OCCLUDED);
+        if(shadowmapping)
+            b.shadowmask = smtetra ?
+                calcspheretetramask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias) :
+                calcspheresidemask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
         if(!shadow || reflecting || refracting>0) 
         {
             b.flags &= ~(MDL_SHADOW|MDL_DYNSHADOW);

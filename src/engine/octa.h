@@ -108,7 +108,6 @@ struct octaentities
     ivec o;
     int size;
     ivec bbmin, bbmax;
-    int shadowmask;
 
     octaentities(const ivec &o, int size) : query(0), o(o), size(size), bbmin(o), bbmax(o)
     {
