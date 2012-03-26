@@ -1080,6 +1080,7 @@ int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float b
 }
 
 VAR(smbbcull, 0, 1, 1);
+VAR(smdistcull, 0, 1, 1);
 VAR(smnodraw, 0, 0, 1);
 
 extern int smtetra, smtetraclip;
@@ -1097,14 +1098,19 @@ void rendershadowmapworld(const vec &pos, float radius, int side, float bias)
         vtxarray *va = valist[i];
         if(!va->tris) continue;
 
+        vec bbmin = va->geommin.tovec(), bbmax = va->geommax.tovec();
+        if(smdistcull)
+        {
+            if(pos.dist_to_bb(bbmin, bbmax) >= radius) continue;
+        }
         if(smbbcull)
         {
             if(smtetra)
             {
-                if(!(calcbbtetramask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
+                if(!(calcbbtetramask(bbmin, bbmax, pos, radius, bias)&(1<<side)))
                     continue;
             }
-            else if(!(calcbbsidemask(va->geommin.tovec(), va->geommax.tovec(), pos, radius, bias)&(1<<side)))
+            else if(!(calcbbsidemask(bbmin, bbmax, pos, radius, bias)&(1<<side)))
                 continue;
         }
  
