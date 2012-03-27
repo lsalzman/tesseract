@@ -1742,7 +1742,7 @@ void gl_drawhud(int w, int h);
 int xtraverts, xtravertsva;
 
 int gw = -1, gh = -1;
-GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo = 0, bloomtex[4] = { 0, 0, 0, 0 };
+GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[2] = { 0, 0 }, bloomtex[4] = { 0, 0, 0, 0 };
 
 extern int bloomsize;
 
@@ -1750,9 +1750,7 @@ void setupbloom()
 {
     loopi(4) if(!bloomtex[i]) glGenTextures(1, &bloomtex[i]);
 
-    if(!bloomfbo) glGenFramebuffers_(1, &bloomfbo);
-
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo);
+    loopi(2) if(!bloomfbo[i]) glGenFramebuffers_(1, &bloomfbo[i]);
 
     int size = 1<<bloomsize;
     createtexture(bloomtex[0], max(gw/2, size), max(gh/2, size), NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
@@ -1760,17 +1758,21 @@ void setupbloom()
     createtexture(bloomtex[2], size, size, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[3], size, size, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
 
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, bloomtex[0], 0);
+    loopi(2)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo[i]);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, bloomtex[i], 0);
 
-    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
-        fatal("failed allocating bloom buffer!");
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating bloom buffer!");
+    }
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 }
 
 void cleanupbloom()
 {
-    if(bloomfbo) { glDeleteFramebuffers_(1, &bloomfbo); bloomfbo = 0; }
+    loopi(2) if(bloomfbo[i]) { glDeleteFramebuffers_(1, &bloomfbo[i]); bloomfbo[i] = 0; }
     loopi(4) if(bloomtex[i]) { glDeleteTextures(1, &bloomtex[i]); bloomtex[i] = 0; }
 }
 
@@ -1842,6 +1844,8 @@ FVAR(hdrscale, 0.1f, 4.0f, 10.0f);
 FVAR(bloomthreshold, 0, 0.75f, 10.0f);
 FVAR(bloomscale, 0, 2.0f, 10.0f);
 FVAR(bloomprec, 0.1f, 1.0f, 10.0f);
+VAR(bloomreduce, 0, 1, 1);
+VAR(bloomblit, 0, 1, 1);
 VAR(bloomblur, 0, 7, 7);
 VAR(bloomiter, 0, 0, 4);
 FVAR(bloomsigma, 0.005f, 0.5f, 2.0f);
@@ -2093,7 +2097,7 @@ void gl_drawframe(int w, int h)
     timer_print();
 
     setupgbuffer(w, h);
-    if(!bloomfbo) setupbloom();
+    if(!bloomfbo[0] || !bloomfbo[1]) setupbloom();
     if(!shadowatlasfbo) setupshadowatlas();
 
     defaultshader->set();
@@ -2603,17 +2607,19 @@ void gl_drawframe(int w, int h)
     if(hdr)
     {
         GLuint b0tex = bloomtex[0], b1tex = bloomtex[1];
-        int size = 1<<bloomsize, b0w = max(gw/2, size), b0h = max(gh/2, size), b1w = max(gw/4, size), b1h = max(gh/4, size);
+        int size = 1<<bloomsize, b0w = bloomreduce ? max(gw/2, size) : size, b0h = bloomreduce ? max(gh/2, size) : size, b1w = max(gw/4, size), b1h = max(gh/4, size),
+            b0fbo = bloomfbo[0], b1fbo = bloomfbo[hasFBB && bloomblit ? 1 : 0],
+            pw = bloomreduce ? b0w : size, ph = bloomreduce ? b0h : size;
         CHECKERROR();
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b0tex, 0);
-        glViewport(0, 0, b0w, b0h);
+        glViewport(0, 0, pw, ph);
         SETSHADER(bloominit);
         setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, hdrscale*bloomprec, bloomthreshold*bloomprec);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
         bloomquad(gw, gh);
 
-        for(int pw = b0w, ph = b0h;;)
+        for(;;)
         {
             int cw = max(pw/2, size), ch = max(ph/2, size);
             if(cw == pw && ch == ph) break;
@@ -2622,33 +2628,50 @@ void gl_drawframe(int w, int h)
                 b1tex = bloomtex[2];
                 b1w = b1h = size;
             }
-            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b1tex, 0);
-            glViewport(0, 0, cw, ch);
-            SETSHADER(bloomreduce);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-            bloomquad(pw, ph);
+            if(hasFBB && bloomblit)
+            {
+                glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, b0fbo);
+                glFramebufferTexture2D_(GL_READ_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b0tex, 0);
+                glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, b1fbo);
+                glFramebufferTexture2D_(GL_DRAW_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b1tex, 0);
+                glBlitFramebuffer_(0, 0, pw, ph, 0, 0, cw, ch, GL_COLOR_BUFFER_BIT, GL_LINEAR); 
+            }
+            else
+            {
+                glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b1tex, 0);
+                glViewport(0, 0, cw, ch);
+                SETSHADER(bloomreduce);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
+                bloomquad(pw, ph);
+            }
             pw = cw;
             ph = ch;
+            swap(b0fbo, b1fbo);
             swap(b0tex, b1tex);
             swap(b0w, b1w);
             swap(b0h, b1h);
         }
     
-        float blurweights[MAXBLURRADIUS+1], bluroffsets[MAXBLURRADIUS+1];
-        setupblurkernel(bloomblur, bloomsigma, blurweights, bluroffsets);
-        b1tex = bloomtex[3];
-        b1w = b1h = size;
-        loopi(2 + 2*bloomiter)
+        if(bloomblur)
         {
-            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b1tex, 0);
-            glViewport(0, 0, b1w, b1h);
-            setblurshader(i%2, 1, bloomblur, blurweights, bluroffsets, GL_TEXTURE_RECTANGLE_ARB);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-            bloomquad(b0w, b0h);
-            swap(b0w, b1w);
-            swap(b0h, b1h);
-            swap(b0tex, b1tex);
-        } 
+            if(hasFBB && bloomblit) glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
+
+            float blurweights[MAXBLURRADIUS+1], bluroffsets[MAXBLURRADIUS+1];
+            setupblurkernel(bloomblur, bloomsigma, blurweights, bluroffsets);
+            b1tex = bloomtex[3];
+            b1w = b1h = size;
+            loopi(2 + 2*bloomiter)
+            {
+                glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b1tex, 0);
+                glViewport(0, 0, b1w, b1h);
+                setblurshader(i%2, 1, bloomblur, blurweights, bluroffsets, GL_TEXTURE_RECTANGLE_ARB);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
+                bloomquad(b0w, b0h);
+                swap(b0w, b1w);
+                swap(b0h, b1h);
+                swap(b0tex, b1tex);
+            }  
+        }
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
         glViewport(0, 0, w, h);
