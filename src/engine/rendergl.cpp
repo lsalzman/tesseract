@@ -588,43 +588,74 @@ void glext(char *ext)
 }
 COMMAND(glext, "s");
 
+#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); }} while(0)
+
 // GPU-side timing information will use OGL timers
-enum {TIMER_SM=0u, TIMER_GBUFFER=1u, TIMER_SHADING=2u, TIMER_N=3u};
+enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_SPLITTING, TIMER_MERGING, TIMER_N};
 static const char *timer_string[] = {
     "shadow map",
     "gbuffer",
     "deferred shading",
+    "buffer splitting",
+    "buffer merging"
 };
-static const int timer_query_n = 4u;
+static const int timer_query_n = 4;
 static GLuint timers[timer_query_n][TIMER_N];
-static int timer_curr = 0u;
-
-#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); exit(1);}} while(0)
+static bool timer_used[timer_query_n][TIMER_N];
+static int timer_curr = 0;
+static int timer_last_query = -1;
+VAR(gputimer, 0, 0, 1);
 
 static void timer_sync()
 {
     if(timer_curr - timer_query_n < 0) return;
+    if(!gputimer || !hasTQ) return;
     const int curr = timer_curr % timer_query_n;
-    loopi(TIMER_N) {
+    loopi(TIMER_N)
+    {
         GLint available = 0;
-        while(!available)
-            glGetQueryObjectiv_(timers[curr][i], GL_QUERY_RESULT_AVAILABLE, &available);
+        if(timer_used[curr][i])
+            while(!available)
+                glGetQueryObjectiv_(timers[curr][i], GL_QUERY_RESULT_AVAILABLE, &available);
     }
 }
-static inline void timer_begin(int whichone) { glBeginQuery_(GL_TIME_ELAPSED, timers[timer_curr % timer_query_n][whichone]); }
-static inline void timer_end() { glEndQuery_(GL_TIME_ELAPSED); }
+static inline void timer_begin(int whichone)
+{
+    if(!gputimer || !hasTQ) return;
+    glBeginQuery_(GL_TIME_ELAPSED, timers[timer_curr % timer_query_n][whichone]);
+    timer_last_query = whichone;
+}
+static inline void timer_end()
+{
+    if(!gputimer || !hasTQ) return;
+    assert(timer_last_query != -1);
+    timer_used[timer_curr % timer_query_n][timer_last_query] = true;
+    glEndQuery_(GL_TIME_ELAPSED);
+}
+static inline void timer_nextframe()
+{
+    if (gputimer && hasTQ) timer_curr++;
+}
 static void timer_print()
 {
+    if(!gputimer || !hasTQ) return;
     if(timer_curr - timer_query_n < 0) return;
     const int curr = timer_curr % timer_query_n;
     printf("\r");
-    loopi(TIMER_N) {
+    loopi(TIMER_N)
+    {
+        if(!timer_used[curr][i]) continue;
         GLuint64 elapsed;
         glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &elapsed);
-        printf("%s %f ms%s", timer_string[i], float(elapsed) * 1e-6f, (i+1 == TIMER_N) ? "" : ", ");
+        printf("%s %f ms ", timer_string[i], float(elapsed) * 1e-6f);
     }
 }
-VAR(gputimer, 0, 0, 1);
+static void timer_setup() {
+    if(!hasTQ) return;
+    loopi(timer_query_n) glGenQueries_(TIMER_N, timers[i]);
+    loopi(timer_query_n) loopj(TIMER_N) timer_used[i][j] = false;
+}
+static void timer_cleanup() { if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_N, timers[i]); }
 
 void gl_init(int w, int h, int bpp, int depth, int fsaa)
 {
@@ -669,8 +700,7 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     conoutf(CON_INIT, "Rendering using the OpenGL %s path.", rpnames[renderpath]);
 
     setuptexcompress();
-
-    if(hasTQ) loopi(timer_query_n) glGenQueries_(TIMER_N, timers[i]);
+    timer_setup();
 }
 
 void cleanupgl()
@@ -687,7 +717,7 @@ void cleanupgl()
     extern void cleanupshadowatlas();
     cleanupshadowatlas();
 
-    if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_N, timers[i]);
+    timer_cleanup();
 }
 
 #define VARRAY_INTERNAL
@@ -1785,8 +1815,6 @@ void cleanupshadowatlas()
     if(shadowatlasfbo) { glDeleteFramebuffers_(1, &shadowatlasfbo); shadowatlasfbo = 0; }
 }
 
-VAR(debugshadowatlas, 0, 0, 1);
-
 const float cubeshadowviewmatrix[6][16] =
 {
     // sign-preserving cubemap projections
@@ -1928,19 +1956,62 @@ void viewshadowatlas()
     glTexCoord2f(0, 1); glVertex2i(0, h);
     glTexCoord2f(1, 1); glVertex2i(w, h);
     glEnd();
-    if(!usegatherforsm()) setsmnongathermode(); // "normal" mode basically
+    if(!usegatherforsm()) setsmnongathermode(); // "gather" mode basically
     notextureshader->set();
 }
+VAR(debugshadowatlas, 0, 0, 1);
 
-static int plays_around_with_timer_queries_here;
+static int playing_around_with_buffer_splitting;
+void viewbuffersplitmerge()
+{
+    const int w = screen->w, h = screen->h;
+#if 1
+    Shader *splitshader = lookupshaderbyname("buffersplit");
+    splitshader->set();
+    const float split[] = {4.f, 4.f};
+    const float tiledim[] = {float(w)/split[0], float(h)/split[1]};
+    setlocalparamf("tiledim", SHPARAM_PIXEL, 0, tiledim[0], tiledim[1]);
+    setlocalparamf("rcptiledim", SHPARAM_PIXEL, 2, 1.f/tiledim[0], 1.f/tiledim[1]);
+    setlocalparamf("split", SHPARAM_PIXEL, 4, split[0], split[1]);
+    timer_begin(TIMER_SPLITTING);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0,        0);        glVertex2i(-w, -h);
+    glTexCoord2f(float(w), 0);        glVertex2i(w, -h);
+    glTexCoord2f(0,        float(h)); glVertex2i(-w, h);
+    glTexCoord2f(float(w), float(h)); glVertex2i(w, h);
+    glEnd();
+    timer_end();
+    notextureshader->set();
+#else
+    Shader *mergeshader = lookupshaderbyname("buffermerge");
+    mergeshader->set();
+    const float split[] = {4.f, 4.f};
+    const float tiledim[] = {float(w)/split[0], float(h)/split[1]};
+    setlocalparamf("tiledim", SHPARAM_PIXEL, 0, tiledim[0], tiledim[1]);
+    setlocalparamf("split", SHPARAM_PIXEL, 2, split[0], split[1]);
+    setlocalparamf("rcpsplit", SHPARAM_PIXEL, 4, 1.f / split[0], 1.f / split[1]);
+    timer_begin(TIMER_MERGING);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0,        0);        glVertex2i(-w, -h);
+    glTexCoord2f(float(w), 0);        glVertex2i(w, -h);
+    glTexCoord2f(0,        float(h)); glVertex2i(-w, h);
+    glTexCoord2f(float(w), float(h)); glVertex2i(w, h);
+    glEnd();
+    timer_end();
+    notextureshader->set();
+
+#endif
+}
+VAR(debugbuffersplit, 0, 0, 1);
+
+static int playsing_around_with_timer_queries_here;
 
 void gl_drawframe(int w, int h)
 {
-    if(gputimer && hasTQ)
-    {
-        timer_sync();
-        timer_print();
-    }
+    timer_sync();
+    timer_print();
 
     setupgbuffer(w, h);
     if(!shadowatlastex || !shadowatlasfbo) setupshadowatlas();
@@ -2009,7 +2080,7 @@ void gl_drawframe(int w, int h)
 
     // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
 
-    if(gputimer && hasTQ) timer_begin(TIMER_GBUFFER);
+    timer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
     glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
@@ -2017,7 +2088,7 @@ void gl_drawframe(int w, int h)
     rendergeom(causticspass);
     rendermapmodels();
     rendergame(true);
-    if(gputimer && hasTQ) timer_end();
+    timer_end();
 
     int deferred_weirdness_ends_here;
     
@@ -2031,7 +2102,7 @@ void gl_drawframe(int w, int h)
     //if(!limitsky()) drawskybox(farplane, false);
 
 #ifndef MORE_DEFERRED_WEIRDNESS
-    if(gputimer && hasTQ) timer_begin(TIMER_SM);
+    timer_begin(TIMER_SM);
 
     vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
     vector<shadowmapinfo> shadowmaps;
@@ -2255,7 +2326,7 @@ void gl_drawframe(int w, int h)
             rendermodelbatches();
         }   
     }
-    if(gputimer && hasTQ) timer_end();
+    timer_end();
 
     shadowmapping = false;
 
@@ -2278,7 +2349,7 @@ void gl_drawframe(int w, int h)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 
     CHECKERROR();
-    if(gputimer && hasTQ) timer_begin(TIMER_SHADING);
+    timer_begin(TIMER_SHADING);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
@@ -2404,7 +2475,7 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     glMatrixMode(GL_MODELVIEW);
-    if(gputimer && hasTQ) timer_end();
+    timer_end();
 
     defaultshader->set();
     CHECKERROR();
@@ -2461,7 +2532,7 @@ void gl_drawframe(int w, int h)
     gl_drawhud(w, h);
 
     renderedgame = false;
-    if (gputimer && hasTQ) timer_curr++; //  use next counters
+    timer_nextframe();
 }
 
 void gl_drawmainmenu(int w, int h)
@@ -2727,6 +2798,7 @@ void gl_drawhud(int w, int h)
     }
 
     if(debugshadowatlas) viewshadowatlas();
+    else if(debugbuffersplit) viewbuffersplitmerge();
 
     glEnable(GL_BLEND);
     
