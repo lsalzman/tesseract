@@ -621,9 +621,10 @@ static void timer_print()
     loopi(TIMER_N) {
         GLuint64 elapsed;
         glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &elapsed);
-        printf("%s %f ms%s", timer_string[i], float(elapsed) * 1e-6, (i+1 == TIMER_N) ? "" : ", ");
+        printf("%s %f ms%s", timer_string[i], float(elapsed) * 1e-6f, (i+1 == TIMER_N) ? "" : ", ");
     }
 }
+VAR(gputimer, 0, 0, 1);
 
 void gl_init(int w, int h, int bpp, int depth, int fsaa)
 {
@@ -1935,7 +1936,7 @@ static int plays_around_with_timer_queries_here;
 
 void gl_drawframe(int w, int h)
 {
-    if(hasTQ)
+    if(gputimer && hasTQ)
     {
         timer_sync();
         timer_print();
@@ -2008,7 +2009,7 @@ void gl_drawframe(int w, int h)
 
     // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
 
-    if(hasTQ) timer_begin(TIMER_GBUFFER);
+    if(gputimer && hasTQ) timer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
     glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
@@ -2016,7 +2017,7 @@ void gl_drawframe(int w, int h)
     rendergeom(causticspass);
     rendermapmodels();
     rendergame(true);
-    if(hasTQ) timer_end();
+    if(gputimer && hasTQ) timer_end();
 
     int deferred_weirdness_ends_here;
     
@@ -2030,7 +2031,7 @@ void gl_drawframe(int w, int h)
     //if(!limitsky()) drawskybox(farplane, false);
 
 #ifndef MORE_DEFERRED_WEIRDNESS
-    if(hasTQ) timer_begin(TIMER_SM);
+    if(gputimer && hasTQ) timer_begin(TIMER_SM);
 
     vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
     vector<shadowmapinfo> shadowmaps;
@@ -2254,7 +2255,7 @@ void gl_drawframe(int w, int h)
             rendermodelbatches();
         }   
     }
-    if(hasTQ) timer_end();
+    if(gputimer && hasTQ) timer_end();
 
     shadowmapping = false;
 
@@ -2277,7 +2278,7 @@ void gl_drawframe(int w, int h)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 
     CHECKERROR();
-    if(hasTQ) timer_begin(TIMER_SHADING);
+    if(gputimer && hasTQ) timer_begin(TIMER_SHADING);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
@@ -2403,7 +2404,7 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     glMatrixMode(GL_MODELVIEW);
-    if(hasTQ) timer_end();
+    if(gputimer && hasTQ) timer_end();
 
     defaultshader->set();
     CHECKERROR();
@@ -2460,7 +2461,7 @@ void gl_drawframe(int w, int h)
     gl_drawhud(w, h);
 
     renderedgame = false;
-    timer_curr++; //  use next counters
+    if (gputimer && hasTQ) timer_curr++; //  use next counters
 }
 
 void gl_drawmainmenu(int w, int h)
