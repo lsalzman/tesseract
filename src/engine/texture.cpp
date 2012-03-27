@@ -610,6 +610,7 @@ void createtexture(int tnum, int w, int h, void *pixels, int clamp, int filter, 
         case GL_RGB5:
         case GL_RGB8:
         case GL_RGB16:
+        case GL_RGB10:
         case GL_COMPRESSED_RGB_ARB:
         case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
             if(!format) format = GL_RGB;
@@ -617,6 +618,7 @@ void createtexture(int tnum, int w, int h, void *pixels, int clamp, int filter, 
 
         case GL_RGBA8:
         case GL_RGBA16:
+        case GL_RGB10_A2:
         case GL_COMPRESSED_RGBA_ARB:
         case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
         case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
