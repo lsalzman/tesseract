@@ -2,7 +2,8 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false;
+
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
@@ -32,6 +33,11 @@ PFNGLENDQUERYARBPROC          glEndQuery_          = NULL;
 PFNGLGETQUERYIVARBPROC        glGetQueryiv_        = NULL;
 PFNGLGETQUERYOBJECTIVARBPROC  glGetQueryObjectiv_  = NULL;
 PFNGLGETQUERYOBJECTUIVARBPROC glGetQueryObjectuiv_ = NULL;
+
+// GL_ARB_timer_query
+PFNGLGETQUERYOBJECTI64VPROC glGetQueryObjecti64v_  = NULL;
+PFNGLGETQUERYOBJECTUI64VPROC glGetQueryObjectui64v_ = NULL;
+PFNGLQUERYCOUNTERPROC glQueryCounter_ = NULL;
 
 // GL_EXT_framebuffer_object
 PFNGLBINDRENDERBUFFEREXTPROC        glBindRenderbuffer_        = NULL;
@@ -335,6 +341,22 @@ void gl_checkextensions()
         waterreflect = 0;
     }
 
+    if(hasext(exts, "GL_ARB_timer_query"))
+    {
+        glGetQueryiv_ =          (PFNGLGETQUERYIVARBPROC)       getprocaddress("glGetQueryivARB");
+        glGenQueries_ =          (PFNGLGENQUERIESARBPROC)       getprocaddress("glGenQueriesARB");
+        glDeleteQueries_ =       (PFNGLDELETEQUERIESARBPROC)    getprocaddress("glDeleteQueriesARB");
+        glBeginQuery_ =          (PFNGLBEGINQUERYARBPROC)       getprocaddress("glBeginQueryARB");
+        glEndQuery_ =            (PFNGLENDQUERYARBPROC)         getprocaddress("glEndQueryARB");
+        glGetQueryObjectiv_ =    (PFNGLGETQUERYOBJECTIVARBPROC) getprocaddress("glGetQueryObjectivARB");
+        glGetQueryObjectuiv_ =   (PFNGLGETQUERYOBJECTUIVARBPROC)getprocaddress("glGetQueryObjectuivARB");
+        glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VPROC)  getprocaddress("glGetQueryObjecti64v");
+        glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VPROC) getprocaddress("glGetQueryObjectui64v");
+        glQueryCounter_ =        (PFNGLQUERYCOUNTERPROC)        getprocaddress("glQueryCounter");
+        hasTQ = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_timer_query extension.");
+    }
+
     extern int batchlightmaps, fpdepthfx;
     if(ati)
     {
@@ -574,6 +596,44 @@ void glext(char *ext)
 }
 COMMAND(glext, "s");
 
+// GPU-side timing information will use OGL timers
+enum {TIMER_SM=0u, TIMER_GBUFFER=1u, TIMER_SHADING=2u, TIMER_N=3u};
+static const char *timer_string[] = {
+    "shadow map",
+    "gbuffer",
+    "deferred shading",
+};
+static const int timer_query_n = 4u;
+static GLuint timers[timer_query_n][TIMER_N];
+static int timer_curr = 0u;
+
+#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); exit(1);}} while(0)
+
+static void timer_sync()
+{
+    if(timer_curr - timer_query_n < 0) return;
+    const int curr = timer_curr % timer_query_n;
+    loopi(TIMER_N) {
+        GLint available = 0;
+        while(!available)
+            glGetQueryObjectiv_(timers[curr][i], GL_QUERY_RESULT_AVAILABLE, &available);
+    }
+}
+static inline void timer_begin(int whichone) { glBeginQuery_(GL_TIME_ELAPSED, timers[timer_curr % timer_query_n][whichone]); }
+static inline void timer_end() { glEndQuery_(GL_TIME_ELAPSED); }
+static void timer_print()
+{
+    if(timer_curr - timer_query_n < 0) return;
+    const int curr = timer_curr % timer_query_n;
+    printf("\r");
+    loopi(TIMER_N) {
+        GLuint64 elapsed;
+        glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &elapsed);
+        printf("%s %f ms%s", timer_string[i], float(elapsed) * 1e-6f, (i+1 == TIMER_N) ? "" : ", ");
+    }
+}
+VAR(gputimer, 0, 0, 1);
+
 void gl_init(int w, int h, int bpp, int depth, int fsaa)
 {
     glViewport(0, 0, w, h);
@@ -617,6 +677,8 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     conoutf(CON_INIT, "Rendering using the OpenGL %s path.", rpnames[renderpath]);
 
     setuptexcompress();
+
+    if(hasTQ) loopi(timer_query_n) glGenQueries_(TIMER_N, timers[i]);
 }
 
 void cleanupgl()
@@ -635,6 +697,8 @@ void cleanupgl()
 
     extern void cleanupshadowatlas();
     cleanupshadowatlas();
+
+    if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_N, timers[i]);
 }
 
 #define VARRAY_INTERNAL
@@ -1804,21 +1868,6 @@ void cleanupshadowatlas()
 
 VAR(debugshadowatlas, 0, 0, 1);
 
-void viewshadowatlas()
-{
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
-    defaultshader->set();
-    glColor3f(1, 1, 1);
-    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, 0); glVertex2i(0, 0);
-    glTexCoord2f(1, 0); glVertex2i(w, 0);
-    glTexCoord2f(0, 1); glVertex2i(0, h);
-    glTexCoord2f(1, 1); glVertex2i(w, h);
-    glEnd();
-    notextureshader->set();
-}
-
 const float cubeshadowviewmatrix[6][16] =
 {
     // sign-preserving cubemap projections
@@ -1931,8 +1980,49 @@ bool shadowmapping = false;
 
 plane smtetraclipplane;
 
+static inline void setsmgathermode() // use texture gather
+{
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+}
+
+static inline void setsmnongathermode() // use embedded shadow cmp
+{
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+}
+
+static inline bool usegatherforsm() { return smgather && (hasTG || hasT4); }
+
+void viewshadowatlas()
+{
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    defaultshader->set();
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
+    if(!usegatherforsm()) setsmgathermode(); // "normal" mode basically
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, 0); glVertex2i(0, 0);
+    glTexCoord2f(1, 0); glVertex2i(w, 0);
+    glTexCoord2f(0, 1); glVertex2i(0, h);
+    glTexCoord2f(1, 1); glVertex2i(w, h);
+    glEnd();
+    if(!usegatherforsm()) setsmnongathermode(); // "normal" mode basically
+    notextureshader->set();
+}
+
+static int plays_around_with_timer_queries_here;
+
 void gl_drawframe(int w, int h)
 {
+    if(gputimer && hasTQ)
+    {
+        timer_sync();
+        timer_print();
+    }
+
     setupgbuffer(w, h);
     if(!bloomfbo) setupbloom();
     if(!shadowatlasfbo) setupshadowatlas();
@@ -2001,6 +2091,7 @@ void gl_drawframe(int w, int h)
 
     // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
 
+    if(gputimer && hasTQ) timer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
     glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
@@ -2008,6 +2099,7 @@ void gl_drawframe(int w, int h)
     rendergeom(causticspass);
     rendermapmodels();
     rendergame(true);
+    if(gputimer && hasTQ) timer_end();
 
     int deferred_weirdness_ends_here;
     
@@ -2021,6 +2113,8 @@ void gl_drawframe(int w, int h)
     //if(!limitsky()) drawskybox(farplane, false);
 
 #ifndef MORE_DEFERRED_WEIRDNESS
+    if(gputimer && hasTQ) timer_begin(TIMER_SM);
+
     vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
     vector<shadowmapinfo> shadowmaps;
  
@@ -2243,6 +2337,7 @@ void gl_drawframe(int w, int h)
             rendermodelbatches();
         }   
     }
+    if(gputimer && hasTQ) timer_end();
 
     shadowmapping = false;
 
@@ -2264,6 +2359,9 @@ void gl_drawframe(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
 
+    CHECKERROR();
+    if(gputimer && hasTQ) timer_begin(TIMER_SHADING);
+
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
@@ -2273,18 +2371,7 @@ void gl_drawframe(int w, int h)
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE4_ARB);
     glBindTexture(GL_TEXTURE_2D, shadowatlastex);
-    if(smgather && (hasTG || hasT4))
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    }
-    else
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    }
+    if(usegatherforsm()) setsmgathermode(); else setsmnongathermode();
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
@@ -2401,6 +2488,7 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     glMatrixMode(GL_MODELVIEW);
+    if(gputimer && hasTQ) timer_end();
 
     defaultshader->set();
     CHECKERROR();
@@ -2521,6 +2609,7 @@ void gl_drawframe(int w, int h)
     gl_drawhud(w, h);
 
     renderedgame = false;
+    if (gputimer && hasTQ) timer_curr++; //  use next counters
 }
 
 void gl_drawmainmenu(int w, int h)
