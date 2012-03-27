@@ -38,6 +38,11 @@ extern PFNGLGETQUERYIVARBPROC        glGetQueryiv_;
 extern PFNGLGETQUERYOBJECTIVARBPROC  glGetQueryObjectiv_;
 extern PFNGLGETQUERYOBJECTUIVARBPROC glGetQueryObjectuiv_;
 
+// GL_ARB_timer_query
+extern PFNGLGETQUERYOBJECTI64VPROC glGetQueryObjecti64v_;
+extern PFNGLGETQUERYOBJECTUI64VPROC glGetQueryObjectui64v_;
+extern PFNGLQUERYCOUNTERPROC glQueryCounter_;
+
 // GL_EXT_framebuffer_object
 extern PFNGLBINDRENDERBUFFEREXTPROC        glBindRenderbuffer_;
 extern PFNGLDELETERENDERBUFFERSEXTPROC     glDeleteRenderbuffers_;
