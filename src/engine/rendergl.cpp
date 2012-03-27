@@ -1731,21 +1731,6 @@ void cleanupshadowatlas()
 
 VAR(debugshadowatlas, 0, 0, 1);
 
-void viewshadowatlas()
-{
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
-    defaultshader->set();
-    glColor3f(1, 1, 1);
-    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, 0); glVertex2i(0, 0);
-    glTexCoord2f(1, 0); glVertex2i(w, 0);
-    glTexCoord2f(0, 1); glVertex2i(0, h);
-    glTexCoord2f(1, 1); glVertex2i(w, h);
-    glEnd();
-    notextureshader->set();
-}
-
 const float cubeshadowviewmatrix[6][16] =
 {
     // sign-preserving cubemap projections
@@ -1857,6 +1842,40 @@ VAR(smnoshadow, 0, 0, 2);
 bool shadowmapping = false;
 
 plane smtetraclipplane;
+
+static inline void setsmgathermode() // use texture gather
+{
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+}
+
+static inline void setsmnongathermode() // use embedded shadow cmp
+{
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+}
+
+static inline bool usegatherforsm() { return smgather && (hasTG || hasT4); }
+
+void viewshadowatlas()
+{
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    defaultshader->set();
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
+    if(!usegatherforsm()) setsmgathermode(); // "normal" mode basically
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, 0); glVertex2i(0, 0);
+    glTexCoord2f(1, 0); glVertex2i(w, 0);
+    glTexCoord2f(0, 1); glVertex2i(0, h);
+    glTexCoord2f(1, 1); glVertex2i(w, h);
+    glEnd();
+    if(!usegatherforsm()) setsmnongathermode(); // "normal" mode basically
+    notextureshader->set();
+}
+
 
 void gl_drawframe(int w, int h)
 {
@@ -2202,18 +2221,7 @@ void gl_drawframe(int w, int h)
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE4_ARB);
     glBindTexture(GL_TEXTURE_2D, shadowatlastex);
-    if(smgather && (hasTG || hasT4))
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    }
-    else
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    }
+    if(usegatherforsm()) setsmgathermode(); else setsmnongathermode();
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
