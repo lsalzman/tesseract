@@ -1111,7 +1111,7 @@ void addshadowva(vtxarray *va, float dist)
 
 void sortshadowvas()
 {
-    visibleva = NULL;
+    shadowva = NULL;
     vtxarray **last = &shadowva;
     loopi(VASORTSIZE) if(vasort[i])
     {
