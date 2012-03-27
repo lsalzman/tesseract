@@ -343,10 +343,18 @@ void gl_checkextensions()
 
     if(hasext(exts, "GL_ARB_timer_query"))
     {
-        glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VPROC) getprocaddress("glGetQueryObjecti64v");
-        glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VPROC)getprocaddress("glGetQueryObjectui64v");
-        glQueryCounter_ = (PFNGLQUERYCOUNTERPROC)getprocaddress("glQueryCounter");
+        glGetQueryiv_ =          (PFNGLGETQUERYIVARBPROC)       getprocaddress("glGetQueryivARB");
+        glGenQueries_ =          (PFNGLGENQUERIESARBPROC)       getprocaddress("glGenQueriesARB");
+        glDeleteQueries_ =       (PFNGLDELETEQUERIESARBPROC)    getprocaddress("glDeleteQueriesARB");
+        glBeginQuery_ =          (PFNGLBEGINQUERYARBPROC)       getprocaddress("glBeginQueryARB");
+        glEndQuery_ =            (PFNGLENDQUERYARBPROC)         getprocaddress("glEndQueryARB");
+        glGetQueryObjectiv_ =    (PFNGLGETQUERYOBJECTIVARBPROC) getprocaddress("glGetQueryObjectivARB");
+        glGetQueryObjectuiv_ =   (PFNGLGETQUERYOBJECTUIVARBPROC)getprocaddress("glGetQueryObjectuivARB");
+        glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VPROC)  getprocaddress("glGetQueryObjecti64v");
+        glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VPROC) getprocaddress("glGetQueryObjectui64v");
+        glQueryCounter_ =        (PFNGLQUERYCOUNTERPROC)        getprocaddress("glQueryCounter");
         hasTQ = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_timer_query extension.");
     }
 
     extern int batchlightmaps, fpdepthfx;
@@ -713,6 +721,9 @@ void cleanupgl()
 
     extern void cleanupgbuffer();
     cleanupgbuffer();
+
+    extern void cleanupbloom();
+    cleanupbloom();
 
     extern void cleanupshadowatlas();
     cleanupshadowatlas();
@@ -1730,8 +1741,40 @@ void gl_drawhud(int w, int h);
 
 int xtraverts, xtravertsva;
 
+#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); } while(0)
+
 int gw = -1, gh = -1;
-GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0;
+GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo = 0, bloomtex[4] = { 0, 0, 0, 0 };
+
+extern int bloomsize;
+
+void setupbloom()
+{
+    loopi(4) if(!bloomtex[i]) glGenTextures(1, &bloomtex[i]);
+
+    if(!bloomfbo) glGenFramebuffers_(1, &bloomfbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo);
+
+    int size = 1<<bloomsize;
+    createtexture(bloomtex[0], max(gw/2, size), max(gh/2, size), NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[1], max(gw/4, size), max(gh/4, size), NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[2], size, size, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[3], size, size, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, bloomtex[0], 0);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating bloom buffer!");
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+}
+
+void cleanupbloom()
+{
+    if(bloomfbo) { glDeleteFramebuffers_(1, &bloomfbo); bloomfbo = 0; }
+    loopi(4) if(bloomtex[i]) { glDeleteTextures(1, &bloomtex[i]); bloomtex[i] = 0; }
+}
 
 void setupgbuffer(int w, int h)
 {
@@ -1765,7 +1808,23 @@ void setupgbuffer(int w, int h)
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) 
         fatal("failed allocating g-buffer!");
 
+    if(!hdrtex) glGenTextures(1, &hdrtex);
+
+    if(!hdrfbo) glGenFramebuffers_(1, &hdrfbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+
+    createtexture(hdrtex, gw, gh, NULL, 3, 1, GL_RGB10, GL_TEXTURE_RECTANGLE_ARB);
+
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, hdrtex, 0);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating HDR buffer!");
+
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    cleanupbloom();
 }
 
 void cleanupgbuffer()
@@ -1775,7 +1834,29 @@ void cleanupgbuffer()
     if(gcolortex) { glDeleteTextures(1, &gcolortex); gcolortex = 0; }
     if(gnormaltex) { glDeleteTextures(1, &gnormaltex); gnormaltex = 0; }
     if(gglowtex) { glDeleteTextures(1, &gglowtex); gglowtex = 0; }
+    if(hdrfbo) { glDeleteFramebuffers_(1, &hdrfbo); hdrfbo = 0; }
+    if(hdrtex) { glDeleteTextures(1, &hdrtex); hdrtex = 0; }
     gw = gh = -1;
+}
+
+VAR(hdr, 0, 1, 1);
+FVAR(hdrscale, 0.1f, 4.0f, 10.0f);
+FVAR(bloomthreshold, 0, 0.75f, 10.0f);
+FVAR(bloomscale, 0, 2.0f, 10.0f);
+FVAR(bloomprec, 0.1f, 1.0f, 10.0f);
+VAR(bloomblur, 0, 7, 7);
+VAR(bloomiter, 0, 0, 4);
+FVAR(bloomsigma, 0.005f, 0.5f, 2.0f);
+VARF(bloomsize, 6, 8, 10, cleanupbloom());
+
+void bloomquad(int sw, int sh)
+{
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(sw, 0), glVertex2f(1, -1);
+    glTexCoord2f(0, 0); glVertex2f(-1, -1);
+    glTexCoord2f(sw, sh); glVertex2f(1, 1);
+    glTexCoord2f(0, sh); glVertex2f(-1, 1);
+    glEnd();
 }
 
 #define SHADOWATLAS_SIZE 4096
@@ -2014,7 +2095,8 @@ void gl_drawframe(int w, int h)
     timer_print();
 
     setupgbuffer(w, h);
-    if(!shadowatlastex || !shadowatlasfbo) setupshadowatlas();
+    if(!bloomfbo) setupbloom();
+    if(!shadowatlasfbo) setupshadowatlas();
 
     defaultshader->set();
 
@@ -2346,10 +2428,15 @@ void gl_drawframe(int w, int h)
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
 
     CHECKERROR();
+<<<<<<< local
     timer_begin(TIMER_SHADING);
+=======
+    if(gputimer && hasTQ) timer_begin(TIMER_SHADING);
+
+>>>>>>> other
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
@@ -2410,10 +2497,11 @@ void gl_drawframe(int w, int h)
             else if(n > 0) deferredlightshader->setvariant(n-1, 0);
             else deferredlightshader->set();
 
+            float lightscale = (hdr ? 1/hdrscale : 1)/255.0f;
             if(!i)
             {
                 extern bvec ambientcolor;
-                setlocalparamf("lightscale", SHPARAM_PIXEL, 2, ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f, 1);
+                setlocalparamf("lightscale", SHPARAM_PIXEL, 2, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale);
             }
             else
             {
@@ -2426,7 +2514,7 @@ void gl_drawframe(int w, int h)
                 lighttile &t = lights[i+j];
                 extentity *l = t.ent;
                 setlocalparamf(lightpos[j], SHPARAM_PIXEL, 3 + 4*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 0.5f/worldsize);
-                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 4*j, l->attr2/255.0f, l->attr3/255.0f, l->attr4/255.0f);
+                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 4 + 4*j, l->attr2*lightscale, l->attr3*lightscale, l->attr4*lightscale);
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[lights[i+j].shadowmap];
@@ -2517,6 +2605,70 @@ void gl_drawframe(int w, int h)
     glDisable(GL_FOG);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
+
+#ifndef HDR_STUFF
+    if(hdr)
+    {
+        GLuint b0tex = bloomtex[0], b1tex = bloomtex[1];
+        int size = 1<<bloomsize, b0w = max(gw/2, size), b0h = max(gh/2, size), b1w = max(gw/4, size), b1h = max(gh/4, size);
+        CHECKERROR();
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b0tex, 0);
+        glViewport(0, 0, b0w, b0h);
+        SETSHADER(bloominit);
+        setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, hdrscale*bloomprec, bloomthreshold*bloomprec);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+        bloomquad(gw, gh);
+
+        for(int pw = b0w, ph = b0h;;)
+        {
+            int cw = max(pw/2, size), ch = max(ph/2, size);
+            if(cw == pw && ch == ph) break;
+            if(cw == size && ch == size)
+            {
+                b1tex = bloomtex[2];
+                b1w = b1h = size;
+            }
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b1tex, 0);
+            glViewport(0, 0, cw, ch);
+            SETSHADER(bloomreduce);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
+            bloomquad(pw, ph);
+            pw = cw;
+            ph = ch;
+            swap(b0tex, b1tex);
+            swap(b0w, b1w);
+            swap(b0h, b1h);
+        }
+    
+        float blurweights[MAXBLURRADIUS+1], bluroffsets[MAXBLURRADIUS+1];
+        setupblurkernel(bloomblur, bloomsigma, blurweights, bluroffsets);
+        b1tex = bloomtex[3];
+        b1w = b1h = size;
+        loopi(2 + 2*bloomiter)
+        {
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, b1tex, 0);
+            glViewport(0, 0, b1w, b1h);
+            setblurshader(i%2, 1, bloomblur, blurweights, bluroffsets, GL_TEXTURE_RECTANGLE_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
+            bloomquad(b0w, b0h);
+            swap(b0w, b1w);
+            swap(b0h, b1h);
+            swap(b0tex, b1tex);
+        } 
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+        glViewport(0, 0, w, h);
+        SETSHADER(hdrbloom);
+        setlocalparamf("bloomsize", SHPARAM_VERTEX, 0, b0w, b0h);
+        setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, hdrscale, bloomscale/bloomprec);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+        glActiveTexture(GL_TEXTURE1_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
+        glActiveTexture(GL_TEXTURE0_ARB); 
+        bloomquad(gw, gh);
+    }
+#endif
 
     //addmotionblur();
     //addglare();
