@@ -1741,8 +1741,6 @@ void gl_drawhud(int w, int h);
 
 int xtraverts, xtravertsva;
 
-#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); } while(0)
-
 int gw = -1, gh = -1;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo = 0, bloomtex[4] = { 0, 0, 0, 0 };
 
@@ -2431,12 +2429,7 @@ void gl_drawframe(int w, int h)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
 
     CHECKERROR();
-<<<<<<< local
     timer_begin(TIMER_SHADING);
-=======
-    if(gputimer && hasTQ) timer_begin(TIMER_SHADING);
-
->>>>>>> other
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
