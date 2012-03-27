@@ -1864,6 +1864,8 @@ VARF(bloomhdr, 0, 1, 1, cleanupbloom());
 VAR(bloominit, 0, 1, 1);
 FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
+FVAR(hdrtonemin, 0, 0.5f, 1000); 
+FVAR(hdrtonemax, 0, 1.5f, 1000);
 
 void bloomquad(int sw, int sh)
 {
@@ -2765,7 +2767,7 @@ void gl_drawframe(int w, int h)
         glViewport(0, 0, w, h);
         SETSHADER(hdrbloom);
         setlocalparamf("bloomsize", SHPARAM_VERTEX, 0, b0w, b0h);
-        setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, hdrscale, bloomscale/bloomprec);
+        setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, hdrscale, bloomscale/bloomprec, hdrtonemin, hdrtonemax);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
         glActiveTexture(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
