@@ -938,7 +938,7 @@ static const uint maxsplitn = 16;
 VAR(csmsplitn, 1, 3, maxsplitn);
 FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
 
-// The csm code is partly taken from the Nvidia opengl SDK
+// The csm code is partly taken from the nVidia OpenGL SDK
 struct frustum
 {
     float near, far, fov, ratio;
