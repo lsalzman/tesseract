@@ -143,6 +143,22 @@ struct vec
     }
 };
 
+#define DECL_OP(OP)                                                   \
+static inline vec operator OP (const vec &a, const vec &b) {          \
+    vec c; c.x=a.x OP b.x; c.y=a.y OP b.y; c.z=a.z OP b.z; return c;  \
+}                                                                     \
+static inline vec operator OP (float s, const vec &b) {               \
+    vec c; c.x=s OP b.x; c.y=s OP b.y; c.z=s OP b.z; return c;        \
+}                                                                     \
+static inline vec operator OP (const vec &a, float s) {               \
+    vec c; c.x=a.x OP s; c.y=a.y OP s; c.z=a.z OP s; return c;        \
+}
+DECL_OP(*)
+DECL_OP(/)
+DECL_OP(+)
+DECL_OP(-)
+#undef DECL_OP
+
 static inline bool htcmp(const vec &x, const vec &y)
 {
     return x == y;

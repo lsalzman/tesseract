@@ -4,6 +4,8 @@
 
 bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false;
 
+#define BEN_TEST_SPLITTING 1
+
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
@@ -662,7 +664,7 @@ static void timer_setup() {
     loopi(timer_query_n) glGenQueries_(TIMER_N, timers[i]);
     loopi(timer_query_n) loopj(TIMER_N) timer_used[i][j] = false;
 }
-static void timer_cleanup() { if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_N, timers[i]); }
+static void cleanuptimer() { if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_N, timers[i]); }
 
 void gl_init(int w, int h, int bpp, int depth, int fsaa)
 {
@@ -727,7 +729,7 @@ void cleanupgl()
     extern void cleanupshadowatlas();
     cleanupshadowatlas();
 
-    timer_cleanup();
+    cleanuptimer();
 }
 
 #define VARRAY_INTERNAL
@@ -930,6 +932,59 @@ void project(float fovy, float aspect, int farplane, bool flipx = false, bool fl
     GLdouble ydist = nearplane * tan(fovy/2*RAD), xdist = ydist * aspect;
     glFrustum(-xdist, xdist, -ydist, ydist, nearplane, farplane);
     glMatrixMode(GL_MODELVIEW);
+}
+
+static const uint maxsplitn = 16;
+VAR(csmsplitn, 1, 3, maxsplitn);
+FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
+
+// The csm code is partly taken from the Nvidia opengl SDK
+struct frustum
+{
+    float near, far, fov, ratio;
+    vec point[8];
+};
+
+static void updatefrustumpoints(frustum &f, vec &center, vec &viewdir)
+{
+    vec up(0.0f, 1.0f, 0.0f);
+    vec right; right.cross(viewdir,up);
+
+    vec fc = center + viewdir*f.far;
+    vec nc = center + viewdir*f.near;
+
+    right.normalize();
+    up.cross(right, viewdir);
+    up.normalize();
+
+    float near_height = tan(f.fov/2.0f) * f.near;
+    float near_width = near_height * f.ratio;
+    float far_height = tan(f.fov/2.0f) * f.far;
+    float far_width = far_height * f.ratio;
+
+    f.point[0] = nc - up*near_height - right*near_width;
+    f.point[1] = nc + up*near_height - right*near_width;
+    f.point[2] = nc + up*near_height + right*near_width;
+    f.point[3] = nc - up*near_height + right*near_width;
+    f.point[4] = fc - up*far_height - right*far_width;
+    f.point[5] = fc + up*far_height - right*far_width;
+    f.point[6] = fc + up*far_height + right*far_width;
+    f.point[7] = fc - up*far_height + right*far_width;
+}
+
+static void updatesplitdist(frustum *f, float nd, float fd)
+{
+    float lambda = csmsplitweight;
+    float ratio = fd/nd;
+    f[0].near = nd;
+
+    loopi(csmsplitn)
+    {
+        float si = i / (float)csmsplitn;
+        f[i].near = lambda*(nd*powf(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
+        f[i-1].far = f[i].near * 1.005f;
+    }
+    f[csmsplitn-1].far = fd;
 }
 
 vec calcavatarpos(const vec &pos, float dist)
@@ -2485,6 +2540,7 @@ void gl_drawframe(int w, int h)
     setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
     setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
 
+#if BEN_TEST_SPLITTING == 0 // Lee's original code ggoe
     loop(y, LIGHTTILE_H) loop(x, LIGHTTILE_W)
     {
         vector<lighttile> &lights = tiles[y][x];
@@ -2564,6 +2620,10 @@ void gl_drawframe(int w, int h)
             if(i >= lights.length()) break;
         }
     }
+#else
+
+
+#endif
 
     glDisable(GL_SCISSOR_TEST);
 
