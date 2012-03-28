@@ -4,8 +4,6 @@
 
 bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false;
 
-#define BEN_TEST_SPLITTING 1
-
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
@@ -938,6 +936,7 @@ static const uint maxsplitn = 16;
 VAR(csmsplitn, 1, 3, maxsplitn);
 FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
 
+#if 0
 // The csm code is partly taken from the nVidia OpenGL SDK
 struct frustum
 {
@@ -986,6 +985,7 @@ static void updatesplitdist(frustum *f, float nd, float fd)
     }
     f[csmsplitn-1].far = fd;
 }
+#endif
 
 vec calcavatarpos(const vec &pos, float dist)
 {
@@ -2540,7 +2540,6 @@ void gl_drawframe(int w, int h)
     setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
     setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
 
-#if BEN_TEST_SPLITTING == 0 // Lee's original code ggoe
     loop(y, LIGHTTILE_H) loop(x, LIGHTTILE_W)
     {
         vector<lighttile> &lights = tiles[y][x];
@@ -2620,10 +2619,6 @@ void gl_drawframe(int w, int h)
             if(i >= lights.length()) break;
         }
     }
-#else
-
-
-#endif
 
     glDisable(GL_SCISSOR_TEST);
 
