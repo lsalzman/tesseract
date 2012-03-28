@@ -654,7 +654,7 @@ static void timer_print(int conw, int conh)
         if(!timer_used[curr][i]) continue;
         GLuint64 elapsed;
         glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &elapsed);
-        draw_textf("%s %3.2f ms", conw-30*FONTH, conh-FONTH*(i+1)*3/2, timer_string[i], float(elapsed) * 1e-6f);
+        draw_textf("%s %3.2f ms", conw-30*FONTH, conh-FONTH*3/2-i*9*FONTH/8, timer_string[i], float(elapsed) * 1e-6f);
     }
 }
 static void timer_setup() {
