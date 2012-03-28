@@ -644,7 +644,7 @@ static inline void timer_nextframe()
 {
     if (gputimer && hasTQ) timer_curr++;
 }
-static void timer_print()
+static void timer_print(int conw, int conh)
 {
     if(!gputimer || !hasTQ) return;
     if(timer_curr - timer_query_n < 0) return;
@@ -655,7 +655,8 @@ static void timer_print()
         if(!timer_used[curr][i]) continue;
         GLuint64 elapsed;
         glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &elapsed);
-        printf("%s %f ms ", timer_string[i], float(elapsed) * 1e-6f);
+        draw_textf("%s %3.2f ms", conw-30*FONTH, conh-FONTH*(i+1)*3/2, timer_string[i], float(elapsed) * 1e-6f);
+        //printf("%s %f ms ", );
     }
 }
 static void timer_setup() {
@@ -2110,7 +2111,6 @@ static int playsing_around_with_timer_queries_here;
 void gl_drawframe(int w, int h)
 {
     timer_sync();
-    timer_print();
 
     setupgbuffer(w, h);
     if(!bloomfbo[0] || !bloomfbo[1]) setupbloom(w, h);
@@ -3095,6 +3095,8 @@ void gl_drawhud(int w, int h)
                 else draw_textf("fps %d", conw-5*FONTH, conh-FONTH*3/2, curfps[0]);
                 roffset += FONTH;
             }
+
+            if(gputimer) timer_print(conw, conh);
 
             if(wallclock)
             {
