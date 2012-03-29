@@ -1795,10 +1795,10 @@ void gl_drawhud(int w, int h);
 
 int xtraverts, xtravertsva;
 
-int gw = -1, gh = -1, bloomw = -1, bloomh = -1;
+int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 };
 
-extern int bloomsize, bloomhdr;
+extern int bloomsize, bloomprec;
 
 void setupbloom(int w, int h)
 {
@@ -1814,7 +1814,7 @@ void setupbloom(int w, int h)
 
     loopi(5) if(!bloomfbo[i]) glGenFramebuffers_(1, &bloomfbo[i]);
 
-    GLenum format = bloomhdr ? GL_RGB10 : GL_RGB;
+    GLenum format = bloomprec ? GL_RGB10 : GL_RGB;
     createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
@@ -1838,6 +1838,7 @@ void cleanupbloom()
     loopi(5) if(bloomfbo[i]) { glDeleteFramebuffers_(1, &bloomfbo[i]); bloomfbo[i] = 0; }
     loopi(5) if(bloomtex[i]) { glDeleteTextures(1, &bloomtex[i]); bloomtex[i] = 0; }
     bloomw = bloomh = -1;
+    lasthdraccum = 0;
 }
 
 void setupgbuffer(int w, int h)
@@ -1904,24 +1905,21 @@ void cleanupgbuffer()
 }
 
 VAR(hdr, 0, 1, 1);
-FVAR(hdrscale, 0.1f, 4.0f, 10.0f);
-FVAR(bloomthreshold, 0, 0.75f, 10.0f);
-FVAR(bloomscale, 0, 2.0f, 10.0f);
-FVAR(bloomprec, 0.1f, 1.0f, 10.0f);
-VAR(bloomreduce, 0, 1, 1);
-VAR(bloomblit, 0, 1, 1);
+FVAR(bloomthreshold, 0, 1.5f, 10.0f);
+FVAR(bloomscale, 0, 1.0f, 10.0f);
 VAR(bloomblur, 0, 7, 7);
 VAR(bloomiter, 0, 0, 4);
 FVAR(bloomsigma, 0.005f, 0.5f, 2.0f);
 VARF(bloomsize, 6, 8, 10, cleanupbloom());
-VARF(bloomhdr, 0, 1, 1, cleanupbloom());
-VAR(bloominit, 0, 1, 1);
+VARF(bloomprec, 0, 1, 1, cleanupbloom());
 FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
-FVAR(hdrtonemin, 0, 0.5f, 1000); 
-FVAR(hdrtonemax, 0, 1.5f, 1000);
+VAR(hdrreduce, 0, 2, 2);
 
-void bloomquad(int sw, int sh)
+FVARR(hdrbright, 1e-3f, 0.18f, 1e3f);
+FVARR(bloombright, 1e-3f, 2.0f, 1e3f);
+
+void hdrquad(int sw, int sh)
 {
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(sw, 0), glVertex2f(1, -1);
@@ -2563,7 +2561,7 @@ void gl_drawframe(int w, int h)
             else if(n > 0) deferredlightshader->setvariant(n-1, 0);
             else deferredlightshader->set();
 
-            float lightscale = (hdr ? 1/hdrscale : 1)/255.0f;
+            float lightscale = (hdr ? 0.25f : 1)/255.0f;
             if(!i)
             {
                 extern bvec ambientcolor;
@@ -2675,48 +2673,29 @@ void gl_drawframe(int w, int h)
 #ifndef HDR_STUFF
     if(hdr)
     {
-        GLuint b0fbo = bloomfbo[0], b0tex = bloomtex[0], b1fbo =  bloomfbo[1], b1tex = bloomtex[1];
-        int b0w = bloomreduce ? max(gw/2, bloomw) : bloomw, b0h = bloomreduce ? max(gh/2, bloomh) : bloomh, b1w = max(gw/4, bloomw), b1h = max(gh/4, bloomh),
-            pw = bloomreduce ? b0w : bloomw, ph = bloomreduce ? b0h : bloomh;
+        GLuint b0fbo = bloomfbo[1], b0tex = bloomtex[1], b1fbo =  bloomfbo[0], b1tex = bloomtex[0], ptex = hdrtex;
+        int b0w = max(gw/4, bloomw), b0h = max(gh/4, bloomh), b1w = max(gw/2, bloomw), b1h = max(gh/2, bloomh),
+            pw = gw, ph = gh;
         CHECKERROR();
-        bool reduced = false;
-        if(bloomreduce && (b1w < b0w || b1h < b0h))
+        if(hdrreduce) while(pw > bloomw || ph > bloomh)
         {
-            if(hasFBB && bloomblit)
-            {
-                glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, hdrfbo);
-                glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, b0fbo);
-                glBlitFramebuffer_(0, 0, gw, gh, 0, 0, pw, ph, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-            }
-            else
-            {
-                glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
-                glViewport(0, 0, pw, ph);
-                SETSHADER(bloomreduce);
-                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
-                bloomquad(gw, gh);
-            }
-            reduced = true;
-        }
-
-        if(bloomreduce) for(;; reduced = true)
-        {
+            GLuint cfbo = b1fbo, ctex = b1tex;
             int cw = max(pw/2, bloomw), ch = max(ph/2, bloomh);
-            if(cw == bloomw && ch == bloomh) break; 
-            if(hasFBB && bloomblit)
+            if(cw == bloomw && ch == bloomh) { cfbo = bloomfbo[2]; ctex = bloomtex[2]; } 
+
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, cfbo);
+            if(hdrreduce > 1 && cw/2 >= bloomw && ch/2 >= bloomh)
             {
-                glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, b0fbo);
-                glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, b1fbo);
-                glBlitFramebuffer_(0, 0, pw, ph, 0, 0, cw, ch, GL_COLOR_BUFFER_BIT, GL_LINEAR); 
+                cw /= 2;
+                ch /= 2;
+                SETSHADER(hdrreduce2);
             }
-            else
-            {
-                glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b1fbo);
-                glViewport(0, 0, cw, ch);
-                SETSHADER(bloomreduce);
-                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-                bloomquad(pw, ph);
-            }
+            else SETSHADER(hdrreduce);
+            glViewport(0, 0, cw, ch);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
+            hdrquad(pw, ph);
+
+            ptex = ctex;
             pw = cw;
             ph = ch;
             swap(b0fbo, b1fbo);
@@ -2724,37 +2703,67 @@ void gl_drawframe(int w, int h)
             swap(b0w, b1w);
             swap(b0h, b1h);
         }
-  
-        GLuint h0fbo = b0fbo, h0tex = b0tex, h1fbo = b1fbo, h1tex = b1tex;
-        int h0w = b0w, h0h = b0h, h1w = b1w, h1h = b1h;
+ 
+        if(!lasthdraccum || lastmillis - lasthdraccum >= hdraccummillis)
+        {
+            GLuint ltex = ptex;
+            int lw = pw, lh = ph;
+            for(int i = 0; lw > 2 || lh > 2; i++)
+            {
+                int cw = max(lw/2, 2), ch = max(lh/2, 2);
+                    
+                glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b1fbo);
+                if(hdrreduce > 1 && cw/2 >= bloomw && ch/2 >= bloomh)
+                {
+                    cw /= 2;
+                    ch /= 2;
+                    if(i) SETSHADER(hdrreduce2); else SETSHADER(hdrluminance2);
+                }
+                else if(i) SETSHADER(hdrreduce); else SETSHADER(hdrluminance);
+                glViewport(0, 0, cw, ch);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ltex);
+                hdrquad(lw, lh);
 
+                ltex = b1tex;
+                lw = cw;
+                lh = ch;
+                swap(b0fbo, b1fbo);
+                swap(b0tex, b1tex);
+                swap(b0w, b1w);
+                swap(b0h, b1h);
+            }
+
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo[4]);
+            glViewport(0, 0, 1, 1);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
+            SETSHADER(hdraccum);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
+            setlocalparamf("accumscale", SHPARAM_PIXEL, 0, lasthdraccum ? pow(hdraccumscale, float(lastmillis - lasthdraccum)/hdraccummillis) : 0);
+            hdrquad(2, 2);
+            glDisable(GL_BLEND);
+
+            lasthdraccum = lastmillis;
+        }
+ 
+        b0fbo = bloomfbo[3];
+        b0tex = bloomtex[3];
         b1fbo = bloomfbo[2];
         b1tex = bloomtex[2];
-        b1w = bloomw;
-        b1h = bloomh;
+        b0w = b1w = bloomw;
+        b0h = b1h = bloomh;
  
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b1fbo);
-        glViewport(0, 0, b1w, b1h);
-        SETSHADER(bloominit);
-        setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, hdrscale*bloomprec, bloomthreshold*bloomprec);
-        if(reduced)
-        {
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-            bloomquad(b0w, b0h);
-        }
-        else
-        {
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
-            bloomquad(gw, gh);
-        }
-        b0fbo = b1fbo;
-        b0tex = b1tex;
-        b0w = b1w;
-        b0h = b1h;
-        b1fbo = bloomfbo[3];
-        b1tex = bloomtex[3];
-        b1w = bloomw;
-        b1h = bloomh;
+        glActiveTexture_(GL_TEXTURE2_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomtex[4]);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
+        glViewport(0, 0, b0w, b0h);
+        SETSHADER(hdrbloom);
+        setlocalparamf("bloomparams", SHPARAM_VERTEX, 0, -bloombright, bloomthreshold*bloombright/hdrbright);
+        setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, -bloombright, bloomthreshold*bloombright/hdrbright);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
+        hdrquad(pw, ph);
 
         if(bloomblur)
         {
@@ -2766,7 +2775,7 @@ void gl_drawframe(int w, int h)
                 glViewport(0, 0, b1w, b1h);
                 setblurshader(i%2, 1, bloomblur, blurweights, bluroffsets, GL_TEXTURE_RECTANGLE_ARB);
                 glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-                bloomquad(b0w, b0h);
+                hdrquad(b0w, b0h);
                 swap(b0w, b1w);
                 swap(b0h, b1h);
                 swap(b0tex, b1tex);
@@ -2774,60 +2783,17 @@ void gl_drawframe(int w, int h)
             }  
         }
 
-        
-        static int lastaccum = 0;
-        if(!lastaccum || lastmillis - lastaccum >= hdraccummillis)
-        {
-            while(pw > 2 || ph > 2) 
-            {
-                int cw = max(pw/2, 2), ch = max(ph/2, 2);
-                if(hasFBB && bloomblit)
-                {
-                    glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, h0fbo);
-                    glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, h1fbo);
-                    glBlitFramebuffer_(0, 0, pw, ph, 0, 0, cw, ch, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-                }
-                else
-                {
-                    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, h1fbo);
-                    glViewport(0, 0, cw, ch);
-                    SETSHADER(bloomreduce);
-                    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, h0tex);
-                    bloomquad(pw, ph);
-                }
-                pw = cw;
-                ph = ch;
-                swap(h0fbo, h1fbo);
-                swap(h0tex, h1tex);
-                swap(h0w, h1w);
-                swap(h0h, h1h);
-            }
-
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo[4]);
-            glViewport(0, 0, 1, 1);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
-            SETSHADER(hdraccum);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, h0tex);
-            setlocalparamf("accumscale", SHPARAM_PIXEL, 0, lastaccum ? pow(hdraccumscale, float(lastmillis - lastaccum)/hdraccummillis) : 0);
-            bloomquad(2, 2);
-            glDisable(GL_BLEND);
-
-            lastaccum = lastmillis;
-        }
-
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
         glViewport(0, 0, w, h);
-        SETSHADER(hdrbloom);
+        SETSHADER(hdrtonemap);
         setlocalparamf("bloomsize", SHPARAM_VERTEX, 0, b0w, b0h);
-        setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, hdrscale, bloomscale/bloomprec, hdrtonemin, hdrtonemax);
+        setlocalparamf("hdrparams", SHPARAM_VERTEX, 1, -hdrbright, bloomscale);
+        setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, -hdrbright, bloomscale);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
         glActiveTexture(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-        glActiveTexture(GL_TEXTURE2_ARB);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomtex[4]);
         glActiveTexture(GL_TEXTURE0_ARB); 
-        bloomquad(gw, gh);
+        hdrquad(gw, gh);
     }
 #endif
 
