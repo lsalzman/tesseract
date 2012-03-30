@@ -1,6 +1,7 @@
 // rendergl.cpp: core opengl rendering stuff
 
 #include "engine.h"
+#include <cfloat>
 
 bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false;
 
@@ -907,6 +908,7 @@ void recomputecamera()
 }
 
 extern const glmatrixf viewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, 1, 0), vec4(0, -1, 0, 0));
+extern const glmatrixf invviewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, -1, 0), vec4(0, 1, 0, 0));
 glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix;
 
 void readmatrices()
@@ -932,60 +934,6 @@ void project(float fovy, float aspect, int farplane, bool flipx = false, bool fl
     glMatrixMode(GL_MODELVIEW);
 }
 
-static const uint maxsplitn = 16;
-VAR(csmsplitn, 1, 3, maxsplitn);
-FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
-
-#if 0
-// The csm code is partly taken from the nVidia OpenGL SDK
-struct frustum
-{
-    float near, far, fov, ratio;
-    vec point[8];
-};
-
-static void updatefrustumpoints(frustum &f, vec &center, vec &viewdir)
-{
-    vec up(0.0f, 1.0f, 0.0f);
-    vec right; right.cross(viewdir,up);
-
-    vec fc = center + viewdir*f.far;
-    vec nc = center + viewdir*f.near;
-
-    right.normalize();
-    up.cross(right, viewdir);
-    up.normalize();
-
-    float near_height = tan(f.fov/2.0f) * f.near;
-    float near_width = near_height * f.ratio;
-    float far_height = tan(f.fov/2.0f) * f.far;
-    float far_width = far_height * f.ratio;
-
-    f.point[0] = nc - up*near_height - right*near_width;
-    f.point[1] = nc + up*near_height - right*near_width;
-    f.point[2] = nc + up*near_height + right*near_width;
-    f.point[3] = nc - up*near_height + right*near_width;
-    f.point[4] = fc - up*far_height - right*far_width;
-    f.point[5] = fc + up*far_height - right*far_width;
-    f.point[6] = fc + up*far_height + right*far_width;
-    f.point[7] = fc - up*far_height + right*far_width;
-}
-
-static void updatesplitdist(frustum *f, float nd, float fd)
-{
-    float lambda = csmsplitweight;
-    float ratio = fd/nd;
-    f[0].near = nd;
-
-    loopi(csmsplitn)
-    {
-        float si = i / (float)csmsplitn;
-        f[i].near = lambda*(nd*powf(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
-        f[i-1].far = f[i].near * 1.005f;
-    }
-    f[csmsplitn-1].far = fd;
-}
-#endif
 
 vec calcavatarpos(const vec &pos, float dist)
 {
@@ -2112,6 +2060,164 @@ void viewshadowatlas()
 }
 VAR(debugshadowatlas, 0, 0, 1);
 
+static const uint csmmaxsplitn = 8, csmminsplitn = 1;
+VAR(csmsplitn, csmminsplitn, 3, csmmaxsplitn);
+FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
+
+static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort y, int size, int &idx)
+{
+    idx = sms.length();
+    shadowmapinfo *sm = &sms.add();
+    sm->x = x;
+    sm->y = y;
+    sm->size = size;
+    sm->query = NULL;
+    return sm;
+}
+
+static void sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
+{
+    extern int skylight;
+    if(skylight == 0) return; // no sunlight
+    loopi(csmsplitn)
+    {
+        ushort smx = USHRT_MAX, smy = USHRT_MAX;
+        const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
+        if(!inserted) fatal("cascaded shadow maps MUST be packed");
+        shadowmapinfo *sm = addshadowmap(sms, smx, smy, smmaxsize, csmidx[i]);
+        sm->ent = NULL;
+    }
+}
+
+struct splitfrustum
+{
+    vec point[8];
+    float near, far;
+};
+
+static void updatefrustumpoints(splitfrustum &f, const vec &pos, const vec &view, const vec &up, const vec &right)
+{
+    const vec fc = pos + view*f.far;
+    const vec nc = pos + view*f.near;
+    float near_height = tanf(curfov/2.0f) * f.near;
+    float far_height = tanf(curfov/2.0f) * f.far;
+    float near_width = near_height * aspect;
+    float far_width = far_height * aspect;
+    f.point[0] = nc - up*near_height - right*near_width;
+    f.point[1] = nc + up*near_height - right*near_width;
+    f.point[2] = nc + up*near_height + right*near_width;
+    f.point[3] = nc - up*near_height + right*near_width;
+    f.point[4] = fc - up*far_height - right*far_width;
+    f.point[5] = fc + up*far_height - right*far_width;
+    f.point[6] = fc + up*far_height + right*far_width;
+    f.point[7] = fc - up*far_height + right*far_width;
+}
+
+static void updatesplitdist(splitfrustum *f, float nd, float fd)
+{
+    float lambda = csmsplitweight;
+    float ratio = fd/nd;
+    f[0].near = nd;
+
+    for(int i = 1; i < csmsplitn; ++i)
+    {
+        float si = i / (float)csmsplitn;
+        f[i].near = lambda*(nd*powf(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
+        f[i-1].far = f[i].near * 1.005f;
+    }
+    f[csmsplitn-1].far = fd;
+}
+
+static inline void snap(vec &minv, vec &maxv, float radius)
+{
+    radius *= 2.f;
+    const float smdim = float(smmaxsize);
+    maxv.x *= smdim/radius; maxv.x = float(int(maxv.x)) / smdim*radius;
+    minv.x *= smdim/radius; minv.x = float(int(minv.x)) / smdim*radius;
+    maxv.y *= smdim/radius; maxv.y = float(int(maxv.y)) / smdim*radius;
+    minv.y *= smdim/radius; minv.y = float(int(minv.y)) / smdim*radius;
+}
+
+static void sunlightgetmatrix(glmatrixf *model, glmatrixf *proj)
+{
+    extern float sunlightyaw, sunlightpitch;
+    glmatrixf light_model, player_model;
+    splitfrustum f[csmmaxsplitn];
+    vec pos, view, up, right;
+    vec lightview(sunlightyaw, sunlightpitch), lightup, lightright;
+    lightview.normalize();
+    lightup.orthogonal(lightview);
+    lightup.normalize();
+    lightright.cross(lightview, lightup);
+    lightup.cross(lightright, lightview);
+
+    light_model.identity();
+    light_model.mul(viewmatrix);
+    light_model.rotate(sunlightpitch*RAD, vec(-1.f, 0.f, 0.f));
+    light_model.rotate(sunlightyaw*RAD, vec(0.f, 0.f, -1.f));
+
+    // compute the split frustums
+    pos = camera1->o;
+    player_model.identity();
+    player_model.rotate(camera1->yaw*RAD, vec(0.f, 0.f, 1.f));
+    player_model.rotate(camera1->pitch*RAD, vec(1.f, 0.f, 0.f));
+    player_model.rotate(camera1->roll*RAD, vec(0.f, -1.f, 0.f));
+    player_model.mul(invviewmatrix);
+    player_model.transform(vec(0.f,0.f,-1.f), view);
+    player_model.transform(vec(0.f,1.f,0.f), up);
+    player_model.transform(vec(1.f,0.f,0.f), right);
+    updatesplitdist(f, nearplane, float(farplane));
+    loopi(csmsplitn) updatefrustumpoints(f[i], pos, view, up, right);
+#if 0
+    printf("\rup %f %f %f view %f %f %f right %f %f %f pos %f %f %f far %d           ",
+            up.x, up.y, up.z,
+            view.x, view.y, view.z,
+            right.x, right.y, right.z,
+            pos.x,pos.y,pos.z, farplane);
+#endif
+    // compute each split projection matrix
+    loopi(csmsplitn)
+    {
+        vec c(0.f); // barycenter of the frustum
+        loopj(8) c.add(f[i].point[j]);
+        c.mul(1.f / 8.f);
+        float radius = 0.f; // radius of the bounding sphere
+        loopj(8) radius = ::max(c.dist2(f[i].point[j]), radius);
+        radius = sqrtf(radius);
+        vec minv, maxv;
+        minv.z = -worldsize, maxv.z = worldsize;
+
+        // compute the projected bounding box of the sphere
+        glmatrixf mvp;
+        mvp.ortho(-1.0f, 1.0f, -1.0f, 1.0f, -maxv.z, -minv.z);
+        mvp.mul(light_model);
+        const vec p = c + radius * lightright;
+        vec4 tp, tc;
+        mvp.transform(vec4(p,1.f), tp);
+        mvp.transform(vec4(c,1.f), tc);
+        tp.x /= tp.w; tp.y /= tp.w;
+        tc.x /= tc.w; tc.y /= tc.w;
+        const float dx = tp.x-tc.x, dy = tp.y-tc.y;
+        const float pradius = sqrtf(dx*dx+dy*dy);
+        minv.x = tc.x - pradius;
+        minv.y = tc.y - pradius;
+        maxv.x = tc.x + pradius;
+        maxv.y = tc.y + pradius;
+        snap(minv, maxv, radius);
+
+        // modify mvp with a scale and offset
+        const vec2 scale(2.0f/(maxv.x-minv.x), 2.0f/(maxv.y-minv.y));
+        const vec2 offset(-0.5f*(maxv.x+minv.x)*scale.x,-0.5f*(maxv.y+minv.y)*scale.y);
+
+        // now compute the update model view matrix for this split
+        proj[i].identity();
+        proj[i](0,0) = scale.x;
+        proj[i](1,1) = scale.y;
+        proj[i](0,3) = offset.x;
+        proj[i](1,3) = offset.y;
+    }
+}
+
 static int playing_around_with_buffer_splitting;
 void viewbuffersplitmerge()
 {
@@ -2162,6 +2268,9 @@ static int playsing_around_with_timer_queries_here;
 void gl_drawframe(int w, int h)
 {
     timer_sync();
+
+    glmatrixf splitproj[csmmaxsplitn], splitmodel[csmmaxsplitn];
+    sunlightgetmatrix(splitproj, splitmodel);
 
     setupgbuffer(w, h);
     if(!bloomfbo[0] || !bloomfbo[1]) setupbloom(w, h);
@@ -2294,13 +2403,8 @@ void gl_drawframe(int w, int h)
         int smidx = -1;
         if(smnoshadow <= 1 && smradius > smminradius && shadowatlaspacker.insert(smx, smy, smw, smh))
         {
-            smidx = shadowmaps.length();
-            sm = &shadowmaps.add();
-            sm->x = smx;
-            sm->y = smy;
-            sm->size = smsize;
+            sm = addshadowmap(shadowmaps, smx, smy, smsize, smidx);
             sm->ent = l;
-            sm->query = NULL;
             if(smquery && l->attr1 > 0)
             {
                 ivec bo = ivec(l->o).sub(l->attr1), br(l->attr1*2+1, l->attr1*2+1, l->attr1*2+1);

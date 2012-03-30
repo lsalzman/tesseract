@@ -229,6 +229,22 @@ struct vec4
     void setxyz(const vec &v) { x = v.x; y = v.y; z = v.z; }
 };
 
+#define VEC4_OP(OP)                                                   \
+static inline vec4 operator OP (const vec4 &a, const vec4 &b) {       \
+    return vec4(a.x OP b.x, a.y OP b.y, a.z OP b.z, a.w OP b.w);      \
+}                                                                     \
+static inline vec4 operator OP (float s, const vec4 &b) {             \
+    return vec4(s OP b.x, s OP b.y, s OP b.z, s OP b.w);              \
+}                                                                     \
+static inline vec4 operator OP (const vec4 &a, float s) {             \
+    return vec4(a.x OP s, a.y OP s, a.z OP s, a.w OP s);              \
+}
+VEC4_OP(*)
+VEC4_OP(/)
+VEC4_OP(+)
+VEC4_OP(-)
+#undef VEC4_OP
+
 inline vec::vec(const vec4 &v) : x(v.x), y(v.y), z(v.z) {}
 
 struct vec2
@@ -1103,6 +1119,8 @@ struct glmatrixf
         v[12] = m.a.w; v[13] = m.b.w; v[14] = m.c.w; v[15] = 1.0f;
     }
 
+    float &operator()(int row, int col) { return v[row+col*4];}
+    float operator()(int row, int col) const { return v[row+col*4];}
     float operator[](int i) const { return v[i]; }
     float &operator[](int i) { return v[i]; }
 
@@ -1265,6 +1283,17 @@ struct glmatrixf
     {
         float ydist = znear * tan(fovy/2*RAD), xdist = ydist * aspect;
         frustum(-xdist, xdist, -ydist, ydist, znear, zfar);
+    }
+
+    void ortho(float left, float right, float bottom, float top, float near, float far)
+    {
+        const float tx = -(right+left) / (right-left);
+        const float ty = -(top+bottom) / (top-bottom);
+        const float tz = -(far+near) / (far-near);
+        v[0] = 2.f/(right-left); v[4] = 0.f;              v[8] = 0.f;              v[12] = tx;
+        v[1] = 0.f;              v[5] = 2.f/(top-bottom); v[9] = 0.f;              v[13] = ty;
+        v[2] = 0.f;              v[6] = 0.f;              v[10] = -2.f/(far-near); v[14] = tz;
+        v[3] = 0.f;              v[7] = 0.f;              v[11] = 0.f;             v[15] = 1.f;
     }
 
     void clip(const plane &p, const glmatrixf &m)
