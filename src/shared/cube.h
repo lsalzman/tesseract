@@ -22,6 +22,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <float.h>
 #include <assert.h>
 #include <time.h>
 
