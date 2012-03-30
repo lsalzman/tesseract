@@ -148,7 +148,7 @@ struct flarerenderer : partrenderer
             flare *f = flares+i;
             vec center = f->center;
             vec axis = vec(f->o).sub(center);
-            uchar color[4] = {f->color[0], f->color[1], f->color[2], 255};
+            float colorscale = (hdr ? 0.25f : 1)/255.0f, color[4] = {f->color[0]*colorscale, f->color[1]*colorscale, f->color[2]*colorscale, 1};
             loopj(f->sparkle?12:9)
             {
                 const flaretype &ft = flaretypes[j];
@@ -164,8 +164,8 @@ struct flarerenderer : partrenderer
                     color[2] = 0;
                     color[-ft.type-1] = f->color[-ft.type-1]; //only want a single channel
                 }
-                color[3] = ft.alpha;
-                glColor4ubv(color);
+                color[3] = ft.alpha/255.0f;
+                glColor4fv(color);
                 const float tsz = 0.25; //flares are aranged in 4x4 grid
                 float tx = tsz*(tex&0x03);
                 float ty = tsz*((tex>>2)&0x03);

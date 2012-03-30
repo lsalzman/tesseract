@@ -213,7 +213,7 @@ static void drawexpverts(int numverts, int numindices, GLushort *indices)
     glde++;
 }
 
-static void drawexplosion(bool inside, uchar r, uchar g, uchar b, uchar a)
+static void drawexplosion(bool inside, float r, float g, float b, float a)
 {
     if(lastexpmodtex != expmodtex[inside ? 1 : 0])
     {
@@ -228,7 +228,7 @@ static void drawexplosion(bool inside, uchar r, uchar g, uchar b, uchar a)
         if(inside) glScalef(1, 1, -1);
         loopi(passes)
         {
-            glColor4ub(r, g, b, i ? a/2 : a);
+            glColor4f(r, g, b, i ? a/2 : a);
             if(i) glDepthFunc(GL_GEQUAL);
             drawexpverts(spherenumverts, spherenumindices, sphereindices);
             if(i) glDepthFunc(GL_LESS);
@@ -237,7 +237,7 @@ static void drawexplosion(bool inside, uchar r, uchar g, uchar b, uchar a)
     }
     loopi(passes)
     {
-        glColor4ub(r, g, b, i ? a/2 : a);
+        glColor4f(r, g, b, i ? a/2 : a);
         if(i)
         {
             glScalef(1, 1, -1);
@@ -418,7 +418,8 @@ struct fireballrenderer : listrenderer
 
         glRotatef(lastmillis/7.0f, -rotdir.x, rotdir.y, -rotdir.z);
         glScalef(-psize, psize, -psize);
-        drawexplosion(inside, color[0], color[1], color[2], blend);
+        float colorscale = (hdr ? 0.25 : 1)/255.0f;
+        drawexplosion(inside, color[0]*colorscale, color[1]*colorscale, color[2]*colorscale, blend/255.0f);
 
         glPopMatrix();
     }

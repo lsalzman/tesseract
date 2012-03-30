@@ -1863,6 +1863,12 @@ void viewao()
     notextureshader->set();
 }
 
+void maskgbuffer(bool all)
+{
+    static const GLenum drawbufs[3] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT };
+    glDrawBuffers_(all ? 3 : 1, drawbufs);
+}
+
 void setupgbuffer(int w, int h)
 {
     if(gw == w && gh == h) return;
@@ -1879,8 +1885,7 @@ void setupgbuffer(int w, int h)
     
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
-    static const GLenum drawbufs[3] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT };
-    glDrawBuffers_(3, drawbufs);
+    maskgbuffer(true);
 
     createtexture(gdepthtex, gw, gh, NULL, 3, 0, GL_DEPTH_COMPONENT24, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gcolortex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
@@ -2435,6 +2440,9 @@ void gl_drawframe(int w, int h)
 
     rendergeom(causticspass);
     rendermapmodels();
+    maskgbuffer(false);
+    renderdecals(true);
+    maskgbuffer(true);
     rendergame(true);
     if(!isthirdperson())
     {
@@ -2891,7 +2899,7 @@ void gl_drawframe(int w, int h)
 
 #endif
 
-    renderdecals(true);
+//    renderdecals(true);
 
 #if 0
     if(!isthirdperson())
@@ -2902,7 +2910,7 @@ void gl_drawframe(int w, int h)
     }
 #endif
 
-    if(!limitsky()) drawskybox(farplane, false);
+    if(hdr && !limitsky()) drawskybox(farplane, false);
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
