@@ -2436,6 +2436,12 @@ void gl_drawframe(int w, int h)
     rendergeom(causticspass);
     rendermapmodels();
     rendergame(true);
+    if(!isthirdperson())
+    {
+        project(curavatarfov, aspect, farplane, false, false, false, avatardepth);
+        game::renderavatar();
+        project(fovy, aspect, farplane);
+    }
     timer_end();
 
     glmatrixf screenmatrix, worldmatrix;
@@ -2887,12 +2893,16 @@ void gl_drawframe(int w, int h)
 
     renderdecals(true);
 
+#if 0
     if(!isthirdperson())
     {
         project(curavatarfov, aspect, farplane, false, false, false, avatardepth);
         game::renderavatar();
         project(fovy, aspect, farplane);
     }
+#endif
+
+    if(!limitsky()) drawskybox(farplane, false);
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
