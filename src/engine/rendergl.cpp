@@ -612,8 +612,10 @@ static const char *timer_string[] = {
 static const int timer_query_n = 4;
 static GLuint timers[timer_query_n][TIMER_N];
 static bool timer_used[timer_query_n][TIMER_N];
+static GLuint64 timer_results[TIMER_N];
 static int timer_curr = 0;
 static int timer_last_query = -1;
+static int timer_last_print = 0;
 VAR(gputimer, 0, 0, 1);
 
 static void timer_sync()
@@ -656,18 +658,20 @@ static void timer_print(int conw, int conh)
     if(!gputimer || !hasTQ) return;
     if(timer_curr - timer_query_n < 0) return;
     const int curr = timer_curr % timer_query_n;
+    bool update = totalmillis - timer_last_print >= 200; // keep the timer read-outs from looking spastic on the hud
+    if(update) timer_last_print = totalmillis;
     loopi(TIMER_N)
     {
         if(!timer_used[curr][i]) continue;
-        GLuint64 elapsed;
-        glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &elapsed);
-        draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-i*9*FONTH/8, timer_string[i], float(elapsed) * 1e-6f);
+        if(update) glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &timer_results[i]);
+        draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-i*9*FONTH/8, timer_string[i], float(timer_results[i]) * 1e-6f);
     }
 }
 static void timer_setup() {
     if(!hasTQ) return;
     loopi(timer_query_n) glGenQueries_(TIMER_N, timers[i]);
     loopi(timer_query_n) loopj(TIMER_N) timer_used[i][j] = false;
+    memset(timer_results, 0, sizeof(timer_results));
 }
 static void cleanuptimer() { if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_N, timers[i]); }
 
