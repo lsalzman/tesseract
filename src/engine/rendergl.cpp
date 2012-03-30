@@ -2791,9 +2791,7 @@ void gl_drawframe(int w, int h)
         {
             GLuint cfbo = b1fbo, ctex = b1tex;
             int cw = max(pw/2, bloomw), ch = max(ph/2, bloomh);
-            if(cw == bloomw && ch == bloomh) { cfbo = bloomfbo[2]; ctex = bloomtex[2]; } 
 
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, cfbo);
             if(hdrreduce > 1 && cw/2 >= bloomw && ch/2 >= bloomh)
             {
                 cw /= 2;
@@ -2801,6 +2799,8 @@ void gl_drawframe(int w, int h)
                 SETSHADER(hdrreduce2);
             }
             else SETSHADER(hdrreduce);
+            if(cw == bloomw && ch == bloomh) { cfbo = bloomfbo[2]; ctex = bloomtex[2]; }
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, cfbo);
             glViewport(0, 0, cw, ch);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
             hdrquad(pw, ph);
@@ -2822,14 +2822,14 @@ void gl_drawframe(int w, int h)
             {
                 int cw = max(lw/2, 2), ch = max(lh/2, 2);
                     
-                glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b1fbo);
-                if(hdrreduce > 1 && cw/2 >= bloomw && ch/2 >= bloomh)
+                if(hdrreduce > 1 && cw/2 >= 2 && ch/2 >= 2)
                 {
                     cw /= 2;
                     ch /= 2;
                     if(i) SETSHADER(hdrreduce2); else SETSHADER(hdrluminance2);
                 }
                 else if(i) SETSHADER(hdrreduce); else SETSHADER(hdrluminance);
+                glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b1fbo);
                 glViewport(0, 0, cw, ch);
                 glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ltex);
                 hdrquad(lw, lh);
