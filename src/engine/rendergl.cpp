@@ -643,7 +643,12 @@ static inline void timer_end()
 }
 static inline void timer_nextframe()
 {
-    if (gputimer && hasTQ) timer_curr++;
+    if (gputimer && hasTQ) 
+    {
+        timer_curr++;
+        const int curr = timer_curr % timer_query_n;
+        loopi(TIMER_N) timer_used[curr][i] = false;
+    }
 }
 static void timer_print(int conw, int conh)
 {
