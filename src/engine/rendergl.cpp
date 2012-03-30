@@ -600,11 +600,12 @@ COMMAND(glext, "s");
 #define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); }} while(0)
 
 // GPU-side timing information will use OGL timers
-enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_SPLITTING, TIMER_MERGING, TIMER_N};
+enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_SPLITTING, TIMER_MERGING, TIMER_N};
 static const char *timer_string[] = {
     "shadow map",
     "gbuffer",
     "deferred shading",
+    "hdr processing",
     "buffer splitting",
     "buffer merging"
 };
@@ -655,7 +656,7 @@ static void timer_print(int conw, int conh)
         if(!timer_used[curr][i]) continue;
         GLuint64 elapsed;
         glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &elapsed);
-        draw_textf("%s %3.2f ms", conw-30*FONTH, conh-FONTH*3/2-i*9*FONTH/8, timer_string[i], float(elapsed) * 1e-6f);
+        draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-i*9*FONTH/8, timer_string[i], float(elapsed) * 1e-6f);
     }
 }
 static void timer_setup() {
@@ -2777,6 +2778,7 @@ void gl_drawframe(int w, int h)
 #ifndef HDR_STUFF
     if(hdr)
     {
+        timer_begin(TIMER_HDR);
         GLuint b0fbo = bloomfbo[1], b0tex = bloomtex[1], b1fbo =  bloomfbo[0], b1tex = bloomtex[0], ptex = hdrtex;
         int b0w = max(gw/4, bloomw), b0h = max(gh/4, bloomh), b1w = max(gw/2, bloomw), b1h = max(gh/2, bloomh),
             pw = gw, ph = gh;
@@ -2898,6 +2900,7 @@ void gl_drawframe(int w, int h)
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
         glActiveTexture(GL_TEXTURE0_ARB); 
         hdrquad(gw, gh);
+        timer_end();
     }
 #endif
 
