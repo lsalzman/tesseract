@@ -826,11 +826,12 @@ struct animmodel : model
             }
             matrixstack[matrixpos].transposedtransformnormal(forward, oforward);
 
+            float resize = model->scale * sizescale;
             if(!(anim&ANIM_NORENDER))
             {
                 glPushMatrix();
                 glMultMatrixf(matrixstack[matrixpos].v);
-                if(model->scale!=1) glScalef(model->scale, model->scale, model->scale);
+                if(resize!=1) glScalef(resize, resize, resize);
                 if(!translate.iszero()) glTranslatef(translate.x, translate.y, translate.z);
                 if(anim&ANIM_NOSKIN)
                 {
@@ -854,7 +855,7 @@ struct animmodel : model
                     setenvparamf("lightdir", SHPARAM_VERTEX, 0, odir.x, odir.y, odir.z);
                     setenvparamf("lightdir", SHPARAM_PIXEL, 0, odir.x, odir.y, odir.z);
                     matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
-                    ocampos.div(model->scale).sub(translate);
+                    ocampos.div(resize).sub(translate);
                     setenvparamf("camera", SHPARAM_VERTEX, 1, ocampos.x, ocampos.y, ocampos.z, 1);
                 }
             }
@@ -871,7 +872,7 @@ struct animmodel : model
                 loopv(links)
                 {
                     linkedpart &link = links[i];
-                    link.matrix.transformedtranslate(links[i].translate, model->scale);
+                    link.matrix.transformedtranslate(links[i].translate, resize);
 
                     matrixpos++;
                     matrixstack[matrixpos].mul(matrixstack[matrixpos-1], link.matrix);
@@ -993,7 +994,7 @@ struct animmodel : model
         }
     }
 
-    void render(int anim, int basetime, int basetime2, const vec &o, float yaw, float pitch, dynent *d, modelattach *a, const vec &color, const vec &dir, float trans)
+    void render(int anim, int basetime, int basetime2, const vec &o, float yaw, float pitch, dynent *d, modelattach *a, const vec &color, const vec &dir, float trans, float size)
     {
         if(!loaded) return;
 
@@ -1012,7 +1013,13 @@ struct animmodel : model
             matrixstack[0].transformnormal(vec(forward), forward);
             if(offsetyaw) matrixstack[0].rotate_around_z(offsetyaw*RAD);
         }
-        else pitch = 0;
+        else
+        {
+            matrixstack[0].translate(d->ragdoll->center);
+            pitch = 0;
+        }
+
+        sizescale = size;
 
         if(anim&ANIM_NORENDER)
         {
@@ -1254,7 +1261,7 @@ struct animmodel : model
 
     static bool enabletc, enablealphatest, enablealphablend, enableenvmap, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
     static vec lightdir, lightcolor;
-    static float transparent, lastalphatest;
+    static float transparent, lastalphatest, sizescale;
     static void *lastvbuf, *lasttcbuf, *lastnbuf, *lastxbuf, *lastbbuf, *lastsdata, *lastbdata;
     static GLuint lastebuf, lastenvmaptex, closestenvmaptex;
     static Texture *lasttex, *lastmasks, *lastnormalmap;
@@ -1270,7 +1277,7 @@ struct animmodel : model
         lastebuf = lastenvmaptex = closestenvmaptex = 0;
         lasttex = lastmasks = lastnormalmap = NULL;
         envmaptmu = -1;
-        transparent = 1;
+        transparent = sizescale = 1;
     }
 
     static void disablebones()
@@ -1338,7 +1345,7 @@ bool animmodel::enabletc = false, animmodel::enablealphatest = false, animmodel:
      animmodel::enablenormals = false, animmodel::enabletangents = false, 
      animmodel::enablebones = false, animmodel::enabledepthoffset = false;
 vec animmodel::lightdir(0, 0, 1), animmodel::lightcolor(1, 1, 1);
-float animmodel::transparent = 1, animmodel::lastalphatest = -1;
+float animmodel::transparent = 1, animmodel::lastalphatest = -1, animmodel::sizescale = 1;
 void *animmodel::lastvbuf = NULL, *animmodel::lasttcbuf = NULL, *animmodel::lastnbuf = NULL, *animmodel::lastxbuf = NULL, *animmodel::lastbbuf = NULL, *animmodel::lastsdata = NULL, *animmodel::lastbdata = NULL;
 GLuint animmodel::lastebuf = 0, animmodel::lastenvmaptex = 0, animmodel::closestenvmaptex = 0;
 Texture *animmodel::lasttex = NULL, *animmodel::lastmasks = NULL, *animmodel::lastnormalmap = NULL;

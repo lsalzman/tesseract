@@ -1046,13 +1046,14 @@ struct skelmodel : animmodel
 
         #define GENRAGDOLLBONES(outbody, relbody) \
             sc.nextversion(); \
+            vec trans = vec(d.center).div(p->model->scale).add(p->translate); \
             loopv(ragdoll->joints) \
             { \
                 const ragdollskel::joint &j = ragdoll->joints[i]; \
                 const boneinfo &b = bones[j.bone]; \
                 vec pos(0, 0, 0); \
                 loopk(3) if(j.vert[k]>=0) pos.add(d.verts[j.vert[k]].pos); \
-                pos.mul(j.weight/p->model->scale).sub(p->translate); \
+                pos.mul(j.weight/p->model->scale).sub(trans); \
                 outbody; \
             } \
             loopv(ragdoll->reljoints) \
@@ -1113,10 +1114,11 @@ struct skelmodel : animmodel
                     int interpindex = bones[t.bone].interpindex;
                     m.mul(usematskel ? sc->mdata[interpindex] : sc->bdata[interpindex], matrix3x4(m));
                 }
+                float resize = p->model->scale * sizescale;
                 l.matrix = m;
-                l.matrix[12] = (l.matrix[12] + p->translate.x) * p->model->scale;
-                l.matrix[13] = (l.matrix[13] + p->translate.y) * p->model->scale;
-                l.matrix[14] = (l.matrix[14] + p->translate.z) * p->model->scale;
+                l.matrix[12] = (l.matrix[12] + p->translate.x) * resize;
+                l.matrix[13] = (l.matrix[13] + p->translate.y) * resize;
+                l.matrix[14] = (l.matrix[14] + p->translate.z) * resize;
             }
         }
 

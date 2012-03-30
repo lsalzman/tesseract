@@ -314,10 +314,11 @@ struct vertmodel : animmodel
                 tagp.lerp(tag1p, tag2p, as.prev.t);
                 tag.lerp(tagp, tag, as.interp);
             }
+            float resize = p->model->scale * sizescale;
             matrix = glmatrixf(tag);
-            matrix[12] = (matrix[12] + p->translate.x) * p->model->scale;
-            matrix[13] = (matrix[13] + p->translate.y) * p->model->scale;
-            matrix[14] = (matrix[14] + p->translate.z) * p->model->scale;
+            matrix[12] = (matrix[12] + p->translate.x) * resize;
+            matrix[13] = (matrix[13] + p->translate.y) * resize;
+            matrix[14] = (matrix[14] + p->translate.z) * resize;
         }
 
         void genvbo(bool norms, bool tangents, vbocacheentry &vc)
