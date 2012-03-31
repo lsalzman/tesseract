@@ -2155,6 +2155,14 @@ static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort 
     return sm;
 }
 
+// cascaded shadow maps
+struct cascaded_shadow_map
+{
+    glmatrixf model;              // model view is shared by all splits
+    glmatrixf proj[csmmaxsplitn]; // one projection per split
+    int idx[csmmaxsplitn];        // shadowmapinfo indices
+};
+
 static void sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 {
     extern int skylight;
@@ -2179,8 +2187,8 @@ static void updatefrustumpoints(splitfrustum &f, const vec &pos, const vec &view
 {
     const vec fc = pos + view*f.far;
     const vec nc = pos + view*f.near;
-    float near_height = tanf(curfov/2.0f) * f.near;
-    float far_height = tanf(curfov/2.0f) * f.far;
+    float near_height = tanf(curfov/2.0f*RAD) * f.near;
+    float far_height = tanf(curfov/2.0f*RAD) * f.far;
     float near_width = near_height * aspect;
     float far_width = far_height * aspect;
     f.point[0] = nc - up*near_height - right*near_width;
@@ -2213,15 +2221,24 @@ static inline void snap(vec &minv, vec &maxv, float radius)
     radius *= 2.f;
     const float smdim = float(smmaxsize);
     maxv.x *= smdim/radius; maxv.x = float(int(maxv.x)) / smdim*radius;
-    minv.x *= smdim/radius; minv.x = float(int(minv.x)) / smdim*radius;
     maxv.y *= smdim/radius; maxv.y = float(int(maxv.y)) / smdim*radius;
+    minv.x *= smdim/radius; minv.x = float(int(minv.x)) / smdim*radius;
     minv.y *= smdim/radius; minv.y = float(int(minv.y)) / smdim*radius;
 }
 
-static void sunlightgetmatrix(glmatrixf *model, glmatrixf *proj)
+static void sunlightgetmodelmatrix(glmatrixf *light_model)
 {
     extern float sunlightyaw, sunlightpitch;
-    glmatrixf light_model, player_model;
+    light_model->identity();
+    light_model->mul(viewmatrix);
+    light_model->rotate(sunlightpitch*RAD, vec(-1.f, 0.f, 0.f));
+    light_model->rotate(sunlightyaw*RAD, vec(0.f, 0.f, -1.f));
+}
+
+static void sunlightgetprojmatrix(glmatrixf *light_proj, const glmatrixf &light_model)
+{
+    extern float sunlightyaw, sunlightpitch;
+    glmatrixf player_model;
     splitfrustum f[csmmaxsplitn];
     vec pos, view, up, right;
     vec lightview(sunlightyaw, sunlightpitch), lightup, lightright;
@@ -2230,11 +2247,6 @@ static void sunlightgetmatrix(glmatrixf *model, glmatrixf *proj)
     lightup.normalize();
     lightright.cross(lightview, lightup);
     lightup.cross(lightright, lightview);
-
-    light_model.identity();
-    light_model.mul(viewmatrix);
-    light_model.rotate(sunlightpitch*RAD, vec(-1.f, 0.f, 0.f));
-    light_model.rotate(sunlightyaw*RAD, vec(0.f, 0.f, -1.f));
 
     // compute the split frustums
     pos = camera1->o;
@@ -2248,22 +2260,33 @@ static void sunlightgetmatrix(glmatrixf *model, glmatrixf *proj)
     player_model.transform(vec(1.f,0.f,0.f), right);
     updatesplitdist(f, nearplane, float(farplane));
     loopi(csmsplitn) updatefrustumpoints(f[i], pos, view, up, right);
+
+    printf("\r");
 #if 0
-    printf("\rup %f %f %f view %f %f %f right %f %f %f pos %f %f %f far %d           ",
+    printf("up %f %f %f view %f %f %f right %f %f %f pos %f %f %f - %f %f %f",
             up.x, up.y, up.z,
             view.x, view.y, view.z,
             right.x, right.y, right.z,
-            pos.x,pos.y,pos.z, farplane);
+            pos.x,pos.y,pos.z,
+            up.dot(view), up.dot(right), right.dot(view));
 #endif
     // compute each split projection matrix
     loopi(csmsplitn)
     {
-        vec c(0.f); // barycenter of the frustum
-        loopj(8) c.add(f[i].point[j]);
-        c.mul(1.f / 8.f);
-        float radius = 0.f; // radius of the bounding sphere
-        loopj(8) radius = ::max(c.dist2(f[i].point[j]), radius);
-        radius = sqrtf(radius);
+        float radius = 0.f;
+        int a = 0, b = 0;
+        loopj(7) for(int k = j+1; k < 8; ++k)
+        {
+            const float d = f[i].point[j].dist(f[i].point[k]) / 2.f;
+            if(d > radius)
+            {
+                radius = d;
+                a = j;
+                b = k;
+            }
+        }
+        vec c = (f[i].point[a] + f[i].point[b]) * 0.5f;
+
         vec minv, maxv;
         minv.z = -worldsize, maxv.z = worldsize;
 
@@ -2290,11 +2313,16 @@ static void sunlightgetmatrix(glmatrixf *model, glmatrixf *proj)
         const vec2 offset(-0.5f*(maxv.x+minv.x)*scale.x,-0.5f*(maxv.y+minv.y)*scale.y);
 
         // now compute the update model view matrix for this split
-        proj[i].identity();
-        proj[i](0,0) = scale.x;
-        proj[i](1,1) = scale.y;
-        proj[i](0,3) = offset.x;
-        proj[i](1,3) = offset.y;
+        light_proj[i].identity();
+        light_proj[i](0,0) = scale.x;
+        light_proj[i](1,1) = scale.y;
+        light_proj[i](0,3) = offset.x;
+        light_proj[i](1,3) = offset.y;
+//        if (i == 0)
+{
+#define PRINT_PT(VEC) printf("%f %f %f");
+            printf("radius %i %f [%f %f] c [%f %f]", i, radius, f[i].near, f[i].far, tc.x, tc.y);
+        }
     }
 }
 
@@ -2360,9 +2388,6 @@ VAR(debugao, 0, 0, 1);
 void gl_drawframe(int w, int h)
 {
     timer_sync();
-
-    glmatrixf splitproj[csmmaxsplitn], splitmodel[csmmaxsplitn];
-    sunlightgetmatrix(splitproj, splitmodel);
 
     setupgbuffer(w, h);
     if(bloomw < 0 || bloomh < 0) setupbloom(w, h);
@@ -2527,6 +2552,14 @@ void gl_drawframe(int w, int h)
     nocolorshader->set();
 
     smused = 0;
+
+    // compute cascaded shadow map matrices and tiles
+    cascaded_shadow_map csm;
+    sunlightgetmodelmatrix(&csm.model);
+    sunlightgetprojmatrix(csm.proj, csm.model);
+    sunlightinsert(shadowmaps, csm.idx);
+
+    // point lights processed here
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
     {
