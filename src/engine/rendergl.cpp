@@ -2161,12 +2161,14 @@ struct cascaded_shadow_map
     glmatrixf model;              // model view is shared by all splits
     glmatrixf proj[csmmaxsplitn]; // one projection per split
     int idx[csmmaxsplitn];        // shadowmapinfo indices
+    bool sunlight;
 };
 
-static void sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
+static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 {
     extern int skylight;
-    if(skylight == 0) return; // no sunlight
+    if(skylight == 0) return false; // no sunlight
+#if 0 // do not pollute other lights for now
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
@@ -2175,6 +2177,9 @@ static void sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
         shadowmapinfo *sm = addshadowmap(sms, smx, smy, smmaxsize, csmidx[i]);
         sm->ent = NULL;
     }
+    return true;
+#endif
+    return false;
 }
 
 struct splitfrustum
@@ -2261,7 +2266,7 @@ static void sunlightgetprojmatrix(glmatrixf *light_proj, const glmatrixf &light_
     updatesplitdist(f, nearplane, float(farplane));
     loopi(csmsplitn) updatefrustumpoints(f[i], pos, view, up, right);
 
-    printf("\r");
+    // printf("\r");
 #if 0
     printf("up %f %f %f view %f %f %f right %f %f %f pos %f %f %f - %f %f %f",
             up.x, up.y, up.z,
@@ -2320,8 +2325,7 @@ static void sunlightgetprojmatrix(glmatrixf *light_proj, const glmatrixf &light_
         light_proj[i](1,3) = offset.y;
 //        if (i == 0)
 {
-#define PRINT_PT(VEC) printf("%f %f %f");
-            printf("radius %i %f [%f %f] c [%f %f]", i, radius, f[i].near, f[i].far, tc.x, tc.y);
+            //printf("radius %i %f [%f %f] c [%f %f]", i, radius, f[i].near, f[i].far, tc.x, tc.y);
         }
     }
 }
@@ -2555,9 +2559,12 @@ void gl_drawframe(int w, int h)
 
     // compute cascaded shadow map matrices and tiles
     cascaded_shadow_map csm;
-    sunlightgetmodelmatrix(&csm.model);
-    sunlightgetprojmatrix(csm.proj, csm.model);
-    sunlightinsert(shadowmaps, csm.idx);
+    csm.sunlight = sunlightinsert(shadowmaps, csm.idx);
+    if(csm.sunlight)
+    {
+        sunlightgetmodelmatrix(&csm.model);
+        sunlightgetprojmatrix(csm.proj, csm.model);
+    }
 
     // point lights processed here
     const vector<extentity *> &ents = entities::getents();
@@ -2647,10 +2654,20 @@ void gl_drawframe(int w, int h)
 
     shadowmapping = true;
 
+    // csm
+    if(csm.sunlight)
+    {
+        findcsmshadowvas();
+        findcsmshadowmms();
+        printf("\rHello");
+    }
+
+    // point lights
     loopv(shadowmaps)
     {
         shadowmapinfo &sm = shadowmaps[i];
         extentity *l = sm.ent;
+        if(l == NULL) continue; // csm here
 
         int smradius = l->attr1 > 0 ? l->attr1 : 2*worldsize, sidemask;
         if(smtetra)
