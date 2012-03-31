@@ -1456,6 +1456,7 @@ bool envmapping = false;
 
 void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapside &side)
 {
+#ifdef CUBEMAP_ENVMAP_DRAWING_IS_HORRIBLY_BROKEN
     envmapping = true;
 
     physent *oldcamera = camera1;
@@ -1520,6 +1521,7 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 
     camera1 = oldcamera;
     envmapping = false;
+#endif
 }
 
 bool minimapping = false;
@@ -1564,6 +1566,7 @@ void drawminimap()
 {
     if(!game::needminimap()) { clearminimap(); return; }
 
+#ifdef MINIMAP_DRAWING_IS_HORRIBLY_BROKEN
     renderprogress(0, "generating mini-map...", 0, !renderedframe);
 
     int size = 1<<minimapsize, sizelimit = min(hwtexsize, min(screen->w, screen->h));
@@ -1676,6 +1679,7 @@ void drawminimap()
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, 0, 0, size, size, 0);
     setuptexparameters(minimaptex, NULL, 3, 1, GL_RGB5, GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
+#endif
 }
 
 GLuint motiontex = 0;
@@ -2388,7 +2392,7 @@ VAR(debugbuffersplit, 0, 0, 1);
 static int playsing_around_with_timer_queries_here;
 
 VARF(ao, 0, 1, 1, cleanupao());
-FVAR(aoradius, 0, 8, 256);
+FVAR(aoradius, 0, 4, 256);
 FVAR(aodark, 1e-3f, 4, 1e3f);
 FVAR(aosharp, 1e-3f, 1, 1e3f);
 VAR(aoblur, 0, 4, 7);

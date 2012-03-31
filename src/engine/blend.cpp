@@ -751,7 +751,6 @@ static void updateblendtextures(uchar &type, BlendMapNode &node, int bmx, int bm
             uy2 = min(uy2, (uy+uh+step-1)&~(step-1));
             bt.valid = true;
         }
-        for(int i = 0; i < bt.size*bt.size; i++) bt.data[i] = rnd(256);
         uchar *data = bt.data + (uy1-ty)/step*bt.size + (ux1-tx1)/step;
         renderblendtexture(type, node, bmx, bmy, bmsize, data, bt.size, ux1, uy1, ux2-ux1, uy2-uy1);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, bt.size);
