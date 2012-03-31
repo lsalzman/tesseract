@@ -609,6 +609,10 @@ extern void renderblendbrush();
 extern bool loadblendmap(stream *f, int info);
 extern void saveblendmap(stream *f);
 extern uchar shouldsaveblendmap();
+extern bool usesblendmap(int x1 = 0, int y1 = 0, int x2 = worldsize, int y2 = worldsize);
+extern void updateblendtextures(int x1 = 0, int y1 = 0, int x2 = worldsize, int y2 = worldsize);
+extern void bindblendtexture(const ivec &p);
+extern void clearblendtextures();
 
 // recorder
 

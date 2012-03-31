@@ -1281,17 +1281,18 @@ struct renderstate
     bool colormask, depthmask, blending;
     int alphaing;
     GLuint vbuf;
-    int diffusetmu, lightmaptmu;
+    int diffusetmu;
     GLfloat color[4], fogcolor[4];
     vec colorscale;
     float alphascale;
+    int blendx, blendy;
     GLuint textures[8];
     Slot *slot, *texgenslot;
     VSlot *vslot, *texgenvslot;
     float texgenscrollS, texgenscrollT;
     int texgendim;
 
-    renderstate() : colormask(true), depthmask(true), blending(false), alphaing(0), vbuf(0), diffusetmu(0), lightmaptmu(1), colorscale(1, 1, 1), alphascale(0), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
+    renderstate() : colormask(true), depthmask(true), blending(false), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
     {
         loopk(4) color[k] = 1;
         loopk(8) textures[k] = 0;
@@ -1317,10 +1318,10 @@ void renderquery(renderstate &cur, occludequery *query, vtxarray *va, bool full 
 
 enum
 {
-    RENDERPASS_LIGHTMAP = 0,
+    RENDERPASS_GBUFFER = 0,
     RENDERPASS_Z,
     RENDERPASS_CAUSTICS,
-    RENDERPASS_LIGHTMAP_BLEND
+    RENDERPASS_GBUFFER_BLEND
 };
 
 struct geombatch
@@ -1340,14 +1341,21 @@ struct geombatch
     {
         if(va->vbuf < b.va->vbuf) return -1;
         if(va->vbuf > b.va->vbuf) return 1;
+        if(es.layer&LAYER_BLEND)
+        {
+            int x1 = va->o.x&~0xFFF, x2 = b.va->o.x&~0xFFF;
+            if(x1 < x2) return -1;
+            if(x1 > x2) return 1;
+            int y1 = va->o.y&~0xFFF, y2 = b.va->o.y&~0xFFF;
+            if(y1 < y2) return -1;
+            if(y1 > y2) return 1;
+        }
         if(vslot.slot->shader < b.vslot.slot->shader) return -1;
         if(vslot.slot->shader > b.vslot.slot->shader) return 1;
         if(vslot.slot->params.length() < b.vslot.slot->params.length()) return -1;
         if(vslot.slot->params.length() > b.vslot.slot->params.length()) return 1;
         if(es.texture < b.es.texture) return -1;
         if(es.texture > b.es.texture) return 1;
-        if(es.lmid < b.es.lmid) return -1;
-        if(es.lmid > b.es.lmid) return 1;
         if(es.envmap < b.es.envmap) return -1;
         if(es.envmap > b.es.envmap) return 1;
         if(es.dim < b.es.dim) return -1;
@@ -1447,12 +1455,9 @@ static void changevbuf(renderstate &cur, int pass, vtxarray *va)
 
     glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
 
-    if(pass==RENDERPASS_LIGHTMAP)
+    if(pass==RENDERPASS_GBUFFER)
     {
         glTexCoordPointer(2, GL_FLOAT, VTXSIZE, &va->vdata[0].u);
-        glClientActiveTexture_(GL_TEXTURE0_ARB+cur.lightmaptmu);
-        glTexCoordPointer(2, GL_SHORT, VTXSIZE, &va->vdata[0].lmu);
-        glClientActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
         glNormalPointer(GL_BYTE, VTXSIZE, va->vdata[0].norm.v);
         glColorPointer(4, GL_UNSIGNED_BYTE, VTXSIZE, va->vdata[0].tangent.v);
     }
@@ -1461,26 +1466,7 @@ static void changevbuf(renderstate &cur, int pass, vtxarray *va)
 static void changebatchtmus(renderstate &cur, int pass, geombatch &b)
 {
     bool changed = false;
-    extern bool brightengeom;
-    extern int fullbright;
-    int lmid = brightengeom && (b.es.lmid < LMID_RESERVED || (fullbright && editmode)) ? LMID_BRIGHT : b.es.lmid; 
-    if(cur.textures[cur.lightmaptmu]!=lightmaptexs[lmid].id)
-    {
-        glActiveTexture_(GL_TEXTURE0_ARB+cur.lightmaptmu);
-        glBindTexture(GL_TEXTURE_2D, cur.textures[cur.lightmaptmu] = lightmaptexs[lmid].id);
-        changed = true;
-    }
-    int tmu = cur.lightmaptmu+1;
-    if(b.vslot.slot->shader->type&SHADER_NORMALSLMS)
-    {
-        if(cur.textures[tmu]!=lightmaptexs[lmid+1].id)
-        {
-            glActiveTexture_(GL_TEXTURE0_ARB+tmu);
-            glBindTexture(GL_TEXTURE_2D, cur.textures[tmu] = lightmaptexs[lmid+1].id);
-            changed = true;
-        }
-        tmu++;
-    }
+    int tmu = cur.diffusetmu+1;
     if(b.vslot.slot->shader->type&SHADER_ENVMAP && b.es.envmap!=EMID_CUSTOM)
     {
         GLuint emtex = lookupenvmap(b.es.envmap);
@@ -1491,12 +1477,20 @@ static void changebatchtmus(renderstate &cur, int pass, geombatch &b)
             changed = true;
         }
     }
+    if(cur.blending && (cur.blendx != (b.va->o.x&~0xFFF) || cur.blendy != (b.va->o.y&~0xFFF)))
+    {
+        glActiveTexture_(GL_TEXTURE7_ARB);
+        bindblendtexture(b.va->o);
+        cur.blendx = b.va->o.x&~0xFFF;
+        cur.blendy = b.va->o.y&~0xFFF;
+        changed = true;
+    }  
     if(changed) glActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
 }
 
 static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
 {
-    if(pass==RENDERPASS_LIGHTMAP)
+    if(pass==RENDERPASS_GBUFFER)
     {
         GLuint diffusetex = slot.sts.empty() ? notexture->id : slot.sts[0].t->id;
         if(cur.textures[cur.diffusetmu]!=diffusetex)
@@ -1520,8 +1514,7 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         cur.colorscale = vslot.colorscale;
         setenvparamf("colorparams", SHPARAM_PIXEL, 6, vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1);
     }
-    int tmu = cur.lightmaptmu+1, envmaptmu = -1;
-    if(slot.shader->type&SHADER_NORMALSLMS) tmu++;
+    int tmu = cur.diffusetmu+1, envmaptmu = -1;
     if(slot.shader->type&SHADER_ENVMAP) envmaptmu = tmu++;
     loopvj(slot.sts)
     {
@@ -1584,6 +1577,12 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
     cur.texgendim = dim;
 }
 
+static inline void changeshader(renderstate &cur, Slot &slot, VSlot &vslot)
+{
+    if(cur.blending) slot.shader->setvariant(0, 0, slot, vslot);
+    else slot.shader->set(slot, vslot);
+}
+
 static void renderbatch(renderstate &cur, int pass, geombatch &b)
 {
     int rendered = -1;
@@ -1594,7 +1593,7 @@ static void renderbatch(renderstate &cur, int pass, geombatch &b)
         {
             if(rendered < 0)
             {
-                b.vslot.slot->shader->set(*b.vslot.slot, b.vslot);
+                changeshader(cur, *b.vslot.slot, b.vslot);
                 rendered = 0;
                 gbatches++;
             }
@@ -1638,7 +1637,7 @@ static void renderbatches(renderstate &cur, int pass)
             if(cur.texgendim != b.es.dim || (cur.texgendim <= 2 && cur.texgenvslot != &b.vslot)) changetexgen(cur, b.es.dim, *b.vslot.slot, b.vslot);
         }
         else if(cur.texgendim != b.es.dim) changetexgen(cur, b.es.dim, *b.vslot.slot, b.vslot);
-        if(pass == RENDERPASS_LIGHTMAP) changebatchtmus(cur, pass, b);
+        if(pass == RENDERPASS_GBUFFER) changebatchtmus(cur, pass, b);
 
         renderbatch(cur, pass, b);
     }
@@ -1687,11 +1686,11 @@ void renderzpass(renderstate &cur, vtxarray *va)
 
 VAR(batchgeom, 0, 1, 1);
 
-void renderva(renderstate &cur, vtxarray *va, int pass = RENDERPASS_LIGHTMAP, bool fogpass = false, bool doquery = false)
+void renderva(renderstate &cur, vtxarray *va, int pass = RENDERPASS_GBUFFER, bool fogpass = false, bool doquery = false)
 {
     switch(pass)
     {
-        case RENDERPASS_LIGHTMAP:
+        case RENDERPASS_GBUFFER:
             if(!cur.alphaing) vverts += va->verts;
 #if 0
             if(fogpass ? va->geommax.z<=reflectz-waterfog : va->curvfc==VFC_FOGGED)
@@ -1705,12 +1704,12 @@ void renderva(renderstate &cur, vtxarray *va, int pass = RENDERPASS_LIGHTMAP, bo
             else if(!batchgeom && geombatches.length()) renderbatches(cur, pass);
             break;
 
-        case RENDERPASS_LIGHTMAP_BLEND:
+        case RENDERPASS_GBUFFER_BLEND:
         {
-            if(doquery) startvaquery(va, { if(geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP); });
+            if(doquery) startvaquery(va, { if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER); });
             mergetexs(cur, va, &va->eslist[va->texs], va->blends, va->edata + 3*va->tris);
-            if(doquery) endvaquery(va, { if(geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP); });
-            else if(!batchgeom && geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
+            if(doquery) endvaquery(va, { if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER); });
+            else if(!batchgeom && geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
             break;
         }
 
@@ -1790,7 +1789,7 @@ void setupTMUs(renderstate &cur, float causticspass, bool fogpass)
 {
     glEnableClientState(GL_NORMAL_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
-    loopi(8-2) { glActiveTexture_(GL_TEXTURE2_ARB+i); glEnable(GL_TEXTURE_2D); }
+    loopi(8-1) { glActiveTexture_(GL_TEXTURE1_ARB+i); glEnable(GL_TEXTURE_2D); }
     glActiveTexture_(GL_TEXTURE0_ARB);
     setenvparamf("colorparams", SHPARAM_PIXEL, 6, 1, 1, 1, 1);
     setenvparamf("camera", SHPARAM_VERTEX, 4, camera1->o.x, camera1->o.y, camera1->o.z, 1);
@@ -1798,22 +1797,6 @@ void setupTMUs(renderstate &cur, float causticspass, bool fogpass)
     setenvparamf("millis", SHPARAM_VERTEX, 6, lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f);
  
     glColor4fv(cur.color);
-
-    if(cur.lightmaptmu>=0)
-    {
-        glActiveTexture_(GL_TEXTURE0_ARB+cur.lightmaptmu);
-        glClientActiveTexture_(GL_TEXTURE0_ARB+cur.lightmaptmu);
-
-        glEnable(GL_TEXTURE_2D);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glMatrixMode(GL_TEXTURE);
-        glLoadIdentity();
-        glMatrixMode(GL_MODELVIEW);
-
-        glActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
-        glClientActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
-        glEnable(GL_TEXTURE_2D); 
-    }
 
     // diffusetmu
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1824,25 +1807,6 @@ void setupTMUs(renderstate &cur, float causticspass, bool fogpass)
 
 void cleanupTMUs(renderstate &cur, float causticspass, bool fogpass)
 {
-    if(cur.lightmaptmu>=0)
-    {
-        glActiveTexture_(GL_TEXTURE0_ARB+cur.lightmaptmu);
-        glClientActiveTexture_(GL_TEXTURE0_ARB+cur.lightmaptmu);
-
-        glDisable(GL_TEXTURE_2D);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        glMatrixMode(GL_TEXTURE);
-        glLoadIdentity();
-        glMatrixMode(GL_MODELVIEW);
-    }
-        
-    if(cur.lightmaptmu>=0)
-    {
-        glActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
-        glClientActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
-        glDisable(GL_TEXTURE_2D);
-    }
-
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
@@ -1850,14 +1814,11 @@ void cleanupTMUs(renderstate &cur, float causticspass, bool fogpass)
 
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
-    loopi(8-2) { glActiveTexture_(GL_TEXTURE2_ARB+i); glDisable(GL_TEXTURE_2D); }
+    loopi(8-1) { glActiveTexture_(GL_TEXTURE1_ARB+i); glDisable(GL_TEXTURE_2D); }
 
-    if(cur.lightmaptmu>=0)
-    {
-        glActiveTexture_(GL_TEXTURE0_ARB);
-        glClientActiveTexture_(GL_TEXTURE0_ARB);
-        glEnable(GL_TEXTURE_2D);
-    }
+    glActiveTexture_(GL_TEXTURE0_ARB);
+    glClientActiveTexture_(GL_TEXTURE0_ARB);
+    glEnable(GL_TEXTURE_2D);
 }
 
 #define FIRSTVA (reflecting ? reflectedva : visibleva)
@@ -1939,7 +1900,7 @@ void rendergeom(float causticspass, bool fogpass)
             {
                 if(va->query) 
                 {
-                    if(!zpass && geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
+                    if(!zpass && geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
                     renderquery(cur, va->query, va);
                 }
                 continue;
@@ -1953,10 +1914,10 @@ void rendergeom(float causticspass, bool fogpass)
         }
 
         if(!doZP) blends += va->blends;
-        renderva(cur, va, doZP ? RENDERPASS_Z : RENDERPASS_LIGHTMAP, fogpass, doOQ);
+        renderva(cur, va, doZP ? RENDERPASS_Z : RENDERPASS_GBUFFER, fogpass, doOQ);
     }
 
-    if(geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
+    if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
 
     if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
     if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
@@ -1975,9 +1936,9 @@ void rendergeom(float causticspass, bool fogpass)
         {
             if(!va->texs || va->occluded >= OCCLUDE_GEOM) continue;
             blends += va->blends;
-            renderva(cur, va, RENDERPASS_LIGHTMAP, fogpass);
+            renderva(cur, va, RENDERPASS_GBUFFER, fogpass);
         }
-        if(geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
+        if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
         for(vtxarray *va = visibleva; va; va = va->next)
         {
             if(!va->texs || va->occluded < OCCLUDE_GEOM) continue;
@@ -1994,9 +1955,9 @@ void rendergeom(float causticspass, bool fogpass)
             }
 
             blends += va->blends;
-            renderva(cur, va, RENDERPASS_LIGHTMAP, fogpass);
+            renderva(cur, va, RENDERPASS_GBUFFER, fogpass);
         }
-        if(geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
+        if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
     }
 
     if(blends)
@@ -2025,9 +1986,9 @@ void rendergeom(float causticspass, bool fogpass)
             }
             else if(va->occluded >= OCCLUDE_GEOM) continue;
             if(fogpass ? va->geommax.z <= reflectz-waterfog : va->curvfc==VFC_FOGGED) continue;
-            renderva(cur, va, RENDERPASS_LIGHTMAP_BLEND, fogpass);
+            renderva(cur, va, RENDERPASS_GBUFFER_BLEND, fogpass);
         }
-        if(geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
+        if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
         cur.blending = false;
 
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -2130,8 +2091,8 @@ void renderalphageom(bool fogpass)
         cur.colorscale = vec(1, 1, 1);
         loopk(3) cur.color[k] = 1;
         cur.alphascale = -1;
-        loopv(alphavas) if(front || alphavas[i]->alphabacktris) renderva(cur, alphavas[i], RENDERPASS_LIGHTMAP, fogpass);
-        if(geombatches.length()) renderbatches(cur, RENDERPASS_LIGHTMAP);
+        loopv(alphavas) if(front || alphavas[i]->alphabacktris) renderva(cur, alphavas[i], RENDERPASS_GBUFFER, fogpass);
+        if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
 
         cleanupTMUs(cur, 0, fogpass);
 

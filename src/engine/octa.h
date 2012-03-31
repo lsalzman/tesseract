@@ -2,7 +2,7 @@
 
 struct elementset
 {
-    ushort texture, lmid, envmap;
+    ushort texture, envmap;
     uchar dim, layer;
     ushort length, minvert, maxvert;
 };

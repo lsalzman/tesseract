@@ -1935,6 +1935,7 @@ static bool previewblends(lightmapworker *w, cube *c, const ivec &co, int size, 
 
 void previewblends(const ivec &bo, const ivec &bs)
 {
+    updateblendtextures(bo.x, bo.y, bo.x+bs.x, bo.y+bs.y);
     loadlayermasks();
     if(lightmapworkers.empty()) lightmapworkers.add(new lightmapworker);
     lightmapworkers[0]->reset();

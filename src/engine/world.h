@@ -55,7 +55,7 @@ enum
 
 #define TEX_SCALE 8.0f
 
-struct vertex { vec pos; bvec norm; uchar reserved; float u, v; short lmu, lmv; bvec tangent; uchar bitangent; };
+struct vertex { vec pos; bvec norm; uchar reserved; float u, v; bvec tangent; uchar bitangent; };
  
 #define VTXSIZE (sizeof(vertex))
 

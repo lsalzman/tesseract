@@ -374,16 +374,9 @@ void Shader::allocenvparams(Slot *slot)
             int val = tmu; \
             if(loc != -1) glUniform1i_(loc, val); \
         }
-        int loc, tmu = 2;
-        if(type & SHADER_NORMALSLMS)
-        {
-            UNIFORMTEX("lmcolor", 1);
-            UNIFORMTEX("lmdir", 2);
-            tmu++;
-        }
-        else UNIFORMTEX("lightmap", 1);
+        int loc, tmu = 1;
         if(type & SHADER_ENVMAP) UNIFORMTEX("envmap", tmu++);
-        UNIFORMTEX("shadowmap", 7);
+        UNIFORMTEX("blendmap", 7);
         int stex = 0;
         loopv(slot->sts)
         {

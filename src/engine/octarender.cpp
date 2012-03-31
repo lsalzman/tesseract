@@ -178,10 +178,7 @@ struct verthash
         {
             const vertex &c = verts[i];
             if(c.pos==v.pos && c.u==v.u && c.v==v.v && c.norm==v.norm && c.tangent==v.tangent && c.bitangent==v.bitangent)
-            {
-                 if(!v.lmu && !v.lmv) return i; 
-                 if(c.lmu==v.lmu && c.lmv==v.lmv) return i;
-            }
+                 return i; 
         }
         if(verts.length() >= USHRT_MAX) return -1;
         verts.add(v);
@@ -189,14 +186,12 @@ struct verthash
         return table[h] = verts.length()-1;
     }
 
-    int addvert(const vec &pos, float u = 0, float v = 0, short lmu = 0, short lmv = 0, const bvec &norm = bvec(128, 128, 128), const bvec &tangent = bvec(128, 128, 128), uchar bitangent = 128)
+    int addvert(const vec &pos, float u = 0, float v = 0, const bvec &norm = bvec(128, 128, 128), const bvec &tangent = bvec(128, 128, 128), uchar bitangent = 128)
     {
         vertex vtx;
         vtx.pos = pos;
         vtx.u = u;
         vtx.v = v;
-        vtx.lmu = lmu;
-        vtx.lmv = lmv;
         vtx.norm = norm;
         vtx.reserved = 0;
         vtx.tangent = tangent;
@@ -214,23 +209,22 @@ enum
 
 struct sortkey
 {
-     ushort tex, lmid, envmap;
+     ushort tex, envmap;
      uchar dim, layer, alpha;
 
      sortkey() {}
-     sortkey(ushort tex, ushort lmid, uchar dim, uchar layer = LAYER_TOP, ushort envmap = EMID_NONE, uchar alpha = NO_ALPHA)
-      : tex(tex), lmid(lmid), envmap(envmap), dim(dim), layer(layer), alpha(alpha)
+     sortkey(ushort tex, uchar dim, uchar layer = LAYER_TOP, ushort envmap = EMID_NONE, uchar alpha = NO_ALPHA)
+      : tex(tex), envmap(envmap), dim(dim), layer(layer), alpha(alpha)
      {}
 
-     bool operator==(const sortkey &o) const { return tex==o.tex && lmid==o.lmid && envmap==o.envmap && dim==o.dim && layer==o.layer && alpha==o.alpha; }
+     bool operator==(const sortkey &o) const { return tex==o.tex && envmap==o.envmap && dim==o.dim && layer==o.layer && alpha==o.alpha; }
 };
 
 struct sortval
 {
-     int unlit;
      vector<ushort> tris;
 
-     sortval() : unlit(0) {}
+     sortval() {}
 };
 
 static inline bool htcmp(const sortkey &x, const sortkey &y)
@@ -240,7 +234,7 @@ static inline bool htcmp(const sortkey &x, const sortkey &y)
 
 static inline uint hthash(const sortkey &k)
 {
-    return k.tex + k.lmid*9741;
+    return k.tex;
 }
 
 struct vacollect : verthash
@@ -271,127 +265,15 @@ struct vacollect : verthash
         texs.setsize(0);
     }
 
-    void remapunlit(vector<sortkey> &remap)
-    {
-        uint lastlmid[8] = { LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT }, 
-             firstlmid[8] = { LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT, LMID_AMBIENT };
-        int firstlit[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
-        loopv(texs)
-        {
-            sortkey &k = texs[i];
-            if(k.lmid>=LMID_RESERVED) 
-            {
-                LightMapTexture &lmtex = lightmaptexs[k.lmid];
-                int type = lmtex.type&LM_TYPE;
-                if(k.layer==LAYER_BLEND) type += 2;
-                else if(k.alpha) type = 4 + 2*(k.alpha-1);
-                lastlmid[type] = lmtex.unlitx>=0 ? k.lmid : LMID_AMBIENT;
-                if(firstlmid[type]==LMID_AMBIENT && lastlmid[type]!=LMID_AMBIENT)
-                {
-                    firstlit[type] = i;
-                    firstlmid[type] = lastlmid[type];
-                }
-            }
-            else if(k.lmid==LMID_AMBIENT)
-            {
-                Shader *s = lookupvslot(k.tex, false).slot->shader;
-                int type = s->type&SHADER_NORMALSLMS ? LM_BUMPMAP0 : LM_DIFFUSE;
-                if(k.layer==LAYER_BLEND) type += 2;
-                else if(k.alpha) type = 4 + 2*(k.alpha-1);
-                if(lastlmid[type]!=LMID_AMBIENT)
-                {
-                    sortval &t = indices[k];
-                    if(t.unlit<=0) t.unlit = lastlmid[type];
-                }
-            }
-        }
-        loopj(2)
-        {
-            int offset = 2*j;
-            if(firstlmid[offset]==LMID_AMBIENT && firstlmid[offset+1]==LMID_AMBIENT) continue;
-            loopi(max(firstlit[offset], firstlit[offset+1]))
-            {
-                sortkey &k = texs[i];
-                if((j ? k.layer!=LAYER_BLEND : k.layer==LAYER_BLEND) || k.alpha) continue;
-                if(k.lmid!=LMID_AMBIENT) continue;
-                Shader *s = lookupvslot(k.tex, false).slot->shader;
-                int type = offset + (s->type&SHADER_NORMALSLMS ? LM_BUMPMAP0 : LM_DIFFUSE);
-                if(firstlmid[type]==LMID_AMBIENT) continue;
-                indices[k].unlit = firstlmid[type];
-            }
-        }  
-        loopj(2)
-        {
-            int offset = 4 + 2*j;
-            if(firstlmid[offset]==LMID_AMBIENT && firstlmid[offset+1]==LMID_AMBIENT) continue;
-            loopi(max(firstlit[offset], firstlit[offset+1]))
-            {
-                sortkey &k = texs[i];
-                if(k.alpha != j+1) continue;
-                if(k.lmid!=LMID_AMBIENT) continue;
-                Shader *s = lookupvslot(k.tex, false).slot->shader;
-                int type = offset + (s->type&SHADER_NORMALSLMS ? LM_BUMPMAP0 : LM_DIFFUSE);
-                if(firstlmid[type]==LMID_AMBIENT) continue;
-                indices[k].unlit = firstlmid[type];
-            }
-        } 
-        loopv(remap)
-        {
-            sortkey &k = remap[i];
-            sortval &t = indices[k];
-            if(t.unlit<=0) continue; 
-            LightMapTexture &lm = lightmaptexs[t.unlit];
-            short u = short(ceil((lm.unlitx + 0.5f) * SHRT_MAX/lm.w)), 
-                  v = short(ceil((lm.unlity + 0.5f) * SHRT_MAX/lm.h));
-            loopvj(t.tris)
-            {
-                vertex &vtx = verts[t.tris[j]];
-                if(!vtx.lmu && !vtx.lmv)
-                {
-                    vtx.lmu = u;
-                    vtx.lmv = v;
-                }
-                else if(vtx.lmu != u || vtx.lmv != v) 
-                {
-                    vertex vtx2 = vtx;
-                    vtx2.lmu = u;
-                    vtx2.lmv = v;
-                    t.tris[j] = addvert(vtx2);
-                }
-            }
-            sortval *dst = indices.access(sortkey(k.tex, t.unlit, k.dim, k.layer, k.envmap, k.alpha));
-            if(dst) loopvj(t.tris) dst->tris.add(t.tris[j]);
-        }
-    }
-                    
     void optimize()
     {
-        vector<sortkey> remap;
         enumeratekt(indices, sortkey, k, sortval, t,
-            if(t.tris.length() && t.unlit<=0)
+            if(t.tris.length())
             {
-                if(k.lmid>=LMID_RESERVED && lightmaptexs[k.lmid].unlitx>=0)
-                {
-                    sortkey ukey(k.tex, LMID_AMBIENT, k.dim, k.layer, k.envmap, k.alpha);
-                    sortval *uval = indices.access(ukey);
-                    if(uval && uval->unlit<=0)
-                    {
-                        if(uval->unlit<0) texs.removeobj(ukey);
-                        else remap.add(ukey);
-                        uval->unlit = k.lmid;
-                    }
-                }
-                else if(k.lmid==LMID_AMBIENT)
-                {
-                    remap.add(k);
-                    t.unlit = -1;
-                }
                 texs.add(k);
             }
         );
         texs.sort(texsort);
-
-        remapunlit(remap);
 
         matsurfs.shrink(optimizematsurfs(matsurfs.getbuf(), matsurfs.length()));
     }
@@ -404,8 +286,6 @@ struct vacollect : verthash
         if(x.layer > y.layer) return false;
         if(x.tex == y.tex) 
         {
-            if(x.lmid < y.lmid) return true;
-            if(x.lmid > y.lmid) return false;
             if(x.envmap < y.envmap) return true;
             if(x.envmap > y.envmap) return false;
             if(x.dim < y.dim) return true;
@@ -503,7 +383,6 @@ struct vacollect : verthash
                 const sortval &t = indices[k];
                 elementset &e = va->eslist[i];
                 e.texture = k.tex;
-                e.lmid = t.unlit>0 ? t.unlit : k.lmid;
                 e.dim = k.dim;
                 e.layer = k.layer;
                 e.envmap = k.envmap;
@@ -665,8 +544,6 @@ void addtris(const sortkey &key, int orient, vertex *verts, int *index, int numv
                     vt.reserved = 0;
                     vt.u = v1.u + (v2.u-v1.u)*offset;
                     vt.v = v1.v + (v2.v-v1.v)*offset;
-                    vt.lmu = short(v1.lmu + (v2.lmu-v1.lmu)*offset),
-                    vt.lmv = short(v1.lmv + (v2.lmv-v1.lmv)*offset);
                     vt.norm.lerp(v1.norm, v2.norm, offset);
                     vt.tangent.lerp(v1.tangent, v2.tangent, offset);
                     vt.bitangent = v1.bitangent;
@@ -689,7 +566,7 @@ void addtris(const sortkey &key, int orient, vertex *verts, int *index, int numv
     }
 }
 
-void addgrasstri(int face, vertex *verts, int numv, ushort texture, ushort lmid)
+void addgrasstri(int face, vertex *verts, int numv, ushort texture)
 {
     grasstri &g = vc.grasstris.add();
     int i1, i2, i3, i4;
@@ -734,6 +611,8 @@ void addgrasstri(int face, vertex *verts, int numv, ushort texture, ushort lmid)
     by.z = by.x*g.v[1][px] - by.y*g.v[1][py] - 1;
     by.sub(bx);
 
+#if 0
+    // no more lightmaps? fixme?
     float tc1u = verts[i1].lmu/float(SHRT_MAX),
           tc1v = verts[i1].lmv/float(SHRT_MAX),
           tc2u = (verts[i2].lmu - verts[i1].lmu)/float(SHRT_MAX),
@@ -751,6 +630,7 @@ void addgrasstri(int face, vertex *verts, int numv, ushort texture, ushort lmid)
 
     g.texture = texture;
     g.lmid = lmid;
+#endif
 }
 
 static inline void calctexgen(VSlot &vslot, int dim, vec4 &sgen, vec4 &tgen)
@@ -825,22 +705,9 @@ void guessnormals(const vec *pos, int numverts, vec *normals)
     normals[3] = n2;
 }
 
-void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, ushort texture, ushort lmid, vertinfo *vinfo, int numverts, int tj = -1, ushort envmap = EMID_NONE, int grassy = 0, bool alpha = false, int layer = LAYER_TOP)
+void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, ushort texture, vertinfo *vinfo, int numverts, int tj = -1, ushort envmap = EMID_NONE, int grassy = 0, bool alpha = false, int layer = LAYER_TOP)
 {
     int dim = dimension(orient);
-
-    LightMap *lm = NULL;
-    LightMapTexture *lmtex = NULL;
-    if(lightmaps.inrange(lmid-LMID_RESERVED))
-    {
-        lm = &lightmaps[lmid-LMID_RESERVED];
-        if((lm->type&LM_TYPE)==LM_DIFFUSE ||
-            ((lm->type&LM_TYPE)==LM_BUMPMAP0 &&
-                lightmaps.inrange(lmid+1-LMID_RESERVED) &&
-                (lightmaps[lmid+1-LMID_RESERVED].type&LM_TYPE)==LM_BUMPMAP1))
-            lmtex = &lightmaptexs[lm->tex];
-        else lm = NULL;
-    }
 
     vec4 sgen, tgen;
     calctexgen(vslot, dim, sgen, tgen);
@@ -854,12 +721,6 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         v.reserved = 0;
         v.u = sgen.dot(v.pos);
         v.v = tgen.dot(v.pos);
-        if(lmtex) 
-        { 
-            v.lmu = short(ceil((lm->offsetx + vinfo[k].u*(float(LM_PACKW)/float(USHRT_MAX+1)) + 0.5f) * float(SHRT_MAX)/lmtex->w)); 
-            v.lmv = short(ceil((lm->offsety + vinfo[k].v*(float(LM_PACKH)/float(USHRT_MAX+1)) + 0.5f) * float(SHRT_MAX)/lmtex->h));
-        }
-        else v.lmu = v.lmv = 0;
         if(vinfo && vinfo[k].norm)
         {
             vec n = decodenormal(vinfo[k].norm), t = orientation_tangent[vslot.rotation][dim];
@@ -894,9 +755,7 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         vc.skyfaces |= 0x3F&~(1<<orient);
     }
 
-    if(lmid >= LMID_RESERVED) lmid = lm ? lm->tex : LMID_AMBIENT;
-
-    sortkey key(texture, lmid, vslot.scrollS || vslot.scrollT ? dim : 3, layer == LAYER_BLEND ? LAYER_BLEND : LAYER_TOP, envmap, alpha ? (vslot.alphaback ? ALPHA_BACK : (vslot.alphafront ? ALPHA_FRONT : NO_ALPHA)) : NO_ALPHA);
+    sortkey key(texture, vslot.scrollS || vslot.scrollT ? dim : 3, layer == LAYER_BLEND ? LAYER_BLEND : LAYER_TOP, envmap, alpha ? (vslot.alphaback ? ALPHA_BACK : (vslot.alphafront ? ALPHA_FRONT : NO_ALPHA)) : NO_ALPHA);
     addtris(key, orient, verts, index, numverts, convex, tj);
 
     if(grassy) 
@@ -906,11 +765,11 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
             int faces = 0;
             if(index[0]!=index[i+1] && index[i+1]!=index[i+2] && index[i+2]!=index[0]) faces |= 1;
             if(i+3 < numverts && index[0]!=index[i+2] && index[i+2]!=index[i+3] && index[i+3]!=index[0]) faces |= 2;
-            if(grassy > 1 && faces==3) addgrasstri(i, verts, 4, texture, lmid);
+            if(grassy > 1 && faces==3) addgrasstri(i, verts, 4, texture);
             else 
             {
-                if(faces&1) addgrasstri(i, verts, 3, texture, lmid);
-                if(faces&2) addgrasstri(i+1, verts, 3, texture, lmid);
+                if(faces&1) addgrasstri(i, verts, 3, texture);
+                if(faces&2) addgrasstri(i+1, verts, 3, texture);
             }
         }
     }
@@ -1111,14 +970,14 @@ void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
         int hastj = tj >= 0 && tjoints[tj].edge < (i+1)*(MAXFACEVERTS+1) ? tj : -1;
         int grassy = vslot.slot->autograss && i!=O_BOTTOM ? (vis!=3 || convex ? 1 : 2) : 0;
         if(!c.ext)
-            addcubeverts(vslot, i, size, pos, convex, c.texture[i], LMID_AMBIENT, NULL, numverts, hastj, envmap, grassy, (c.material&MAT_ALPHA)!=0);
+            addcubeverts(vslot, i, size, pos, convex, c.texture[i], NULL, numverts, hastj, envmap, grassy, (c.material&MAT_ALPHA)!=0);
         else
         { 
             const surfaceinfo &surf = c.ext->surfaces[i];
             if(!surf.numverts || surf.numverts&LAYER_TOP)
-                addcubeverts(vslot, i, size, pos, convex, c.texture[i], surf.lmid[0], verts, numverts, hastj, envmap, grassy, (c.material&MAT_ALPHA)!=0, LAYER_TOP|(surf.numverts&LAYER_BLEND));
+                addcubeverts(vslot, i, size, pos, convex, c.texture[i], verts, numverts, hastj, envmap, grassy, (c.material&MAT_ALPHA)!=0, LAYER_TOP|(surf.numverts&LAYER_BLEND));
             if(surf.numverts&LAYER_BOTTOM)
-                addcubeverts(layer ? *layer : vslot, i, size, pos, convex, vslot.layer, surf.lmid[1], surf.numverts&LAYER_DUP ? verts + numverts : verts, numverts, hastj, envmap2);
+                addcubeverts(layer ? *layer : vslot, i, size, pos, convex, vslot.layer, surf.numverts&LAYER_DUP ? verts + numverts : verts, numverts, hastj, envmap2);
         }
     }
     else
@@ -1347,7 +1206,7 @@ void updatevabbs(bool force)
 
 struct mergedface
 {   
-    uchar orient, mat, lmid, numverts;
+    uchar orient, mat, numverts;
     ushort tex, envmap;
     vertinfo *verts;
     int tjoints;
@@ -1377,7 +1236,6 @@ int genmergedfaces(cube &c, const ivec &co, int size, int minlevel = -1)
         mf.mat = c.material;
         mf.tex = c.texture[i];
         mf.envmap = EMID_NONE;
-        mf.lmid = surf.lmid[0];
         mf.numverts = surf.numverts;
         mf.verts = c.ext->verts() + surf.verts; 
         mf.tjoints = -1;
@@ -1402,7 +1260,6 @@ int genmergedfaces(cube &c, const ivec &co, int size, int minlevel = -1)
             {
                 mf.tex = vslot.layer;
                 mf.envmap = envmap2;
-                mf.lmid = surf.lmid[1];
                 mf.numverts &= ~LAYER_TOP;
                 if(surf.numverts&LAYER_DUP) mf.verts += numverts;
                 vamerges[level].add(mf);
@@ -1452,7 +1309,7 @@ void addmergedverts(int level, const ivec &o)
         }
         VSlot &vslot = lookupvslot(mf.tex, true);
         int grassy = vslot.slot->autograss && mf.orient!=O_BOTTOM && mf.numverts&LAYER_TOP ? 2 : 0;
-        addcubeverts(vslot, mf.orient, 1<<level, pos, 0, mf.tex, mf.lmid, mf.verts, numverts, mf.tjoints, mf.envmap, grassy, (mf.mat&MAT_ALPHA)!=0, mf.numverts&LAYER_BLEND);
+        addcubeverts(vslot, mf.orient, 1<<level, pos, 0, mf.tex, mf.verts, numverts, mf.tjoints, mf.envmap, grassy, (mf.mat&MAT_ALPHA)!=0, mf.numverts&LAYER_BLEND);
         vahasmerges |= MERGE_USE;
     }
     mfl.setsize(0);
@@ -1786,6 +1643,7 @@ void allchanged(bool load)
     resetblobs();
     if(load) 
     {
+        updateblendtextures();
         seedparticles();
         genenvmaps();
         drawminimap();
