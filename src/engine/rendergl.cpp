@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false;
 
 int hasstencil = 0;
 
@@ -469,6 +469,12 @@ void gl_checkextensions()
     {
         hasDS = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_packed_depth_stencil extension.");
+    }
+
+    if(hasext(exts, "GL_EXT_packed_float"))
+    {
+        hasPF = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_packed_float extension.");
     }
 
     if(hasext(exts, "GL_EXT_blend_minmax"))
@@ -1776,12 +1782,12 @@ void setupbloom(int w, int h)
 
     loopi(5) if(!bloomfbo[i]) glGenFramebuffers_(1, &bloomfbo[i]);
 
-    GLenum format = bloomprec ? GL_RGB10 : GL_RGB;
+    GLenum format = bloomprec >= 3 && hasTF ? GL_RGB16F : (bloomprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
     createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[3], bloomw, bloomh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(bloomtex[4], 1, 1, NULL, 3, 1, GL_RGB16, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[4], 1, 1, NULL, 3, 1, hasTF ? GL_RGB16F_ARB : GL_RGB16, GL_TEXTURE_RECTANGLE_ARB);
 
     loopi(5)
     {
@@ -1869,6 +1875,8 @@ void maskgbuffer(bool all)
     glDrawBuffers_(all ? 3 : 1, drawbufs);
 }
 
+extern int hdrprec;
+
 void setupgbuffer(int w, int h)
 {
     if(gw == w && gh == h) return;
@@ -1906,7 +1914,8 @@ void setupgbuffer(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
-    createtexture(hdrtex, gw, gh, NULL, 3, 1, GL_RGB10, GL_TEXTURE_RECTANGLE_ARB);
+    GLenum format = hdrprec >= 3 && hasTF ? GL_RGB16F : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB));
+    createtexture(hdrtex, gw, gh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
 
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, hdrtex, 0);
@@ -1933,13 +1942,14 @@ void cleanupgbuffer()
 }
 
 VAR(hdr, 0, 1, 1);
+VARF(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVAR(bloomthreshold, 0, 1.5f, 10.0f);
 FVAR(bloomscale, 0, 1.0f, 10.0f);
 VAR(bloomblur, 0, 7, 7);
 VAR(bloomiter, 0, 0, 4);
 FVAR(bloomsigma, 0.005f, 0.5f, 2.0f);
 VARF(bloomsize, 6, 8, 10, cleanupbloom());
-VARF(bloomprec, 0, 1, 1, cleanupbloom());
+VARF(bloomprec, 0, 2, 3, cleanupbloom());
 FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);

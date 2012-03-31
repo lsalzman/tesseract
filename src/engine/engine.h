@@ -90,6 +90,11 @@ extern PFNGLMULTIDRAWELEMENTSEXTPROC glMultiDrawElements_;
 #define GL_DEPTH24_STENCIL8_EXT 0x88F0
 #endif
 
+// GL_EXT_packed_float
+#ifndef GL_R11F_G11F_B10F_EXT
+#define GL_R11F_G11F_B10F_EXT 0x8C3A
+#endif
+
 // GL_ARB_texture_compression
 extern PFNGLCOMPRESSEDTEXIMAGE3DARBPROC    glCompressedTexImage3D_;
 extern PFNGLCOMPRESSEDTEXIMAGE2DARBPROC    glCompressedTexImage2D_;
@@ -192,7 +197,7 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 }
 
 // rendergl
-extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasDS, hasTF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4;
+extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasDS, hasTF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4, hasTQ, hasPF;
 extern int hasstencil;
 
 extern int hdr;
