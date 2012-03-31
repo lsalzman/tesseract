@@ -1149,6 +1149,24 @@ void findshadowvas()
     sortshadowvas();
 }
 
+void findcsmshadowvas(vector<vtxarray *> &vas)
+{
+    loopv(vas)
+    {
+        vtxarray &v = *vas[i];
+        float dist = vadist(&v, shadoworigin);
+        addshadowva(&v, dist);
+        if(v.children.length()) findshadowvas(v.children);
+    }
+}
+
+void findcsmshadowvas()
+{
+    memset(vasort, 0, sizeof(vasort));
+    findcsmshadowvas(varoot);
+    sortshadowvas();
+}
+
 void rendershadowmapworld()
 {
     if(smtetra && smtetraclip) SETSHADER(tetraworld);
@@ -1203,6 +1221,22 @@ void findshadowmms()
                 if(shadoworigin.dist_to_bb(oe->bbmin, oe->bbmax) >= shadowradius)
                     continue;
             }
+            oe->rnext = NULL;
+            *lastmms = oe;
+            lastmms = &oe->rnext;
+        }
+    }
+}
+
+void findcsmshadowmms() // XXX implement the culling stuff
+{
+    shadowmms = NULL;
+    octaentities **lastmms = &shadowmms; 
+    for(vtxarray *va = shadowva; va; va = va->rnext)
+    {
+        loopvj(va->mapmodels)
+        {
+            octaentities *oe = va->mapmodels[j];
             oe->rnext = NULL;
             *lastmms = oe;
             lastmms = &oe->rnext;

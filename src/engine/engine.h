@@ -307,6 +307,9 @@ extern int shadowside;
 extern void findshadowvas();
 extern void findshadowmms();
 
+extern void findcsmshadowvas();
+extern void findcsmshadowmms();
+
 extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcspheresidemask(const vec &p, float radius, float bias);
