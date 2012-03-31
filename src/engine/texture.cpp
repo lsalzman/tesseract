@@ -587,6 +587,10 @@ void createtexture(int tnum, int w, int h, void *pixels, int clamp, int filter, 
     GLenum target = textarget(subtarget), type = GL_UNSIGNED_BYTE;
     switch(component)
     {
+        case GL_R16F:
+        case GL_R32F:
+        case GL_RG16F:
+        case GL_RG32F:
         case GL_FLOAT_RG16_NV:
         case GL_FLOAT_R32_NV:
         case GL_RGB16F_ARB:

@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false;
 
 int hasstencil = 0;
 
@@ -269,6 +269,12 @@ void gl_checkextensions()
     {
         hasNVFB = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_NV_float_buffer extension.");
+    }
+
+    if(hasext(exts, "GL_ARB_texture_rg"))
+    {
+        hasTRG = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_rg extension.");
     }
 
     if(hasext(exts, "GL_EXT_framebuffer_object"))
@@ -1768,7 +1774,7 @@ void gl_drawhud(int w, int h);
 int xtraverts, xtravertsva;
 
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, aow = -1, aoh = -1, lasthdraccum = 0;
-GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 }, aofbo[2] = { 0, 0 }, aotex[2] = { 0, 0 }, aonoisetex = 0;
+GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 }, aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
 
 extern int bloomsize, bloomprec;
 
@@ -1813,7 +1819,7 @@ void cleanupbloom()
     lasthdraccum = 0;
 }
 
-extern int ao, aoreduce, aonoise;
+extern int ao, aoreduce, aoreducedepth, aonoise;
 
 void setupao(int w, int h)
 {
@@ -1846,13 +1852,24 @@ void setupao(int w, int h)
             fatal("failed allocating AO buffer!");
     }
 
+    if(hasTRG && hasTF && aoreduce && aoreducedepth)
+    {
+        if(!aotex[2]) glGenTextures(1, &aotex[2]);
+        if(!aofbo[2]) glGenFramebuffers_(1, &aofbo[2]);
+        createtexture(aotex[2], w, h, NULL, 3, 0, GL_R16F, GL_TEXTURE_RECTANGLE_ARB);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[2], 0);
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating AO buffer!");
+    }
+        
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 }
 
 void cleanupao()
 {
-    loopi(2) if(aofbo[i]) { glDeleteFramebuffers_(1, &aofbo[i]); aofbo[i] = 0; }
-    loopi(2) if(aotex[i]) { glDeleteTextures(1, &aotex[i]); aotex[i] = 0; }
+    loopi(3) if(aofbo[i]) { glDeleteFramebuffers_(1, &aofbo[i]); aofbo[i] = 0; }
+    loopi(3) if(aotex[i]) { glDeleteTextures(1, &aotex[i]); aotex[i] = 0; }
     if(aonoisetex) { glDeleteTextures(1, &aonoisetex); aonoisetex = 0; }
     aow = bloomh = -1;
 }
@@ -2403,6 +2420,7 @@ VAR(aoblur, 0, 4, 7);
 FVAR(aosigma, 0.005f, 0.5f, 2.0f);
 VAR(aoiter, 0, 0, 4);
 VARF(aoreduce, 0, 1, 2, cleanupao());
+VARF(aoreducedepth, 0, 1, 1, cleanupao());
 VARF(aonoise, 0, 5, 8, cleanupao());
 VAR(aotaps, 1, 5, 12);
 VAR(debugao, 0, 0, 1);
@@ -2501,7 +2519,7 @@ void gl_drawframe(int w, int h)
 
     glmatrixf screenmatrix, worldmatrix;
     screenmatrix.identity();
-    screenmatrix.scale(2.0f/w, 2.0f/h, 2.0f);
+    screenmatrix.scale(2.0f/gw, 2.0f/gh, 2.0f);
     screenmatrix.translate(-1.0f, -1.0f, -1.0f);
     worldmatrix.mul(invmvpmatrix, screenmatrix);
 
@@ -2509,27 +2527,42 @@ void gl_drawframe(int w, int h)
     {
         timer_begin(TIMER_AO);
 
-        glMatrixMode(GL_TEXTURE);
         glmatrixf eyematrix;
         eyematrix.mul(invprojmatrix, screenmatrix);
-        glLoadMatrixf(eyematrix.v);
-        glMatrixMode(GL_MODELVIEW);
+
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+        setenvparamf("depthscale", SHPARAM_PIXEL, 3, eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]);
+
+        static Shader *ambientobscuranceshader = NULL;
+        if(!ambientobscuranceshader) ambientobscuranceshader = lookupshaderbyname("ambientobscurance");
+
+        if(hasTRG && hasTF && aoreduce && aoreducedepth)
+        {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
+            glViewport(0, 0, aow, aoh);
+            SETSHADER(linearizedepth);
+            hdrquad(gw, gh);
+
+            eyematrix.v[0] *= float(gw)/aow;
+            eyematrix.v[5] *= float(gh)/aoh;
+
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2]);
+            ambientobscuranceshader->setvariant(aotaps-1, 1);
+        }
+        else if(aotaps > 1) ambientobscuranceshader->setvariant(aotaps-2, 0);
+        else ambientobscuranceshader->set();
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[0]);
         glViewport(0, 0, aow, aoh);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
         glActiveTexture(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
         glActiveTexture(GL_TEXTURE2_ARB);
         glBindTexture(GL_TEXTURE_2D, aonoisetex);
         glActiveTexture(GL_TEXTURE0_ARB);
 
-        static Shader *ambientobscuranceshader = NULL;
-        if(!ambientobscuranceshader) ambientobscuranceshader = lookupshaderbyname("ambientobscurance");
-        if(aotaps > 1) ambientobscuranceshader->setvariant(aotaps-2, 0);
-        else ambientobscuranceshader->set();
         setlocalparamf("noisescale", SHPARAM_VERTEX, 0, aow/(2.0f*(1<<aonoise)), aoh/(2.0f*(1<<aonoise)));
-        setlocalparamf("aoparams", SHPARAM_PIXEL, 1, aoradius, (2.0f*M_PI*aodark)/aotaps, aosharp);
+        setlocalparamf("aoparams", SHPARAM_PIXEL, 1, aoradius*eyematrix.v[14]/eyematrix.v[0], aoradius*eyematrix.v[14]/eyematrix.v[5], (2.0f*M_PI*aodark)/aotaps, aosharp);
+        setlocalparamf("offsetscale", SHPARAM_PIXEL, 2, eyematrix.v[0]/eyematrix.v[14], eyematrix.v[5]/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]);
         hdrquad(gw, gh);
 
         if(aoblur)
