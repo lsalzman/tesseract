@@ -1852,7 +1852,7 @@ void setupao(int w, int h)
             fatal("failed allocating AO buffer!");
     }
 
-    if(hasTRG && hasTF && aoreduce && aoreducedepth)
+    if(hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1))
     {
         if(!aotex[2]) glGenTextures(1, &aotex[2]);
         if(!aofbo[2]) glGenFramebuffers_(1, &aofbo[2]);
@@ -2420,7 +2420,7 @@ VAR(aoblur, 0, 4, 7);
 FVAR(aosigma, 0.005f, 0.5f, 2.0f);
 VAR(aoiter, 0, 0, 4);
 VARF(aoreduce, 0, 1, 2, cleanupao());
-VARF(aoreducedepth, 0, 1, 1, cleanupao());
+VARF(aoreducedepth, 0, 1, 2, cleanupao());
 VARF(aonoise, 0, 5, 8, cleanupao());
 VAR(aotaps, 1, 5, 12);
 VAR(debugao, 0, 0, 1);
@@ -2536,7 +2536,7 @@ void gl_drawframe(int w, int h)
         static Shader *ambientobscuranceshader = NULL;
         if(!ambientobscuranceshader) ambientobscuranceshader = lookupshaderbyname("ambientobscurance");
 
-        if(hasTRG && hasTF && aoreduce && aoreducedepth)
+        if(hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1)) 
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
             glViewport(0, 0, aow, aoh);
