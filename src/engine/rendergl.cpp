@@ -2393,7 +2393,7 @@ static int playsing_around_with_timer_queries_here;
 
 VARF(ao, 0, 1, 1, cleanupao());
 FVAR(aoradius, 0, 4, 256);
-FVAR(aodark, 1e-3f, 4, 1e3f);
+FVAR(aodark, 1e-3f, 3, 1e3f);
 FVAR(aosharp, 1e-3f, 1, 1e3f);
 VAR(aoblur, 0, 4, 7);
 FVAR(aosigma, 0.005f, 0.5f, 2.0f);

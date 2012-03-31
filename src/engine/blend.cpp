@@ -538,13 +538,12 @@ VARFP(blendtexsize, 0, 9, 12-BM_SCALE, { clearblendtextures(); updateblendtextur
 
 struct BlendTexture
 {
-    ivec pos;
-    int size;
+    int x, y, size;
     uchar *data;
     GLuint tex;
     bool valid;
 
-    BlendTexture() : pos(0, 0, 0), size(size), data(NULL), tex(0), valid(false)
+    BlendTexture() : x(0), y(0), size(0), data(NULL), tex(0), valid(false)
     {}
 
     ~BlendTexture()
@@ -573,10 +572,9 @@ struct BlendTexture
         valid = false;
     }
 
-    bool contains(int x, int y) const
+    bool contains(int px, int py) const
     {
-        return x >= pos.x && y >= pos.y &&
-               x < pos.x + 0x1000 && y < pos.y + 0x1000;
+        return px >= x && py >= y && px < x + 0x1000 && py < y + 0x1000;
     }
 
     bool contains(const ivec &p) const { return contains(p.x, p.y); }
@@ -682,19 +680,13 @@ bool usesblendmap(int x1, int y1, int x2, int y2)
     return usesblendmap(blendmap.type, blendmap, 0, 0, bmsize, ux1, uy1, ux2-ux1, uy2-uy1);
 }
 
-int findblendtexture(const ivec &p)
-{
-    loopv(blendtexs) if(blendtexs[i].contains(p)) return i;
-    return -1;
-}
-
 void bindblendtexture(const ivec &p)
 {
     loopv(blendtexs) if(blendtexs[i].contains(p))
     {
         BlendTexture &bt = blendtexs[i];
         int tsize = 1<<min(worldscale, 12);
-        setenvparamf("blendmapparams", SHPARAM_VERTEX, 7, bt.pos.x, bt.pos.y, 1.0f/tsize, 1.0f/tsize);
+        setenvparamf("blendmapparams", SHPARAM_VERTEX, 7, bt.x, bt.y, 1.0f/tsize, 1.0f/tsize);
         glBindTexture(GL_TEXTURE_2D, bt.tex);
         break;
     }
@@ -731,30 +723,30 @@ static void updateblendtextures(uchar &type, BlendMapNode &node, int bmx, int bm
         ty2 = (min(bmy+bmsize, uy+uh) + (0x1000>>BM_SCALE)-1)&~((0x1000>>BM_SCALE)-1);
     for(int ty = ty1; ty < ty2; ty += 0x1000>>BM_SCALE) for(int tx = tx1; tx < tx2; tx += 0x1000>>BM_SCALE)
     {
-        int idx = -1;
-        loopv(blendtexs) if(blendtexs[i].contains(tx, ty)) { idx = i; break; }
-        if(idx < 0)
+        BlendTexture *bt = NULL;
+        loopv(blendtexs) if(blendtexs[i].contains(tx<<BM_SCALE, ty<<BM_SCALE)) { bt = &blendtexs[i]; break; }
+        if(!bt)
         {
-            idx = blendtexs.length();
-            blendtexs.add().pos = ivec(tx, ty, 0);
+            bt = &blendtexs.add();
+            bt->x = tx<<BM_SCALE;
+            bt->y = ty<<BM_SCALE;
         }
-        BlendTexture &bt = blendtexs[idx];
-        bt.setup(1<<min(worldscale-BM_SCALE, blendtexsize));
+        bt->setup(1<<min(worldscale-BM_SCALE, blendtexsize));
         int tsize = 1<<(min(worldscale, 12)-BM_SCALE), 
             ux1 = tx, ux2 = tx + tsize, uy1 = ty, uy2 = ty + tsize,
-            step = tsize/bt.size;
-        if(!bt.valid)
+            step = tsize/bt->size;
+        if(!bt->valid)
         {
             ux1 = max(ux1, ux&~(step-1));
             ux2 = min(ux2, (ux+uw+step-1)&~(step-1));
             uy1 = max(uy1, uy&~(step-1));
             uy2 = min(uy2, (uy+uh+step-1)&~(step-1));
-            bt.valid = true;
+            bt->valid = true;
         }
-        uchar *data = bt.data + (uy1-ty)/step*bt.size + (ux1-tx1)/step;
-        renderblendtexture(type, node, bmx, bmy, bmsize, data, bt.size, ux1, uy1, ux2-ux1, uy2-uy1);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, bt.size);
-        glBindTexture(GL_TEXTURE_2D, bt.tex);
+        uchar *data = bt->data + (uy1-ty)/step*bt->size + (ux1-tx1)/step;
+        renderblendtexture(type, node, bmx, bmy, bmsize, data, bt->size, ux1, uy1, ux2-ux1, uy2-uy1);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, bt->size);
+        glBindTexture(GL_TEXTURE_2D, bt->tex);
         glTexSubImage2D(GL_TEXTURE_2D, 0, (ux1-tx1)/step, (uy1-ty1)/step, (ux2-ux1)/step, (uy2-uy1)/step, GL_LUMINANCE, GL_UNSIGNED_BYTE, data); 
     }
 
