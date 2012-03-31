@@ -1959,7 +1959,11 @@ VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 
 FVARR(hdrbright, 1e-3f, 0.18f, 1e3f);
+FVAR(hdrtonemin, 1e-3f, 0.5f, 1e3f);
+FVAR(hdrtonemax, 1e-3f, 2.0f, 1e3f);
 FVARR(bloombright, 1e-3f, 2.0f, 1e3f);
+FVAR(bloomlummin, 1e-3f, 0.1f, 1e3f);
+FVAR(bloomlummax, 1e-3f, 10.0f, 1e3f);
 
 void hdrquad(int sw, int sh)
 {
@@ -3094,8 +3098,8 @@ void gl_drawframe(int w, int h)
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
         glViewport(0, 0, b0w, b0h);
         SETSHADER(hdrbloom);
-        setlocalparamf("bloomparams", SHPARAM_VERTEX, 0, -bloombright, bloomthreshold*bloombright/hdrbright);
-        setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, -bloombright, bloomthreshold*bloombright/hdrbright);
+        setlocalparamf("bloomparams", SHPARAM_VERTEX, 0, -bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax);
+        setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, -bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
         hdrquad(pw, ph);
 
@@ -3121,8 +3125,8 @@ void gl_drawframe(int w, int h)
         glViewport(0, 0, w, h);
         SETSHADER(hdrtonemap);
         setlocalparamf("bloomsize", SHPARAM_VERTEX, 0, b0w, b0h);
-        setlocalparamf("hdrparams", SHPARAM_VERTEX, 1, -hdrbright, bloomscale);
-        setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, -hdrbright, bloomscale);
+        setlocalparamf("hdrparams", SHPARAM_VERTEX, 1, -hdrbright, bloomscale, hdrtonemin, hdrtonemax);
+        setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, -hdrbright, bloomscale, hdrtonemin, hdrtonemax);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
         glActiveTexture(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
