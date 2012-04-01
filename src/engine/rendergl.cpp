@@ -1840,6 +1840,26 @@ void gl_drawhud(int w, int h);
 
 int xtraverts, xtravertsva;
 
+void screenquad(int sw, int sh)
+{
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(sw, 0); glVertex2f(1, -1);
+    glTexCoord2f(0, 0); glVertex2f(-1, -1);
+    glTexCoord2f(sw, sh); glVertex2f(1, 1);
+    glTexCoord2f(0, sh); glVertex2f(-1, 1);
+    glEnd();
+}
+
+void screenquad(int sw, int sh, int sw2, int sh2)
+{
+    glBegin(GL_TRIANGLE_STRIP);
+    glMultiTexCoord2f(GL_TEXTURE0_ARB, sw, 0); glMultiTexCoord2f(GL_TEXTURE1_ARB, sw2, 0); glVertex2f(1, -1);
+    glMultiTexCoord2f(GL_TEXTURE0_ARB, 0, 0); glMultiTexCoord2f(GL_TEXTURE1_ARB, 0, 0); glVertex2f(-1, -1);
+    glMultiTexCoord2f(GL_TEXTURE0_ARB, sw, sh); glMultiTexCoord2f(GL_TEXTURE1_ARB, sw2, sh2); glVertex2f(1, 1);
+    glMultiTexCoord2f(GL_TEXTURE0_ARB, 0, sh); glMultiTexCoord2f(GL_TEXTURE1_ARB, 0, sh2); glVertex2f(-1, 1);
+    glEnd();
+}
+
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, aow = -1, aoh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gstencilrb = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 }, aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
 
@@ -1904,17 +1924,13 @@ void setupao(int w, int h)
     createtexture(aonoisetex, 1<<aonoise, 1<<aonoise, noise, 0, 0, GL_RGB, GL_TEXTURE_2D);
     delete[] noise;
 
-    loopi(2) if(!aotex[i]) glGenTextures(1, &aotex[i]);
-
-    loopi(2) if(!aofbo[i]) glGenFramebuffers_(1, &aofbo[i]);
-
     loopi(2)
     {
+        if(!aotex[i]) glGenTextures(1, &aotex[i]);
+        if(!aofbo[i]) glGenFramebuffers_(1, &aofbo[i]);
         createtexture(aotex[i], w, h, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
-
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[i]);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[i], 0);
-
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
             fatal("failed allocating AO buffer!");
     }
@@ -1929,7 +1945,7 @@ void setupao(int w, int h)
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
             fatal("failed allocating AO buffer!");
     }
-        
+
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 }
 
@@ -2062,16 +2078,6 @@ FVAR(hdrtonemax, 1e-3f, 2.0f, 1e3f);
 FVARR(bloombright, 1e-3f, 2.0f, 1e3f);
 FVAR(bloomlummin, 1e-3f, 0.1f, 1e3f);
 FVAR(bloomlummax, 1e-3f, 10.0f, 1e3f);
-
-void hdrquad(int sw, int sh)
-{
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(sw, 0), glVertex2f(1, -1);
-    glTexCoord2f(0, 0); glVertex2f(-1, -1);
-    glTexCoord2f(sw, sh); glVertex2f(1, 1);
-    glTexCoord2f(0, sh); glVertex2f(-1, 1);
-    glEnd();
-}
 
 #define SHADOWATLAS_SIZE 4096
 
@@ -2932,6 +2938,25 @@ void rendershadowmaps()
     }
 }
 
+VAR(aobilateral, 0, 0, 7);
+FVAR(aobilateralsigma, 0, 0.5f, 1e3);
+FVAR(aobilateraldepth, 0, 4, 1e3);
+
+void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear, float stepx, float stepy)
+{
+    static Shader *bilateralshader[7][2] = { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } };
+    Shader *&s = bilateralshader[radius-1][pass];
+    if(!s)
+    {
+        defformatstring(name)("bilateral%c%d", 'x'+pass, radius);
+        s = lookupshaderbyname(name);
+    }
+    if(linear) s->setvariant(0, 0);
+    else s->set();
+    sigma *= 2*radius;
+    setlocalparamf("bilateralparams", SHPARAM_PIXEL, 0, 1.0f/(2*sigma*sigma), 1.0f/(depth*depth), pass==0 ? stepx : 0, pass==1 ? stepy : 0);
+}
+
 void renderao()
 {
     timer_begin(TIMER_AO);
@@ -2945,12 +2970,13 @@ void renderao()
     static Shader *ambientobscuranceshader = NULL;
     if(!ambientobscuranceshader) ambientobscuranceshader = lookupshaderbyname("ambientobscurance");
 
-    if(hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1))
+    bool linear = hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1);
+    if(linear)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
         glViewport(0, 0, aow, aoh);
         SETSHADER(linearizedepth);
-        hdrquad(gw, gh);
+        screenquad(gw, gh);
 
         eyematrix.v[0] *= float(gw)/aow;
         eyematrix.v[5] *= float(gh)/aoh;
@@ -2972,9 +2998,23 @@ void renderao()
     setlocalparamf("noisescale", SHPARAM_VERTEX, 0, aow/(2.0f*(1<<aonoise)), aoh/(2.0f*(1<<aonoise)));
     setlocalparamf("aoparams", SHPARAM_PIXEL, 1, aoradius*eyematrix.v[14]/eyematrix.v[0], aoradius*eyematrix.v[14]/eyematrix.v[5], (2.0f*M_PI*aodark)/aotaps, aosharp);
     setlocalparamf("offsetscale", SHPARAM_PIXEL, 2, eyematrix.v[0]/eyematrix.v[14], eyematrix.v[5]/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]);
-    hdrquad(gw, gh);
+    screenquad(gw, gh);
 
-    if(aoblur)
+    if(aobilateral)
+    {
+        loopi(2 + 2*aoiter)
+        {
+            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear, linear ? 1 : float(gw)/aow, linear ? 1 : float(gh)/aoh);
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[(i+1)%2]);
+            glViewport(0, 0, aow, aoh);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i%2]);
+            glActiveTexture_(GL_TEXTURE1_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[2] : gdepthtex);
+            glActiveTexture_(GL_TEXTURE0_ARB);
+            screenquad(gw, gh);
+        }
+    }
+    else if(aoblur)
     {
         float blurweights[MAXBLURRADIUS+1], bluroffsets[MAXBLURRADIUS+1];
         setupblurkernel(aoblur, aosigma, blurweights, bluroffsets);
@@ -2984,7 +3024,7 @@ void renderao()
             glViewport(0, 0, aow, aoh);
             setblurshader(i%2, 1, aoblur, blurweights, bluroffsets, GL_TEXTURE_RECTANGLE_ARB);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i%2]);
-            hdrquad(aow, aoh);
+            screenquad(aow, aoh);
         }
     }
 
@@ -3013,7 +3053,7 @@ void processhdr()
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, cfbo);
         glViewport(0, 0, cw, ch);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
-        hdrquad(pw, ph);
+        screenquad(pw, ph);
 
         ptex = ctex;
         pw = cw;
@@ -3042,7 +3082,7 @@ void processhdr()
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b1fbo);
             glViewport(0, 0, cw, ch);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ltex);
-            hdrquad(lw, lh);
+            screenquad(lw, lh);
 
             ltex = b1tex;
             lw = cw;
@@ -3060,7 +3100,7 @@ void processhdr()
         SETSHADER(hdraccum);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
         setlocalparamf("accumscale", SHPARAM_PIXEL, 0, lasthdraccum ? pow(hdraccumscale, float(lastmillis - lasthdraccum)/hdraccummillis) : 0);
-        hdrquad(2, 2);
+        screenquad(2, 2);
         glDisable(GL_BLEND);
 
         lasthdraccum = lastmillis;
@@ -3083,7 +3123,7 @@ void processhdr()
     setlocalparamf("bloomparams", SHPARAM_VERTEX, 0, -bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax);
     setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, -bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
-    hdrquad(pw, ph);
+    screenquad(pw, ph);
 
     if(bloomblur)
     {
@@ -3095,7 +3135,7 @@ void processhdr()
             glViewport(0, 0, b1w, b1h);
             setblurshader(i%2, 1, bloomblur, blurweights, bluroffsets, GL_TEXTURE_RECTANGLE_ARB);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-            hdrquad(b0w, b0h);
+            screenquad(b0w, b0h);
             swap(b0w, b1w);
             swap(b0h, b1h);
             swap(b0tex, b1tex);
@@ -3113,7 +3153,7 @@ void processhdr()
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
     glActiveTexture_(GL_TEXTURE0_ARB);
-    hdrquad(gw, gh);
+    screenquad(gw, gh);
     timer_end();
 }
 
