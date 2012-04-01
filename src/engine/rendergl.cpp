@@ -1943,7 +1943,9 @@ void setupgbuffer(int w, int h)
     if(!depthstencil || !hasDS)
     {
         if(!gstencilrb) glGenRenderbuffers_(1, &gstencilrb);
-        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX4_EXT, gw, gh);
+        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gstencilrb);
+        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, gw, gh);
+        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
     }
  
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);

@@ -39,6 +39,13 @@ extern PFNGLGETQUERYOBJECTIVARBPROC  glGetQueryObjectiv_;
 extern PFNGLGETQUERYOBJECTUIVARBPROC glGetQueryObjectuiv_;
 
 // GL_ARB_timer_query
+#ifndef GL_ARB_timer_query
+#define GL_TIME_ELAPSED                   0x88BF
+#define GL_TIMESTAMP                      0x8E28
+typedef void (APIENTRYP PFNGLQUERYCOUNTERPROC) (GLuint id, GLenum target);
+typedef void (APIENTRYP PFNGLGETQUERYOBJECTI64VPROC) (GLuint id, GLenum pname, GLint64 *params);
+typedef void (APIENTRYP PFNGLGETQUERYOBJECTUI64VPROC) (GLuint id, GLenum pname, GLuint64 *params);
+#endif
 extern PFNGLGETQUERYOBJECTI64VPROC glGetQueryObjecti64v_;
 extern PFNGLGETQUERYOBJECTUI64VPROC glGetQueryObjectui64v_;
 extern PFNGLQUERYCOUNTERPROC glQueryCounter_;
