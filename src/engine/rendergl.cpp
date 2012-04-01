@@ -700,6 +700,7 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     glViewport(0, 0, w, h);
     glClearColor(0, 0, 0, 0);
     glClearDepth(1);
+    glClearStencil(0);
     glDepthFunc(GL_LESS);
     glDisable(GL_DEPTH_TEST);
     glShadeModel(GL_SMOOTH);
@@ -1076,14 +1077,14 @@ void disablepolygonoffset(GLenum type)
     glMatrixMode(GL_MODELVIEW);
 }
 
-void calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2)
+bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2)
 {
     vec worldpos(center);
     if(reflecting) worldpos.z = 2*reflectz - worldpos.z; 
     vec e(mvmatrix.transformx(worldpos),
           mvmatrix.transformy(worldpos),
           mvmatrix.transformz(worldpos));
-    if(e.z > 2*size) { sx1 = sy1 = 1; sx2 = sy2 = -1; return; }
+    if(e.z > 2*size) { sx1 = sy1 = 1; sx2 = sy2 = -1; return false; }
     float zzrr = e.z*e.z - size*size,
           dx = e.x*e.x + zzrr, dy = e.y*e.y + zzrr,
           focaldist = 1.0f/tan(fovy*0.5f*RAD);
@@ -1113,6 +1114,52 @@ void calcspherescissor(const vec &center, float size, float &sx1, float &sy1, fl
         CHECKPLANE(y, -, focaldist, sy1, sy2);
         CHECKPLANE(y, +, focaldist, sy1, sy2);
     }
+    return sx1 < sx2 && sy1 < sy2;
+}
+
+bool calcbbscissor(const vec &bbmin, const vec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2)
+{
+    vec4 v[8];
+    sx1 = sy1 = 1;
+    sx2 = sy2 = -1;
+    loopi(8)
+    {
+        vec4 &p = v[i];
+        mvpmatrix.transform(vec(i&1 ? bbmax.x : bbmin.x, i&2 ? bbmax.y : bbmin.y, i&4 ? bbmax.z : bbmin.z), p);
+        if(p.z >= -p.w)
+        {
+            float x = p.x / p.w, y = p.y / p.w;
+            sx1 = min(sx1, x);
+            sy1 = min(sy1, y);
+            sx2 = max(sx2, x);
+            sy2 = max(sy2, y);
+        }
+    }
+    if(sx1 >= sx2 || sy1 >= sy2) return false;
+    loopi(8)
+    {
+        const vec4 &p = v[i];
+        if(p.z >= -p.w) continue;
+        loopj(3)
+        {
+            const vec4 &o = v[i^(1<<j)];
+            if(o.z <= -o.w) continue;
+            float t = (p.z + p.w)/(p.z + p.w - o.z - o.w),
+                  w = p.w + t*(o.w - p.w),
+                  x = (p.x + t*(o.x - p.x))/w,
+                  y = (p.y + t*(o.y - p.y))/w;
+            sx1 = min(sx1, x);
+            sy1 = min(sy1, y);
+            sx2 = max(sx2, x);
+            sy2 = max(sy2, y);
+        }
+    }
+    if(sx1 <= -1 && sy1 <= -1 && sx2 >= 1 && sy2 >= 1) return false;
+    sx1 = max(sx1, -1.0f);
+    sy1 = max(sy1, -1.0f);
+    sx2 = min(sx2, 1.0f);
+    sy2 = min(sy2, 1.0f);
+    return sx1 < sx2 && sy1 < sy2;
 }
 
 void calcspheredepth(const vec &center, float size, float &sz1, float &sz2)
@@ -1321,6 +1368,7 @@ glmatrixf fogmatrix, invfogmatrix;
 
 void drawreflection(float z, bool refract)
 {
+#ifdef REFLECTIONS_ARE_HORRIBLY_BROKEN
     reflectz = z < 0 ? 1e16f : z;
     reflecting = !refract;
     refracting = refract ? (z < 0 || camera1->o.z >= z ? -1 : 1) : 0;
@@ -1474,6 +1522,7 @@ void drawreflection(float z, bool refract)
     reflecting = fading = fogging = false;
 
     setenvmatrix();
+#endif
 }
 
 bool envmapping = false;
@@ -2474,7 +2523,7 @@ static inline bool sortlights(int x, int y)
 VAR(depthtestlights, 0, 1, 2);
 VAR(culllighttiles, 0, 1, 1);
 
-void renderlights(int side = 0)
+void renderlights(int side = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1)
 {
     glEnable(GL_SCISSOR_TEST);
 
@@ -2518,7 +2567,11 @@ void renderlights(int side = 0)
     setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
     if(ao) setenvparamf("aoscale", SHPARAM_PIXEL, 2, float(aow)/gw, float(aoh)/gh);
 
-    loop(y, LIGHTTILE_H) loop(x, LIGHTTILE_W)
+    int bx1 = max(int(floor((bsx1*0.5f+0.5f)*gw)), 0), by1 = max(int(floor((bsy1*0.5f+0.5f)*gh)), 0),
+        bx2 = min(int(ceil((bsx2*0.5f+0.5f)*gw)), gw), by2 = min(int(ceil((bsy2*0.5f+0.5f)*gh)), gh),
+        btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+        btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+    for(int y = bty1; y < bty2; y++) for(int x = btx1; x < btx2; x++)
     {
         vector<int> &tile = lighttiles[y][x];
 
@@ -2585,23 +2638,30 @@ void renderlights(int side = 0)
                 sz1 = min(sz1, l.sz1);
                 sz2 = max(sz2, l.sz2);
             }
-            if(!i || sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
+            if(!i) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
+            else if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) continue;
 
-            int tx1 = max(int(floor((sx1*0.5f+0.5f)*gw)), (x*gw)/LIGHTTILE_W), ty1 = max(int(floor((sy1*0.5f+0.5f)*gh)), (y*gh)/LIGHTTILE_H),
-                tx2 = min(int(ceil((sx2*0.5f+0.5f)*gw)), ((x+1)*gw)/LIGHTTILE_W), ty2 = min(int(ceil((sy2*0.5f+0.5f)*gh)), ((y+1)*gh)/LIGHTTILE_H);
+            sx1 = max(sx1, bsx1);
+            sy1 = max(sy1, bsy1);
+            sx2 = min(sx2, bsx2);
+            sy2 = min(sy2, bsy2);
+            if(sx1 < sx2 && sy1 < sy2)
+            { 
+                int tx1 = max(int(floor((sx1*0.5f+0.5f)*gw)), (x*gw)/LIGHTTILE_W), ty1 = max(int(floor((sy1*0.5f+0.5f)*gh)), (y*gh)/LIGHTTILE_H),
+                    tx2 = min(int(ceil((sx2*0.5f+0.5f)*gw)), ((x+1)*gw)/LIGHTTILE_W), ty2 = min(int(ceil((sy2*0.5f+0.5f)*gh)), ((y+1)*gh)/LIGHTTILE_H);
 
-            // FIXME: use depth bounds here in addition to scissor
-            glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
+                glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
 
-            if(hasDBT && depthtestlights > 1) glDepthBounds_(sz1*0.5f + 0.5f, sz2*0.5f + 0.5f);
+                if(hasDBT && depthtestlights > 1) glDepthBounds_(sz1*0.5f + 0.5f, sz2*0.5f + 0.5f);
 
-            // FIXME: render light geometry here
-            glBegin(GL_TRIANGLE_STRIP);
-            glVertex3f( 1, -1, sz1);
-            glVertex3f(-1, -1, sz1);
-            glVertex3f( 1,  1, sz1);
-            glVertex3f(-1,  1, sz1);
-            glEnd();
+                // FIXME: render light geometry here
+                glBegin(GL_TRIANGLE_STRIP);
+                glVertex3f( 1, -1, sz1);
+                glVertex3f(-1, -1, sz1);
+                glVertex3f( 1,  1, sz1);
+                glVertex3f(-1,  1, sz1);
+                glEnd();
+            }
 
             i += n;
             if(i >= tile.length()) break;
@@ -3059,6 +3119,8 @@ void processhdr()
     hdrquad(gw, gh);
     timer_end();
 }
+
+VAR(alphascissor, 0, 1, 1);
  
 void gl_drawframe(int w, int h)
 {
@@ -3271,6 +3333,11 @@ void gl_drawframe(int w, int h)
         timer_begin(TIMER_ALPHAGEOM);
         glEnable(GL_STENCIL_TEST);
 
+        if(!alphascissor) 
+        { 
+            alphafrontsx1 = alphafrontsy1 = alphabacksx1 = alphabacksy1 = -1;
+            alphafrontsx2 = alphafrontsy2 = alphabacksx2 = alphabacksy2 = 1;
+        }
         loop(side, 2) if(hasalphavas&(1<<side))
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
@@ -3286,7 +3353,8 @@ void gl_drawframe(int w, int h)
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-            renderlights(1<<side);
+            if(!side) renderlights(1, alphabacksx1, alphabacksy1, alphabacksx2, alphabacksy2);
+            else renderlights(2, alphafrontsx1, alphafrontsy1, alphafrontsx2, alphafrontsy2);
 
             glDisable(GL_BLEND);
         }

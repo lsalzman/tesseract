@@ -248,6 +248,7 @@ struct vacollect : verthash
     vector<octaentities *> mapmodels;
     vector<ushort> skyindices, explicitskyindices;
     int worldtris, skytris, skyfaces, skyclip, skyarea;
+    vec alphamin, alphamax;
 
     void clear()
     {
@@ -263,6 +264,8 @@ struct vacollect : verthash
         mapmodels.setsize(0);
         grasstris.setsize(0);
         texs.setsize(0);
+        alphamin = vec(1e16f, 1e16f, 1e16f);
+        alphamax = vec(-1e16f, -1e16f, -1e16f);
     }
 
     void optimize()
@@ -755,6 +758,8 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         vc.skyfaces |= 0x3F&~(1<<orient);
     }
 
+    if(alpha) loopk(numverts) { vc.alphamin.min(pos[k]); vc.alphamax.max(pos[k]); }
+
     sortkey key(texture, vslot.scrollS || vslot.scrollT ? dim : 3, layer == LAYER_BLEND ? LAYER_BLEND : LAYER_TOP, envmap, alpha ? (vslot.alphaback ? ALPHA_BACK : (vslot.alphafront ? ALPHA_FRONT : NO_ALPHA)) : NO_ALPHA);
     addtris(key, orient, verts, index, numverts, convex, tj);
 
@@ -1105,12 +1110,18 @@ vtxarray *newva(int x, int y, int z, int size)
     va->curvfc = VFC_NOT_VISIBLE;
     va->occluded = OCCLUDE_NOTHING;
     va->query = NULL;
-    va->bbmin = ivec(-1, -1, -1);
-    va->bbmax = ivec(-1, -1, -1);
+    va->bbmin = va->alphamin = ivec(-1, -1, -1);
+    va->bbmax = va->alphamax = ivec(-1, -1, -1);
     va->hasmerges = 0;
     va->mergelevel = -1;
 
     vc.setupdata(va);
+
+    if(va->alphafronttris || va->alphabacktris)
+    {
+        va->alphamin = ivec(vec(vc.alphamin).mul(8)).shr(3);
+        va->alphamax = ivec(vec(vc.alphamax).mul(8)).add(7).shr(3);
+    }
 
     wverts += va->verts;
     wtris  += va->tris + va->blends + va->alphabacktris + va->alphafronttris;

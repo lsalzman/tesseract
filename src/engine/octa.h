@@ -147,6 +147,7 @@ struct vtxarray
     ivec o;
     int size;                // location and size of cube.
     ivec geommin, geommax;   // BB of geom
+    ivec alphamin, alphamax; // BB of alpha geom
     ivec matmin, matmax;     // BB of any materials
     ivec bbmin, bbmax;       // BB of everything including children
     uchar curvfc, occluded;
