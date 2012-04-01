@@ -2090,14 +2090,15 @@ void renderalphageom(int side, bool fogpass)
     if(side == 2)
     {
         loopv(alphavas) renderva(cur, alphavas[i], RENDERPASS_GBUFFER, fogpass);    
+        if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
     }
     else
     {
         glCullFace(GL_FRONT);
         loopv(alphavas) if(alphavas[i]->alphabacktris) renderva(cur, alphavas[i], RENDERPASS_GBUFFER, fogpass);
+        if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
         glCullFace(GL_BACK);
     }
-    if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
    
     cleanupTMUs(cur, 0, fogpass);
 
