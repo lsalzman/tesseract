@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false;
 
 int hasstencil = 0;
 
@@ -120,6 +120,9 @@ PFNGLBINDBUFFERRANGEPROC         glBindBufferRange_         = NULL;
 PFNGLUNIFORMBUFFEREXTPROC        glUniformBuffer_        = NULL;
 PFNGLGETUNIFORMBUFFERSIZEEXTPROC glGetUniformBufferSize_ = NULL;
 PFNGLGETUNIFORMOFFSETEXTPROC     glGetUniformOffset_     = NULL;
+
+// GL_EXT_depth_bounds_test
+PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_ = NULL;
 
 void *getprocaddress(const char *name)
 {
@@ -577,10 +580,16 @@ void gl_checkextensions()
     }
     else if(hasext(exts, "GL_AMD_texture_texture4"))
     {
-        hasT4 = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_AMD_texture_texture4 extension.");
     }
     if(hasTG || hasT4) usetexgather = 1;
+
+    if(hasext(exts, "GL_EXT_depth_bounds_test"))
+    {
+        glDepthBounds_ = (PFNGLDEPTHBOUNDSEXTPROC) getprocaddress("glDepthBoundsEXT");
+        hasDBT = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_depth_bounds_test extension.");
+    }
 
     if(hasext(exts, "GL_EXT_gpu_shader4"))
     {
@@ -1105,6 +1114,16 @@ void calcspherescissor(const vec &center, float size, float &sx1, float &sy1, fl
         CHECKPLANE(y, -, focaldist, sy1, sy2);
         CHECKPLANE(y, +, focaldist, sy1, sy2);
     }
+}
+
+void calcspheredepth(const vec &center, float size, float &sz1, float &sz2)
+{
+    vec worldpos(center);
+    if(reflecting) worldpos.z = 2*reflectz - worldpos.z;
+    float z = mvmatrix.transformz(worldpos),
+          z1 = min(z + size, -1e-3f - nearplane), z2 = min(z - size, -1e-3f - nearplane);
+    sz1 = (z1*projmatrix.v[10] + projmatrix.v[14]) / (z1*projmatrix.v[11] + projmatrix.v[15]);
+    sz2 = (z2*projmatrix.v[10] + projmatrix.v[14]) / (z2*projmatrix.v[11] + projmatrix.v[15]);
 }
 
 static int scissoring = 0;
@@ -2098,17 +2117,19 @@ const float tetrashadowviewmatrix[4][16] =
     }
 };
 
-struct lighttile
+struct lightinfo
 {
-    float sx1, sy1, sx2, sy2;
-    extentity *ent;
+    float sx1, sy1, sx2, sy2, sz1, sz2;
     int shadowmap;
+    vec o, color;
+    int radius;
+    float dist;
 };
 
 struct shadowmapinfo
 {
     ushort x, y, size;
-    extentity *ent;
+    int light;
     occludequery *query;
 };
 
@@ -2136,6 +2157,7 @@ FVAR(smtetraborder, 0, 0, 1e3);
 VAR(smcullside, 0, 0, 1);
 VAR(smgather, 0, 0, 1);
 VAR(smnoshadow, 0, 0, 2);
+VAR(lighttilesused, 1, 0, 0);
 
 bool shadowmapping = false;
 
@@ -2210,7 +2232,7 @@ static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
         const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
         if(!inserted) fatal("cascaded shadow maps MUST be packed");
         shadowmapinfo *sm = addshadowmap(sms, smx, smy, smmaxsize, csmidx[i]);
-        sm->ent = NULL;
+        sm->light = -1;
     }
     return true;
 #endif
@@ -2425,6 +2447,20 @@ VARF(aonoise, 0, 5, 8, cleanupao());
 VAR(aotaps, 1, 5, 12);
 VAR(debugao, 0, 0, 1);
 
+vector<lightinfo> lights;
+vector<int> lightorder;
+vector<int> lighttiles[LIGHTTILE_H][LIGHTTILE_W];
+vector<shadowmapinfo> shadowmaps;
+
+static inline bool sortlights(int x, int y)
+{
+    const lightinfo &xl = lights[x], &yl = lights[y];
+    return xl.dist - xl.radius < yl.dist - yl.radius;
+}
+
+VAR(depthtestlights, 0, 1, 2);
+VAR(culllighttiles, 0, 1, 1);
+ 
 void gl_drawframe(int w, int h)
 {
     timer_sync();
@@ -2596,9 +2632,11 @@ void gl_drawframe(int w, int h)
 #ifndef MORE_DEFERRED_WEIRDNESS
     timer_begin(TIMER_SM);
 
-    vector<lighttile> tiles[LIGHTTILE_H][LIGHTTILE_W];
-    vector<shadowmapinfo> shadowmaps;
- 
+    lights.setsize(0);
+    lightorder.setsize(0);
+    loopi(LIGHTTILE_H) loopj(LIGHTTILE_W) lighttiles[i][j].setsize(0);
+    shadowmaps.setsize(0);
+
     shadowatlaspacker.reset();
   
     glDepthMask(GL_FALSE);
@@ -2621,41 +2659,70 @@ void gl_drawframe(int w, int h)
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
     {
-        extentity *l = ents[i];
-        if(l->type != ET_LIGHT) continue;
+        extentity *e = ents[i];
+        if(e->type != ET_LIGHT) continue;
 
-        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
-        if(l->attr1 > 0) 
+        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1, sz1 = -1, sz2 = 1;
+        if(e->attr1 > 0) 
         {
             if(smviscull)
             {
-                if(isvisiblesphere(l->attr1, l->o) >= VFC_NOT_VISIBLE) continue;
-                ivec bo = ivec(l->o).sub(l->attr1), br = ivec(l->attr1*2+1, l->attr1*2+1, l->attr1*2+1);
+                if(isvisiblesphere(e->attr1, e->o) >= VFC_NOT_VISIBLE) continue;
+                ivec bo = ivec(e->o).sub(e->attr1), br = ivec(e->attr1*2+1, e->attr1*2+1, e->attr1*2+1);
                 if(pvsoccluded(bo, br) || bboccluded(bo, br)) continue;
             }
-            calcspherescissor(l->o, l->attr1, sx1, sy1, sx2, sy2);
+            calcspherescissor(e->o, e->attr1, sx1, sy1, sx2, sy2);
+            calcspheredepth(e->o, e->attr1, sz1, sz2);
         }
-        if(sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+        if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
 
-        int smradius = l->attr1 > 0 ? l->attr1 : 2*worldsize;
-        float smlod = clamp(smradius * smprec / sqrtf(max(1.0f, camera1->o.dist(l->o)/smradius)), float(smminsize), float(smmaxsize));
+        lightorder.add(lights.length());
+        lightinfo &l = lights.add();
+        l.sx1 = sx1;
+        l.sx2 = sx2;
+        l.sy1 = sy1;
+        l.sy2 = sy2;
+        l.sz1 = sz1;
+        l.sz2 = sz2;
+        l.shadowmap = -1;
+        l.o = e->o;
+        l.color = vec(e->attr2, e->attr3, e->attr4);
+        l.radius = e->attr1 > 0 ? e->attr1 : 2*worldsize;
+        l.dist = camera1->o.dist(e->o);
+    }
+
+    lightorder.sort(sortlights);
+
+    plane cullx[LIGHTTILE_W+1], cully[LIGHTTILE_H+1]; 
+    vec4 px = mvpmatrix.getrow(0), py = mvpmatrix.getrow(1), pw = mvpmatrix.getrow(3);
+    loopi(LIGHTTILE_W+1) cullx[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_W-1).sub(px)).normalize();
+    loopi(LIGHTTILE_H+1) cully[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_H-1).sub(py)).normalize();
+
+    lighttilesused = 0;
+
+    loopv(lightorder)
+    {
+        int idx = lightorder[i];
+        lightinfo &l = lights[idx];
+        float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
         int smsize = clamp(int(ceil(smlod * (smtetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (smtetra ? 2 : 3)),
             smw = smtetra ? smsize*2 : smsize*3, smh = smtetra ? smsize : smsize*2;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
-        if(smnoshadow <= 1 && smradius > smminradius && shadowatlaspacker.insert(smx, smy, smw, smh))
+        if(smnoshadow <= 1 && l.radius > smminradius && shadowatlaspacker.insert(smx, smy, smw, smh))
         {
             sm = addshadowmap(shadowmaps, smx, smy, smsize, smidx);
-            sm->ent = l;
-            if(smquery && l->attr1 > 0)
+            sm->light = idx;
+            l.shadowmap = smidx;
+            if(smquery && l.radius < worldsize)
             {
-                ivec bo = ivec(l->o).sub(l->attr1), br(l->attr1*2+1, l->attr1*2+1, l->attr1*2+1);
+                ivec bo = ivec(l.o).sub(l.radius), br(l.radius*2+1, l.radius*2+1, l.radius*2+1);
                 if(camera1->o.x < bo.x || camera1->o.x > bo.x + br.x ||
                    camera1->o.y < bo.y || camera1->o.y > bo.y + br.y ||
                    camera1->o.z < bo.z || camera1->o.z > bo.z + br.z)
                 { 
-                    sm->query = newquery(l);
+                    sm->query = newquery(&l);
                     if(sm->query)
                     {
                         startquery(sm->query);
@@ -2667,20 +2734,26 @@ void gl_drawframe(int w, int h)
             smused += smsize*smsize*(smtetra ? 2 : 6);
         }
         
-        int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
-            tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H); 
+        int tx1 = max(int(floor((l.sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((l.sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+            tx2 = min(int(ceil((l.sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((l.sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H); 
+        if(!culllighttiles)
+        {
+            for(int y = ty1; y < ty2; y++) for(int x = tx1; x < tx2; x++) { lighttiles[y][x].add(idx); lighttilesused++; }
+            continue;
+        }
+        float pydist = cully[ty1].dist(l.o);
         for(int y = ty1; y < ty2; y++)
         {
+            float ydist = cully[y+1].dist(l.o), mydist = max(max(pydist, -ydist), 0.0f), pxdist = cullx[tx1].dist(l.o);
             for(int x = tx1; x < tx2; x++)
             {
-                lighttile &t = tiles[y][x].add();
-                t.sx1 = sx1;
-                t.sy1 = sy1;
-                t.sx2 = sx2;
-                t.sy2 = sy2;
-                t.ent = l;
-                t.shadowmap = smidx;
+                float xdist = cullx[x+1].dist(l.o), mxdist = max(max(pxdist, -xdist), 0.0f);
+                if(mxdist*mxdist + mydist*mydist > l.radius*l.radius) continue;
+                lighttiles[y][x].add(idx);
+                lighttilesused++;
+                pxdist = xdist;
             }
+            pydist = ydist;
         }
     }
 
@@ -2717,23 +2790,22 @@ void gl_drawframe(int w, int h)
     loopv(shadowmaps)
     {
         shadowmapinfo &sm = shadowmaps[i];
-        extentity *l = sm.ent;
-        if(l == NULL) continue; // csm here
+        lightinfo &l = lights[sm.light];
 
-        int smradius = l->attr1 > 0 ? l->attr1 : 2*worldsize, sidemask;
+        int sidemask;
         if(smtetra)
         {
             extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
-            sidemask = smsidecull ? cullfrustumtetra(l->o, smradius, sm.size, smborder) : 0xF;
+            sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
         }
         else
         {
             extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
-            sidemask = smsidecull ? cullfrustumsides(l->o, smradius, sm.size, smborder) : 0x3F;
+            sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
         }
-        if(!sidemask || (sm.query && sm.query->owner == l && checkquery(sm.query))) continue;
+        if(!sidemask || (sm.query && sm.query->owner == &l && checkquery(sm.query))) continue;
 
-        float smnearclip = SQRT3 / smradius, smfarclip = SQRT3;
+        float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
         GLfloat smprojmatrix[16] =
         {
             float(sm.size - smborder) / sm.size, 0, 0, 0,
@@ -2743,14 +2815,14 @@ void gl_drawframe(int w, int h)
         };
         GLfloat lightmatrix[16] =
         {
-            1.0f/smradius, 0, 0, 0,
-            0, 1.0f/smradius, 0, 0,
-            0, 0, 1.0f/smradius, 0,
-            -l->o.x/smradius, -l->o.y/smradius, -l->o.z/smradius, 1
+            1.0f/l.radius, 0, 0, 0,
+            0, 1.0f/l.radius, 0, 0,
+            0, 0, 1.0f/l.radius, 0,
+            -l.o.x/l.radius, -l.o.y/l.radius, -l.o.z/l.radius, 1
         };
 
-        shadoworigin = l->o;
-        shadowradius = smradius;
+        shadoworigin = l.o;
+        shadowradius = l.radius;
         shadowbias = smborder / float(sm.size - smborder);
 
         findshadowvas();
@@ -2789,7 +2861,7 @@ void gl_drawframe(int w, int h)
    
                 if(smtetraclip)
                 {
-                    smtetraclipplane.toplane(vec(-smviewmatrix.v[2], -smviewmatrix.v[6], 0), l->o);
+                    smtetraclipplane.toplane(vec(-smviewmatrix.v[2], -smviewmatrix.v[6], 0), l.o);
                     smtetraclipplane.offset += smtetraborder/(0.5f*sm.size);
                     setenvparamf("tetraclip", SHPARAM_VERTEX, 1, smtetraclipplane.x, smtetraclipplane.y, smtetraclipplane.z, smtetraclipplane.offset);
                 }
@@ -2879,7 +2951,13 @@ void gl_drawframe(int w, int h)
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    glDisable(GL_DEPTH_TEST);
+    if(!depthtestlights) glDisable(GL_DEPTH_TEST);
+    else 
+    {
+        glDepthMask(GL_FALSE);
+        if(hasDBT && depthtestlights > 1) glEnable(GL_DEPTH_BOUNDS_TEST_EXT);
+    }
+
     glBlendFunc(GL_ONE, GL_ONE);
     glEnable(GL_BLEND);
 
@@ -2900,7 +2978,7 @@ void gl_drawframe(int w, int h)
 
     loop(y, LIGHTTILE_H) loop(x, LIGHTTILE_W)
     {
-        vector<lighttile> &lights = tiles[y][x];
+        vector<int> &tile = lighttiles[y][x];
         
         static const char * const lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos", "light4pos", "light5pos", "light6pos", "light7pos" };
         static const char * const lightcolor[] = { "light0color", "light1color", "light2color", "light3color", "light4color", "light5color", "light6color", "light7color" };
@@ -2909,12 +2987,12 @@ void gl_drawframe(int w, int h)
 
         for(int i = 0;;)
         {
-            int n = min(lights.length() - i, 7);
+            int n = min(tile.length() - i, 7);
 
-            bool shadowmap = n > 0 && lights[i].shadowmap >= 0;
+            bool shadowmap = n > 0 && lights[tile[i]].shadowmap >= 0;
             loopj(n)
             {
-                if((lights[i+j].shadowmap >= 0) != shadowmap) { n = j; break; }
+                if((lights[tile[i+j]].shadowmap >= 0) != shadowmap) { n = j; break; }
             }
             
             if(!i && ao)
@@ -2938,18 +3016,16 @@ void gl_drawframe(int w, int h)
                 setlocalparamf("lightscale", SHPARAM_PIXEL, 3, 0, 0, 0, 0);
             }
 
-            float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1;
+            float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
             loopj(n)
             {
-                lighttile &t = lights[i+j];
-                extentity *l = t.ent;
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 4 + 4*j, l->o.x, l->o.y, l->o.z, l->attr1 > 0 ? 1.0f/l->attr1 : 0.5f/worldsize);
-                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 5 + 4*j, l->attr2*lightscale, l->attr3*lightscale, l->attr4*lightscale);
+                lightinfo &l = lights[tile[i+j]];
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 4 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
+                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 5 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
                 if(shadowmap)
                 {
-                    shadowmapinfo &sm = shadowmaps[lights[i+j].shadowmap];
-                    int smradius = l->attr1 > 0 ? l->attr1 : 2*worldsize;
-                    float smnearclip = SQRT3 / smradius, smfarclip = SQRT3, 
+                    shadowmapinfo &sm = shadowmaps[l.shadowmap];
+                    float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3, 
                           bias = smbias * smnearclip * (1024.0f / sm.size);
                     setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 6 + 4*j, 
                         0.5f * (sm.size - smborder), 
@@ -2958,12 +3034,14 @@ void gl_drawframe(int w, int h)
                         0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
                     setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 7 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
-                sx1 = min(sx1, t.sx1);
-                sy1 = min(sy1, t.sy1);
-                sx2 = max(sx2, t.sx2);
-                sy2 = max(sy2, t.sy2);
+                sx1 = min(sx1, l.sx1);
+                sy1 = min(sy1, l.sy1);
+                sx2 = max(sx2, l.sx2);
+                sy2 = max(sy2, l.sy2);
+                sz1 = min(sz1, l.sz1);
+                sz2 = max(sz2, l.sz2); 
             }
-            if(!i || sx1 >= sx2 || sy1 >= sy2) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+            if(!i || sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
 
             int tx1 = max(int(floor((sx1*0.5f+0.5f)*w)), (x*w)/LIGHTTILE_W), ty1 = max(int(floor((sy1*0.5f+0.5f)*h)), (y*h)/LIGHTTILE_H),
                 tx2 = min(int(ceil((sx2*0.5f+0.5f)*w)), ((x+1)*w)/LIGHTTILE_W), ty2 = min(int(ceil((sy2*0.5f+0.5f)*h)), ((y+1)*h)/LIGHTTILE_H);
@@ -2971,16 +3049,18 @@ void gl_drawframe(int w, int h)
             // FIXME: use depth bounds here in addition to scissor
             glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
 
+            if(hasDBT && depthtestlights > 1) glDepthBounds_(sz1*0.5f + 0.5f, sz2*0.5f + 0.5f);
+
             // FIXME: render light geometry here
             glBegin(GL_TRIANGLE_STRIP);
-            glVertex2f( 1, -1);
-            glVertex2f(-1, -1);
-            glVertex2f( 1,  1);
-            glVertex2f(-1,  1);
+            glVertex3f( 1, -1, sz1);
+            glVertex3f(-1, -1, sz1);
+            glVertex3f( 1,  1, sz1);
+            glVertex3f(-1,  1, sz1);
             glEnd();
     
             i += n;
-            if(i >= lights.length()) break;
+            if(i >= tile.length()) break;
         }
     }
 
@@ -2988,7 +3068,12 @@ void gl_drawframe(int w, int h)
 
     glDisable(GL_BLEND);
 
-    glEnable(GL_DEPTH_TEST);
+    if(!depthtestlights) glEnable(GL_DEPTH_TEST);
+    else 
+    {
+        glDepthMask(GL_TRUE);
+        if(hasDBT && depthtestlights > 1) glDisable(GL_DEPTH_BOUNDS_TEST_EXT);
+    }
 
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
