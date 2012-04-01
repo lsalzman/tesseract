@@ -618,13 +618,14 @@ COMMAND(glext, "s");
 #define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); }} while(0)
 
 // GPU-side timing information will use OGL timers
-enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_SPLITTING, TIMER_MERGING, TIMER_N};
+enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SPLITTING, TIMER_MERGING, TIMER_N};
 static const char *timer_string[] = {
     "shadow map",
     "gbuffer",
     "deferred shading",
     "hdr processing",
     "ambient obscurance",
+    "alpha geometry",
     "buffer splitting",
     "buffer merging"
 };
@@ -2473,7 +2474,7 @@ static inline bool sortlights(int x, int y)
 VAR(depthtestlights, 0, 1, 2);
 VAR(culllighttiles, 0, 1, 1);
 
-void renderlights()
+void renderlights(int side = 0)
 {
     glEnable(GL_SCISSOR_TEST);
 
@@ -2551,29 +2552,31 @@ void renderlights()
             {
                 extern bvec ambientcolor;
                 setlocalparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale);
+                setlocalparamf("colorscale", SHPARAM_PIXEL, 4, 2, 2, 2, 1);
             }
             else
             {
                 setlocalparamf("lightscale", SHPARAM_PIXEL, 3, 0, 0, 0, 0);
+                setlocalparamf("colorscale", SHPARAM_PIXEL, 4, 2, 2, 2, 0);
             }
 
             float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
             loopj(n)
             {
                 lightinfo &l = lights[tile[i+j]];
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 4 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
-                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 5 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 5 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
+                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 6 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[l.shadowmap];
                     float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
                           bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
-                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 6 + 4*j,
+                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 7 + 4*j,
                         0.5f * (sm.size - smborder),
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
                         sm.size,
                         0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
-                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 7 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
+                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 8 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
                 sx1 = min(sx1, l.sx1);
                 sy1 = min(sy1, l.sy1);
@@ -2795,11 +2798,19 @@ void rendershadowmaps()
         findshadowvas();
         findshadowmms();
 
-        lockmodelbatches();
+        extern void rendershadowmapworld();
         extern void rendershadowmapmodels();
+
+        lockmodelbatches();
         rendershadowmapmodels();
         rendergame();
         unlockmodelbatches();
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadMatrixf(smprojmatrix);
+        glMatrixMode(GL_MODELVIEW);
+
+        glmatrixf smviewmatrix;
 
         if(smtetra)
         {
@@ -2807,11 +2818,6 @@ void rendershadowmaps()
             glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, smw + (sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size), smh);
             glClear(GL_DEPTH_BUFFER_BIT);
 
-            glMatrixMode(GL_PROJECTION);
-            glLoadMatrixf(smprojmatrix);
-            glMatrixMode(GL_MODELVIEW);
-
-            glmatrixf smviewmatrix;
             loop(side, 4) if(sidemask&(1<<side))
             {
                 int sidex = (side>>1)*sm.size;
@@ -2835,42 +2841,35 @@ void rendershadowmaps()
 
                 shadowside = side;
 
-                extern void rendershadowmapworld();
                 rendershadowmapworld();
                 rendermodelbatches();
             }
-
-            continue;
         }
-
-        int cx1 = sidemask & 0x03 ? 0 : (sidemask & 0xC ? sm.size : 2 * sm.size),
-            cx2 = sidemask & 0x30 ? 3 * sm.size : (sidemask & 0xC ? 2 * sm.size : sm.size),
-            cy1 = sidemask & 0x15 ? 0 : sm.size,
-            cy2 = sidemask & 0x2A ? 2 * sm.size : sm.size;
-        glScissor(sm.x + cx1, sm.y + cy1, cx2 - cx1, cy2 - cy1);
-        glClear(GL_DEPTH_BUFFER_BIT);
-
-        glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf(smprojmatrix);
-        glMatrixMode(GL_MODELVIEW);
-
-        glmatrixf smviewmatrix;
-        loop(side, 6) if(sidemask&(1<<side))
+        else
         {
-            int sidex = (side>>1)*sm.size, sidey = (side&1)*sm.size;
-            glViewport(sm.x + sidex, sm.y + sidey, sm.size, sm.size);
-            glScissor(sm.x + sidex, sm.y + sidey, sm.size, sm.size);
+            int cx1 = sidemask & 0x03 ? 0 : (sidemask & 0xC ? sm.size : 2 * sm.size),
+                cx2 = sidemask & 0x30 ? 3 * sm.size : (sidemask & 0xC ? 2 * sm.size : sm.size),
+                cy1 = sidemask & 0x15 ? 0 : sm.size,
+                cy2 = sidemask & 0x2A ? 2 * sm.size : sm.size;
+            glScissor(sm.x + cx1, sm.y + cy1, cx2 - cx1, cy2 - cy1);
+            glClear(GL_DEPTH_BUFFER_BIT);
 
-            smviewmatrix.mul(cubeshadowviewmatrix[side], lightmatrix);
-            glLoadMatrixf(smviewmatrix.v);
+            loop(side, 6) if(sidemask&(1<<side))
+            {
+                int sidex = (side>>1)*sm.size, sidey = (side&1)*sm.size;
+                glViewport(sm.x + sidex, sm.y + sidey, sm.size, sm.size);
+                glScissor(sm.x + sidex, sm.y + sidey, sm.size, sm.size);
 
-            glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
+                smviewmatrix.mul(cubeshadowviewmatrix[side], lightmatrix);
+                glLoadMatrixf(smviewmatrix.v);
 
-            shadowside = side;
+                glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
 
-            extern void rendershadowmapworld();
-            rendershadowmapworld();
-            rendermodelbatches();
+                shadowside = side;
+
+                rendershadowmapworld();
+                rendermodelbatches();
+            }
         }
     }
 }
@@ -3264,8 +3263,37 @@ void gl_drawframe(int w, int h)
     renderlights();
 
     glDisable(GL_BLEND);
-
     timer_end();
+    
+    int hasalphavas = findalphavas();
+    if(hasalphavas)
+    {
+        timer_begin(TIMER_ALPHAGEOM);
+        glEnable(GL_STENCIL_TEST);
+
+        loop(side, 2) if(hasalphavas&(1<<side))
+        {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+            glStencilFunc(GL_ALWAYS, 1<<side, 1<<side);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
+            renderalphageom(1<<side);
+
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
+            glStencilFunc(GL_EQUAL, 1<<side, 1<<side);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+            renderlights(1<<side);
+
+            glDisable(GL_BLEND);
+        }
+
+        glDisable(GL_STENCIL_TEST);
+        timer_end();
+    }
 
     defaultshader->set();
     CHECKERROR();

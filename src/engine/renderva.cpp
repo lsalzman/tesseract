@@ -1505,8 +1505,6 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
             cur.colorscale = vslot.colorscale;
             cur.alphascale = alpha;
             setenvparamf("colorparams", SHPARAM_PIXEL, 6, alpha*vslot.colorscale.x, alpha*vslot.colorscale.y, alpha*vslot.colorscale.z, alpha);
-            GLfloat fogc[4] = { alpha*cur.fogcolor[0], alpha*cur.fogcolor[1], alpha*cur.fogcolor[2], cur.fogcolor[3] };
-            glFogfv(GL_FOG_COLOR, fogc);
         }
     }
     else if(cur.colorscale != vslot.colorscale)
@@ -1618,12 +1616,8 @@ static void renderbatches(renderstate &cur, int pass)
     int curbatch = firstbatch;
     if(curbatch >= 0)
     {
-        if(cur.alphaing)
-        {
-            if(cur.depthmask) { cur.depthmask = false; glDepthMask(GL_FALSE); }
-        }
-        else if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
-        if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, cur.alphaing ? GL_FALSE : GL_TRUE); }
+        if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
+        if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
     }        
     while(curbatch >= 0)
     {
@@ -2032,11 +2026,13 @@ void rendergeom(float causticspass, bool fogpass)
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
-void renderalphageom(bool fogpass)
+static vector<vtxarray *> alphavas;
+static int alphabackvas = 0;
+
+int findalphavas(bool fogpass)
 {
-    static vector<vtxarray *> alphavas;
     alphavas.setsize(0);
-    bool hasback = false;
+    alphabackvas = 0;
     for(vtxarray *va = FIRSTVA; va; va = NEXTVA)
     {
         if(!va->alphabacktris && !va->alphafronttris) continue;
@@ -2050,60 +2046,43 @@ void renderalphageom(bool fogpass)
         {
             if(va->geommax.z <= reflectz) continue;
         }
-        else 
+        else
         {
             if(va->occluded >= OCCLUDE_BB) continue;
             if(va->occluded >= OCCLUDE_GEOM && pvsoccluded(va->geommin, va->geommax)) continue;
         }
         if(fogpass ? va->geommax.z <= reflectz-waterfog : va->curvfc==VFC_FOGGED) continue;
         alphavas.add(va);
-        if(va->alphabacktris) hasback = true;
+        if(va->alphabacktris) alphabackvas++;
     }
-    if(alphavas.empty()) return;
+    return (alphavas.length() ? 2 : 0) | (alphabackvas ? 1 : 0);
+}
 
+void renderalphageom(int side, bool fogpass)
+{
     resetbatches();
 
     renderstate cur;
-    cur.alphaing = 1;
-
+    cur.alphaing = side;
+    cur.alphascale = -1;
+    
     glEnableClientState(GL_VERTEX_ARRAY);
 
-    glGetFloatv(GL_FOG_COLOR, cur.fogcolor);
+    setupTMUs(cur, 0, fogpass);
 
-    loop(front, 2) if(front || hasback)
+    if(side == 2)
     {
-        cur.alphaing = front+1;
-        if(!front) glCullFace(GL_FRONT);
-        cur.vbuf = 0;
-        cur.texgendim = -1;
-        loopv(alphavas) renderva(cur, alphavas[i], RENDERPASS_Z);
-        if(cur.depthmask) { cur.depthmask = false; glDepthMask(GL_FALSE); }
-        cur.colormask = true;
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-    
-        setupTMUs(cur, 0, fogpass);
-
-        glDepthFunc(GL_LEQUAL);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        cur.vbuf = 0;
-        cur.texgendim = -1;
-        cur.colorscale = vec(1, 1, 1);
-        loopk(3) cur.color[k] = 1;
-        cur.alphascale = -1;
-        loopv(alphavas) if(front || alphavas[i]->alphabacktris) renderva(cur, alphavas[i], RENDERPASS_GBUFFER, fogpass);
-        if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
-
-        cleanupTMUs(cur, 0, fogpass);
-
-        glFogfv(GL_FOG_COLOR, cur.fogcolor);
-        if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
-        glDisable(GL_BLEND);
-        glDepthFunc(GL_LESS);
-        if(!front) glCullFace(GL_BACK);
+        loopv(alphavas) renderva(cur, alphavas[i], RENDERPASS_GBUFFER, fogpass);    
     }
-
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, fading ? GL_FALSE : GL_TRUE);
+    else
+    {
+        glCullFace(GL_FRONT);
+        loopv(alphavas) if(alphavas[i]->alphabacktris) renderva(cur, alphavas[i], RENDERPASS_GBUFFER, fogpass);
+        glCullFace(GL_BACK);
+    }
+    if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
+   
+    cleanupTMUs(cur, 0, fogpass);
 
     if(hasVBO)
     {

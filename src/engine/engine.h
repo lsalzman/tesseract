@@ -376,7 +376,8 @@ extern void setvfcP(float z = -1, const vec &bbmin = vec(-1, -1, -1), const vec 
 extern void savevfcP();
 extern void restorevfcP();
 extern void rendergeom(float causticspass = 0, bool fogpass = false);
-extern void renderalphageom(bool fogpass = false);
+extern int findalphavas(bool fogpass = false);
+extern void renderalphageom(int side, bool fogpass = false);
 extern void rendermapmodels();
 extern void renderreflectedgeom(bool causticspass = false, bool fogpass = false);
 extern void renderreflectedmapmodels();
