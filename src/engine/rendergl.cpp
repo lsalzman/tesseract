@@ -631,7 +631,7 @@ static const char *timer_string[] = {
 static const int timer_query_n = 4;
 static GLuint timers[timer_query_n][TIMER_N];
 static bool timer_used[timer_query_n][TIMER_N];
-static GLuint64 timer_results[TIMER_N];
+static GLuint64EXT timer_results[TIMER_N];
 static int timer_curr = 0;
 static int timer_last_query = -1;
 static int timer_last_print = 0;
@@ -682,7 +682,7 @@ static void timer_print(int conw, int conh)
     loopi(TIMER_N)
     {
         if(!timer_used[curr][i]) continue;
-        if(update) glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT, &timer_results[i]);
+        if(update) glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT_ARB, &timer_results[i]);
         draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-i*9*FONTH/8, timer_string[i], float(timer_results[i]) * 1e-6f);
     }
 }
