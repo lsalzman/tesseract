@@ -1290,10 +1290,10 @@ struct glmatrixf
         const float tx = -(right+left) / (right-left);
         const float ty = -(top+bottom) / (top-bottom);
         const float tz = -(zfar+znear) / (zfar-znear);
-        v[0] = 2.f/(right-left); v[4] = 0.f;              v[8] = 0.f;              v[12] = tx;
-        v[1] = 0.f;              v[5] = 2.f/(top-bottom); v[9] = 0.f;              v[13] = ty;
-        v[2] = 0.f;              v[6] = 0.f;              v[10] = -2.f/(far-near); v[14] = tz;
-        v[3] = 0.f;              v[7] = 0.f;              v[11] = 0.f;             v[15] = 1.f;
+        v[0] = 2.f/(right-left); v[4] = 0.f;              v[8] = 0.f;                v[12] = tx;
+        v[1] = 0.f;              v[5] = 2.f/(top-bottom); v[9] = 0.f;                v[13] = ty;
+        v[2] = 0.f;              v[6] = 0.f;              v[10] = -2.f/(zfar-znear); v[14] = tz;
+        v[3] = 0.f;              v[7] = 0.f;              v[11] = 0.f;               v[15] = 1.f;
     }
 
     void clip(const plane &p, const glmatrixf &m)
