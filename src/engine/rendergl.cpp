@@ -34,10 +34,9 @@ PFNGLGETQUERYIVARBPROC        glGetQueryiv_        = NULL;
 PFNGLGETQUERYOBJECTIVARBPROC  glGetQueryObjectiv_  = NULL;
 PFNGLGETQUERYOBJECTUIVARBPROC glGetQueryObjectuiv_ = NULL;
 
-// GL_ARB_timer_query
-PFNGLGETQUERYOBJECTI64VPROC glGetQueryObjecti64v_  = NULL;
-PFNGLGETQUERYOBJECTUI64VPROC glGetQueryObjectui64v_ = NULL;
-PFNGLQUERYCOUNTERPROC glQueryCounter_ = NULL;
+// GL_EXT_timer_query
+PFNGLGETQUERYOBJECTI64VEXTPROC glGetQueryObjecti64v_  = NULL;
+PFNGLGETQUERYOBJECTUI64VEXTPROC glGetQueryObjectui64v_ = NULL;
 
 // GL_EXT_framebuffer_object
 PFNGLBINDRENDERBUFFEREXTPROC        glBindRenderbuffer_        = NULL;
@@ -350,7 +349,7 @@ void gl_checkextensions()
         waterreflect = 0;
     }
 
-    if(hasext(exts, "GL_ARB_timer_query"))
+    if(hasext(exts, "GL_EXT_timer_query"))
     {
         glGetQueryiv_ =          (PFNGLGETQUERYIVARBPROC)       getprocaddress("glGetQueryivARB");
         glGenQueries_ =          (PFNGLGENQUERIESARBPROC)       getprocaddress("glGenQueriesARB");
@@ -359,11 +358,10 @@ void gl_checkextensions()
         glEndQuery_ =            (PFNGLENDQUERYARBPROC)         getprocaddress("glEndQueryARB");
         glGetQueryObjectiv_ =    (PFNGLGETQUERYOBJECTIVARBPROC) getprocaddress("glGetQueryObjectivARB");
         glGetQueryObjectuiv_ =   (PFNGLGETQUERYOBJECTUIVARBPROC)getprocaddress("glGetQueryObjectuivARB");
-        glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VPROC)  getprocaddress("glGetQueryObjecti64v");
-        glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VPROC) getprocaddress("glGetQueryObjectui64v");
-        glQueryCounter_ =        (PFNGLQUERYCOUNTERPROC)        getprocaddress("glQueryCounter");
+        glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VEXTPROC)  getprocaddress("glGetQueryObjecti64vEXT");
+        glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VEXTPROC) getprocaddress("glGetQueryObjectui64vEXT");
         hasTQ = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_timer_query extension.");
+        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
     extern int batchlightmaps, fpdepthfx;
@@ -649,13 +647,13 @@ static void timer_sync()
         GLint available = 0;
         if(timer_used[curr][i])
             while(!available)
-                glGetQueryObjectiv_(timers[curr][i], GL_QUERY_RESULT_AVAILABLE, &available);
+                glGetQueryObjectiv_(timers[curr][i], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
     }
 }
 static inline void timer_begin(int whichone)
 {
     if(!gputimer || !hasTQ) return;
-    glBeginQuery_(GL_TIME_ELAPSED, timers[timer_curr % timer_query_n][whichone]);
+    glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[timer_curr % timer_query_n][whichone]);
     timer_last_query = whichone;
 }
 static inline void timer_end()
@@ -663,7 +661,7 @@ static inline void timer_end()
     if(!gputimer || !hasTQ) return;
     assert(timer_last_query != -1);
     timer_used[timer_curr % timer_query_n][timer_last_query] = true;
-    glEndQuery_(GL_TIME_ELAPSED);
+    glEndQuery_(GL_TIME_ELAPSED_EXT);
 }
 static inline void timer_nextframe()
 {

@@ -38,17 +38,16 @@ extern PFNGLGETQUERYIVARBPROC        glGetQueryiv_;
 extern PFNGLGETQUERYOBJECTIVARBPROC  glGetQueryObjectiv_;
 extern PFNGLGETQUERYOBJECTUIVARBPROC glGetQueryObjectuiv_;
 
-// GL_ARB_timer_query
-#ifndef GL_ARB_timer_query
-#define GL_TIME_ELAPSED                   0x88BF
-#define GL_TIMESTAMP                      0x8E28
-typedef void (APIENTRYP PFNGLQUERYCOUNTERPROC) (GLuint id, GLenum target);
-typedef void (APIENTRYP PFNGLGETQUERYOBJECTI64VPROC) (GLuint id, GLenum pname, GLint64 *params);
-typedef void (APIENTRYP PFNGLGETQUERYOBJECTUI64VPROC) (GLuint id, GLenum pname, GLuint64 *params);
+// GL_EXT_timer_query
+#ifndef GL_EXT_timer_query
+#define GL_TIME_ELAPSED_EXT               0x88BF
+typedef llong GLint64EXT;
+typedef ullong GLuint64EXT;
+typedef void (APIENTRYP PFNGLGETQUERYOBJECTI64VEXTPROC) (GLuint id, GLenum pname, GLint64EXT *params);
+typedef void (APIENTRYP PFNGLGETQUERYOBJECTUI64VEXTPROC) (GLuint id, GLenum pname, GLuint64EXT *params);
 #endif
-extern PFNGLGETQUERYOBJECTI64VPROC glGetQueryObjecti64v_;
-extern PFNGLGETQUERYOBJECTUI64VPROC glGetQueryObjectui64v_;
-extern PFNGLQUERYCOUNTERPROC glQueryCounter_;
+extern PFNGLGETQUERYOBJECTI64VEXTPROC glGetQueryObjecti64v_;
+extern PFNGLGETQUERYOBJECTUI64VEXTPROC glGetQueryObjectui64v_;
 
 // GL_EXT_framebuffer_object
 extern PFNGLBINDRENDERBUFFEREXTPROC        glBindRenderbuffer_;
