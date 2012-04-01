@@ -2938,13 +2938,13 @@ void rendershadowmaps()
     }
 }
 
-VAR(aobilateral, 0, 0, 7);
+VAR(aobilateral, 0, 0, 10);
 FVAR(aobilateralsigma, 0, 0.5f, 1e3);
 FVAR(aobilateraldepth, 0, 4, 1e3);
 
 void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear, float stepx, float stepy)
 {
-    static Shader *bilateralshader[7][2] = { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } };
+    static Shader *bilateralshader[10][2] = { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } };
     Shader *&s = bilateralshader[radius-1][pass];
     if(!s)
     {
