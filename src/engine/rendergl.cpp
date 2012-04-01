@@ -2145,9 +2145,9 @@ struct shadowmapinfo
     occludequery *query;
 };
 
-FVAR(smpolyfactor, -1e3, 0, 1e3);
+FVAR(smpolyfactor, -1e3, 1, 1e3);
 FVAR(smpolyoffset, -1e3, 0, 1e3);
-FVAR(smbias, -1e3, 0, 1e3);
+FVAR(smbias, -1e3, 0.01f, 1e3);
 FVAR(smprec, 1e-3f, 1, 1e3);
 FVAR(smtetraprec, 1e-3f, SQRT3, 1e3);
 FVAR(smcubeprec, 1e-3f, 1, 1e3);
@@ -2166,7 +2166,7 @@ VAR(smquery, 0, 1, 1);
 VAR(smtetra, 0, 0, 1);
 VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3);
-VAR(smcullside, 0, 0, 1);
+VAR(smcullside, 0, 1, 1);
 VAR(smgather, 0, 0, 1);
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
@@ -3066,7 +3066,7 @@ void gl_drawframe(int w, int h)
                 {
                     shadowmapinfo &sm = shadowmaps[l.shadowmap];
                     float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3, 
-                          bias = smbias * smnearclip * (1024.0f / sm.size);
+                          bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
                     setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 6 + 4*j, 
                         0.5f * (sm.size - smborder), 
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias, 
