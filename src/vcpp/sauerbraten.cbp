@@ -637,10 +637,6 @@
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
-		<Unit filename="..\include\wincompat.h">
-			<Option target="default" />
-			<Option target="debug" />
-		</Unit>
 		<Unit filename="..\include\zconf.h" />
 		<Unit filename="..\include\zlib.h" />
 		<Unit filename="..\shared\command.h" />
