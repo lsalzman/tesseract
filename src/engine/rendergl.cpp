@@ -1793,7 +1793,7 @@ void gl_drawhud(int w, int h);
 int xtraverts, xtravertsva;
 
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, aow = -1, aoh = -1, lasthdraccum = 0;
-GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 }, aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
+GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gstencilrb = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 }, aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
 
 extern int bloomsize, bloomprec;
 
@@ -1939,9 +1939,16 @@ void setupgbuffer(int w, int h)
     createtexture(gcolortex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gnormaltex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gglowtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+
+    if(!depthstencil || !hasDS)
+    {
+        if(!gstencilrb) glGenRenderbuffers_(1, &gstencilrb);
+        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX4_EXT, gw, gh);
+    }
  
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     if(depthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+    else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gglowtex, 0);
@@ -1960,6 +1967,7 @@ void setupgbuffer(int w, int h)
 
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     if(depthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+    else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, hdrtex, 0);
 
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -1978,6 +1986,7 @@ void cleanupgbuffer()
     if(gcolortex) { glDeleteTextures(1, &gcolortex); gcolortex = 0; }
     if(gnormaltex) { glDeleteTextures(1, &gnormaltex); gnormaltex = 0; }
     if(gglowtex) { glDeleteTextures(1, &gglowtex); gglowtex = 0; }
+    if(gstencilrb) { glDeleteRenderbuffers_(1, &gstencilrb); gstencilrb = 0; }
     if(hdrfbo) { glDeleteFramebuffers_(1, &hdrfbo); hdrfbo = 0; }
     if(hdrtex) { glDeleteTextures(1, &hdrtex); hdrtex = 0; }
     gw = gh = -1;
@@ -2540,7 +2549,7 @@ void gl_drawframe(int w, int h)
     timer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
-    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT|(depthstencil && hasDS ? GL_STENCIL_BUFFER_BIT : 0));
+    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT|GL_STENCIL_BUFFER_BIT);
 
     rendergeom(causticspass);
     rendermapmodels();
