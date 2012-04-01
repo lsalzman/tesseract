@@ -1906,7 +1906,7 @@ void cleanupbloom()
     lasthdraccum = 0;
 }
 
-extern int ao, aoreduce, aoreducedepth, aonoise;
+extern int ao, aoreduce, aoreducedepth, aonoise, aobilateral, aopackdepth;
 
 void setupao(int w, int h)
 {
@@ -1928,7 +1928,7 @@ void setupao(int w, int h)
     {
         if(!aotex[i]) glGenTextures(1, &aotex[i]);
         if(!aofbo[i]) glGenFramebuffers_(1, &aofbo[i]);
-        createtexture(aotex[i], w, h, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(aotex[i], w, h, NULL, 3, 1, aobilateral && aopackdepth && hasTRG && hasTF ? GL_RG16F : GL_RGB , GL_TEXTURE_RECTANGLE_ARB);
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[i]);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[i], 0);
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -2512,6 +2512,10 @@ VAR(aoiter, 0, 0, 4);
 VARF(aoreduce, 0, 1, 2, cleanupao());
 VARF(aoreducedepth, 0, 1, 2, cleanupao());
 VARF(aonoise, 0, 5, 8, cleanupao());
+VARF(aobilateral, 0, 0, 10, { if(aopackdepth) cleanupao(); });
+FVAR(aobilateralsigma, 0, 0.5f, 1e3);
+FVAR(aobilateraldepth, 0, 4, 1e3);
+VARF(aopackdepth, 0, 1, 1, { if(aobilateral) cleanupao(); });
 VAR(aotaps, 1, 5, 12);
 VAR(debugao, 0, 0, 1);
 
@@ -2938,11 +2942,7 @@ void rendershadowmaps()
     }
 }
 
-VAR(aobilateral, 0, 0, 10);
-FVAR(aobilateralsigma, 0, 0.5f, 1e3);
-FVAR(aobilateraldepth, 0, 4, 1e3);
-
-void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear, float stepx, float stepy)
+void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear, bool packed, float stepx, float stepy)
 {
     static Shader *bilateralshader[10][2] = { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } };
     Shader *&s = bilateralshader[radius-1][pass];
@@ -2951,7 +2951,7 @@ void setbilateralshader(int radius, int pass, float sigma, float depth, bool lin
         defformatstring(name)("bilateral%c%d", 'x'+pass, radius);
         s = lookupshaderbyname(name);
     }
-    if(linear) s->setvariant(0, 0);
+    if(linear) s->setvariant(0, packed ? 1 : 0);
     else s->set();
     sigma *= 2*radius;
     setlocalparamf("bilateralparams", SHPARAM_PIXEL, 0, 1.0f/(2*sigma*sigma), 1.0f/(depth*depth), pass==0 ? stepx : 0, pass==1 ? stepy : 0);
@@ -3002,15 +3002,19 @@ void renderao()
 
     if(aobilateral)
     {
+        if(!linear && aopackdepth && hasTRG && hasTF) linear = true;
         loopi(2 + 2*aoiter)
         {
-            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear, linear ? 1 : float(gw)/aow, linear ? 1 : float(gh)/aoh);
+            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear, linear && aopackdepth, linear ? 1 : float(gw)/aow, linear ? 1 : float(gh)/aoh);
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[(i+1)%2]);
             glViewport(0, 0, aow, aoh);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i%2]);
-            glActiveTexture_(GL_TEXTURE1_ARB);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[2] : gdepthtex);
-            glActiveTexture_(GL_TEXTURE0_ARB);
+            if(!linear || !aopackdepth)
+            {
+                glActiveTexture_(GL_TEXTURE1_ARB);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[2] : gdepthtex);
+                glActiveTexture_(GL_TEXTURE0_ARB);
+            }
             screenquad(gw, gh);
         }
     }
