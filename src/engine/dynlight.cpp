@@ -126,7 +126,7 @@ int finddynlights()
         int insert = 0;
         loopvrev(closedynlights) if(d.dist >= closedynlights[i]->dist) { insert = i+1; break; }
         closedynlights.insert(insert, &d);
-        if(closedynlights.length() >= DYNLIGHTMASK) break;
+        //if(closedynlights.length() >= DYNLIGHTMASK) break;
     }
     return closedynlights.length();
 }

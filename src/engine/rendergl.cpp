@@ -1809,7 +1809,7 @@ void setupbloom(int w, int h)
 
     loopi(5) if(!bloomfbo[i]) glGenFramebuffers_(1, &bloomfbo[i]);
 
-    GLenum format = bloomprec >= 3 && hasTF ? GL_RGB16F : (bloomprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
+    GLenum format = bloomprec >= 3 && hasTF ? GL_RGB16F_ARB : (bloomprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
     createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
@@ -1962,7 +1962,7 @@ void setupgbuffer(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
-    GLenum format = hdrprec >= 3 && hasTF ? GL_RGB16F : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB));
+    GLenum format = hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB));
     createtexture(hdrtex, gw, gh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
 
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
@@ -2254,15 +2254,15 @@ static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 struct splitfrustum
 {
     vec point[8];
-    float near, far;
+    float nearplane, farplane;
 };
 
 static void updatefrustumpoints(splitfrustum &f, const vec &pos, const vec &view, const vec &up, const vec &right)
 {
-    const vec fc = pos + view*f.far;
-    const vec nc = pos + view*f.near;
-    float near_height = tanf(curfov/2.0f*RAD) * f.near;
-    float far_height = tanf(curfov/2.0f*RAD) * f.far;
+    const vec fc = pos + view*f.farplane;
+    const vec nc = pos + view*f.nearplane;
+    float near_height = tanf(curfov/2.0f*RAD) * f.nearplane;
+    float far_height = tanf(curfov/2.0f*RAD) * f.farplane;
     float near_width = near_height * aspect;
     float far_width = far_height * aspect;
     f.point[0] = nc - up*near_height - right*near_width;
@@ -2279,15 +2279,15 @@ static void updatesplitdist(splitfrustum *f, float nd, float fd)
 {
     float lambda = csmsplitweight;
     float ratio = fd/nd;
-    f[0].near = nd;
+    f[0].nearplane = nd;
 
     for(int i = 1; i < csmsplitn; ++i)
     {
         float si = i / (float)csmsplitn;
-        f[i].near = lambda*(nd*powf(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
-        f[i-1].far = f[i].near * 1.005f;
+        f[i].nearplane = lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
+        f[i-1].farplane = f[i].nearplane * 1.005f;
     }
-    f[csmsplitn-1].far = fd;
+    f[csmsplitn-1].farplane = fd;
 }
 
 static inline void snap(vec &minv, vec &maxv, float radius)
@@ -2394,7 +2394,7 @@ static void sunlightgetprojmatrix(glmatrixf *light_proj, const glmatrixf &light_
         light_proj[i](1,3) = offset.y;
 //        if (i == 0)
 {
-            //printf("radius %i %f [%f %f] c [%f %f]", i, radius, f[i].near, f[i].far, tc.x, tc.y);
+            //printf("radius %i %f [%f %f] c [%f %f]", i, radius, f[i].nearplane, f[i].farplane, tc.x, tc.y);
         }
     }
 }
@@ -2679,7 +2679,7 @@ void gl_drawframe(int w, int h)
         {
             if(smviscull)
             {
-                if(isvisiblesphere(e->attr1, e->o) >= VFC_NOT_VISIBLE) continue;
+                if(isfoggedsphere(e->attr1, e->o)) continue;
                 ivec bo = ivec(e->o).sub(e->attr1), br = ivec(e->attr1*2+1, e->attr1*2+1, e->attr1*2+1);
                 if(pvsoccluded(bo, br) || bboccluded(bo, br)) continue;
             }
@@ -2703,6 +2703,34 @@ void gl_drawframe(int w, int h)
         l.dist = camera1->o.dist(e->o);
     }
 
+    updatedynlights();
+    int numdynlights = finddynlights();
+    loopi(numdynlights)
+    {
+        vec o, color;
+        float radius;
+        if(!getdynlight(i, o, radius, color)) continue;
+
+        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1, sz1 = -1, sz2 = 1;
+        calcspherescissor(o, radius, sx1, sy1, sx2, sy2);
+        calcspheredepth(o, radius, sz1, sz2);
+        if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
+
+        lightorder.add(lights.length());
+        lightinfo &l = lights.add();
+        l.sx1 = sx1;
+        l.sx2 = sx2;
+        l.sy1 = sy1;
+        l.sy2 = sy2;
+        l.sz1 = sz1;
+        l.sz2 = sz2;
+        l.shadowmap = -1;
+        l.o = o;
+        l.color = vec(color).mul(255);
+        l.radius = radius;
+        l.dist = camera1->o.dist(o);
+    }
+ 
     lightorder.sort(sortlights);
 
     plane cullx[LIGHTTILE_W+1], cully[LIGHTTILE_H+1]; 

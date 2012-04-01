@@ -400,6 +400,12 @@ extern void drawbb(const ivec &bo, const ivec &br, const vec &camera = camera1->
         if(ati_oq_bug) glFlush(); \
     }
 
+// dynlight
+
+extern void updatedynlights();
+extern int finddynlights();
+extern bool getdynlight(int n, vec &o, float &radius, vec &color);
+
 // material
 
 extern int showmat;
