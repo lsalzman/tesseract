@@ -89,6 +89,9 @@ extern PFNGLMULTIDRAWELEMENTSEXTPROC glMultiDrawElements_;
 #ifndef GL_DEPTH24_STENCIL8_EXT
 #define GL_DEPTH24_STENCIL8_EXT 0x88F0
 #endif
+#ifndef GL_UNSIGNED_INT_24_8_EXT
+#define GL_UNSIGNED_INT_24_8_EXT 0x84FA
+#endif
 
 // GL_EXT_packed_float
 #ifndef GL_R11F_G11F_B10F_EXT

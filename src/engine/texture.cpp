@@ -612,6 +612,12 @@ void createtexture(int tnum, int w, int h, void *pixels, int clamp, int filter, 
             if(!format) format = GL_DEPTH_COMPONENT;
             break;
 
+        case GL_DEPTH_STENCIL_EXT:
+        case GL_DEPTH24_STENCIL8_EXT:
+            if(!format) format = GL_DEPTH_STENCIL_EXT;
+            type = GL_UNSIGNED_INT_24_8_EXT;
+            break;
+
         case GL_RGB5:
         case GL_RGB8:
         case GL_RGB16:

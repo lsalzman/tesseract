@@ -1915,7 +1915,7 @@ void maskgbuffer(bool all)
     glDrawBuffers_(all ? 3 : 1, drawbufs);
 }
 
-extern int hdrprec;
+extern int hdrprec, depthstencil;
 
 void setupgbuffer(int w, int h)
 {
@@ -1935,12 +1935,13 @@ void setupgbuffer(int w, int h)
 
     maskgbuffer(true);
 
-    createtexture(gdepthtex, gw, gh, NULL, 3, 0, GL_DEPTH_COMPONENT24, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(gdepthtex, gw, gh, NULL, 3, 0, depthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT24, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gcolortex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gnormaltex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(gglowtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
  
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+    if(depthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gglowtex, 0);
@@ -1958,6 +1959,7 @@ void setupgbuffer(int w, int h)
     createtexture(hdrtex, gw, gh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
 
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+    if(depthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, hdrtex, 0);
 
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -1981,6 +1983,7 @@ void cleanupgbuffer()
     gw = gh = -1;
 }
 
+VARF(depthstencil, 0, 1, 1, cleanupgbuffer());
 VAR(hdr, 0, 1, 1);
 VARF(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVAR(bloomthreshold, 0, 1.5f, 10.0f);
@@ -2537,7 +2540,7 @@ void gl_drawframe(int w, int h)
     timer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
-    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT|(depthstencil && hasDS ? GL_STENCIL_BUFFER_BIT : 0));
 
     rendergeom(causticspass);
     rendermapmodels();
