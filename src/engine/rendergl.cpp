@@ -2523,7 +2523,7 @@ static inline bool sortlights(int x, int y)
 VAR(depthtestlights, 0, 1, 2);
 VAR(culllighttiles, 0, 1, 1);
 
-void renderlights(int side = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1)
+void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1)
 {
     glEnable(GL_SCISSOR_TEST);
 
@@ -2567,9 +2567,7 @@ void renderlights(int side = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 1
     setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
     if(ao) setenvparamf("aoscale", SHPARAM_PIXEL, 2, float(aow)/gw, float(aoh)/gh);
 
-    int bx1 = max(int(floor((bsx1*0.5f+0.5f)*gw)), 0), by1 = max(int(floor((bsy1*0.5f+0.5f)*gh)), 0),
-        bx2 = min(int(ceil((bsx2*0.5f+0.5f)*gw)), gw), by2 = min(int(ceil((bsy2*0.5f+0.5f)*gh)), gh),
-        btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+    int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
     for(int y = bty1; y < bty2; y++) for(int x = btx1; x < btx2; x++)
     {
@@ -2999,7 +2997,6 @@ void processhdr()
     GLuint b0fbo = bloomfbo[1], b0tex = bloomtex[1], b1fbo =  bloomfbo[0], b1tex = bloomtex[0], ptex = hdrtex;
     int b0w = max(gw/4, bloomw), b0h = max(gh/4, bloomh), b1w = max(gw/2, bloomw), b1h = max(gh/2, bloomh),
         pw = gw, ph = gh;
-    CHECKERROR();
     if(hdrreduce) while(pw > bloomw || ph > bloomh)
     {
         GLuint cfbo = b1fbo, ctex = b1tex;
@@ -3353,8 +3350,8 @@ void gl_drawframe(int w, int h)
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-            if(!side) renderlights(1, alphabacksx1, alphabacksy1, alphabacksx2, alphabacksy2);
-            else renderlights(2, alphafrontsx1, alphafrontsy1, alphafrontsx2, alphafrontsy2);
+            if(!side) renderlights(alphabacksx1, alphabacksy1, alphabacksx2, alphabacksy2);
+            else renderlights(alphafrontsx1, alphafrontsy1, alphafrontsx2, alphafrontsy2);
 
             glDisable(GL_BLEND);
         }
