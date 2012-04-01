@@ -861,13 +861,15 @@ void attachent()
 
 COMMAND(attachent, "");
 
+static int keepents = 0;
+
 extentity *newentity(bool local, const vec &o, int type, int v1, int v2, int v3, int v4, int v5, int &idx)
 {
     vector<extentity *> &ents = entities::getents();
     if(local)
     {
         idx = -1;
-        loopv(ents) if(ents[i]->type == ET_EMPTY) { idx = i; break; }
+        for(int i = keepents; i < ents.length(); i++) if(ents[i]->type == ET_EMPTY) { idx = i; break; }
         if(idx < 0 && ents.length() >= MAXENTS) { conoutf("too many entities"); return NULL; }
     }
     else while(ents.length() < idx) ents.add(entities::newentity())->type = ET_EMPTY;
@@ -942,6 +944,7 @@ void entpaste()
     if(entcopybuf.length()==0) return;
     entcancel();
     float m = float(sel.grid)/float(entcopygrid);
+    int added = entgroup.length();
     loopv(entcopybuf)
     {
         entity &c = entcopybuf[i];
@@ -951,7 +954,9 @@ void entpaste()
         extentity *e = newentity(true, o, ET_EMPTY, c.attr1, c.attr2, c.attr3, c.attr4, c.attr5, idx);
         if(!e) continue;
         entadd(idx);
+        keepents = max(keepents, idx+1);
     }
+    keepents = 0;
     int j = 0;
     groupeditundo(e.type = entcopybuf[j++].type;);
 }
