@@ -2512,7 +2512,7 @@ VAR(aoiter, 0, 0, 4);
 VARF(aoreduce, 0, 1, 2, cleanupao());
 VARF(aoreducedepth, 0, 1, 2, cleanupao());
 VARF(aonoise, 0, 5, 8, cleanupao());
-VARF(aobilateral, 0, 0, 10, { if(aopackdepth) cleanupao(); });
+VARF(aobilateral, 0, 7, 10, { if(aopackdepth) cleanupao(); });
 FVAR(aobilateralsigma, 0, 0.5f, 1e3);
 FVAR(aobilateraldepth, 0, 4, 1e3);
 VARF(aopackdepth, 0, 1, 1, { if(aobilateral) cleanupao(); });
