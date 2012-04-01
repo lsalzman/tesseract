@@ -944,7 +944,6 @@ void entpaste()
     if(entcopybuf.length()==0) return;
     entcancel();
     float m = float(sel.grid)/float(entcopygrid);
-    int added = entgroup.length();
     loopv(entcopybuf)
     {
         entity &c = entcopybuf[i];
