@@ -2602,11 +2602,11 @@ void gl_drawframe(int w, int h)
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[0]);
         glViewport(0, 0, aow, aoh);
-        glActiveTexture(GL_TEXTURE1_ARB);
+        glActiveTexture_(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
-        glActiveTexture(GL_TEXTURE2_ARB);
+        glActiveTexture_(GL_TEXTURE2_ARB);
         glBindTexture(GL_TEXTURE_2D, aonoisetex);
-        glActiveTexture(GL_TEXTURE0_ARB);
+        glActiveTexture_(GL_TEXTURE0_ARB);
 
         setlocalparamf("noisescale", SHPARAM_VERTEX, 0, aow/(2.0f*(1<<aonoise)), aoh/(2.0f*(1<<aonoise)));
         setlocalparamf("aoparams", SHPARAM_PIXEL, 1, aoradius*eyematrix.v[14]/eyematrix.v[0], aoradius*eyematrix.v[14]/eyematrix.v[5], (2.0f*M_PI*aodark)/aotaps, aosharp);
@@ -3286,9 +3286,9 @@ void gl_drawframe(int w, int h)
         setlocalparamf("hdrparams", SHPARAM_VERTEX, 1, -hdrbright, bloomscale, hdrtonemin, hdrtonemax);
         setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, -hdrbright, bloomscale, hdrtonemin, hdrtonemax);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
-        glActiveTexture(GL_TEXTURE1_ARB);
+        glActiveTexture_(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-        glActiveTexture(GL_TEXTURE0_ARB); 
+        glActiveTexture_(GL_TEXTURE0_ARB); 
         hdrquad(gw, gh);
         timer_end();
     }
