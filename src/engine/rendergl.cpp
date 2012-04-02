@@ -2799,7 +2799,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             if(!i)
             {
                 extern bvec ambientcolor;
-                setlocalparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale);
+                setlocalparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 2*255*lightscale);
                 setlocalparamf("colorscale", SHPARAM_PIXEL, 4, 2, 2, 2, 1);
             }
             else
