@@ -1,5 +1,5 @@
-#CXXFLAGS= -O3 -fomit-frame-pointer
-CXXFLAGS= -g -fomit-frame-pointer
+CXXFLAGS= -O3 -fomit-frame-pointer
+#CXXFLAGS= -g -fomit-frame-pointer
 override CXXFLAGS+= -Wall -fsigned-char -fno-exceptions -fno-rtti
 
 PLATFORM= $(shell uname -s)
