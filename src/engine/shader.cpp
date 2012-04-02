@@ -25,7 +25,8 @@ VAR(maxtexcoords, 1, 0, 0);
 VAR(maxvsuniforms, 1, 0, 0);
 VAR(maxfsuniforms, 1, 0, 0);
 VAR(maxvaryings, 1, 0, 0);
-VAR(dbgshader, 0, 0, 2);
+//VAR(dbgshader, 0, 0, 2);
+VAR(dbgshader, 0, 1, 2);
 
 void loadshaders()
 {
@@ -914,6 +915,8 @@ void variantshader(int *type, char *name, int *row, char *vs, char *ps)
     //renderprogress(loadprogress, info);
     vector<char> vsbuf, psbuf, vsbak, psbak;
     GENSHADER(s->defaultparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps, s));
+//    if (strcmp(name, "deferredcsm") == 0)
+//        printf(ps);
     Shader *v = newshader(*type, varname, vs, ps, s, *row);
     if(v)
     {
