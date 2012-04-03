@@ -960,7 +960,7 @@ void renderparticles(bool mainpass)
     bool rendered = false;
     uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD;
    
-    /*if(binddepthfxtex())*/ if(depthfx) flagmask |= PT_SOFT;
+    /*if(binddepthfxtex())*/ if(!reflecting && !refracting && depthfx) flagmask |= PT_SOFT;
 
     loopi(sizeof(parts)/sizeof(parts[0]))
     {
