@@ -2372,7 +2372,7 @@ static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 {
     extern int skylight;
     if(skylight == 0) return false; // no sunlight
-#if 0
+#if 1
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
@@ -2717,16 +2717,26 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         static const char * const shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset", "shadow4offset", "shadow5offset", "shadow6offset", "shadow7offset" };
         static const char * const splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
 
+            extern bvec sunlightcolor;
+        printf("\r%f %f %f",
+                          float(sunlightcolor.x) / 255.f,
+                          float(sunlightcolor.y) / 255.f,
+                          float(sunlightcolor.z) / 255.f);
         // sunlight is processed first
         if(csm.sunlight)
         {
             deferredcsmshader->setvariant(csmsplitn-1, 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
             setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
+            extern bvec sunlightcolor;
+            setlocalparamf("lightcolor", SHPARAM_PIXEL, 5,
+                          float(sunlightcolor.x) / 255.f,
+                          float(sunlightcolor.y) / 255.f,
+                          float(sunlightcolor.z) / 255.f);
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
             {
-                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 5+i, csm.far[i]);
+                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 6+i, csm.far[i]);
                 glActiveTexture_(GL_TEXTURE0_ARB+i+1);
                 glLoadMatrixf(csm.tex[i].v);
             }
