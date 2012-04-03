@@ -2338,7 +2338,8 @@ void viewshadowatlas()
 VAR(debugshadowatlas, 0, 0, 1);
 
 static const uint csmmaxsplitn = 8, csmminsplitn = 1;
-VAR(csmsplitn, csmminsplitn, 1, csmmaxsplitn);
+VAR(csmmaxsize, 256, 1024, 2048);
+VAR(csmsplitn, csmminsplitn, 3, csmmaxsplitn);
 FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
 
 static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort y, int size, int &idx)
@@ -2370,15 +2371,16 @@ struct cascaded_shadow_map
 
 static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 {
-    extern int skylight;
-    if(skylight == 0) return false; // no sunlight
+    extern int sunlight, skylight; // hack here
+    if(sunlight == 0 && skylight == 0) return false; // no sunlight
 #if 0
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
-        const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
+        //const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
+        const bool inserted = shadowatlaspacker.insert(smx, smy, csmmaxsize, csmmaxsize);
         if(!inserted) fatal("cascaded shadow maps MUST be packed");
-        shadowmapinfo *sm = addshadowmap(sms, smx, smy, smmaxsize, csmidx[i]);
+        shadowmapinfo *sm = addshadowmap(sms, smx, smy, csmmaxsize, csmidx[i]);
         sm->light = -1;
     }
     return true;
@@ -2440,7 +2442,7 @@ static void updatesplitdist(splitfrustum *f, float nd, float fd)
 static inline void snap(vec &minv, vec &maxv, float radius)
 {
     radius *= 2.f;
-    const float smdim = float(smmaxsize);
+    const float smdim = float(csmmaxsize);
     maxv.x *= smdim/radius; maxv.x = float(int(maxv.x)) / smdim*radius;
     maxv.y *= smdim/radius; maxv.y = float(int(maxv.y)) / smdim*radius;
     minv.x *= smdim/radius; minv.x = float(int(minv.x)) / smdim*radius;
@@ -2456,8 +2458,12 @@ void cascaded_shadow_map::sunlightgetmodelmatrix()
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
-VAR(csmfarplane, 0, 1024, 4096);
+VAR(csmfarplane, 64, 512, 4096);
+VAR(csmfarsmoothdistance, 0, 8, 64);
+FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
+FVAR(csmpolyfactor, -1e3, 4, 1e3);
+FVAR(csmpolyoffset, -1e3, 1024, 2e3);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
@@ -2523,7 +2529,7 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
         tp.x /= tp.w; tp.y /= tp.w;
         tc.x /= tc.w; tc.y /= tc.w;
         const float dx = tp.x-tc.x, dy = tp.y-tc.y;
-        const float pradius = sqrtf(dx*dx+dy*dy);
+        const float pradius = sqrtf(dx*dx+dy*dy) * csmpradiustweak;
         minv.x = tc.x - pradius;
         minv.y = tc.y - pradius;
         maxv.x = tc.x + pradius;
@@ -2720,13 +2726,18 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         // sunlight is processed first
         if(csm.sunlight)
         {
+            extern bvec sunlightcolor, skylightcolor;
+            extern int sunlight;
+            bvec color = sunlight ? sunlightcolor : skylightcolor;
             deferredcsmshader->setvariant(csmsplitn-1, 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
             setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
+            setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, float(color.x) / 255.f, float(color.y) / 255.f, float(color.z) / 255.f);
+            setlocalparamf("csmfar", SHPARAM_PIXEL, 6, float(csmfarplane), 1.f / float(csmfarsmoothdistance));
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
             {
-                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 5+i, csm.far[i]);
+                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 7+i, csm.far[i]);
                 glActiveTexture_(GL_TEXTURE0_ARB+i+1);
                 glLoadMatrixf(csm.tex[i].v);
             }
@@ -2990,14 +3001,16 @@ void rendercsmshadowmaps()
     {
         const shadowmapinfo &sm = shadowmaps[csm.idx[i]];
         findcsmshadowvas(); // no culling here
-        findcsmshadowmms(); // no culling here
+        //findcsmshadowmms(); // no culling here
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_FRONT);
+        glCullFace(GL_BACK);
 
+#if 0
         lockmodelbatches();
         rendershadowmapmodels();
         rendergame();
         unlockmodelbatches();
+#endif
 
         glMatrixMode(GL_PROJECTION);
         glLoadMatrixf(csm.proj[i].v);
@@ -3008,7 +3021,7 @@ void rendercsmshadowmaps()
         glClear(GL_DEPTH_BUFFER_BIT);
 
         rendershadowmapworld();
-        rendermodelbatches();
+        //rendermodelbatches();
     }
 }
 
@@ -3521,22 +3534,33 @@ void gl_drawframe(int w, int h)
 
     glEnable(GL_SCISSOR_TEST);
 
-    if(smpolyfactor || smpolyoffset)
-    {
-        glPolygonOffset(smpolyfactor, smpolyoffset);
-        glEnable(GL_POLYGON_OFFSET_FILL);
-    }
-
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
     shadowmapping = true;
-    if(csm.sunlight) rendercsmshadowmaps();  // sun light
 
+    // sun light
+    if(csm.sunlight)
+    {
+        if(csmpolyfactor || csmpolyoffset)
+        {
+            glPolygonOffset(csmpolyfactor, csmpolyoffset);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+        }
+        rendercsmshadowmaps();
+        if(csmpolyfactor || csmpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
+    }
+
+    // point lights
+    if(smpolyfactor || smpolyoffset)
+    {
+        glPolygonOffset(smpolyfactor, smpolyoffset);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+    }
     if(smtetra && smtetraclip) glEnable(GL_CLIP_PLANE0);
-    rendershadowmaps();     // point lights
+    rendershadowmaps();
 
     timer_end();
 
