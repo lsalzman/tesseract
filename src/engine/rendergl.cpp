@@ -2460,6 +2460,7 @@ void cascaded_shadow_map::sunlightgetmodelmatrix()
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
 VAR(csmfarplane, 64, 256, 4096);
 VAR(csmfarsmoothdistance, 0, 32, 64);
+FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
@@ -2486,7 +2487,8 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
     player_model.transform(vec(0.f,0.f,-1.f), view);
     player_model.transform(vec(0.f,1.f,0.f), up);
     player_model.transform(vec(1.f,0.f,0.f), right);
-    updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
+    //updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
+    updatesplitdist(f, nearplane, float(farplane));
 
     loopi(csmsplitn) updatefrustumpoints(f[i], pos, view, up, right);
     this->camview = view;
