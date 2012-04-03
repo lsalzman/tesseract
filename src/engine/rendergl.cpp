@@ -2458,10 +2458,12 @@ void cascaded_shadow_map::sunlightgetmodelmatrix()
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
-VAR(csmfarplane, 64, 256, 4096);
-VAR(csmfarsmoothdistance, 0, 32, 64);
+VAR(csmfarplane, 64, 512, 4096);
+VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
+FVAR(csmpolyfactor, -1e3, 1, 1e3);
+FVAR(csmpolyoffset, -1e3, 1024, 2e3);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
@@ -2487,8 +2489,7 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
     player_model.transform(vec(0.f,0.f,-1.f), view);
     player_model.transform(vec(0.f,1.f,0.f), up);
     player_model.transform(vec(1.f,0.f,0.f), right);
-    //updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
-    updatesplitdist(f, nearplane, float(farplane));
+    updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
 
     loopi(csmsplitn) updatefrustumpoints(f[i], pos, view, up, right);
     this->camview = view;
@@ -3003,7 +3004,7 @@ void rendercsmshadowmaps()
         findcsmshadowvas(); // no culling here
         findcsmshadowmms(); // no culling here
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_FRONT);
+        glCullFace(GL_BACK);
 
         lockmodelbatches();
         rendershadowmapmodels();
@@ -3533,22 +3534,33 @@ void gl_drawframe(int w, int h)
 
     glEnable(GL_SCISSOR_TEST);
 
-    if(smpolyfactor || smpolyoffset)
-    {
-        glPolygonOffset(smpolyfactor, smpolyoffset);
-        glEnable(GL_POLYGON_OFFSET_FILL);
-    }
-
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
     shadowmapping = true;
-    if(csm.sunlight) rendercsmshadowmaps();  // sun light
 
+    // sun light
+    if(csm.sunlight)
+    {
+        if(csmpolyfactor || csmpolyoffset)
+        {
+            glPolygonOffset(csmpolyfactor, csmpolyoffset);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+        }
+        rendercsmshadowmaps();
+        if(csmpolyfactor || csmpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
+    }
+
+    // point lights
+    if(smpolyfactor || smpolyoffset)
+    {
+        glPolygonOffset(smpolyfactor, smpolyoffset);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+    }
     if(smtetra && smtetraclip) glEnable(GL_CLIP_PLANE0);
-    rendershadowmaps();     // point lights
+    rendershadowmaps();
 
     timer_end();
 
