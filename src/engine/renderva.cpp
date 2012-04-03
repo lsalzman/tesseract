@@ -2031,6 +2031,7 @@ static vector<vtxarray *> alphavas;
 static int alphabackvas = 0;
 float alphafrontsx1 = -1, alphafrontsx2 = 1, alphafrontsy1 = -1, alphafrontsy2 = -1,
       alphabacksx1 = -1, alphabacksx2 = 1, alphabacksy1 = -1, alphabacksy2 = -1;
+uint alphatiles[LIGHTTILE_H];
 
 int findalphavas(bool fogpass)
 {
@@ -2038,6 +2039,7 @@ int findalphavas(bool fogpass)
     alphafrontsx1 = alphafrontsy1 = alphabacksx1 = alphabacksy1 = 1;
     alphafrontsx2 = alphafrontsy2 = alphabacksx2 = alphabacksy2 = -1;
     alphabackvas = 0;
+    memset(alphatiles, 0, sizeof(alphatiles));
     for(vtxarray *va = FIRSTVA; va; va = NEXTVA)
     {
         if(!va->alphabacktris && !va->alphafronttris) continue;
@@ -2060,6 +2062,9 @@ int findalphavas(bool fogpass)
         alphavas.add(va);
         float sx1 = -1, sx2 = 1, sy1 = -1, sy2 = 1;
         if(!calcbbscissor(va->alphamin.tovec(), va->alphamax.tovec(), sx1, sy1, sx2, sy2)) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+        int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+            tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+        for(int ty = ty1; ty < ty2; ty++) alphatiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;  
         alphafrontsx1 = min(alphafrontsx1, sx1);
         alphafrontsy1 = min(alphafrontsy1, sy1);
         alphafrontsx2 = max(alphafrontsx2, sx2);

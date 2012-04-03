@@ -323,6 +323,9 @@ static inline cubeext &ext(cube &c)
 
 // shadowmap
 
+#define LIGHTTILE_W 10
+#define LIGHTTILE_H 10
+
 extern bool shadowmapping;
 
 extern int smtetra, smtetraclip;
@@ -376,6 +379,7 @@ extern void updatevabbs(bool force = false);
 // renderva
 
 extern float alphafrontsx1, alphafrontsx2, alphafrontsy1, alphafrontsy2, alphabacksx1, alphabacksx2, alphabacksy1, alphabacksy2;
+extern uint alphatiles[LIGHTTILE_H];
 
 extern void visiblecubes(bool cull = true);
 extern void setvfcP(float z = -1, const vec &bbmin = vec(-1, -1, -1), const vec &bbmax = vec(1, 1, 1));

@@ -369,11 +369,11 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
-    extern int batchlightmaps, fpdepthfx, glineardepth;
+    extern int batchlightmaps, fpdepthfx, gdepthstencil;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
-        glineardepth = 1; // some ATI GPUs do not support reading from depth-stencil textures, so only use depth-stencil renderbuffer for now
+        gdepthstencil = 0; // some ATI GPUs do not support reading from depth-stencil textures, so only use depth-stencil renderbuffer for now
         minimizetcusage = 1;
 		if(hasTF && hasNVFB) fpdepthfx = 1;
     }
@@ -1988,11 +1988,18 @@ void viewao()
 
 VAR(gdepthformat, 1, 0, 0);
 
-void maskgbuffer(bool all, bool depth = true)
+void maskgbuffer(const char *mask)
 {
-    static const GLenum drawbufs[4] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_COLOR_ATTACHMENT3_EXT };
-    if(all) glDrawBuffers_(gdepthformat && depth ? 4 : 3, drawbufs);
-    else glDrawBuffer(gdepthformat && !depth ? drawbufs[3] : drawbufs[0]);
+    GLenum drawbufs[4];
+    int numbufs = 0;
+    while(*mask) switch(*mask++)
+    {
+        case 'c': drawbufs[numbufs++] =  GL_COLOR_ATTACHMENT0_EXT; break;
+        case 'n': drawbufs[numbufs++] =  GL_COLOR_ATTACHMENT1_EXT; break;
+        case 'g': drawbufs[numbufs++] =  GL_COLOR_ATTACHMENT2_EXT; break;
+        case 'd': if(gdepthformat) drawbufs[numbufs++] =  GL_COLOR_ATTACHMENT3_EXT; break;
+    }
+    glDrawBuffers_(numbufs, drawbufs);
 }
 
 extern int hdrprec, gstencil, gdepthstencil, glineardepth;
@@ -2018,7 +2025,7 @@ void setupgbuffer(int w, int h)
     
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
-    maskgbuffer(true);
+    maskgbuffer("cngd");
 
     static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
     GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
@@ -2278,9 +2285,6 @@ FVAR(smbias, -1e3, 0.01f, 1e3);
 FVAR(smprec, 1e-3f, 1, 1e3);
 FVAR(smtetraprec, 1e-3f, SQRT3, 1e3);
 FVAR(smcubeprec, 1e-3f, 1, 1e3);
-
-#define LIGHTTILE_W 10
-#define LIGHTTILE_H 10
 
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
@@ -2651,7 +2655,7 @@ static inline bool sortlights(int x, int y)
 VAR(depthtestlights, 0, 1, 2);
 VAR(culllighttiles, 0, 1, 1);
 
-void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1)
+void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
     glEnable(GL_SCISSOR_TEST);
 
@@ -2713,7 +2717,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
 
-    for(int y = bty1; y < bty2; y++) for(int x = btx1; x < btx2; x++)
+    for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
     {
         vector<int> &tile = lighttiles[y][x];
 
@@ -3465,15 +3469,15 @@ void gl_drawframe(int w, int h)
 
     if(gdepthformat && gdepthclear)
     {
-        maskgbuffer(false, false);
+        maskgbuffer("d");
         if(gdepthformat == 1) glClearColor(1, 1, 1, 1);
         else glClearColor(-farplane, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0, 0, 0, 0);
-        maskgbuffer(true, false);
+        maskgbuffer("cng");
     }
     glClear(GL_DEPTH_BUFFER_BIT|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0));
-    if(gdepthformat && gdepthclear) maskgbuffer(true, true);
+    if(gdepthformat && gdepthclear) maskgbuffer("cngd");
 
     screenmatrix.identity();
     screenmatrix.scale(2.0f/gw, 2.0f/gh, 2.0f);
@@ -3486,9 +3490,9 @@ void gl_drawframe(int w, int h)
     
     rendergeom(causticspass);
     rendermapmodels();
-    maskgbuffer(false);
+    maskgbuffer("c");
     renderdecals(true);
-    maskgbuffer(true);
+    maskgbuffer("cngd");
     rendergame(true);
     if(!isthirdperson())
     {
@@ -3601,7 +3605,7 @@ void gl_drawframe(int w, int h)
     if(hasalphavas)
     {
         timer_begin(TIMER_ALPHAGEOM);
-        glEnable(GL_STENCIL_TEST);
+        if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
 
         if(!alphascissor) 
         { 
@@ -3611,25 +3615,50 @@ void gl_drawframe(int w, int h)
         loop(side, 2) if(hasalphavas&(1<<side))
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
-            glStencilFunc(GL_ALWAYS, 1<<side, 1<<side);
-            glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+            if((gdepthstencil && hasDS) || gstencil)
+            {
+                glStencilFunc(GL_ALWAYS, 1<<side, 1<<side);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+            }
+            else
+            {
+                maskgbuffer("cg");
+                float sx1, sy1, sx2, sy2;
+                if(!side) { sx1 = alphabacksx1; sy1 = alphabacksy1; sx2 = alphabacksx2; sy2 = alphabacksy2; }
+                else { sx1 = alphafrontsx1; sy1 = alphafrontsy1; sx2 = alphafrontsx2; sy2 = alphafrontsy2; } 
+                bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
+                if(scissor) 
+                {
+                    int x1 = int(floor((sx1*0.5f+0.5f)*gw)), y1 = int(floor((sy1*0.5f+0.5f)*gh)),
+                        x2 = int(ceil((sx2*0.5f+0.5f)*gw)), y2 = int(ceil((sy2*0.5f+0.5f)*gh));
+                    glEnable(GL_SCISSOR_TEST);
+                    glScissor(x1, y1, x2 - x1, y2 - y1);
+                }
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT);
+                if(scissor) glDisable(GL_SCISSOR_TEST);
+                maskgbuffer("cngd");
+            }
 
             renderalphageom(1<<side);
 
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
-            glStencilFunc(GL_EQUAL, 1<<side, 1<<side);
-            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+            if((gdepthstencil && hasDS) || gstencil)
+            {
+                glStencilFunc(GL_EQUAL, 1<<side, 1<<side);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+            }
 
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-            if(!side) renderlights(alphabacksx1, alphabacksy1, alphabacksx2, alphabacksy2);
-            else renderlights(alphafrontsx1, alphafrontsy1, alphafrontsx2, alphafrontsy2);
+            if(!side) renderlights(alphabacksx1, alphabacksy1, alphabacksx2, alphabacksy2, alphatiles);
+            else renderlights(alphafrontsx1, alphafrontsy1, alphafrontsx2, alphafrontsy2, alphatiles);
 
             glDisable(GL_BLEND);
         }
 
-        glDisable(GL_STENCIL_TEST);
+        if((gdepthstencil && hasDS) || gstencil) glDisable(GL_STENCIL_TEST);
         timer_end();
     }
 
