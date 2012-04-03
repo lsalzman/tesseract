@@ -956,7 +956,7 @@ void recomputecamera()
 
 extern const glmatrixf viewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, 1, 0), vec4(0, -1, 0, 0));
 extern const glmatrixf invviewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, -1, 0), vec4(0, 1, 0, 0));
-glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix, screenmatrix;
+glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix, screenmatrix, eyematrix;
 
 void readmatrices()
 {
@@ -2014,7 +2014,6 @@ void setupgbuffer(int w, int h)
     if(!gcolortex) glGenTextures(1, &gcolortex);
     if(!gnormaltex) glGenTextures(1, &gnormaltex);
     if(!gglowtex) glGenTextures(1, &gglowtex);
-
     if(!gfbo) glGenFramebuffers_(1, &gfbo);
     
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
@@ -3152,16 +3151,13 @@ void renderao()
 {
     timer_begin(TIMER_AO);
 
-    glmatrixf eyematrix;
-    eyematrix.mul(invprojmatrix, screenmatrix);
-
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-    setenvparamf("depthscale", SHPARAM_PIXEL, 2, eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]);
 
     static Shader *ambientobscuranceshader = NULL;
     if(!ambientobscuranceshader) ambientobscuranceshader = lookupshaderbyname("ambientobscurance");
 
     bool linear = hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1);
+    float xscale = eyematrix.v[0], yscale = eyematrix.v[5];
     if(linear)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
@@ -3169,8 +3165,8 @@ void renderao()
         SETSHADER(linearizedepth);
         screenquad(gw, gh);
 
-        eyematrix.v[0] *= float(gw)/aow;
-        eyematrix.v[5] *= float(gh)/aoh;
+        xscale *= float(gw)/aow;
+        yscale *= float(gh)/aoh;
 
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2]);
         ambientobscuranceshader->setvariant(aotaps-1, 1);
@@ -3186,8 +3182,8 @@ void renderao()
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    setlocalparamf("aoparams", SHPARAM_PIXEL, 0, aoradius*eyematrix.v[14]/eyematrix.v[0], aoradius*eyematrix.v[14]/eyematrix.v[5], (2.0f*M_PI*aodark)/aotaps, aosharp);
-    setlocalparamf("offsetscale", SHPARAM_PIXEL, 1, eyematrix.v[0]/eyematrix.v[14], eyematrix.v[5]/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]);
+    setlocalparamf("aoparams", SHPARAM_PIXEL, 0, aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, (2.0f*M_PI*aodark)/aotaps, aosharp);
+    setlocalparamf("offsetscale", SHPARAM_PIXEL, 1, xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]);
     screenquad(gw, gh, aow/float(1<<aonoise), aoh/float(1<<aonoise));
 
     if(aobilateral)
@@ -3466,6 +3462,12 @@ void gl_drawframe(int w, int h)
     glClear(GL_DEPTH_BUFFER_BIT|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer(true, true);
 
+    screenmatrix.identity();
+    screenmatrix.scale(2.0f/gw, 2.0f/gh, 2.0f);
+    screenmatrix.translate(-1.0f, -1.0f, -1.0f);
+    eyematrix.mul(invprojmatrix, screenmatrix);
+
+    setenvparamf("gdepthscale", SHPARAM_PIXEL, 38, eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]);
     setenvparamf("gdepthpackparams", SHPARAM_VERTEX, 39, -1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane);
     setenvparamf("gdepthunpackparams", SHPARAM_PIXEL, 39, -farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f));
     
@@ -3482,10 +3484,6 @@ void gl_drawframe(int w, int h)
         project(fovy, aspect, farplane);
     }
     timer_end();
-
-    screenmatrix.identity();
-    screenmatrix.scale(2.0f/gw, 2.0f/gh, 2.0f);
-    screenmatrix.translate(-1.0f, -1.0f, -1.0f);
 
     if(ao) renderao();
 
@@ -3649,6 +3647,10 @@ void gl_drawframe(int w, int h)
     //renderalphageom();
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glActiveTexture_(GL_TEXTURE2_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    glActiveTexture_(GL_TEXTURE0_ARB);
 
     renderparticles(true);
 

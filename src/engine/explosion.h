@@ -155,24 +155,9 @@ static void setupexplosion()
     if(!expmodtex[1]) expmodtex[1] = createexpmodtex(64, 0.25f);
     lastexpmodtex = 0;
 
-    if(!reflecting && !refracting && depthfx && depthfxtex.rendertex && numdepthfxranges>0)
+    if(!reflecting && !refracting && depthfx)
     {
-        if(depthfxtex.target==GL_TEXTURE_RECTANGLE_ARB)
-        {
-            if(!depthfxtex.highprecision())
-            {
-                if(explosion2d) SETSHADER(explosion2dsoft8rect); else SETSHADER(explosion3dsoft8rect);
-            }
-            else if(explosion2d) SETSHADER(explosion2dsoftrect); else SETSHADER(explosion3dsoftrect);
-        }
-        else
-        {
-            if(!depthfxtex.highprecision())
-            {
-                if(explosion2d) SETSHADER(explosion2dsoft8); else SETSHADER(explosion3dsoft8);
-            }
-            else if(explosion2d) SETSHADER(explosion2dsoft); else SETSHADER(explosion3dsoft);
-        }
+        if(explosion2d) SETSHADER(explosion2dsoft); else SETSHADER(explosion3dsoft);
     }
     else if(explosion2d) SETSHADER(explosion2d); else SETSHADER(explosion3d);
 
@@ -414,7 +399,18 @@ struct fireballrenderer : listrenderer
 
         setlocalparamf("center", SHPARAM_VERTEX, 0, o.x, o.y, o.z);
         setlocalparamf("animstate", SHPARAM_VERTEX, 1, size, psize, pmax, float(lastmillis));
-        binddepthfxparams(depthfxblend, inside ? blend/(2*255.0f) : 0, 2*(p->size + pmax)*WOBBLE >= depthfxblend, p);
+        if(2*(p->size + pmax)*WOBBLE >= depthfxblend)
+        {
+            setlocalparamf("softparams", SHPARAM_VERTEX, 5, -1.0f/depthfxblend, 0, inside ? blend/(2*255.0f) : 0);
+            setlocalparamf("softparams", SHPARAM_PIXEL, 5, -1.0f/depthfxblend, 0, inside ? blend/(2*255.0f) : 0);
+        }
+        else
+        {
+            setlocalparamf("softparams", SHPARAM_VERTEX, 5, 0, -1, inside ? blend/(2*255.0f) : 0);
+            setlocalparamf("softparams", SHPARAM_PIXEL, 5, 0, -1, inside ? blend/(2*255.0f) : 0);
+        }
+
+        //binddepthfxparams(depthfxblend, inside ? blend/(2*255.0f) : 0, 2*(p->size + pmax)*WOBBLE >= depthfxblend, p);
 
         glRotatef(lastmillis/7.0f, -rotdir.x, rotdir.y, -rotdir.z);
         glScalef(-psize, psize, -psize);

@@ -960,7 +960,7 @@ void renderparticles(bool mainpass)
     bool rendered = false;
     uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD;
    
-    if(binddepthfxtex()) flagmask |= PT_SOFT;
+    /*if(binddepthfxtex())*/ if(depthfx) flagmask |= PT_SOFT;
 
     loopi(sizeof(parts)/sizeof(parts[0]))
     {
@@ -1012,16 +1012,9 @@ void renderparticles(bool mainpass)
             {
                 if(flags&PT_SOFT)
                 {
-                    if(depthfxtex.target==GL_TEXTURE_RECTANGLE_ARB)
-                    {
-                        if(!depthfxtex.highprecision()) SETSHADER(particlesoft8rect);
-                        else SETSHADER(particlesoftrect);
-                    }
-                    else
-                    {
-                        if(!depthfxtex.highprecision()) SETSHADER(particlesoft8);
-                        else SETSHADER(particlesoft);
-                    }
+                    SETSHADER(particlesoft);
+                    setlocalparamf("softparams", SHPARAM_VERTEX, 5, -1.0f/depthfxpartblend, 0, 0);
+                    setlocalparamf("softparams", SHPARAM_PIXEL, 5, -1.0f/depthfxpartblend, 0, 0);
 
                     binddepthfxparams(depthfxpartblend);
                 }
