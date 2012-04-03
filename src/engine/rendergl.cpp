@@ -2338,7 +2338,8 @@ void viewshadowatlas()
 VAR(debugshadowatlas, 0, 0, 1);
 
 static const uint csmmaxsplitn = 8, csmminsplitn = 1;
-VAR(csmsplitn, csmminsplitn, 1, csmmaxsplitn);
+VAR(csmmaxsize, 256, 1024, 2048);
+VAR(csmsplitn, csmminsplitn, 3, csmmaxsplitn);
 FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
 
 static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort y, int size, int &idx)
@@ -2376,9 +2377,10 @@ static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
-        const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
+        //const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
+        const bool inserted = shadowatlaspacker.insert(smx, smy, csmmaxsize, csmmaxsize);
         if(!inserted) fatal("cascaded shadow maps MUST be packed");
-        shadowmapinfo *sm = addshadowmap(sms, smx, smy, smmaxsize, csmidx[i]);
+        shadowmapinfo *sm = addshadowmap(sms, smx, smy, csmmaxsize, csmidx[i]);
         sm->light = -1;
     }
     return true;
@@ -2456,7 +2458,8 @@ void cascaded_shadow_map::sunlightgetmodelmatrix()
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
-VAR(csmfarplane, 0, 1024, 4096);
+VAR(csmfarplane, 64, 256, 4096);
+VAR(csmfarsmoothdistance, 0, 32, 64);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
@@ -2717,11 +2720,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         static const char * const shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset", "shadow4offset", "shadow5offset", "shadow6offset", "shadow7offset" };
         static const char * const splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
 
-            extern bvec sunlightcolor;
-        printf("\r%f %f %f",
-                          float(sunlightcolor.x) / 255.f,
-                          float(sunlightcolor.y) / 255.f,
-                          float(sunlightcolor.z) / 255.f);
         // sunlight is processed first
         if(csm.sunlight)
         {
@@ -2733,10 +2731,11 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                           float(sunlightcolor.x) / 255.f,
                           float(sunlightcolor.y) / 255.f,
                           float(sunlightcolor.z) / 255.f);
+            setlocalparamf("csmfar", SHPARAM_PIXEL, 6, float(csmfarplane), 1.f / float(csmfarsmoothdistance));
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
             {
-                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 6+i, csm.far[i]);
+                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 7+i, csm.far[i]);
                 glActiveTexture_(GL_TEXTURE0_ARB+i+1);
                 glLoadMatrixf(csm.tex[i].v);
             }
