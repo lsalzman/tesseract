@@ -2219,6 +2219,7 @@ VAR(smborder, 0, 4, 16);
 VAR(smminradius, 0, 16, 10000);
 VAR(smminsize, 1, 96, 1024);
 VAR(smmaxsize, 1, 384, 1024);
+//VAR(smmaxsize, 1, 4096, 4096);
 VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
 VAR(smtetra, 0, 0, 1);
@@ -2291,6 +2292,7 @@ struct cascaded_shadow_map
     int idx[csmmaxsplitn];        // shadowmapinfo indices
     float far[csmmaxsplitn];      // far distance in player frustum
     vec camview;                  // direction along which split is done
+    vec lightview;                // view vector for light
     void sunlightgetmodelmatrix();// compute the shared model matrix
     void sunlightgetprojmatrix(); // compute each cropped projection matrix
     void sunlightgettexmatrix();  // get matrices used for shadow mapping
@@ -2302,17 +2304,13 @@ static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
     extern int skylight;
     if(skylight == 0) return false; // no sunlight
 #if 0
-    printf("\r");
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
-        const bool inserted = shadowatlaspacker.insert(smx, smy, 1024, 1024);
-        //const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
-        //const bool inserted = shadowatlaspacker.insert(smx, smy, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
+        const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
         if(!inserted) fatal("cascaded shadow maps MUST be packed");
         shadowmapinfo *sm = addshadowmap(sms, smx, smy, smmaxsize, csmidx[i]);
         sm->light = -1;
-        printf("%i ", sm->x);
     }
     return true;
 #else
@@ -2361,7 +2359,6 @@ static void updatesplitdist(splitfrustum *f, float nd, float fd)
     float lambda = csmsplitweight;
     float ratio = fd/nd;
     f[0].nearplane = nd;
-
     for(int i = 1; i < csmsplitn; ++i)
     {
         float si = i / (float)csmsplitn;
@@ -2386,30 +2383,21 @@ void cascaded_shadow_map::sunlightgetmodelmatrix()
     extern int sunlightyaw, sunlightpitch;
     this->model = viewmatrix;
     this->model.rotate(float(sunlightpitch)*RAD, vec(1.f, 0.f, 0.f));
-    this->model.rotate(float(sunlightyaw)*RAD, vec(0.f, 0.f, 1.f));
+    this->model.rotate(float(sunlightyaw+90)*RAD, vec(0.f, 0.f, 1.f));
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
+VAR(csmfarplane, 0, 1024, 4096);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
-
-void print_mat(const glmatrixf &m)
-{
-    loopi(4) {
-        printf("[");
-        loopj(4) {
-            printf("%3.8f%s", m(i,j), j == 3 ? "" : " ");
-        }
-        printf("]");
-    }
-}
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
-    extern float sunlightyaw, sunlightpitch;
+    extern int sunlightyaw, sunlightpitch;
     glmatrixf player_model;
     splitfrustum f[csmmaxsplitn];
     vec pos, view, up, right;
-    vec lightview(sunlightyaw, sunlightpitch), lightup, lightright;
+    vec lightup, lightright;
+    lightview = vec(-float(sunlightyaw+90)*RAD, -float(sunlightpitch)*RAD);
     lightview.normalize();
     lightup.orthogonal(lightview);
     lightup.normalize();
@@ -2426,24 +2414,17 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
     player_model.transform(vec(0.f,0.f,-1.f), view);
     player_model.transform(vec(0.f,1.f,0.f), up);
     player_model.transform(vec(1.f,0.f,0.f), right);
-    updatesplitdist(f, nearplane, float(farplane));
+    updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
+
     loopi(csmsplitn) updatefrustumpoints(f[i], pos, view, up, right);
     this->camview = view;
 
-    // printf("\r");
-#if 0
-    printf("up %f %f %f view %f %f %f right %f %f %f pos %f %f %f - %f %f %f",
-            up.x, up.y, up.z,
-            view.x, view.y, view.z,
-            right.x, right.y, right.z,
-            pos.x,pos.y,pos.z,
-            up.dot(view), up.dot(right), right.dot(view));
-#endif
     // compute each split projection matrix
-    glmatrixf ortho;
-    ortho.ortho(-1.0f, 1.0f, -1.0f, 1.0f, -worldsize, worldsize);
     loopi(csmsplitn)
     {
+        // find z extent
+        float minz = -worldsize, maxz = worldsize; // improve that
+
         float radius = 0.f;
         int a = 0, b = 0;
         loopj(7) for(int k = j+1; k < 8; ++k)
@@ -2459,9 +2440,12 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
         vec c = (f[i].point[a] + f[i].point[b]) * 0.5f;
 
         vec minv, maxv;
-        minv.z = -worldsize, maxv.z = worldsize;
+        minv.z = -csmminmaxz, maxv.z = csmminmaxz;
+        //minv.z = -worldsize, maxv.z = worldsize;
 
         // compute the projected bounding box of the sphere
+        glmatrixf ortho;
+        ortho.ortho(-1.0f, 1.0f, -1.0f, 1.0f, -maxz, -minz);
         glmatrixf mvp = ortho;
         mvp.mul(this->model);
         const vec p = c + radius * lightright;
@@ -2476,7 +2460,7 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
         minv.y = tc.y - pradius;
         maxv.x = tc.x + pradius;
         maxv.y = tc.y + pradius;
-        snap(minv, maxv, radius);
+        snap(minv, maxv, pradius);
 
         // modify mvp with a scale and offset
         const vec2 scale(2.0f/(maxv.x-minv.x), 2.0f/(maxv.y-minv.y));
@@ -2490,10 +2474,6 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
         this->proj[i](1,3) = offset.y;
         this->proj[i].mul(ortho);
         this->far[i] = f[i].farplane;
-        //        if (i == 0)
-        {
-            //printf("radius %i %f [%f %f] c [%f %f]", i, radius, f[i].nearplane, f[i].farplane, tc.x, tc.y);
-        }
     }
 }
 
@@ -2575,10 +2555,10 @@ void cascaded_shadow_map::sunlightgettexmatrix()
         const float offsetx = float(sm.x) / float(SHADOWATLAS_SIZE);
         const float offsety = float(sm.y) / float(SHADOWATLAS_SIZE);
         const float offsetmat[] = {
-            scale,                   0.f, 0.f, 0.f,
-            0.f,                   scale, 0.f, 0.f,
-            0.f,                     0.f, 1.f, 0.f,
-            scale+offsetx, scale+offsety, 0.f, 1.f
+            scale,                   0.f, 0.f,  0.f,
+            0.f,                   scale, 0.f,  0.f,
+            0.f,                     0.f, 0.5f, 0.f,
+            scale+offsetx, scale+offsety, 0.5f, 1.f
         };
         this->tex[i] = glmatrixf(offsetmat);
         this->tex[i].mul(this->proj[i]);
@@ -2644,16 +2624,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
-#if 0
-    printf("\r");
-    loopi(csmsplitn) {
-        shadowmapinfo &sm = shadowmaps[csm.idx[i]];
-        printf("%i %i %i - ",sm.x, sm.y, sm.size);
-    }
-    //print_mat(csm.tex[0]);
-#endif
-    // printf("[%f %f %f] ", csm.camview.x, csm.camview.y, csm.camview.z);
-    // printf("%f  ", csm.far[0]);
+
     for(int y = bty1; y < bty2; y++) for(int x = btx1; x < btx2; x++)
     {
         vector<int> &tile = lighttiles[y][x];
@@ -2669,10 +2640,11 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         {
             deferredcsmshader->setvariant(csmsplitn-1, 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
+            setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
             {
-                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 4+i, csm.far[i]);
+                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 5+i, csm.far[i]);
                 glActiveTexture_(GL_TEXTURE0_ARB+i+1);
                 glLoadMatrixf(csm.tex[i].v);
             }
@@ -2931,15 +2903,14 @@ void rendercsmshadowmaps()
 {
     extern void rendershadowmapworld();
     extern void rendershadowmapmodels();
-    if(!csm.sunlight) return; // no sunlight
 
-    findcsmshadowvas();
-    findcsmshadowmms();
     loopi(csmsplitn)
     {
         const shadowmapinfo &sm = shadowmaps[csm.idx[i]];
         findcsmshadowvas(); // no culling here
         findcsmshadowmms(); // no culling here
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT);
 
         lockmodelbatches();
         rendershadowmapmodels();

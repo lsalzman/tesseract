@@ -1154,9 +1154,10 @@ void findcsmshadowvas(vector<vtxarray *> &vas)
     loopv(vas)
     {
         vtxarray &v = *vas[i];
-        float dist = vadist(&v, shadoworigin);
+        v.shadowmask = ~0x0;
+        float dist = 0.f;
         addshadowva(&v, dist);
-        if(v.children.length()) findshadowvas(v.children);
+        if(v.children.length()) findcsmshadowvas(v.children);
     }
 }
 
