@@ -1995,7 +1995,7 @@ void maskgbuffer(bool all, bool depth = true)
     else glDrawBuffer(gdepthformat && !depth ? drawbufs[3] : drawbufs[0]);
 }
 
-extern int hdrprec, gdepthstencil, glineardepth;
+extern int hdrprec, gstencil, gdepthstencil, glineardepth;
 
 void initgbuffer()
 {
@@ -2033,10 +2033,10 @@ void setupgbuffer(int w, int h)
     {
         if(!gdepthrb) glGenRenderbuffers_(1, &gdepthrb);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gdepthrb);
-        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, gw, gh);
+        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, gw, gh);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
     } 
-    else if(!gdepthstencil || !hasDS)
+    else if(gstencil && (!gdepthstencil || !hasDS))
     {
         if(!gstencilrb) glGenRenderbuffers_(1, &gstencilrb);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gstencilrb);
@@ -2047,14 +2047,14 @@ void setupgbuffer(int w, int h)
     if(gdepthformat)
     {
         glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+        if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     }
     else
     {
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
         if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-        else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+        else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
     }
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
@@ -2075,14 +2075,14 @@ void setupgbuffer(int w, int h)
     if(gdepthformat)
     {
         glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+        if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     }
     else
     {
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
         if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-        else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+        else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
     }
 
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, hdrtex, 0);
@@ -2127,6 +2127,7 @@ void viewdepth()
     notextureshader->set();
 }
 
+VARF(gstencil, 0, 0, 1, cleanupgbuffer());
 VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
 VAR(hdr, 0, 1, 1);
@@ -2727,7 +2728,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         if(csm.sunlight)
         {
             extern bvec sunlightcolor, skylightcolor;
-            extern int sunlight, skylight;
+            extern int sunlight;
             bvec color = sunlight ? sunlightcolor : skylightcolor;
             deferredcsmshader->setvariant(csmsplitn-1, 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
@@ -3475,7 +3476,7 @@ void gl_drawframe(int w, int h)
         glClearColor(0, 0, 0, 0);
         maskgbuffer(true, false);
     }
-    glClear(GL_DEPTH_BUFFER_BIT|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|GL_STENCIL_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer(true, true);
 
     setenvparamf("gdepthpackparams", SHPARAM_VERTEX, 39, -1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane);
