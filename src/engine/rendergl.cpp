@@ -2462,7 +2462,7 @@ VAR(csmfarplane, 64, 512, 4096);
 VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
-FVAR(csmpolyfactor, -1e3, 1, 1e3);
+FVAR(csmpolyfactor, -1e3, 4, 1e3);
 FVAR(csmpolyoffset, -1e3, 1024, 2e3);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
@@ -2861,7 +2861,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
 void collectlights()
 {
-    return;
     // point lights processed here
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
@@ -3002,14 +3001,16 @@ void rendercsmshadowmaps()
     {
         const shadowmapinfo &sm = shadowmaps[csm.idx[i]];
         findcsmshadowvas(); // no culling here
-        findcsmshadowmms(); // no culling here
+        //findcsmshadowmms(); // no culling here
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
+#if 0
         lockmodelbatches();
         rendershadowmapmodels();
         rendergame();
         unlockmodelbatches();
+#endif
 
         glMatrixMode(GL_PROJECTION);
         glLoadMatrixf(csm.proj[i].v);
@@ -3020,7 +3021,7 @@ void rendercsmshadowmaps()
         glClear(GL_DEPTH_BUFFER_BIT);
 
         rendershadowmapworld();
-        rendermodelbatches();
+        //rendermodelbatches();
     }
 }
 
