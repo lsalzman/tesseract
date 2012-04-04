@@ -893,37 +893,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\engine\blob.cpp"
-					>
-					<FileConfiguration
-						Name="Release|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Release/engine.pch"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Debug/engine.pch"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Profile|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Profile/engine.pch"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
 					RelativePath="..\engine\decal.cpp"
 					>
 					<FileConfiguration
@@ -992,37 +961,6 @@
 				<File
 					RelativePath="..\engine\explosion.h"
 					>
-				</File>
-				<File
-					RelativePath="..\engine\glare.cpp"
-					>
-					<FileConfiguration
-						Name="Release|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Release/engine.pch"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Debug/engine.pch"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Profile|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Profile/engine.pch"
-						/>
-					</FileConfiguration>
 				</File>
 				<File
 					RelativePath="..\engine\grass.cpp"

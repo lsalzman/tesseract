@@ -27,7 +27,6 @@ enum
 {
     VBO_VBUF = 0,
     VBO_EBUF,
-    VBO_SKYBUF,
     NUMVBO
 };
 
@@ -88,10 +87,6 @@ void genvbo(int type, void *buf, int len, vtxarray **vas, int numva)
             case VBO_EBUF: 
                 va->ebuf = vbo; 
                 if(!hasVBO) va->edata = (ushort *)(data + (size_t)va->edata);
-                break;
-            case VBO_SKYBUF: 
-                va->skybuf = vbo; 
-                if(!hasVBO) va->skydata = (ushort *)(data + (size_t)va->skydata);
                 break;
         }
     }
@@ -246,20 +241,14 @@ struct vacollect : verthash
     vector<grasstri> grasstris;
     vector<materialsurface> matsurfs;
     vector<octaentities *> mapmodels;
-    vector<ushort> skyindices, explicitskyindices;
-    int worldtris, skytris, skyfaces, skyclip, skyarea;
+    int worldtris;
     vec alphamin, alphamax;
 
     void clear()
     {
         clearverts();
-        worldtris = skytris = 0;
-        skyfaces = 0;
-        skyclip = INT_MAX;
-        skyarea = 0;
+        worldtris = 0;
         indices.clear();
-        skyindices.setsize(0);
-        explicitskyindices.setsize(0);
         matsurfs.setsize(0);
         mapmodels.setsize(0);
         grasstris.setsize(0);
@@ -333,8 +322,7 @@ struct vacollect : verthash
         if(va->verts)
         {
             if(vbosize[VBO_VBUF] + verts.length() > maxvbosize || 
-               vbosize[VBO_EBUF] + worldtris > USHRT_MAX ||
-               vbosize[VBO_SKYBUF] + skytris > USHRT_MAX) 
+               vbosize[VBO_EBUF] + worldtris > USHRT_MAX)
                 flushvbo();
 
             va->voffset = vbosize[VBO_VBUF];
@@ -350,19 +338,6 @@ struct vacollect : verthash
         {
             va->matbuf = new materialsurface[matsurfs.length()];
             memcpy(va->matbuf, matsurfs.getbuf(), matsurfs.length()*sizeof(materialsurface));
-        }
-
-        va->skybuf = 0;
-        va->skydata = 0;
-        va->sky = skyindices.length();
-        va->explicitsky = explicitskyindices.length();
-        if(va->sky + va->explicitsky)
-        {
-            va->skydata += vbosize[VBO_SKYBUF];
-            ushort *skydata = (ushort *)addvbo(va, VBO_SKYBUF, va->sky+va->explicitsky, sizeof(ushort));
-            memcpy(skydata, skyindices.getbuf(), va->sky*sizeof(ushort));
-            memcpy(skydata+va->sky, explicitskyindices.getbuf(), va->explicitsky*sizeof(ushort));
-            if(va->voffset) loopi(va->sky+va->explicitsky) skydata[i] += va->voffset; 
         }
 
         va->eslist = NULL;
@@ -433,7 +408,7 @@ struct vacollect : verthash
 
     bool emptyva()
     {
-        return verts.empty() && matsurfs.empty() && skyindices.empty() && explicitskyindices.empty() && grasstris.empty() && mapmodels.empty();
+        return verts.empty() && matsurfs.empty() && grasstris.empty() && mapmodels.empty();
     }            
 } vc;
 
@@ -482,11 +457,11 @@ vec orientation_binormal[6][3] =
 
 void addtris(const sortkey &key, int orient, vertex *verts, int *index, int numverts, int convex, int tj)
 {
-    int &total = key.tex==DEFAULT_SKY ? vc.skytris : vc.worldtris;
+    int &total = vc.worldtris;
     int edge = orient*(MAXFACEVERTS+1);
     loopi(numverts-2) if(index[0]!=index[i+1] && index[i+1]!=index[i+2] && index[i+2]!=index[0])
     {
-        vector<ushort> &idxs = key.tex==DEFAULT_SKY ? vc.explicitskyindices : vc.indices[key].tris;
+        vector<ushort> &idxs = vc.indices[key].tris;
         int left = index[0], mid = index[i+1], right = index[i+2], start = left, i0 = left, i1 = -1;
         loopk(4)
         {
@@ -752,12 +727,6 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         if(index[k] < 0) return;
     }
 
-    if(texture == DEFAULT_SKY)
-    {
-        loopk(numverts) vc.skyclip = min(vc.skyclip, int(pos[k].z*8)>>3);
-        vc.skyfaces |= 0x3F&~(1<<orient);
-    }
-
     if(alpha) loopk(numverts) { vc.alphamin.min(pos[k]); vc.alphamax.max(pos[k]); }
 
     sortkey key(texture, vslot.scrollS || vslot.scrollT ? dim : 3, layer == LAYER_BLEND ? LAYER_BLEND : LAYER_TOP, envmap, alpha ? (vslot.alphaback ? ALPHA_BACK : (vslot.alphafront ? ALPHA_FRONT : NO_ALPHA)) : NO_ALPHA);
@@ -991,105 +960,6 @@ void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
     }
 }
 
-bool skyoccluded(cube &c, int orient)
-{
-    if(isempty(c)) return false;
-//    if(c.texture[orient] == DEFAULT_SKY) return true;
-    if(touchingface(c, orient) && faceedges(c, orient) == F_SOLID && !(c.material&MAT_ALPHA)) return true;
-    return false;
-}
-
-int hasskyfaces(cube &c, int x, int y, int z, int size, int faces[6])
-{
-    int numfaces = 0;
-    if(x == 0 && !skyoccluded(c, O_LEFT)) faces[numfaces++] = O_LEFT;
-    if(x + size == worldsize && !skyoccluded(c, O_RIGHT)) faces[numfaces++] = O_RIGHT;
-    if(y == 0 && !skyoccluded(c, O_BACK)) faces[numfaces++] = O_BACK;
-    if(y + size == worldsize && !skyoccluded(c, O_FRONT)) faces[numfaces++] = O_FRONT;
-    if(z == 0 && !skyoccluded(c, O_BOTTOM)) faces[numfaces++] = O_BOTTOM;
-    if(z + size == worldsize && !skyoccluded(c, O_TOP)) faces[numfaces++] = O_TOP;
-    return numfaces;
-}
-
-vector<facebounds> skyfaces[6];
- 
-void minskyface(cube &cu, int orient, const ivec &co, int size, facebounds &orig)
-{   
-    facebounds mincf;
-    mincf.u1 = orig.u2;
-    mincf.u2 = orig.u1;
-    mincf.v1 = orig.v2;
-    mincf.v2 = orig.v1;
-    mincubeface(cu, orient, co, size, orig, mincf, MAT_ALPHA, MAT_ALPHA);
-    orig.u1 = max(mincf.u1, orig.u1);
-    orig.u2 = min(mincf.u2, orig.u2);
-    orig.v1 = max(mincf.v1, orig.v1);
-    orig.v2 = min(mincf.v2, orig.v2);
-}  
-
-void genskyfaces(cube &c, const ivec &o, int size)
-{
-    if(isentirelysolid(c) && !(c.material&MAT_ALPHA)) return;
-
-    int faces[6],
-        numfaces = hasskyfaces(c, o.x, o.y, o.z, size, faces);
-    if(!numfaces) return;
-
-    loopi(numfaces)
-    {
-        int orient = faces[i], dim = dimension(orient);
-        facebounds m;
-        m.u1 = (o[C[dim]]&0xFFF)<<3; 
-        m.u2 = m.u1 + (size<<3);
-        m.v1 = (o[R[dim]]&0xFFF)<<3;
-        m.v2 = m.v1 + (size<<3);
-        minskyface(c, orient, o, size, m);
-        if(m.u1 >= m.u2 || m.v1 >= m.v2) continue;
-        vc.skyarea += (int(m.u2-m.u1)*int(m.v2-m.v1) + (1<<(2*3))-1)>>(2*3);
-        skyfaces[orient].add(m);
-    }
-}
-
-void addskyverts(const ivec &o, int size)
-{
-    loopi(6)
-    {
-        int dim = dimension(i), c = C[dim], r = R[dim];
-        vector<facebounds> &sf = skyfaces[i]; 
-        if(sf.empty()) continue;
-        vc.skyfaces |= 0x3F&~(1<<opposite(i));
-        sf.setsize(mergefaces(i, sf.getbuf(), sf.length()));
-        loopvj(sf)
-        {
-            facebounds &m = sf[j];
-            int index[4];
-            loopk(4)
-            {
-                const ivec &coords = facecoords[opposite(i)][k];
-                vec v;
-                v[dim] = o[dim];
-                if(coords[dim]) v[dim] += size;
-                v[c] = (o[c]&~0xFFF) + (coords[c] ? m.u2 : m.u1)/8.0f;
-                v[r] = (o[r]&~0xFFF) + (coords[r] ? m.v2 : m.v1)/8.0f;
-                index[k] = vc.addvert(v);
-                if(index[k] < 0) goto nextskyface;
-                vc.skyclip = min(vc.skyclip, int(v.z*8)>>3);
-            }
-            if(vc.skytris + 6 > USHRT_MAX) break;
-            vc.skytris += 6;
-            vc.skyindices.add(index[0]);
-            vc.skyindices.add(index[1]);
-            vc.skyindices.add(index[2]);
-
-            vc.skyindices.add(index[0]);
-            vc.skyindices.add(index[2]);
-            vc.skyindices.add(index[3]);
-        nextskyface:;
-        }
-        sf.setsize(0);
-    }
-}
-                    
 ////////// Vertex Arrays //////////////
 
 int allocva = 0;
@@ -1104,9 +974,6 @@ vtxarray *newva(int x, int y, int z, int size)
     va->parent = NULL;
     va->o = ivec(x, y, z);
     va->size = size;
-    va->skyarea = vc.skyarea;
-    va->skyfaces = vc.skyfaces;
-    va->skyclip = vc.skyclip < INT_MAX ? vc.skyclip : INT_MAX;
     va->curvfc = VFC_NOT_VISIBLE;
     va->occluded = OCCLUDE_NOTHING;
     va->query = NULL;
@@ -1150,7 +1017,6 @@ void destroyva(vtxarray *va, bool reparent)
     }
     if(va->vbuf) destroyvbo(va->vbuf);
     if(va->ebuf) destroyvbo(va->ebuf);
-    if(va->skybuf) destroyvbo(va->skybuf);
     if(va->eslist) delete[] va->eslist;
     if(va->matbuf) delete[] va->matbuf;
     delete va;
@@ -1190,23 +1056,6 @@ void updatevabb(vtxarray *va, bool force)
         octaentities *oe = va->mapmodels[i];
         va->bbmin.min(oe->bbmin);
         va->bbmax.max(oe->bbmax);
-    }
-
-    if(va->skyfaces)
-    {
-        va->skyfaces |= 0x80;
-        if(va->sky) loop(dim, 3) if(va->skyfaces&(3<<(2*dim)))
-        {
-            int r = R[dim], c = C[dim];
-            if((va->skyfaces&(1<<(2*dim)) && va->o[dim] < va->bbmin[dim]) ||
-               (va->skyfaces&(2<<(2*dim)) && va->o[dim]+va->size > va->bbmax[dim]) ||
-               va->o[r] < va->bbmin[r] || va->o[r]+va->size > va->bbmax[r] ||
-               va->o[c] < va->bbmin[c] || va->o[c]+va->size > va->bbmax[c])
-            {
-                va->skyfaces &= ~0x80;
-                break;
-            }
-        }
     }
 }
 
@@ -1359,8 +1208,6 @@ void rendercube(cube &c, int cx, int cy, int cz, int size, int csi, int &maxleve
         return;
     }
     
-    genskyfaces(c, ivec(cx, cy, cz), size);
-
     if(!isempty(c)) 
     {
         gencubeverts(c, cx, cy, cz, size, csi);
@@ -1441,8 +1288,6 @@ void setva(cube &c, int cx, int cy, int cz, int size, int csi)
 
     calcgeombb(cx, cy, cz, size, bbmin, bbmax);
 
-    addskyverts(ivec(cx, cy, cz), size);
-
     if(!vc.emptyva())
     {
         vtxarray *va = newva(cx, cy, cz, size);
@@ -1468,7 +1313,6 @@ VARF(vacubemin, 0, 128, 256*256, allchanged());
 int updateva(cube *c, int cx, int cy, int cz, int size, int csi)
 {
     progress("recalculating geometry...");
-    static int faces[6];
     int ccount = 0, cmergemax = vamergemax, chasmerges = vahasmerges;
     neighbourstack[++neighbourdepth] = c;
     loopi(8)                                    // counting number of semi-solid/solid children cubes
@@ -1486,7 +1330,7 @@ int updateva(cube *c, int cx, int cy, int cz, int size, int csi)
         else
         {
             if(c[i].children) count += updateva(c[i].children, o.x, o.y, o.z, size/2, csi-1);
-            else if(!isempty(c[i]) || hasskyfaces(c[i], o.x, o.y, o.z, size, faces)) count++;
+            else if(!isempty(c[i])) count++;
             int tcount = count + (csi <= MAXMERGELEVEL ? vamerges[csi].length() : 0);
             if(tcount > vacubemax || (tcount >= vacubemin && size >= vacubesize) || size == min(0x1000, worldsize/2)) 
             {
@@ -1607,15 +1451,6 @@ void octarender()                               // creates va s for all leaf cub
     loadprogress = 0;
     flushvbo();
 
-    explicitsky = 0;
-    skyarea = 0;
-    loopv(valist)
-    {
-        vtxarray *va = valist[i];
-        explicitsky += va->explicitsky;
-        skyarea += va->skyarea;
-    }
-
     extern vtxarray *visibleva;
     visibleva = NULL;
 }
@@ -1651,7 +1486,6 @@ void allchanged(bool load)
     setupmaterials();
     invalidatepostfx();
     updatevabbs(true);
-    resetblobs();
     if(load) 
     {
         updateblendtextures();

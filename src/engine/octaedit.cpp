@@ -522,7 +522,6 @@ void commitchanges(bool force)
     setupmaterials(oldlen);
     invalidatepostfx();
     updatevabbs();
-    resetblobs();
 }
 
 void changed(const block3 &sel, bool commit = true)

@@ -603,7 +603,7 @@ void rendermaterials()
     int lastorient = -1, lastmat = -1;
     GLenum textured = GL_TEXTURE_2D;
     bool depth = true, blended = false, usedcamera = false, usedwaterfall = false;
-    ushort envmapped = EMID_NONE;
+    short envmapped = EMID_NONE;
     static const vec normals[6] =
     {
         vec(-1, 0, 0),

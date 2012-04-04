@@ -91,22 +91,6 @@ struct animmodel : model
 
             if(!skinned) return;
                 
-            if(fullbright)
-            {
-                glColor4f(fullbright/2, fullbright/2, fullbright/2, transparent);
-                setenvparamf("lightscale", SHPARAM_VERTEX, 2, 0, 0, 2);
-                setenvparamf("lightscale", SHPARAM_PIXEL, 2, 0, 0, 2);
-            }
-            else
-            {
-                float mincolor = as->cur.anim&ANIM_FULLBRIGHT ? fullbrightmodels/100.0f : 0.0f, 
-                      bias = max(mincolor-1.0f, 0.2f), scale = 0.5f*max(0.8f-bias, 0.0f), 
-                      minshade = scale*max(ambient, mincolor);
-                vec color = vec(lightcolor).max(mincolor);
-                glColor4f(color.x, color.y, color.z, transparent);
-                setenvparamf("lightscale", SHPARAM_VERTEX, 2, scale - minshade, scale, minshade + bias);
-                setenvparamf("lightscale", SHPARAM_PIXEL, 2, scale - minshade, scale, minshade + bias);
-            }
             float curglow = glow;
             if(glowpulse > 0)
             {
@@ -249,7 +233,7 @@ struct animmodel : model
             else
             {
                 if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
-                if(enablealphablend && transparent>=1) { glDisable(GL_BLEND); enablealphablend = false; }
+                if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
             }
             if(m!=lastmasks && m!=notexture)
             {
@@ -850,10 +834,7 @@ struct animmodel : model
                     glLoadMatrixf(matrixstack[matrixpos].v);
                     glMatrixMode(GL_MODELVIEW);
                 
-                    vec odir, ocampos;
-                    matrixstack[matrixpos].transposedtransformnormal(lightdir, odir);
-                    setenvparamf("lightdir", SHPARAM_VERTEX, 0, odir.x, odir.y, odir.z);
-                    setenvparamf("lightdir", SHPARAM_PIXEL, 0, odir.x, odir.y, odir.z);
+                    vec ocampos;
                     matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
                     ocampos.div(resize).sub(translate);
                     setenvparamf("camera", SHPARAM_VERTEX, 1, ocampos.x, ocampos.y, ocampos.z, 1);
@@ -994,7 +975,7 @@ struct animmodel : model
         }
     }
 
-    void render(int anim, int basetime, int basetime2, const vec &o, float yaw, float pitch, dynent *d, modelattach *a, const vec &color, const vec &dir, float trans, float size)
+    void render(int anim, int basetime, int basetime2, const vec &o, float yaw, float pitch, dynent *d, modelattach *a, float size)
     {
         if(!loaded) return;
 
@@ -1030,10 +1011,6 @@ struct animmodel : model
 
         if(!(anim&ANIM_NOSKIN))
         {
-            transparent = trans;
-            lightdir = dir;
-            lightcolor = color;
-
             if(envmapped()) envmaptmu = 2;
             else if(a) for(int i = 0; a[i].tag; i++) if(a[i].m && a[i].m->envmapped())
             {
@@ -1049,35 +1026,6 @@ struct animmodel : model
             enabledepthoffset = true;
         }
 
-        if(envmaptmu>=0)
-        {
-            setenvparamf("lightdirworld", SHPARAM_PIXEL, 1, dir.x, dir.y, dir.z);
-        }
-
-        if(transparent<1)
-        {
-            if(anim&ANIM_GHOST) 
-            {
-                glDepthFunc(GL_GREATER);
-                glDepthMask(GL_FALSE);
-            }
-            else if(alphadepth)
-            {
-                glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-                render(anim|ANIM_NOSKIN, basetime, basetime2, pitch, axis, forward, d, a);
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, fading ? GL_FALSE : GL_TRUE);
-
-                glDepthFunc(GL_LEQUAL);
-            }
-
-            if(!enablealphablend)
-            {
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                enablealphablend = true;
-            }
-        }
-
         render(anim, basetime, basetime2, pitch, axis, forward, d, a);
 
         if(envmaptmu>=0)
@@ -1085,12 +1033,6 @@ struct animmodel : model
             glMatrixMode(GL_TEXTURE);
             glLoadIdentity();
             glMatrixMode(GL_MODELVIEW);
-        }
-
-        if(transparent<1 && (alphadepth || anim&ANIM_GHOST)) 
-        {
-            glDepthFunc(GL_LESS);
-            if(anim&ANIM_GHOST) glDepthMask(GL_TRUE);
         }
 
         if(d) d->lastrendered = lastmillis;
@@ -1260,8 +1202,7 @@ struct animmodel : model
     }
 
     static bool enabletc, enablealphatest, enablealphablend, enableenvmap, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
-    static vec lightdir, lightcolor;
-    static float transparent, lastalphatest, sizescale;
+    static float lastalphatest, sizescale;
     static void *lastvbuf, *lasttcbuf, *lastnbuf, *lastxbuf, *lastbbuf, *lastsdata, *lastbdata;
     static GLuint lastebuf, lastenvmaptex, closestenvmaptex;
     static Texture *lasttex, *lastmasks, *lastnormalmap;
@@ -1277,7 +1218,7 @@ struct animmodel : model
         lastebuf = lastenvmaptex = closestenvmaptex = 0;
         lasttex = lastmasks = lastnormalmap = NULL;
         envmaptmu = -1;
-        transparent = sizescale = 1;
+        sizescale = 1;
     }
 
     static void disablebones()
@@ -1344,8 +1285,7 @@ bool animmodel::enabletc = false, animmodel::enablealphatest = false, animmodel:
      animmodel::enableenvmap = false, animmodel::enablecullface = true, 
      animmodel::enablenormals = false, animmodel::enabletangents = false, 
      animmodel::enablebones = false, animmodel::enabledepthoffset = false;
-vec animmodel::lightdir(0, 0, 1), animmodel::lightcolor(1, 1, 1);
-float animmodel::transparent = 1, animmodel::lastalphatest = -1, animmodel::sizescale = 1;
+float animmodel::lastalphatest = -1, animmodel::sizescale = 1;
 void *animmodel::lastvbuf = NULL, *animmodel::lasttcbuf = NULL, *animmodel::lastnbuf = NULL, *animmodel::lastxbuf = NULL, *animmodel::lastbbuf = NULL, *animmodel::lastsdata = NULL, *animmodel::lastbdata = NULL;
 GLuint animmodel::lastebuf = 0, animmodel::lastenvmaptex = 0, animmodel::closestenvmaptex = 0;
 Texture *animmodel::lasttex = NULL, *animmodel::lastmasks = NULL, *animmodel::lastnormalmap = NULL;

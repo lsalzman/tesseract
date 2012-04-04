@@ -171,10 +171,6 @@
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
-		<Unit filename="..\engine\blob.cpp">
-			<Option target="default" />
-			<Option target="debug" />
-		</Unit>
 		<Unit filename="..\engine\client.cpp">
 			<Option target="default" />
 			<Option target="debug" />
@@ -203,10 +199,6 @@
 			<Option target="debug" />
 		</Unit>
 		<Unit filename="..\engine\explosion.h">
-			<Option target="default" />
-			<Option target="debug" />
-		</Unit>
-		<Unit filename="..\engine\glare.cpp">
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>

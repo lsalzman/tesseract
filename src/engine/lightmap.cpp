@@ -2498,42 +2498,11 @@ void genlightmaptexs(int flagmask, int flagval)
     }        
 }
 
-bool brightengeom = false;
-
 void clearlights()
 {
     clearlightcache();
-    const vector<extentity *> &ents = entities::getents();
-    loopv(ents)
-    {
-        extentity &e = *ents[i];
-        e.light.color = vec(1, 1, 1);
-        e.light.dir = vec(0, 0, 1);
-    }
-
     genlightmaptexs(LM_ALPHA, 0);
     genlightmaptexs(LM_ALPHA, LM_ALPHA);
-    brightengeom = true;
-}
-
-void lightent(extentity &e, float height)
-{
-    if(e.type==ET_LIGHT) return;
-    float ambient = 0.0f;
-    if(e.type==ET_MAPMODEL)
-    {
-        model *m = loadmodel(NULL, e.attr2);
-        if(m) height = m->above()*0.75f;
-    }
-    else if(e.type>=ET_GAMESPECIFIC) ambient = 0.4f;
-    vec target(e.o.x, e.o.y, e.o.z + height);
-    lightreaching(target, e.light.color, e.light.dir, false, &e, ambient);
-}
-
-void updateentlighting()
-{
-    const vector<extentity *> &ents = entities::getents();
-    loopv(ents) lightent(*ents[i]);
 }
 
 void initlights()
@@ -2545,10 +2514,8 @@ void initlights()
     }
 
     clearlightcache();
-    updateentlighting();
     genlightmaptexs(LM_ALPHA, 0);
     genlightmaptexs(LM_ALPHA, LM_ALPHA);
-    brightengeom = false;
 }
 
 static inline void fastskylight(const vec &o, float tolerance, uchar *skylight, int flags = RAY_ALPHAPOLY, extentity *t = NULL, bool fast = false)

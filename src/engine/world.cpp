@@ -170,7 +170,6 @@ static bool modifyoctaent(int flags, int id)
     e.inoctanode = flags&MODOE_ADD ? 1 : 0;
     if(e.type == ET_LIGHT) clearlightcache(id);
     else if(e.type == ET_PARTICLES) clearparticleemitters();
-    else if(flags&MODOE_ADD) lightent(e);
     return true;
 }
 
@@ -884,8 +883,6 @@ extentity *newentity(bool local, const vec &o, int type, int v1, int v2, int v3,
     e.reserved = 0;
     e.spawned = false;
     e.inoctanode = false;
-    e.light.color = vec(1, 1, 1);
-    e.light.dir = vec(0, 0, 1);
     if(local)
     {
         switch(type)

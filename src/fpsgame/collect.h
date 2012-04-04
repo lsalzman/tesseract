@@ -24,7 +24,6 @@ struct collectclientmode : clientmode
 #ifndef SERVMODE
         vec tokenpos;
         string info;
-        entitylight light;
 #endif
     
         base() { reset(); }
@@ -42,8 +41,6 @@ struct collectclientmode : clientmode
         vec o;
 #ifdef SERVMODE
         int yaw, dropper;
-#else
-        entitylight light;
 #endif
 
         token() { reset(); }
@@ -446,12 +443,12 @@ struct collectclientmode : clientmode
         {
             base &b = bases[i];
             const char *basename = b.team==team ? "base/blue" : "base/red";
-            rendermodel(&b.light, basename, ANIM_MAPMODEL|ANIM_LOOP, b.o, 0, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
+            rendermodel(basename, ANIM_MAPMODEL|ANIM_LOOP, b.o, 0, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
             float fradius = 1.0f, fheight = 0.5f;
             regular_particle_flame(PART_FLAME, vec(b.tokenpos.x, b.tokenpos.y, b.tokenpos.z - 4.5f), fradius, fheight, b.team==team ? 0x2020FF : 0x802020, 3, 2.0f);
             vec tokenpos(b.tokenpos);
             tokenpos.z -= theight.z/2 + sinf(lastmillis/100.0f)/20;
-            rendermodel(&b.light, b.team==team ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, tokenpos, lastmillis/10.0f, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
+            rendermodel(b.team==team ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, tokenpos, lastmillis/10.0f, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
             formatstring(b.info)("%d", totalscore(b.team));
             vec above(b.tokenpos);
             above.z += TOKENHEIGHT;
@@ -462,7 +459,7 @@ struct collectclientmode : clientmode
             token &t = tokens[i];
             vec p = t.o;
             p.z += 1+sinf(lastmillis/100.0+t.o.x+t.o.y)/20;
-            rendermodel(&t.light, t.team == team || (t.team < 0 && -t.team != team) ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, p, lastmillis/10.0f, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_DIST | MDL_CULL_OCCLUDED);
+            rendermodel(t.team == team || (t.team < 0 && -t.team != team) ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, p, lastmillis/10.0f, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_DIST | MDL_CULL_OCCLUDED);
         }
         fpsent *exclude = isthirdperson() ? NULL : hudplayer();
         loopv(players)
@@ -470,12 +467,10 @@ struct collectclientmode : clientmode
             fpsent *d = players[i];
             if(d->state != CS_ALIVE || d->tokens <= 0 || d == exclude) continue;
             vec pos = d->abovehead().add(vec(0, 0, 1));
-            entitylight light;
-            lightreaching(pos, light.color, light.dir, true);
             int dteam = collectteambase(d->team);
             loopj(d->tokens)
             {
-                rendermodel(&light, dteam != team ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, pos, d->yaw+90, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_DIST | MDL_CULL_OCCLUDED);
+                rendermodel(dteam != team ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, pos, d->yaw+90, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_DIST | MDL_CULL_OCCLUDED);
                 pos.z += TOKENHEIGHT + 1;
             }
         }        
@@ -496,7 +491,6 @@ struct collectclientmode : clientmode
             b.tokenpos = b.o;
             abovemodel(b.tokenpos, "base/blue");
             b.tokenpos.z += TOKENHEIGHT-2;
-            b.light = e->light;
         }
     }
 
@@ -585,8 +579,7 @@ struct collectclientmode : clientmode
     {
         vec pos = movetoken(o, yaw);
         if(pos.z < 0) return;
-        token &t = droptoken(id, pos, team, lastmillis);
-        lightreaching(vec(o).add(vec(0, 0, TOKENHEIGHT)), t.light.color, t.light.dir, true); 
+        droptoken(id, pos, team, lastmillis);
         if(!n) playsound(S_ITEMSPAWN, &d->o);
     }
 

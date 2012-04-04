@@ -35,7 +35,6 @@ struct captureclientmode : clientmode
 #ifndef SERVMODE
         vec ammopos;
         string name, info;
-        entitylight light;
 #endif
         int ammogroup, ammotype, ammo, owners, enemies, converted, capturetime;
 
@@ -345,7 +344,7 @@ struct captureclientmode : clientmode
         {
             baseinfo &b = bases[i];
             const char *basename = b.owner[0] ? (strcmp(b.owner, player1->team) ? "base/red" : "base/blue") : "base/neutral";
-            rendermodel(&b.light, basename, ANIM_MAPMODEL|ANIM_LOOP, b.o, 0, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
+            rendermodel(basename, ANIM_MAPMODEL|ANIM_LOOP, b.o, 0, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
             float fradius = 1.0f, fheight = 0.5f;
             regular_particle_flame(PART_FLAME, vec(b.ammopos.x, b.ammopos.y, b.ammopos.z - 4.5f), fradius, fheight, b.owner[0] ? (strcmp(b.owner, player1->team) ? 0x802020 : 0x2020FF) : 0x208020, 3, 2.0f);
             //regular_particle_flame(PART_SMOKE, vec(b.ammopos.x, b.ammopos.y, b.ammopos.z - 4.5f + 4.0f*min(fradius, fheight)), fradius, fheight, 0x303020, 1, 4.0f, 100.0f, 2000.0f, -20);
@@ -361,7 +360,7 @@ struct captureclientmode : clientmode
                     abovemodel(height, ammoname);
                     vec ammopos(b.ammopos);
                     ammopos.z -= height.z/2 + sinf(lastmillis/100.0f)/20;
-                    rendermodel(&b.light, ammoname, ANIM_MAPMODEL|ANIM_LOOP, ammopos, lastmillis/10.0f, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
+                    rendermodel(ammoname, ANIM_MAPMODEL|ANIM_LOOP, ammopos, lastmillis/10.0f, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
                 }
                 else loopj(b.ammo)
                 {
@@ -370,7 +369,7 @@ struct captureclientmode : clientmode
                     ammopos.x += 10*cosf(angle);
                     ammopos.y += 10*sinf(angle);
                     ammopos.z += 4;
-                    rendermodel(&b.light, entities::entmdlname(I_SHELLS+b.ammotype-1), ANIM_MAPMODEL|ANIM_LOOP, ammopos, 0, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
+                    rendermodel(entities::entmdlname(I_SHELLS+b.ammotype-1), ANIM_MAPMODEL|ANIM_LOOP, ammopos, 0, 0, MDL_SHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED);
                 }
             }
 
@@ -534,7 +533,6 @@ struct captureclientmode : clientmode
             defformatstring(alias)("base_%d", e->attr2);
             const char *name = getalias(alias);
             copystring(b.name, name);
-            b.light = e->light;
         }
     }
 

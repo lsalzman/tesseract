@@ -586,27 +586,8 @@ extern void initdecals();
 extern void cleardecals();
 extern void renderdecals(bool mainpass = false);
 
-// blob
-
-enum
-{
-    BLOB_STATIC = 0,
-    BLOB_DYNAMIC
-};
-
-extern int showblobs;
-
-extern void initblobs(int type = -1);
-extern void resetblobs();
-extern void renderblob(int type, const vec &o, float radius, float fade = 1);
-extern void flushblobs();
-
 // rendersky
-extern int explicitsky;
-extern double skyarea;
-
-extern void drawskybox(int farplane, bool limited);
-extern bool limitsky();
+extern void drawskybox(int farplane);
 
 // 3dgui
 extern void g3d_render();

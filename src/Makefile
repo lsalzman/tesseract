@@ -36,13 +36,11 @@ CLIENT_OBJS= \
 	engine/3dgui.o \
 	engine/bih.o \
 	engine/blend.o \
-	engine/blob.o \
 	engine/client.o	\
 	engine/command.o \
 	engine/console.o \
 	engine/decal.o \
 	engine/dynlight.o \
-	engine/glare.o \
 	engine/grass.o \
 	engine/lightmap.o \
 	engine/main.o \
@@ -218,10 +216,6 @@ engine/blend.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/blend.o: shared/ents.h shared/command.h shared/iengine.h
 engine/blend.o: shared/igame.h engine/world.h engine/octa.h engine/lightmap.h
 engine/blend.o: engine/bih.h engine/texture.h engine/model.h engine/varray.h
-engine/blob.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
-engine/blob.o: shared/ents.h shared/command.h shared/iengine.h shared/igame.h
-engine/blob.o: engine/world.h engine/octa.h engine/lightmap.h engine/bih.h
-engine/blob.o: engine/texture.h engine/model.h engine/varray.h
 engine/client.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/client.o: shared/ents.h shared/command.h shared/iengine.h
 engine/client.o: shared/igame.h engine/world.h engine/octa.h
@@ -246,11 +240,6 @@ engine/dynlight.o: shared/ents.h shared/command.h shared/iengine.h
 engine/dynlight.o: shared/igame.h engine/world.h engine/octa.h
 engine/dynlight.o: engine/lightmap.h engine/bih.h engine/texture.h
 engine/dynlight.o: engine/model.h engine/varray.h
-engine/glare.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
-engine/glare.o: shared/ents.h shared/command.h shared/iengine.h
-engine/glare.o: shared/igame.h engine/world.h engine/octa.h engine/lightmap.h
-engine/glare.o: engine/bih.h engine/texture.h engine/model.h engine/varray.h
-engine/glare.o: engine/rendertarget.h
 engine/grass.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/grass.o: shared/ents.h shared/command.h shared/iengine.h
 engine/grass.o: shared/igame.h engine/world.h engine/octa.h engine/lightmap.h
@@ -356,12 +345,6 @@ engine/shader.o: shared/ents.h shared/command.h shared/iengine.h
 engine/shader.o: shared/igame.h engine/world.h engine/octa.h
 engine/shader.o: engine/lightmap.h engine/bih.h engine/texture.h
 engine/shader.o: engine/model.h engine/varray.h
-engine/shadowmap.o: engine/engine.h shared/cube.h shared/tools.h
-engine/shadowmap.o: shared/geom.h shared/ents.h shared/command.h
-engine/shadowmap.o: shared/iengine.h shared/igame.h engine/world.h
-engine/shadowmap.o: engine/octa.h engine/lightmap.h engine/bih.h
-engine/shadowmap.o: engine/texture.h engine/model.h engine/varray.h
-engine/shadowmap.o: engine/rendertarget.h
 engine/sound.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/sound.o: shared/ents.h shared/command.h shared/iengine.h
 engine/sound.o: shared/igame.h engine/world.h engine/octa.h engine/lightmap.h

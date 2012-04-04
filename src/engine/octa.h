@@ -134,16 +134,15 @@ struct vtxarray
 {
     vtxarray *parent;
     vector<vtxarray *> children;
-    vtxarray *next, *rnext; // linked list of visible VOBs
+    vtxarray *next, *rnext;  // linked list of visible VOBs
     vertex *vdata;           // vertex data
     ushort voffset;          // offset into vertex data
-    ushort *edata, *skydata; // vertex indices
-    GLuint vbuf, ebuf, skybuf; // VBOs
+    ushort *edata;           // vertex indices
+    GLuint vbuf, ebuf;       // VBOs
     ushort minvert, maxvert; // DRE info
     elementset *eslist;      // List of element indices sets (range) per texture
     materialsurface *matbuf; // buffer of material surfaces
-    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, texmask, sky, explicitsky, skyfaces, skyclip, matsurfs, distance, rdistance;
-    double skyarea;
+    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, texmask, matsurfs, distance, rdistance;
     ivec o;
     int size;                // location and size of cube.
     ivec geommin, geommax;   // BB of geom

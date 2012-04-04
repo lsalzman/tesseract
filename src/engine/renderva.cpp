@@ -399,7 +399,7 @@ void rendermapmodel(extentity &e)
     int anim = ANIM_MAPMODEL|ANIM_LOOP, basetime = 0;
     if(e.flags&extentity::F_ANIM) entities::animatemapmodel(e, anim, basetime);
     mapmodelinfo *mmi = getmminfo(e.attr2);
-    if(mmi) rendermodel(&e.light, mmi->name, anim, e.o, e.attr1, 0, MDL_CULL_VFC | MDL_CULL_DIST | MDL_DYNLIGHT, NULL, NULL, basetime);
+    if(mmi) rendermodel(mmi->name, anim, e.o, e.attr1, 0, MDL_CULL_VFC | MDL_CULL_DIST | MDL_DYNLIGHT, NULL, NULL, basetime);
 }
 
 extern int reflectdist;
@@ -2156,88 +2156,4 @@ void renderreflectedgeom(bool causticspass, bool fogpass)
     }
     else rendergeom(causticspass ? 1 : 0, fogpass);
 }                
-
-static vtxarray *prevskyva = NULL;
-
-void renderskyva(vtxarray *va, bool explicitonly = false)
-{
-    if(!prevskyva || va->vbuf != prevskyva->vbuf)
-    {
-        if(!prevskyva) glEnableClientState(GL_VERTEX_ARRAY);
-        if(hasVBO)
-        {
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->skybuf);
-        }
-        glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
-    }
-
-    drawvatris(va, explicitonly ? va->explicitsky : va->sky+va->explicitsky, explicitonly ? va->skydata+va->sky : va->skydata);
-
-    if(!explicitonly) xtraverts += va->sky/3;
-    xtraverts += va->explicitsky/3;
-
-    prevskyva = va;
-}
-
-int renderedsky = 0, renderedexplicitsky = 0, renderedskyfaces = 0, renderedskyclip = INT_MAX;
-
-static inline void updateskystats(vtxarray *va)
-{
-    renderedsky += va->sky;
-    renderedexplicitsky += va->explicitsky;
-    renderedskyfaces |= va->skyfaces&0x3F;
-    if(!(va->skyfaces&0x1F) || camera1->o.z < va->skyclip) renderedskyclip = min(renderedskyclip, va->skyclip);
-    else renderedskyclip = 0;
-}
-
-void renderreflectedskyvas(vector<vtxarray *> &vas, int prevvfc = VFC_PART_VISIBLE)
-{
-    loopv(vas)
-    {
-        vtxarray *va = vas[i];
-        if(prevvfc >= VFC_NOT_VISIBLE) va->curvfc = prevvfc;
-        if((va->curvfc == VFC_FULL_VISIBLE && va->occluded >= OCCLUDE_BB) || va->curvfc==PVS_FULL_VISIBLE) continue;
-        if(va->o.z+va->size <= reflectz || ishiddencube(va->o, va->size)) continue;
-        if(va->sky+va->explicitsky) 
-        {
-            updateskystats(va);
-            renderskyva(va);
-        }
-        if(va->children.length()) renderreflectedskyvas(va->children, va->curvfc);
-    }
-}
-
-bool rendersky(bool explicitonly)
-{
-    prevskyva = NULL;
-    renderedsky = renderedexplicitsky = renderedskyfaces = 0;
-    renderedskyclip = INT_MAX;
-
-    if(reflecting)
-    {
-        renderreflectedskyvas(varoot);
-    }
-    else for(vtxarray *va = visibleva; va; va = va->next)
-    {
-        if((va->occluded >= OCCLUDE_BB && va->skyfaces&0x80) || !(va->sky+va->explicitsky)) continue;
-
-        // count possibly visible sky even if not actually rendered
-        updateskystats(va);
-        if(explicitonly && !va->explicitsky) continue;
-        renderskyva(va, explicitonly);
-    }
-
-    if(prevskyva)
-    {
-        glDisableClientState(GL_VERTEX_ARRAY);
-        if(hasVBO) 
-        {
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-        }
-    }
-
-    return renderedsky+renderedexplicitsky > 0;
-}
 

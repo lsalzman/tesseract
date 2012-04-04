@@ -13,14 +13,6 @@ struct entity                                   // persistent map entity
     uchar reserved;
 };
 
-struct entitylight
-{
-    vec color, dir;
-    int millis;
-
-    entitylight() : color(1, 1, 1), dir(0, 0, 1), millis(-1) {}
-};
-
 struct extentity : entity                       // part of the entity that doesn't get saved to disk
 {
     enum
@@ -32,7 +24,6 @@ struct extentity : entity                       // part of the entity that doesn
     };
 
     uchar spawned, inoctanode, visible, flags;  // the only dynamic state of a map entity
-    entitylight light;
     extentity *attached;
 
     extentity() : visible(false), flags(0), attached(NULL) {}
@@ -182,7 +173,6 @@ struct dynent : physent                         // animated characters, or chara
 {
     bool k_left, k_right, k_up, k_down;         // see input code
 
-    entitylight light;
     animinterpinfo animinterp[MAXANIMPARTS];
     ragdolldata *ragdoll;
     occludequery *query;

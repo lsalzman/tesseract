@@ -128,7 +128,6 @@ void *getprocaddress(const char *name)
     return SDL_GL_GetProcAddress(name);
 }
 
-VARP(ati_skybox_bug, 0, 0, 1);
 VAR(ati_oq_bug, 0, 0, 1);
 VAR(ati_minmax_bug, 0, 0, 1);
 VAR(ati_cubemap_bug, 0, 0, 1);
@@ -1469,7 +1468,7 @@ void drawreflection(float z, bool refract)
             popprojection();
             glPopMatrix();
         }
-        drawskybox(farplane, false);
+        drawskybox(farplane);
         if(fogging) 
         {
             pushprojection();
@@ -1584,11 +1583,9 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 
     visiblecubes();
 
-    if(limitsky()) drawskybox(farplane, true);
-
     rendergeom();
 
-    if(!limitsky()) drawskybox(farplane, false);
+    drawskybox(farplane);
 
 //    queryreflections();
 
@@ -3458,8 +3455,6 @@ void gl_drawframe(int w, int h)
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); 
 
-    if(limitsky()) drawskybox(farplane, true);
-
     int deferred_weirdness_starts_here;
 
     // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
@@ -3512,8 +3507,6 @@ void gl_drawframe(int w, int h)
     //queryreflections();
 
     //generategrass();
-
-    //if(!limitsky()) drawskybox(farplane, false);
 
 #ifndef MORE_DEFERRED_WEIRDNESS
     timer_begin(TIMER_SM);
@@ -3601,6 +3594,10 @@ void gl_drawframe(int w, int h)
     glDisable(GL_BLEND);
     timer_end();
 
+    if(hdr) drawskybox(farplane);
+
+    rendermaterials();
+
     int hasalphavas = findalphavas();
     if(hasalphavas)
     {
@@ -3678,8 +3675,6 @@ void gl_drawframe(int w, int h)
     }
 #endif
 
-    if(hdr && !limitsky()) drawskybox(farplane, false);
-
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 #if 0
@@ -3707,6 +3702,15 @@ void gl_drawframe(int w, int h)
 
     renderparticles(true);
 
+    extern int hidehud;
+    if(editmode && !hidehud)
+    {
+        glDepthMask(GL_FALSE);
+        renderblendbrush();
+        rendereditcursor();
+        glDepthMask(GL_TRUE);
+    }
+        
     glDisable(GL_FOG);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
@@ -3962,19 +3966,6 @@ FVARP(conscale, 1e-3f, 0.33f, 1e3f);
 
 void gl_drawhud(int w, int h)
 {
-    if(editmode && !hidehud && !mainmenu)
-    {
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_FALSE);
-
-        renderblendbrush();
-
-        rendereditcursor();
-
-        glDepthMask(GL_TRUE);
-        glDisable(GL_DEPTH_TEST);
-    }
-
     gettextres(w, h);
 
     glMatrixMode(GL_PROJECTION);

@@ -144,7 +144,6 @@ namespace game
         vec offset;
         int offsetmillis;
         int id;
-        entitylight light;
 
         bouncer() : bounces(0), roll(0), variant(0)
         {
@@ -157,7 +156,7 @@ namespace game
 
     vec hudgunorigin(int gun, const vec &from, const vec &to, fpsent *d);
 
-    void newbouncer(const vec &from, const vec &to, bool local, int id, fpsent *owner, int type, int lifetime, int speed, entitylight *light = NULL)
+    void newbouncer(const vec &from, const vec &to, bool local, int id, fpsent *owner, int type, int lifetime, int speed)
     {
         bouncer &bnc = *bouncers.add(new bouncer);
         bnc.o = from;
@@ -169,7 +168,6 @@ namespace game
         bnc.owner = owner;
         bnc.bouncetype = type;
         bnc.id = local ? lastmillis : id;
-        if(light) bnc.light = *light;
 
         switch(type)
         {
@@ -268,7 +266,6 @@ namespace game
         bool local;
         int offsetmillis;
         int id;
-        entitylight light;
     };
     vector<projectile> projs;
 
@@ -311,13 +308,13 @@ namespace game
         }
     }
 
-    void spawnbouncer(const vec &p, const vec &vel, fpsent *d, int type, entitylight *light = NULL)
+    void spawnbouncer(const vec &p, const vec &vel, fpsent *d, int type)
     {
         vec to(rnd(100)-50, rnd(100)-50, rnd(100)-50);
         if(to.iszero()) to.z += 1;
         to.normalize();
         to.add(p);
-        newbouncer(p, to, true, 0, d, type, rnd(1000)+1000, rnd(100)+20, light);
+        newbouncer(p, to, true, 0, d, type, rnd(1000)+1000, rnd(100)+20);
     }
 
     void gibeffect(int damage, const vec &vel, fpsent *d)
@@ -414,10 +411,8 @@ namespace game
         if(gun==GUN_RL) debrisorigin.add(vec(debrisvel).mul(8));
         if(numdebris)
         {
-            entitylight light;
-            lightreaching(debrisorigin, light.color, light.dir);
             loopi(numdebris)
-                spawnbouncer(debrisorigin, debrisvel, owner, gun==GUN_BARREL ? BNC_BARRELDEBRIS : BNC_DEBRIS, &light);
+                spawnbouncer(debrisorigin, debrisvel, owner, gun==GUN_BARREL ? BNC_BARRELDEBRIS : BNC_DEBRIS);
         }
         if(!local) return;
         loopi(numdynents())
@@ -854,7 +849,7 @@ namespace game
             }
             pitch = -bnc.roll;
             if(bnc.bouncetype==BNC_GRENADE)
-                rendermodel(&bnc.light, "projectiles/grenade", ANIM_MAPMODEL|ANIM_LOOP, pos, yaw, pitch, MDL_CULL_VFC|MDL_CULL_OCCLUDED|MDL_LIGHT|MDL_LIGHT_FAST|MDL_DYNSHADOW);
+                rendermodel("projectiles/grenade", ANIM_MAPMODEL|ANIM_LOOP, pos, yaw, pitch, MDL_CULL_VFC|MDL_CULL_OCCLUDED|MDL_LIGHT|MDL_LIGHT_FAST|MDL_DYNSHADOW);
             else
             {
                 const char *mdl = NULL;
@@ -868,7 +863,7 @@ namespace game
                     case BNC_BARRELDEBRIS: mdl = barreldebrisnames[bnc.variant]; break;
                     default: continue;
                 }
-                rendermodel(&bnc.light, mdl, ANIM_MAPMODEL|ANIM_LOOP, pos, yaw, pitch, cull, NULL, NULL, 0, 0, fade);
+                rendermodel(mdl, ANIM_MAPMODEL|ANIM_LOOP, pos, yaw, pitch, cull, NULL, NULL, 0, 0, fade);
             }
         }
     }
@@ -888,7 +883,7 @@ namespace game
             yaw += 90;
             v.mul(3);
             v.add(pos);
-            rendermodel(&p.light, "projectiles/rocket", ANIM_MAPMODEL|ANIM_LOOP, v, yaw, pitch, MDL_CULL_VFC|MDL_CULL_OCCLUDED|MDL_LIGHT|MDL_LIGHT_FAST);
+            rendermodel("projectiles/rocket", ANIM_MAPMODEL|ANIM_LOOP, v, yaw, pitch, MDL_CULL_VFC|MDL_CULL_OCCLUDED|MDL_LIGHT|MDL_LIGHT_FAST);
         }
     }
 
