@@ -3461,6 +3461,7 @@ void gl_drawframe(int w, int h)
 
     timer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+    glViewport(0, 0, gw, gh);
 
     if(gdepthformat && gdepthclear)
     {
@@ -3497,7 +3498,16 @@ void gl_drawframe(int w, int h)
     }
     timer_end();
 
-    if(ao) renderao();
+    if(ao) 
+    {
+        renderao();
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+        glViewport(0, 0, gw, gh);
+    }
+    
+    // render grass after AO to avoid disturbing shimmering patterns
+    generategrass();
+    rendergrass();
 
     int deferred_weirdness_ends_here;
     
@@ -3505,8 +3515,6 @@ void gl_drawframe(int w, int h)
     //if(!wireframe && editmode && outline) renderoutline();
 
     //queryreflections();
-
-    //generategrass();
 
 #ifndef MORE_DEFERRED_WEIRDNESS
     timer_begin(TIMER_SM);

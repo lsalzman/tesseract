@@ -544,7 +544,7 @@ void addtris(const sortkey &key, int orient, vertex *verts, int *index, int numv
     }
 }
 
-void addgrasstri(int face, vertex *verts, int numv, ushort texture)
+void addgrasstri(int face, vertex *verts, int numv, ushort texture, int layer)
 {
     grasstri &g = vc.grasstris.add();
     int i1, i2, i3, i4;
@@ -568,47 +568,8 @@ void addgrasstri(int face, vertex *verts, int numv, ushort texture)
     g.radius = 0;
     loopk(numv) g.radius = max(g.radius, g.v[k].dist(g.center));
 
-    vec area, bx, by;
-    area.cross(vec(g.v[1]).sub(g.v[0]), vec(g.v[2]).sub(g.v[0]));
-    float scale;
-    int px, py;
-
-    if(fabs(area.x) >= fabs(area.y) && fabs(area.x) >= fabs(area.z))
-        scale = 1/area.x, px = 1, py = 2;
-    else if(fabs(area.y) >= fabs(area.x) && fabs(area.y) >= fabs(area.z))
-        scale = -1/area.y, px = 0, py = 2;
-    else
-        scale = 1/area.z, px = 0, py = 1;
-
-    bx.x = (g.v[2][py] - g.v[0][py])*scale;
-    bx.y = (g.v[2][px] - g.v[0][px])*scale;
-    bx.z = bx.x*g.v[2][px] - bx.y*g.v[2][py];
-
-    by.x = (g.v[2][py] - g.v[1][py])*scale;
-    by.y = (g.v[2][px] - g.v[1][px])*scale;
-    by.z = by.x*g.v[1][px] - by.y*g.v[1][py] - 1;
-    by.sub(bx);
-
-#if 0
-    // no more lightmaps? fixme?
-    float tc1u = verts[i1].lmu/float(SHRT_MAX),
-          tc1v = verts[i1].lmv/float(SHRT_MAX),
-          tc2u = (verts[i2].lmu - verts[i1].lmu)/float(SHRT_MAX),
-          tc2v = (verts[i2].lmv - verts[i1].lmv)/float(SHRT_MAX),
-          tc3u = (verts[i3].lmu - verts[i1].lmu)/float(SHRT_MAX),
-          tc3v = (verts[i3].lmv - verts[i1].lmv)/float(SHRT_MAX);
-        
-    g.tcu = vec4(0, 0, 0, tc1u - (bx.z*tc2u + by.z*tc3u));
-    g.tcu[px] = bx.x*tc2u + by.x*tc3u;
-    g.tcu[py] = -(bx.y*tc2u + by.y*tc3u);
-
-    g.tcv = vec4(0, 0, 0, tc1v - (bx.z*tc2v + by.z*tc3v));
-    g.tcv[px] = bx.x*tc2v + by.x*tc3v;
-    g.tcv[py] = -(bx.y*tc2v + by.y*tc3v);
-
     g.texture = texture;
-    g.lmid = lmid;
-#endif
+    g.blend = layer == LAYER_BLEND ? ((int(g.v[0].x)>>12)+1) | (((int(g.v[0].y)>>12)+1)<<8) : 0;
 }
 
 static inline void calctexgen(VSlot &vslot, int dim, vec4 &sgen, vec4 &tgen)
@@ -739,11 +700,11 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
             int faces = 0;
             if(index[0]!=index[i+1] && index[i+1]!=index[i+2] && index[i+2]!=index[0]) faces |= 1;
             if(i+3 < numverts && index[0]!=index[i+2] && index[i+2]!=index[i+3] && index[i+3]!=index[0]) faces |= 2;
-            if(grassy > 1 && faces==3) addgrasstri(i, verts, 4, texture);
+            if(grassy > 1 && faces==3) addgrasstri(i, verts, 4, texture, layer);
             else 
             {
-                if(faces&1) addgrasstri(i, verts, 3, texture);
-                if(faces&2) addgrasstri(i+1, verts, 3, texture);
+                if(faces&1) addgrasstri(i, verts, 3, texture, layer);
+                if(faces&2) addgrasstri(i+1, verts, 3, texture, layer);
             }
         }
     }

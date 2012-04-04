@@ -81,12 +81,11 @@ struct grasstri
 {
     vec v[4];
     int numv;
-    vec4 tcu, tcv;
     plane surface;
     vec center;
     float radius;
     float minz, maxz;
-    ushort texture, lmid;
+    ushort texture, blend;
 };
 
 struct occludequery
