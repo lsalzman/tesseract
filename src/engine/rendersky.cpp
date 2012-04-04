@@ -318,6 +318,7 @@ static void drawdome()
 {
     float capsize = fogdomecap && fogdomeheight < 1 ? (1 + fogdomeheight) / (1 - fogdomeheight) : -1;
     bvec color = fogdomecolour ? fogdomecolor : fogcolor;
+    if(hdr) color.shr(2);
     if(!domenumverts || domecolor != color || domeminalpha != fogdomemin || domemaxalpha != fogdomemax || domecapsize != capsize || domeclipz != fogdomeclip) 
     {
         initdome(color, min(fogdomemin, fogdomemax), fogdomemax, capsize, fogdomeclip);
