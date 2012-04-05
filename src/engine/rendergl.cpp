@@ -2377,7 +2377,7 @@ static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 {
     extern int sunlight, skylight; // hack here
     if(sunlight == 0 && skylight == 0) return false; // no sunlight
-#if 0
+#if 1
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
