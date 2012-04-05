@@ -2724,7 +2724,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
-
+    float lightscale = (hdr ? 0.25f : 1)/255.0f;
     for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
     {
         vector<int> &tile = lighttiles[y][x];
@@ -2744,7 +2744,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
             setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
-            setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, float(color.x) / 255.f, float(color.y) / 255.f, float(color.z) / 255.f);
+            setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, color.x*lightscale, color.y*lightscale, color.z*lightscale);
             setlocalparamf("csmfar", SHPARAM_PIXEL, 6, float(csmfarplane), 1.f / float(csmfarsmoothdistance));
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
@@ -2789,7 +2789,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             else if(n > 0) deferredlightshader->setvariant(n-1, 0);
             else deferredlightshader->set();
 
-            float lightscale = (hdr ? 0.25f : 1)/255.0f;
             if(!i)
             {
                 extern bvec ambientcolor;
