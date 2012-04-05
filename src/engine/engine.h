@@ -326,7 +326,9 @@ static inline cubeext &ext(cube &c)
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
 
-extern bool shadowmapping;
+enum { SM_NONE = 0, SM_CUBEMAP, SM_TETRA, SM_CASCADE };
+ 
+extern int shadowmapping;
 
 extern int smtetra, smtetraclip;
 extern plane smtetraclipplane;
@@ -345,6 +347,9 @@ extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightp
 extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcspheresidemask(const vec &p, float radius, float bias);
 extern int calcspheretetramask(const vec &p, float radius, float bias);
+
+extern void rendershadowmapworld(bool omni = true);
+extern void rendershadowmapmodels(bool omni = false);
 
 // ents
 extern char *entname(entity &e);

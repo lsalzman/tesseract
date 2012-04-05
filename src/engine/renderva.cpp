@@ -1170,7 +1170,7 @@ void findcsmshadowvas()
 
 void rendershadowmapworld()
 {
-    if(smtetra && smtetraclip) SETSHADER(tetraworld);
+    if(shadowmapping == SM_TETRA) SETSHADER(tetraworld);
     else SETSHADER(shadowmapworld);
 
     glEnableClientState(GL_VERTEX_ARRAY);

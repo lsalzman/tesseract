@@ -2307,7 +2307,7 @@ VAR(smgather, 0, 0, 1);
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
 
-bool shadowmapping = false;
+int shadowmapping = 0;
 
 plane smtetraclipplane;
 
@@ -3005,23 +3005,22 @@ void collectlights()
 
 void rendercsmshadowmaps()
 {
+    findcsmshadowvas(); // no culling here
+    findcsmshadowmms(); // no culling here
+
     extern void rendershadowmapworld();
     extern void rendershadowmapmodels();
+
+    lockmodelbatches();
+    rendershadowmapmodels();
+    rendergame();
+    unlockmodelbatches();
 
     loopi(csmsplitn)
     {
         const shadowmapinfo &sm = shadowmaps[csm.idx[i]];
-        findcsmshadowvas(); // no culling here
-        //findcsmshadowmms(); // no culling here
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-
-#if 0
-        lockmodelbatches();
-        rendershadowmapmodels();
-        rendergame();
-        unlockmodelbatches();
-#endif
 
         glMatrixMode(GL_PROJECTION);
         glLoadMatrixf(csm.proj[i].v);
@@ -3032,7 +3031,7 @@ void rendercsmshadowmaps()
         glClear(GL_DEPTH_BUFFER_BIT);
 
         rendershadowmapworld();
-        //rendermodelbatches();
+        rendermodelbatches();
     }
 }
 
@@ -3554,8 +3553,6 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
-    shadowmapping = true;
-
     // sun light
     if(csm.sunlight && csmshadowmap)
     {
@@ -3564,6 +3561,7 @@ void gl_drawframe(int w, int h)
             glPolygonOffset(csmpolyfactor, csmpolyoffset);
             glEnable(GL_POLYGON_OFFSET_FILL);
         }
+        shadowmapping = SM_CASCADE;
         rendercsmshadowmaps();
         if(csmpolyfactor || csmpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
     }
@@ -3574,14 +3572,18 @@ void gl_drawframe(int w, int h)
         glPolygonOffset(smpolyfactor, smpolyoffset);
         glEnable(GL_POLYGON_OFFSET_FILL);
     }
-    if(smtetra && smtetraclip) glEnable(GL_CLIP_PLANE0);
+    if(smtetra && smtetraclip) 
+    {
+        shadowmapping = SM_TETRA;
+        glEnable(GL_CLIP_PLANE0);
+    }
+    else shadowmapping = SM_CUBEMAP;
     rendershadowmaps();
 
     gputimer_end();
 
-    shadowmapping = false;
-
     if(smtetra && smtetraclip) glDisable(GL_CLIP_PLANE0);
+    shadowmapping = 0;
 
     glEnable(GL_CULL_FACE);
 

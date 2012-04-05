@@ -178,14 +178,14 @@ struct animmodel : model
                     }
                     setshaderparams(b, as, false, false);
                     /*if(as->cur.anim&ANIM_SHADOW)*/ 
-                    if(smtetra && smtetraclip) SETMODELSHADER(b, alphashadowtetramodel);
+                    if(shadowmapping == SM_TETRA) SETMODELSHADER(b, alphashadowtetramodel);
                     else SETMODELSHADER(b, alphashadowmodel); 
                 }
                 else
                 {
                     if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
                     /*if(as->cur.anim&ANIM_SHADOW)*/ 
-                    if(smtetra && smtetraclip) SETMODELSHADER(b, tetramodel);
+                    if(shadowmapping == SM_TETRA) SETMODELSHADER(b, tetramodel);
                     else SETMODELSHADER(b, nocolormodel);
                 }
                 return;
@@ -819,7 +819,7 @@ struct animmodel : model
                 if(!translate.iszero()) glTranslatef(translate.x, translate.y, translate.z);
                 if(anim&ANIM_NOSKIN)
                 {
-                    if(smtetra && smtetraclip)
+                    if(shadowmapping == SM_TETRA)
                     {
                         plane p;
                         matrixstack[matrixpos].transposedtransform(smtetraclipplane, p);
