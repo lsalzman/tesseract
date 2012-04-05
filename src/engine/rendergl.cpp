@@ -2472,7 +2472,7 @@ VAR(csmfarplane, 64, 512, 4096);
 VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
-FVAR(csmpolyfactor, -1e3f, 1, 1e3f);
+FVAR(csmpolyfactor, -1e3f, 1.5f, 1e3f);
 FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
 FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
 
