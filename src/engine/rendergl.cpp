@@ -625,7 +625,7 @@ COMMAND(glext, "s");
 
 // GPU-side timing information will use OGL timers
 enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SPLITTING, TIMER_MERGING, TIMER_N};
-static const char *timer_string[] = {
+static const char *gputimer_string[] = {
     "shadow map",
     "gbuffer",
     "deferred shading",
@@ -635,71 +635,77 @@ static const char *timer_string[] = {
     "buffer splitting",
     "buffer merging"
 };
-static const int timer_query_n = 4;
-static GLuint timers[timer_query_n][TIMER_N];
-static bool timer_used[timer_query_n][TIMER_N];
-static GLuint64EXT timer_results[TIMER_N];
-static int timer_curr = 0;
-static int timer_last_query = -1;
-static int timer_last_print = 0;
+static const int gputimer_query_n = 4;
+static GLuint timers[gputimer_query_n][TIMER_N];
+static bool gputimer_used[gputimer_query_n][TIMER_N];
+static GLuint64EXT gputimer_results[TIMER_N];
+static int gputimer_curr = 0;
+static int gputimer_last_query = -1;
+static int gputimer_last_print = 0;
 VAR(gputimer, 0, 0, 1);
 
-static void timer_sync()
+static void gputimer_sync()
 {
-    if(timer_curr - timer_query_n < 0) return;
+    if(gputimer_curr - gputimer_query_n < 0) return;
     if(!gputimer || !hasTQ) return;
-    const int curr = timer_curr % timer_query_n;
+    const int curr = gputimer_curr % gputimer_query_n;
     loopi(TIMER_N)
     {
         GLint available = 0;
-        if(timer_used[curr][i])
+        if(gputimer_used[curr][i])
             while(!available)
                 glGetQueryObjectiv_(timers[curr][i], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
     }
 }
-static inline void timer_begin(int whichone)
+static inline void gputimer_begin(int whichone)
 {
     if(!gputimer || !hasTQ) return;
-    glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[timer_curr % timer_query_n][whichone]);
-    timer_last_query = whichone;
+    glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[gputimer_curr % gputimer_query_n][whichone]);
+    gputimer_last_query = whichone;
 }
-static inline void timer_end()
+static inline void gputimer_end()
 {
     if(!gputimer || !hasTQ) return;
-    assert(timer_last_query != -1);
-    timer_used[timer_curr % timer_query_n][timer_last_query] = true;
+    assert(gputimer_last_query != -1);
+    gputimer_used[gputimer_curr % gputimer_query_n][gputimer_last_query] = true;
     glEndQuery_(GL_TIME_ELAPSED_EXT);
 }
-static inline void timer_nextframe()
+static inline void gputimer_nextframe()
 {
     if (gputimer && hasTQ) 
     {
-        timer_curr++;
-        const int curr = timer_curr % timer_query_n;
-        loopi(TIMER_N) timer_used[curr][i] = false;
+        gputimer_curr++;
+        const int curr = gputimer_curr % gputimer_query_n;
+        loopi(TIMER_N) gputimer_used[curr][i] = false;
     }
 }
-static void timer_print(int conw, int conh)
+static void gputimer_print(int conw, int conh)
 {
     if(!gputimer || !hasTQ) return;
-    if(timer_curr - timer_query_n < 0) return;
-    const int curr = timer_curr % timer_query_n;
-    bool update = totalmillis - timer_last_print >= 200; // keep the timer read-outs from looking spastic on the hud
-    if(update) timer_last_print = totalmillis;
+    if(gputimer_curr - gputimer_query_n < 0) return;
+    const int curr = gputimer_curr % gputimer_query_n;
+    bool update = totalmillis - gputimer_last_print >= 200; // keep the timer read-outs from looking spastic on the hud
+    if(update) gputimer_last_print = totalmillis;
     loopi(TIMER_N)
     {
-        if(!timer_used[curr][i]) continue;
-        if(update) glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT_ARB, &timer_results[i]);
-        draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-i*9*FONTH/8, timer_string[i], float(timer_results[i]) * 1e-6f);
+        if(!gputimer_used[curr][i]) continue;
+        if(update) glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT_ARB, &gputimer_results[i]);
+        draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-i*9*FONTH/8, gputimer_string[i], float(gputimer_results[i]) * 1e-6f);
     }
 }
-static void timer_setup() {
+static void gputimer_setup()
+{
     if(!hasTQ) return;
-    loopi(timer_query_n) glGenQueries_(TIMER_N, timers[i]);
-    loopi(timer_query_n) loopj(TIMER_N) timer_used[i][j] = false;
-    memset(timer_results, 0, sizeof(timer_results));
+    loopi(gputimer_query_n) glGenQueries_(TIMER_N, timers[i]);
+    loopi(gputimer_query_n) loopj(TIMER_N) gputimer_used[i][j] = false;
+    memset(gputimer_results, 0, sizeof(gputimer_results));
 }
-static void cleanuptimer() { if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_N, timers[i]); }
+static void cleanuptimer() { if(hasTQ) loopi(gputimer_query_n) glDeleteQueries_(TIMER_N, timers[i]); }
+static void cputimer_print(int conw, int conh)
+{
+    extern int framemillis, cputimer;
+    if (cputimer) draw_textf("frame time %i ms", conw-40*FONTH, conh-FONTH*3/2, framemillis);
+}
 
 void gl_init(int w, int h, int bpp, int depth, int fsaa)
 {
@@ -751,7 +757,7 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     initgbuffer();
 
     setuptexcompress();
-    timer_setup();
+    gputimer_setup();
 }
 
 void cleanupgl()
@@ -2567,7 +2573,7 @@ void viewbuffersplitmerge()
     setlocalparamf("tiledim", SHPARAM_PIXEL, 0, tiledim[0], tiledim[1]);
     setlocalparamf("rcptiledim", SHPARAM_PIXEL, 2, 1.f/tiledim[0], 1.f/tiledim[1]);
     setlocalparamf("split", SHPARAM_PIXEL, 4, split[0], split[1]);
-    timer_begin(TIMER_SPLITTING);
+    gputimer_begin(TIMER_SPLITTING);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0,        0);        glVertex2i(-w, -h);
@@ -2575,7 +2581,7 @@ void viewbuffersplitmerge()
     glTexCoord2f(0,        float(h)); glVertex2i(-w, h);
     glTexCoord2f(float(w), float(h)); glVertex2i(w, h);
     glEnd();
-    timer_end();
+    gputimer_end();
     notextureshader->set();
 #else
     Shader *mergeshader = lookupshaderbyname("buffermerge");
@@ -2585,7 +2591,7 @@ void viewbuffersplitmerge()
     setlocalparamf("tiledim", SHPARAM_PIXEL, 0, tiledim[0], tiledim[1]);
     setlocalparamf("split", SHPARAM_PIXEL, 2, split[0], split[1]);
     setlocalparamf("rcpsplit", SHPARAM_PIXEL, 4, 1.f / split[0], 1.f / split[1]);
-    timer_begin(TIMER_MERGING);
+    gputimer_begin(TIMER_MERGING);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0,        0);        glVertex2i(-w, -h);
@@ -2593,14 +2599,14 @@ void viewbuffersplitmerge()
     glTexCoord2f(0,        float(h)); glVertex2i(-w, h);
     glTexCoord2f(float(w), float(h)); glVertex2i(w, h);
     glEnd();
-    timer_end();
+    gputimer_end();
     notextureshader->set();
 
 #endif
 }
 VAR(debugbuffersplit, 0, 0, 1);
 
-static int playsing_around_with_timer_queries_here;
+static int playsing_around_with_gputimer_queries_here;
 
 VARF(ao, 0, 1, 1, cleanupao());
 FVAR(aoradius, 0, 4, 256);
@@ -3166,7 +3172,7 @@ void setbilateralshader(int radius, int pass, float sigma, float depth, bool lin
 
 void renderao()
 {
-    timer_begin(TIMER_AO);
+    gputimer_begin(TIMER_AO);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
 
@@ -3235,12 +3241,12 @@ void renderao()
         }
     }
 
-    timer_end();
+    gputimer_end();
 }
 
 void processhdr()
 {
-    timer_begin(TIMER_HDR);
+    gputimer_begin(TIMER_HDR);
     GLuint b0fbo = bloomfbo[1], b0tex = bloomtex[1], b1fbo =  bloomfbo[0], b1tex = bloomtex[0], ptex = hdrtex;
     int b0w = max(gw/4, bloomw), b0h = max(gh/4, bloomh), b1w = max(gw/2, bloomw), b1h = max(gh/2, bloomh),
         pw = gw, ph = gh;
@@ -3361,7 +3367,7 @@ void processhdr()
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
     glActiveTexture_(GL_TEXTURE0_ARB);
     screenquad(gw, gh);
-    timer_end();
+    gputimer_end();
 }
 
 VAR(alphascissor, 0, 1, 1);
@@ -3370,7 +3376,7 @@ VAR(gcolorclear, 0, 1, 1);
  
 void gl_drawframe(int w, int h)
 {
-    timer_sync();
+    gputimer_sync();
 
     setupgbuffer(w, h);
     if(bloomw < 0 || bloomh < 0) setupbloom(w, h);
@@ -3462,7 +3468,7 @@ void gl_drawframe(int w, int h)
 
     // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
 
-    timer_begin(TIMER_GBUFFER);
+    gputimer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
     glViewport(0, 0, gw, gh);
 
@@ -3499,7 +3505,7 @@ void gl_drawframe(int w, int h)
         game::renderavatar();
         project(fovy, aspect, farplane);
     }
-    timer_end();
+    gputimer_end();
 
     if(ao) 
     {
@@ -3520,7 +3526,7 @@ void gl_drawframe(int w, int h)
     //queryreflections();
 
 #ifndef MORE_DEFERRED_WEIRDNESS
-    timer_begin(TIMER_SM);
+    gputimer_begin(TIMER_SM);
 
     lights.setsize(0);
     lightorder.setsize(0);
@@ -3570,7 +3576,7 @@ void gl_drawframe(int w, int h)
     if(smtetra && smtetraclip) glEnable(GL_CLIP_PLANE0);
     rendershadowmaps();
 
-    timer_end();
+    gputimer_end();
 
     shadowmapping = false;
 
@@ -3593,7 +3599,7 @@ void gl_drawframe(int w, int h)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
 
     CHECKERROR();
-    timer_begin(TIMER_SHADING);
+    gputimer_begin(TIMER_SHADING);
     glBlendFunc(GL_ONE, GL_ONE);
     glEnable(GL_BLEND);
 
@@ -3603,7 +3609,7 @@ void gl_drawframe(int w, int h)
     renderlights();
 
     glDisable(GL_BLEND);
-    timer_end();
+    gputimer_end();
 
     if(hdr) drawskybox(farplane);
 
@@ -3612,7 +3618,7 @@ void gl_drawframe(int w, int h)
     int hasalphavas = findalphavas();
     if(hasalphavas)
     {
-        timer_begin(TIMER_ALPHAGEOM);
+        gputimer_begin(TIMER_ALPHAGEOM);
         if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
 
         if(!alphascissor) 
@@ -3667,7 +3673,7 @@ void gl_drawframe(int w, int h)
         }
 
         if((gdepthstencil && hasDS) || gstencil) glDisable(GL_STENCIL_TEST);
-        timer_end();
+        gputimer_end();
     }
 
     defaultshader->set();
@@ -3742,7 +3748,7 @@ void gl_drawframe(int w, int h)
     gl_drawhud(w, h);
 
     renderedgame = false;
-    timer_nextframe();
+    gputimer_nextframe();
 }
 
 void gl_drawmainmenu(int w, int h)
@@ -4035,7 +4041,8 @@ void gl_drawhud(int w, int h)
                 roffset += FONTH;
             }
 
-            if(gputimer) timer_print(conw, conh);
+            gputimer_print(conw, conh);
+            cputimer_print(conw, conh);
 
             if(wallclock)
             {

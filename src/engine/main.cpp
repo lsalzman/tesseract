@@ -991,6 +991,9 @@ int getclockmillis()
     return max(millis, totalmillis);
 }
 
+VAR(cputimer, 0, 0, 1);
+int framemillis = 0; // frame time (ie does not take into account the swap)
+
 int main(int argc, char **argv)
 {
     #ifdef WIN32
@@ -1228,6 +1231,8 @@ int main(int argc, char **argv)
         inbetweenframes = false;
         if(mainmenu) gl_drawmainmenu(screen->w, screen->h);
         else gl_drawframe(screen->w, screen->h);
+        framemillis = getclockmillis() - millis;
+        if (cputimer) glFinish();
         swapbuffers();
         renderedframe = inbetweenframes = true;
     }
