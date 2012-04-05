@@ -3,6 +3,7 @@
 #include "engine.h"
 
 bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false;
+bool mesa = false, intel = false, ati = false, nvidia = false;
 
 int hasstencil = 0;
 
@@ -179,7 +180,6 @@ void gl_checkextensions()
     sdl_backingstore_bug = -1;
 #endif
 
-    bool mesa = false, intel = false, ati = false, nvidia = false;
     if(strstr(renderer, "Mesa") || strstr(version, "Mesa"))
         mesa = true;
     else if(strstr(vendor, "NVIDIA"))
@@ -2473,7 +2473,7 @@ VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
 FVAR(csmpolyfactor, -1e3, 4, 1e3);
-FVAR(csmpolyoffset, -1e3, 1024, 2e3);
+FVAR(csmpolyoffset, -1e3, 1, 2e3);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
@@ -3560,7 +3560,11 @@ void gl_drawframe(int w, int h)
     {
         if(csmpolyfactor || csmpolyoffset)
         {
-            glPolygonOffset(csmpolyfactor, csmpolyoffset);
+            // on my G80, the vendor dependent value for polyoffset needs to be huge
+            if(nvidia)
+              glPolygonOffset(csmpolyfactor, 1024 * csmpolyoffset);
+            else
+              glPolygonOffset(csmpolyfactor, csmpolyoffset);
             glEnable(GL_POLYGON_OFFSET_FILL);
         }
         rendercsmshadowmaps();
