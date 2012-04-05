@@ -2343,6 +2343,8 @@ static const uint csmmaxsplitn = 8, csmminsplitn = 1;
 VAR(csmmaxsize, 256, 1024, 2048);
 VAR(csmsplitn, csmminsplitn, 3, csmmaxsplitn);
 FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
+FVAR(csmdeferredshading, 0, 1, 1);
+FVAR(csmshadowmap, 0, 1, 1);
 
 static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort y, int size, int &idx)
 {
@@ -2375,7 +2377,7 @@ static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 {
     extern int sunlight, skylight; // hack here
     if(sunlight == 0 && skylight == 0) return false; // no sunlight
-#if 0
+#if 1
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
@@ -2627,9 +2629,9 @@ void cascaded_shadow_map::sunlightgettexmatrix()
     loopi(csmsplitn)
     {
         const shadowmapinfo &sm = shadowmaps[this->idx[i]];
-        const float scale = 0.5f*float(sm.size) / float(SHADOWATLAS_SIZE);
-        const float offsetx = float(sm.x) / float(SHADOWATLAS_SIZE);
-        const float offsety = float(sm.y) / float(SHADOWATLAS_SIZE);
+        const float scale = 0.5f*float(sm.size);
+        const float offsetx = float(sm.x);
+        const float offsety = float(sm.y);
         const float offsetmat[] = {
             scale,                   0.f, 0.f,  0.f,
             0.f,                   scale, 0.f,  0.f,
@@ -2726,12 +2728,12 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         static const char * const splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
 
         // sunlight is processed first
-        if(csm.sunlight)
+        if(csm.sunlight && csmdeferredshading)
         {
             extern bvec sunlightcolor, skylightcolor;
             extern int sunlight;
             bvec color = sunlight ? sunlightcolor : skylightcolor;
-            deferredcsmshader->setvariant(csmsplitn-1, 0);
+            deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
             setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
             setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, float(color.x) / 255.f, float(color.y) / 255.f, float(color.z) / 255.f);
@@ -3548,7 +3550,7 @@ void gl_drawframe(int w, int h)
     shadowmapping = true;
 
     // sun light
-    if(csm.sunlight)
+    if(csm.sunlight && csmshadowmap)
     {
         if(csmpolyfactor || csmpolyoffset)
         {
