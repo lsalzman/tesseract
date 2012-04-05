@@ -2283,12 +2283,12 @@ struct shadowmapinfo
     occludequery *query;
 };
 
-FVAR(smpolyfactor, -1e3, 1, 1e3);
-FVAR(smpolyoffset, -1e3, 0, 1e3);
-FVAR(smbias, -1e3, 0.01f, 1e3);
-FVAR(smprec, 1e-3f, 1, 1e3);
-FVAR(smtetraprec, 1e-3f, SQRT3, 1e3);
-FVAR(smcubeprec, 1e-3f, 1, 1e3);
+FVAR(smpolyfactor, -1e3f, 1, 1e3f);
+FVAR(smpolyoffset, -1e3f, 0, 1e3f);
+FVAR(smbias, -1e3f, 0.01f, 1e3f);
+FVAR(smprec, 1e-3f, 1, 1e3f);
+FVAR(smtetraprec, 1e-3f, SQRT3, 1e3f);
+FVAR(smcubeprec, 1e-3f, 1, 1e3f);
 
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
@@ -2301,7 +2301,7 @@ VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
 VAR(smtetra, 0, 0, 1);
 VAR(smtetraclip, 0, 1, 1);
-FVAR(smtetraborder, 0, 0, 1e3);
+FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
 VAR(smgather, 0, 0, 1);
 VAR(smnoshadow, 0, 0, 2);
@@ -2472,8 +2472,9 @@ VAR(csmfarplane, 64, 512, 4096);
 VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
-FVAR(csmpolyfactor, -1e3, 4, 1e3);
-FVAR(csmpolyoffset, -1e3, 1, 2e3);
+FVAR(csmpolyfactor, -1e3f, 1, 1e3f);
+FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
+FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
@@ -2638,11 +2639,12 @@ void cascaded_shadow_map::sunlightgettexmatrix()
         const float scale = 0.5f*float(sm.size);
         const float offsetx = float(sm.x);
         const float offsety = float(sm.y);
+        const float bias = csmbias * (1024.0 / sm.size); 
         const float offsetmat[] = {
-            scale,                   0.f, 0.f,  0.f,
-            0.f,                   scale, 0.f,  0.f,
-            0.f,                     0.f, 0.5f, 0.f,
-            scale+offsetx, scale+offsety, 0.5f, 1.f
+            scale,                   0.f, 0.f,              0.f,
+            0.f,                   scale, 0.f,              0.f,
+            0.f,                     0.f, 0.5f,             0.f,
+            scale+offsetx, scale+offsety, 0.5f - 0.5f*bias, 1.f
         };
         this->tex[i] = glmatrixf(offsetmat);
         this->tex[i].mul(this->proj[i]);
@@ -3560,11 +3562,7 @@ void gl_drawframe(int w, int h)
     {
         if(csmpolyfactor || csmpolyoffset)
         {
-            // on my G80, the vendor dependent value for polyoffset needs to be huge
-            if(nvidia)
-              glPolygonOffset(csmpolyfactor, 1024 * csmpolyoffset);
-            else
-              glPolygonOffset(csmpolyfactor, csmpolyoffset);
+            glPolygonOffset(csmpolyfactor, csmpolyoffset);
             glEnable(GL_POLYGON_OFFSET_FILL);
         }
         rendercsmshadowmaps();
