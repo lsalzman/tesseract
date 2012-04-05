@@ -1,5 +1,6 @@
-#if 0
 #include "engine.h"
+
+#if 0
 #include "rendertarget.h"
 
 VARP(shadowmap, 0, 0, 1);

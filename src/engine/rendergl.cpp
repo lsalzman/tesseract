@@ -620,7 +620,8 @@ void glext(char *ext)
 }
 COMMAND(glext, "s");
 
-#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); }} while(0)
+//#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); }} while(0)
+#define CHECKERROR() do { GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x\n", __FILE__, __LINE__, error); }} while(0)
 
 // GPU-side timing information will use OGL timers
 enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SPLITTING, TIMER_MERGING, TIMER_N};
@@ -1863,10 +1864,10 @@ void screenquad(float sw, float sh)
 void screenquad(float sw, float sh, float sw2, float sh2)
 {
     glBegin(GL_TRIANGLE_STRIP);
-    glMultiTexCoord2f(GL_TEXTURE0_ARB, sw, 0); glMultiTexCoord2f(GL_TEXTURE1_ARB, sw2, 0); glVertex2f(1, -1);
-    glMultiTexCoord2f(GL_TEXTURE0_ARB, 0, 0); glMultiTexCoord2f(GL_TEXTURE1_ARB, 0, 0); glVertex2f(-1, -1);
-    glMultiTexCoord2f(GL_TEXTURE0_ARB, sw, sh); glMultiTexCoord2f(GL_TEXTURE1_ARB, sw2, sh2); glVertex2f(1, 1);
-    glMultiTexCoord2f(GL_TEXTURE0_ARB, 0, sh); glMultiTexCoord2f(GL_TEXTURE1_ARB, 0, sh2); glVertex2f(-1, 1);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, sw, 0); glMultiTexCoord2f_(GL_TEXTURE1_ARB, sw2, 0); glVertex2f(1, -1);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, 0, 0); glMultiTexCoord2f_(GL_TEXTURE1_ARB, 0, 0); glVertex2f(-1, -1);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, sw, sh); glMultiTexCoord2f_(GL_TEXTURE1_ARB, sw2, sh2); glVertex2f(1, 1);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, 0, sh); glMultiTexCoord2f_(GL_TEXTURE1_ARB, 0, sh2); glVertex2f(-1, 1);
     glEnd();
 }
 
@@ -2361,7 +2362,7 @@ struct cascaded_shadow_map
     glmatrixf proj[csmmaxsplitn]; // one projection per split
     glmatrixf tex[csmmaxsplitn];  // to compute the shadow map coordinates
     int idx[csmmaxsplitn];        // shadowmapinfo indices
-    float far[csmmaxsplitn];      // far distance in player frustum
+    float fard[csmmaxsplitn];     // far distance in player frustum
     vec camview;                  // direction along which split is done
     vec lightview;                // view vector for light
     void sunlightgetmodelmatrix();// compute the shared model matrix
@@ -2548,7 +2549,7 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
         this->proj[i](0,3) = offset.x;
         this->proj[i](1,3) = offset.y;
         this->proj[i].mul(ortho);
-        this->far[i] = f[i].farplane;
+        this->fard[i] = f[i].farplane;
     }
 }
 
@@ -2738,7 +2739,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
             {
-                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 7+i, csm.far[i]);
+                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 7+i, csm.fard[i]);
                 glActiveTexture_(GL_TEXTURE0_ARB+i+1);
                 glLoadMatrixf(csm.tex[i].v);
             }
