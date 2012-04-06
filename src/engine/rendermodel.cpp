@@ -732,9 +732,12 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
             center.add(o);
         }
         radius *= size;
-        if(shadowmapping)
+        if(shadowmapping) switch(shadowmapping)
         {
-            if(center.dist(shadoworigin) >= radius + shadowradius) return;
+            case SM_TETRA:
+            case SM_CUBEMAP:    
+                if(center.dist(shadoworigin) >= radius + shadowradius) return;
+                break;
         }
         else
         {
@@ -818,10 +821,18 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
         b.basetime2 = basetime2;
         b.sizescale = size;
         b.flags = flags & ~(MDL_CULL_VFC | MDL_CULL_DIST | MDL_CULL_OCCLUDED);
-        if(shadowmapping)
-            b.shadowmask = smtetra ?
-                calcspheretetramask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias) :
-                calcspheresidemask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
+        switch(shadowmapping)
+        {
+            case SM_TETRA:
+                b.shadowmask = calcspheretetramask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
+                break;
+            case SM_CUBEMAP:
+                b.shadowmask = calcspheresidemask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
+                break;
+            case SM_CASCADE:
+                b.shadowmask = ~0;
+                break;
+        }
         if((flags&MDL_CULL_VFC) && refracting<0 && center.z-radius>=reflectz) b.flags |= MDL_CULL_VFC;
         b.d = d;
         b.attached = a ? modelattached.length() : -1;

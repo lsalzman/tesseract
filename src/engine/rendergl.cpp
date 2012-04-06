@@ -2761,7 +2761,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
-    float lightscale = (hdr ? 0.25f : 1)/255.0f;
+    float lightscale = 2.0f*(hdr ? 0.25f : 1)/255.0f;
     for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
     {
         vector<int> &tile = lighttiles[y][x];
@@ -2829,32 +2829,30 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             if(!i)
             {
                 extern bvec ambientcolor;
-                setlocalparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 2*255*lightscale);
-                setlocalparamf("colorscale", SHPARAM_PIXEL, 4, 2, 2, 2, 1);
+                setlocalparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale);
             }
             else
             {
                 setlocalparamf("lightscale", SHPARAM_PIXEL, 3, 0, 0, 0, 0);
-                setlocalparamf("colorscale", SHPARAM_PIXEL, 4, 2, 2, 2, 0);
             }
 
             float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
             loopj(n)
             {
                 lightinfo &l = lights[tile[i+j]];
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 5 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
-                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 6 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 4 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
+                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 5 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[l.shadowmap];
                     float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
                           bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
-                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 7 + 4*j,
+                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 6 + 4*j,
                         0.5f * (sm.size - smborder),
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
                         sm.size,
                         0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
-                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 8 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
+                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 7 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
                 sx1 = min(sx1, l.sx1);
                 sy1 = min(sy1, l.sy1);
@@ -3053,6 +3051,10 @@ void packlights()
 
 void rendercsmshadowmaps()
 {
+    shadoworigin = vec(0, 0, 0);
+    shadowradius = 0;
+    shadowbias = 0;
+
     findcsmshadowvas(); // no culling here
     findcsmshadowmms(); // no culling here
 
@@ -3077,6 +3079,8 @@ void rendercsmshadowmaps()
         glViewport(sm.x, sm.y, sm.size, sm.size);
         glScissor(sm.x, sm.y, sm.size, sm.size);
         glClear(GL_DEPTH_BUFFER_BIT);
+
+        shadowside = i;
 
         rendershadowmapworld();
         rendermodelbatches();
