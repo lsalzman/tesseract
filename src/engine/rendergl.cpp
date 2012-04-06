@@ -2494,8 +2494,6 @@ FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
 FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
 FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
 
-VAR(foo, 0, 0, 1);
-
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
     extern vec sunlightdir;
