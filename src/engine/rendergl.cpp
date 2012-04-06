@@ -2642,6 +2642,8 @@ VARF(ao, 0, 1, 1, cleanupao());
 FVAR(aoradius, 0, 4, 256);
 FVAR(aodark, 1e-3f, 3, 1e3f);
 FVAR(aosharp, 1e-3f, 1, 1e3f);
+FVAR(aomin, 0, 0.25f, 1);
+VAR(aosun, 0, 1, 1);
 VAR(aoblur, 0, 4, 7);
 FVAR(aosigma, 0.005f, 0.5f, 2.0f);
 VAR(aoiter, 0, 0, 4);
@@ -2740,16 +2742,17 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL, *deferredlightaoshader = NULL, *deferredshadowaoshader = NULL, *deferredcsmshader = NULL;
+    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL, *deferredlightaoshader = NULL, *deferredshadowaoshader = NULL, *deferredcsmshader = NULL, *deferredcsmaoshader = NULL;
     if(!deferredlightshader) deferredlightshader = lookupshaderbyname("deferredlight");
     if(!deferredshadowshader) deferredshadowshader = lookupshaderbyname("deferredshadow");
     if(!deferredlightaoshader) deferredlightaoshader = lookupshaderbyname("deferredlightao");
     if(!deferredshadowaoshader) deferredshadowaoshader = lookupshaderbyname("deferredshadowao");
     if(!deferredcsmshader) deferredcsmshader = lookupshaderbyname("deferredcsm");
+    if(!deferredcsmaoshader) deferredcsmaoshader = lookupshaderbyname("deferredcsmao");
 
     setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
     setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
-    if(ao) setenvparamf("aoscale", SHPARAM_PIXEL, 2, float(aow)/gw, float(aoh)/gh);
+    if(ao) setenvparamf("aoscale", SHPARAM_PIXEL, 2, float(aow)/gw, float(aoh)/gh, aomin, 1.0f-aomin);
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
@@ -2770,7 +2773,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             extern bvec sunlightcolor, skylightcolor;
             extern int sunlight;
             bvec color = sunlight ? sunlightcolor : skylightcolor;
-            deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
+            if(ao && aosun) deferredcsmaoshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
+            else deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
             setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
             setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, color.x*lightscale, color.y*lightscale, color.z*lightscale);
