@@ -735,7 +735,14 @@ static void cleanuptimer()
 static void frametimer_print(int conw, int conh)
 {
     extern int framemillis, frametimer;
-    if(frametimer) draw_textf("frame time %i ms", conw-40*FONTH, conh-FONTH*3/2, framemillis);
+    if(!frametimer) return;
+    static int lastprint = 0, printmillis = 0;
+    if(totalmillis - lastprint >= 200) 
+    {
+        printmillis = framemillis;
+        lastprint = totalmillis;
+    }
+    draw_textf("frame time %i ms", conw-40*FONTH, conh-FONTH*3/2, printmillis);
 }
 
 void gl_init(int w, int h, int bpp, int depth, int fsaa)
@@ -2970,11 +2977,11 @@ void collectlights()
 
     lightorder.sort(sortlights);
 
-    loopv(lightorder)
+    if(smquery && hasOQ && oqfrags) loopv(lightorder)
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
-        if(smquery && l.radius > smminradius && l.radius < worldsize &&
+        if(l.radius > smminradius && l.radius < worldsize &&
            (camera1->o.x < l.o.x - l.radius - 2 || camera1->o.x > l.o.x + l.radius + 2 ||
             camera1->o.y < l.o.y - l.radius - 2 || camera1->o.y > l.o.y + l.radius + 2 ||
             camera1->o.z < l.o.z - l.radius - 2 || camera1->o.z > l.o.z + l.radius + 2))
@@ -3096,7 +3103,6 @@ void rendershadowmaps()
             extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
             sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
         }
-        if(!sidemask) { puts("wut?"); continue; }
 
         float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
         GLfloat smprojmatrix[16] =

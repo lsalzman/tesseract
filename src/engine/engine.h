@@ -385,6 +385,7 @@ extern void updatevabbs(bool force = false);
 
 // renderva
 
+extern int oqfrags;
 extern float alphafrontsx1, alphafrontsx2, alphafrontsy1, alphafrontsy2, alphabacksx1, alphabacksx2, alphabacksy1, alphabacksy2;
 extern uint alphatiles[LIGHTTILE_H];
 

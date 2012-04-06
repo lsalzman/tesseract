@@ -272,8 +272,6 @@ GLuint getwaterfalltex() { return waterfallrefraction.refracttex ? waterfallrefr
 
 VAR(oqwater, 0, 2, 2);
 
-extern int oqfrags;
-
 VARFP(waterfade, 0, 1, 1, { cleanreflections(); preloadwatershaders(); });
 
 void preloadwatershaders(bool force)
