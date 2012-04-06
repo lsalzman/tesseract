@@ -2305,13 +2305,13 @@ struct lightinfo
     vec o, color;
     int radius;
     float dist;
+    occludequery *query;
 };
 
 struct shadowmapinfo
 {
     ushort x, y, size;
     int light;
-    occludequery *query;
 };
 
 FVAR(smpolyfactor, -1e3f, 1, 1e3f);
@@ -2390,7 +2390,6 @@ static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort 
     sm->x = x;
     sm->y = y;
     sm->size = size;
-    sm->query = NULL;
     return sm;
 }
 
@@ -2904,7 +2903,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 void collectlights()
 {
     // point lights processed here
-    smused = 0;
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
     {
@@ -2934,6 +2932,7 @@ void collectlights()
         l.sz1 = sz1;
         l.sz2 = sz2;
         l.shadowmap = -1;
+        l.query = NULL;
         l.o = e->o;
         l.color = vec(e->attr2, e->attr3, e->attr4);
         l.radius = e->attr1 > 0 ? e->attr1 : 2*worldsize;
@@ -2962,6 +2961,7 @@ void collectlights()
         l.sz1 = sz1;
         l.sz2 = sz2;
         l.shadowmap = -1;
+        l.query = NULL;
         l.o = o;
         l.color = vec(color).mul(255);
         l.radius = radius;
@@ -2969,13 +2969,38 @@ void collectlights()
     }
 
     lightorder.sort(sortlights);
-    
+
+    loopv(lightorder)
+    {
+        int idx = lightorder[i];
+        lightinfo &l = lights[idx];
+        if(smquery && l.radius > smminradius && l.radius < worldsize &&
+           (camera1->o.x < l.o.x - l.radius - 2 || camera1->o.x > l.o.x + l.radius + 2 ||
+            camera1->o.y < l.o.y - l.radius - 2 || camera1->o.y > l.o.y + l.radius + 2 ||
+            camera1->o.z < l.o.z - l.radius - 2 || camera1->o.z > l.o.z + l.radius + 2))
+        {
+            l.query = newquery(&l);
+            if(l.query)
+            {
+                startquery(l.query);
+                ivec bo = vec(l.o).sub(l.radius), br = vec(l.o).add(l.radius+1);
+                br.sub(bo);
+                drawbb(bo, br);
+                endquery(l.query);
+            }
+        }
+    }
+}
+   
+void packlights()
+{ 
     plane cullx[LIGHTTILE_W+1], cully[LIGHTTILE_H+1];
     vec4 px = mvpmatrix.getrow(0), py = mvpmatrix.getrow(1), pw = mvpmatrix.getrow(3);
     loopi(LIGHTTILE_W+1) cullx[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_W-1).sub(px)).normalize();
     loopi(LIGHTTILE_H+1) cully[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_H-1).sub(py)).normalize();
 
     lighttilesused = 0;
+    smused = 0;
 
     loopv(lightorder)
     {
@@ -2987,27 +3012,11 @@ void collectlights()
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
-        int foo = -1;
-        if(smnoshadow <= 1 && l.radius > smminradius && (foo = shadowatlaspacker.insert(smx, smy, smw, smh) ? 1 : 0))
+        if(smnoshadow <= 1 && l.radius > smminradius && (!l.query || l.query->owner != &l || !checkquery(l.query)) && shadowatlaspacker.insert(smx, smy, smw, smh))
         {
             sm = addshadowmap(shadowmaps, smx, smy, smsize, smidx);
             sm->light = idx;
             l.shadowmap = smidx;
-            if(smquery && l.radius < worldsize &&
-               (camera1->o.x < l.o.x - l.radius - 2 || camera1->o.x > l.o.x + l.radius + 2 ||
-                camera1->o.y < l.o.y - l.radius - 2 || camera1->o.y > l.o.y + l.radius + 2 ||
-                camera1->o.z < l.o.z - l.radius - 2 || camera1->o.z > l.o.z + l.radius + 2))
-            {
-                sm->query = newquery(&l);
-                if(sm->query)
-                {
-                    startquery(sm->query);
-                    ivec bo = vec(l.o).sub(l.radius), br = vec(l.o).add(l.radius+1);
-                    br.sub(bo);
-                    drawbb(bo, br);
-                    endquery(sm->query);
-                }
-            }
             smused += smsize*smsize*(smtetra ? 2 : 6);
         }
 
@@ -3072,7 +3081,8 @@ void rendershadowmaps()
     loopv(shadowmaps)
     {
         shadowmapinfo &sm = shadowmaps[i];
-        if(sm.light == -1) continue; // csm shadow maps here
+        if(sm.light < 0) continue;
+
         lightinfo &l = lights[sm.light];
 
         int sidemask;
@@ -3086,7 +3096,7 @@ void rendershadowmaps()
             extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
             sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
         }
-        if(!sidemask || (sm.query && sm.query->owner == &l && checkquery(sm.query))) continue;
+        if(!sidemask) { puts("wut?"); continue; }
 
         float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
         GLfloat smprojmatrix[16] =
@@ -3597,6 +3607,8 @@ void gl_drawframe(int w, int h)
         rendercsmshadowmaps();
         if(csmpolyfactor || csmpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
     }
+
+    packlights();
 
     // point lights
     if(smpolyfactor || smpolyoffset)
