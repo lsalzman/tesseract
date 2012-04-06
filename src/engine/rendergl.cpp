@@ -2904,6 +2904,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 void collectlights()
 {
     // point lights processed here
+    smused = 0;
     const vector<extentity *> &ents = entities::getents();
     loopv(ents)
     {
@@ -3404,7 +3405,7 @@ void processhdr()
 VAR(alphascissor, 0, 1, 1);
 VAR(gdepthclear, 0, 1, 1);
 VAR(gcolorclear, 0, 1, 1);
- 
+
 void gl_drawframe(int w, int h)
 {
     timer_sync();
@@ -3441,6 +3442,9 @@ void gl_drawframe(int w, int h)
     farplane = worldsize*2;
 
     // compute cascaded shadow map matrices and tile parameters
+    lights.setsize(0);
+    lightorder.setsize(0);
+    loopi(LIGHTTILE_H) loopj(LIGHTTILE_W) lighttiles[i][j].setsize(0);
     shadowmaps.setsize(0);
     shadowatlaspacker.reset();
     csm.sunlight = sunlightinsert(shadowmaps, csm.idx);
@@ -3490,7 +3494,7 @@ void gl_drawframe(int w, int h)
     }
 
     visiblecubes();
-    
+   
     glClear(GL_DEPTH_BUFFER_BIT|(wireframe && editmode ? GL_COLOR_BUFFER_BIT : 0)|(hasstencil ? GL_STENCIL_BUFFER_BIT : 0));
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); 
@@ -3562,23 +3566,8 @@ void gl_drawframe(int w, int h)
     timer_begin(TIMER_CPU_SM);
     timer_begin(TIMER_SM);
 
-    lights.setsize(0);
-    lightorder.setsize(0);
-    loopi(LIGHTTILE_H) loopj(LIGHTTILE_W) lighttiles[i][j].setsize(0);
-
-    glDepthMask(GL_FALSE);
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-
-    nocolorshader->set();
-
-    smused = 0;
-
-    // point lights processed here
-    collectlights();
-
-    glDepthMask(GL_TRUE);
-
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     glEnable(GL_SCISSOR_TEST);
 

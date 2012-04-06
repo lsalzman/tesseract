@@ -1844,6 +1844,8 @@ static void rendergeommultipass(renderstate &cur, int pass, bool fogpass)
 
 VAR(oqgeom, 0, 1, 1);
 
+extern int foo;
+
 void rendergeom(float causticspass, bool fogpass)
 {
     if(causticspass && (!causticscale || !causticmillis)) causticspass = 0;
@@ -1914,13 +1916,16 @@ void rendergeom(float causticspass, bool fogpass)
 
     if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
 
-    if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
-    if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
-   
     bool multipassing = false;
 
     if(doZP)
     {
+        glFlush();
+        if(cur.colormask) { cur.colormask = false; glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); }
+        if(cur.depthmask) { cur.depthmask = false; glDepthMask(GL_FALSE); }
+        collectlights();
+        if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
+        if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
 		glFlush();
         setupTMUs(cur, causticspass, fogpass);
         if(!multipassing) { multipassing = true; glDepthFunc(GL_LEQUAL); }
@@ -1954,6 +1959,9 @@ void rendergeom(float causticspass, bool fogpass)
         }
         if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
     }
+
+    if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
+    if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
 
     if(blends)
     {
@@ -2025,6 +2033,17 @@ void rendergeom(float causticspass, bool fogpass)
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     }
     glDisableClientState(GL_VERTEX_ARRAY);
+
+    if(!doZP)
+    {
+        glFlush();
+        if(cur.colormask) { cur.colormask = false; glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); }
+        if(cur.depthmask) { cur.depthmask = false; glDepthMask(GL_FALSE); }
+        collectlights();
+        if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
+        if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
+        glFlush();
+    }
 }
 
 static vector<vtxarray *> alphavas;
