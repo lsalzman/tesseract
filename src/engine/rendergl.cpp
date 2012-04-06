@@ -2400,7 +2400,6 @@ struct cascaded_shadow_map
     glmatrixf tex[csmmaxsplitn];  // to compute the shadow map coordinates
     int idx[csmmaxsplitn];        // shadowmapinfo indices
     float fard[csmmaxsplitn];     // far distance in player frustum
-    vec camview;                  // direction along which split is done
     vec lightview;                // view vector for light
     void sunlightgetmodelmatrix();// compute the shared model matrix
     void sunlightgetprojmatrix(); // compute each cropped projection matrix
@@ -2478,22 +2477,12 @@ static void updatesplitdist(splitfrustum *f, float nd, float fd)
     f[csmsplitn-1].farplane = fd;
 }
 
-static inline void snap(vec &minv, vec &maxv, float radius)
-{
-    radius *= 2.f;
-    const float smdim = float(csmmaxsize);
-    maxv.x *= smdim/radius; maxv.x = float(int(maxv.x)) / smdim*radius;
-    maxv.y *= smdim/radius; maxv.y = float(int(maxv.y)) / smdim*radius;
-    minv.x *= smdim/radius; minv.x = float(int(minv.x)) / smdim*radius;
-    minv.y *= smdim/radius; minv.y = float(int(minv.y)) / smdim*radius;
-}
-
 void cascaded_shadow_map::sunlightgetmodelmatrix()
 {
     extern int sunlightyaw, sunlightpitch;
     this->model = viewmatrix;
-    this->model.rotate(float(sunlightpitch)*RAD, vec(1.f, 0.f, 0.f));
-    this->model.rotate(float(sunlightyaw+90)*RAD, vec(0.f, 0.f, 1.f));
+    this->model.rotate_around_x(sunlightpitch*RAD);
+    this->model.rotate_around_z((sunlightyaw+90)*RAD);
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
@@ -2505,34 +2494,23 @@ FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
 FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
 FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
 
+VAR(foo, 0, 0, 1);
+
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
-    extern int sunlightyaw, sunlightpitch;
-    glmatrixf player_model;
+    extern vec sunlightdir;
     splitfrustum f[csmmaxsplitn];
-    vec pos, view, up, right;
     vec lightup, lightright;
-    lightview = vec(-float(sunlightyaw+90)*RAD, -float(sunlightpitch)*RAD);
-    lightview.normalize();
+    lightview = vec(sunlightdir).neg();
     lightup.orthogonal(lightview);
     lightup.normalize();
     lightright.cross(lightview, lightup);
     lightup.cross(lightright, lightview);
 
     // compute the split frustums
-    pos = camera1->o;
-    player_model.identity();
-    player_model.rotate(camera1->yaw*RAD, vec(0.f, 0.f, 1.f));
-    player_model.rotate(camera1->pitch*RAD, vec(1.f, 0.f, 0.f));
-    player_model.rotate(camera1->roll*RAD, vec(0.f, -1.f, 0.f));
-    player_model.mul(invviewmatrix);
-    player_model.transform(vec(0.f,0.f,-1.f), view);
-    player_model.transform(vec(0.f,1.f,0.f), up);
-    player_model.transform(vec(1.f,0.f,0.f), right);
     updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
 
-    loopi(csmsplitn) updatefrustumpoints(f[i], pos, view, up, right);
-    this->camview = view;
+    loopi(csmsplitn) updatefrustumpoints(f[i], camera1->o, camdir, camup, camright);
 
     // compute each split projection matrix
     loopi(csmsplitn)
@@ -2554,39 +2532,21 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
         }
         vec c = (f[i].point[a] + f[i].point[b]) * 0.5f;
 
-        vec minv, maxv;
-        minv.z = -worldsize, maxv.z = worldsize;
-
         // compute the projected bounding box of the sphere
-        glmatrixf ortho;
-        ortho.ortho(-1.0f, 1.0f, -1.0f, 1.0f, -maxz, -minz);
-        glmatrixf mvp = ortho;
-        mvp.mul(this->model);
         const vec p = c + radius * lightright;
-        vec4 tp, tc;
-        mvp.transform(vec4(p,1.f), tp);
-        mvp.transform(vec4(c,1.f), tc);
-        tp.x /= tp.w; tp.y /= tp.w;
-        tc.x /= tc.w; tc.y /= tc.w;
-        const float dx = tp.x-tc.x, dy = tp.y-tc.y;
-        const float pradius = sqrtf(dx*dx+dy*dy) * csmpradiustweak;
-        minv.x = tc.x - pradius;
-        minv.y = tc.y - pradius;
-        maxv.x = tc.x + pradius;
-        maxv.y = tc.y + pradius;
-        snap(minv, maxv, pradius);
+        vec tp, tc;
+        this->model.transform(p, tp);
+        this->model.transform(c, tc);
+        const float pradius = tp.dist2(tc) * csmpradiustweak, step = (2.0f*pradius) / csmmaxsize;
+        vec2 minv = vec2(tc).sub(pradius), maxv = vec2(tc).add(pradius);
+        maxv.x -= fmod(maxv.x, step);
+        maxv.y -= fmod(maxv.y, step);
+        minv.x -= fmod(minv.x, step);
+        minv.y -= fmod(minv.y, step);
 
         // modify mvp with a scale and offset
-        const vec2 scale(2.0f/(maxv.x-minv.x), 2.0f/(maxv.y-minv.y));
-        const vec2 offset(-0.5f*(maxv.x+minv.x)*scale.x,-0.5f*(maxv.y+minv.y)*scale.y);
-
         // now compute the update model view matrix for this split
-        this->proj[i].identity();
-        this->proj[i](0,0) = scale.x;
-        this->proj[i](1,1) = scale.y;
-        this->proj[i](0,3) = offset.x;
-        this->proj[i](1,3) = offset.y;
-        this->proj[i].mul(ortho);
+        this->proj[i].ortho(minv.x, maxv.x, minv.y, maxv.y, -maxz, -minz);
         this->fard[i] = f[i].farplane;
     }
 }
@@ -2668,18 +2628,10 @@ void cascaded_shadow_map::sunlightgettexmatrix()
     {
         const shadowmapinfo &sm = shadowmaps[this->idx[i]];
         const float scale = 0.5f*float(sm.size);
-        const float offsetx = float(sm.x);
-        const float offsety = float(sm.y);
         const float bias = csmbias * (1024.0 / sm.size); 
-        const float offsetmat[] = {
-            scale,                   0.f, 0.f,              0.f,
-            0.f,                   scale, 0.f,              0.f,
-            0.f,                     0.f, 0.5f,             0.f,
-            scale+offsetx, scale+offsety, 0.5f - 0.5f*bias, 1.f
-        };
-        this->tex[i] = glmatrixf(offsetmat);
-        this->tex[i].mul(this->proj[i]);
-        this->tex[i].mul(this->model);
+        this->tex[i].mul(this->proj[i], this->model);
+        this->tex[i].scale(scale, scale, 0.5f);
+        this->tex[i].translate(scale + sm.x, scale + sm.y, 0.5f - 0.5f*bias);
     }
 }
 
@@ -2775,7 +2727,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             bvec color = sunlight ? sunlightcolor : skylightcolor;
             if(ao && aosun) deferredcsmaoshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
             else deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
-            setlocalparamf("cameraview", SHPARAM_PIXEL, 3, csm.camview.x, csm.camview.y, csm.camview.z);
+            setlocalparamf("cameraview", SHPARAM_PIXEL, 3, camdir.x, camdir.y, camdir.z);
             setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
             setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, color.x*lightscale, color.y*lightscale, color.z*lightscale);
             setlocalparamf("csmfar", SHPARAM_PIXEL, 6, float(csmfarplane), 1.f / float(csmfarsmoothdistance));

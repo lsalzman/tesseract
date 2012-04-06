@@ -1246,9 +1246,10 @@ struct glmatrixf
 
     void scale(float x, float y, float z)
     {
-        v[0] *= x; v[1] *= x; v[2] *= x; v[3] *= x;
-        v[4] *= y; v[5] *= y; v[6] *= y; v[7] *= y;
-        v[8] *= z; v[9] *= z; v[10] *= z; v[11] *= z;
+        v[0] *= x; v[1] *= y; v[2] *= z;
+        v[4] *= x; v[5] *= y; v[6] *= z;
+        v[8] *= x; v[9] *= y; v[10] *= z;
+        v[12] *= x; v[13] *= y; v[14] *= z;
     }
 
     void reflectz(float z)
