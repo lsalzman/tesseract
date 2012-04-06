@@ -2987,25 +2987,25 @@ void collectlights()
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
-        if(smnoshadow <= 1 && l.radius > smminradius && shadowatlaspacker.insert(smx, smy, smw, smh))
+        int foo = -1;
+        if(smnoshadow <= 1 && l.radius > smminradius && (foo = shadowatlaspacker.insert(smx, smy, smw, smh) ? 1 : 0))
         {
             sm = addshadowmap(shadowmaps, smx, smy, smsize, smidx);
             sm->light = idx;
             l.shadowmap = smidx;
-            if(smquery && l.radius < worldsize)
+            if(smquery && l.radius < worldsize &&
+               (camera1->o.x < l.o.x - l.radius - 2 || camera1->o.x > l.o.x + l.radius + 2 ||
+                camera1->o.y < l.o.y - l.radius - 2 || camera1->o.y > l.o.y + l.radius + 2 ||
+                camera1->o.z < l.o.z - l.radius - 2 || camera1->o.z > l.o.z + l.radius + 2))
             {
-                ivec bo = ivec(l.o).sub(l.radius), br(l.radius*2+1, l.radius*2+1, l.radius*2+1);
-                if(camera1->o.x < bo.x || camera1->o.x > bo.x + br.x ||
-                   camera1->o.y < bo.y || camera1->o.y > bo.y + br.y ||
-                   camera1->o.z < bo.z || camera1->o.z > bo.z + br.z)
+                sm->query = newquery(&l);
+                if(sm->query)
                 {
-                    sm->query = newquery(&l);
-                    if(sm->query)
-                    {
-                        startquery(sm->query);
-                        drawbb(bo, br);
-                        endquery(sm->query);
-                    }
+                    startquery(sm->query);
+                    ivec bo = vec(l.o).sub(l.radius), br = vec(l.o).add(l.radius+1);
+                    br.sub(bo);
+                    drawbb(bo, br);
+                    endquery(sm->query);
                 }
             }
             smused += smsize*smsize*(smtetra ? 2 : 6);
@@ -3569,6 +3569,14 @@ void gl_drawframe(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+    if(debugshadowatlas)
+    {
+        glViewport(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
+        glClearDepth(0);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glClearDepth(1);
+    }
 
     glEnable(GL_SCISSOR_TEST);
 
