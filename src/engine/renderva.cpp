@@ -394,12 +394,11 @@ VAR(oqmm, 0, 4, 8);
 
 extern bool getentboundingbox(extentity &e, ivec &o, ivec &r);
 
-void rendermapmodel(extentity &e)
+static inline void rendermapmodel(extentity &e)
 {
     int anim = ANIM_MAPMODEL|ANIM_LOOP, basetime = 0;
     if(e.flags&extentity::F_ANIM) entities::animatemapmodel(e, anim, basetime);
-    mapmodelinfo *mmi = getmminfo(e.attr2);
-    if(mmi) rendermodel(mmi->name, anim, e.o, e.attr1, 0, MDL_CULL_VFC | MDL_CULL_DIST | MDL_DYNLIGHT, NULL, NULL, basetime);
+    rendermapmodel(e.attr2, anim, e.o, e.attr1, 0, MDL_CULL_VFC | MDL_CULL_DIST, basetime);
 }
 
 extern int reflectdist;
@@ -439,7 +438,6 @@ void renderreflectedmapmodels()
     }
     if(mms)
     {
-        startmodelbatches();
         for(octaentities *oe = mms; oe; oe = reflecting ? oe->rnext : oe->next)
         {
             loopv(oe->mapmodels)
@@ -450,7 +448,8 @@ void renderreflectedmapmodels()
                 e.visible = false;
             }
         }
-        endmodelbatches();
+        rendermodelbatches();
+        resetmodelbatches();
     }
 }
 
@@ -462,7 +461,6 @@ void rendermapmodels()
     static int skipoq = 0;
     bool doquery = hasOQ && oqfrags && oqmm;
 
-    startmodelbatches();
     for(octaentities *oe = visiblemms; oe; oe = oe->next) if(oe->distance>=0)
     {
         bool rendered = false;
@@ -481,7 +479,8 @@ void rendermapmodels()
         }
         if(rendered && oe->query) endmodelquery();
     }
-    endmodelbatches();
+    rendermodelbatches();
+    resetmodelbatches();
 
     bool colormask = true;
     for(octaentities *oe = visiblemms; oe; oe = oe->next) if(oe->distance<0)
@@ -1245,7 +1244,7 @@ void findcsmshadowmms() // XXX implement the culling stuff
     }
 }
 
-void rendershadowmapmodels()
+void batchshadowmapmodels()
 {
     if(!shadowmms) return;
     const vector<extentity *> &ents = entities::getents();
@@ -1258,7 +1257,6 @@ void rendershadowmapmodels()
             e.visible = true;
         }
     }
-    startmodelbatches();
     for(octaentities *oe = shadowmms; oe; oe = oe->rnext)
     {
         loopvj(oe->mapmodels)
@@ -1269,7 +1267,6 @@ void rendershadowmapmodels()
             e.visible = false;
         }
     }
-    endmodelbatches();
 }
 
 VAR(oqdist, 0, 256, 1024);

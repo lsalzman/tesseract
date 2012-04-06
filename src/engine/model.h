@@ -11,9 +11,9 @@ struct model
     float eyeheight, collideradius, collideheight;
     int batch;
 
-    model() : spinyaw(0), spinpitch(0), offsetyaw(0), offsetpitch(0), collide(true), ellipsecollide(false), shadow(true), alphadepth(true), depthoffset(false), scale(1.0f), translate(0, 0, 0), bih(0), bbcenter(0, 0, 0), bbradius(0, 0, 0), bbextend(0, 0, 0), eyeheight(0.9f), collideradius(0), collideheight(0), batch(-1) {}
+    model() : spinyaw(0), spinpitch(0), offsetyaw(0), offsetpitch(0), collide(true), ellipsecollide(false), shadow(true), alphadepth(true), depthoffset(false), scale(1.0f), translate(0, 0, 0), bih(0), bbcenter(0, 0, 0), bbradius(-1, -1, -1), bbextend(0, 0, 0), eyeheight(0.9f), collideradius(0), collideheight(0), batch(-1) {}
     virtual ~model() { DELETEP(bih); }
-    virtual void calcbb(int frame, vec &center, vec &radius) = 0;
+    virtual void calcbb(vec &center, vec &radius) = 0;
     virtual void render(int anim, int basetime, int basetime2, const vec &o, float yaw, float pitch, dynent *d, modelattach *a = NULL, float size = 1) = 0;
     virtual bool load() = 0;
     virtual const char *name() const = 0;
@@ -40,21 +40,16 @@ struct model
     virtual void startrender() {}
     virtual void endrender() {}
 
-    void boundbox(int frame, vec &center, vec &radius)
+    void boundbox(vec &center, vec &radius)
     {
-        if(frame) calcbb(frame, center, radius);
-        else
-        {
-            if(bbradius.iszero()) calcbb(0, bbcenter, bbradius);
-            center = bbcenter;
-            radius = bbradius;
-        }
-        radius.add(bbextend);
+        if(bbradius.x < 0) calcbb(bbcenter, bbradius);
+        center = bbcenter;
+        radius = vec(bbradius).add(bbextend);
     }
 
-    void collisionbox(int frame, vec &center, vec &radius)
+    void collisionbox(vec &center, vec &radius)
     {
-        boundbox(frame, center, radius);
+        boundbox(center, radius);
         if(collideradius)
         {
             center[0] = center[1] = 0;
@@ -66,17 +61,17 @@ struct model
         }
     }
 
-    float boundsphere(int frame, vec &center)
+    float boundsphere(vec &center)
     {
         vec radius;
-        boundbox(frame, center, radius);
+        boundbox(center, radius);
         return radius.magnitude();
     }
 
-    float above(int frame = 0)
+    float above()
     {
         vec center, radius;
-        boundbox(frame, center, radius);
+        boundbox(center, radius);
         return center.z+radius.z;
     }
 };

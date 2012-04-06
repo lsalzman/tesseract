@@ -65,12 +65,11 @@ struct vertmodel : animmodel
                 mesh::calctangents(&bumpverts[k*numverts], &verts[k*numverts], tcverts, numverts, tris, numtris, areaweight);
         }
 
-        void calcbb(int frame, vec &bbmin, vec &bbmax, const matrix3x4 &m)
+        void calcbb(vec &bbmin, vec &bbmax, const matrix3x4 &m)
         {
-            vert *fverts = &verts[frame*numverts];
             loopj(numverts)
             {
-                vec v = m.transform(fverts[j].pos);
+                vec v = m.transform(verts[j].pos);
                 loopi(3)
                 {
                     bbmin[i] = min(bbmin[i], v[i]);
@@ -79,16 +78,15 @@ struct vertmodel : animmodel
             }
         }
 
-        void gentris(int frame, Texture *tex, vector<BIH::tri> *out, const matrix3x4 &m)
+        void gentris(Texture *tex, vector<BIH::tri> *out, const matrix3x4 &m)
         {
-            vert *fverts = &verts[frame*numverts];
             loopj(numtris)
             {
                 BIH::tri &t = out[noclip ? 1 : 0].add();
                 t.tex = tex;
-                t.a = m.transform(fverts[tris[j].vert[0]].pos);
-                t.b = m.transform(fverts[tris[j].vert[1]].pos);
-                t.c = m.transform(fverts[tris[j].vert[2]].pos);
+                t.a = m.transform(verts[tris[j].vert[0]].pos);
+                t.b = m.transform(verts[tris[j].vert[1]].pos);
+                t.c = m.transform(verts[tris[j].vert[2]].pos);
                 tcvert &av = tcverts[tris[j].vert[0]],
                        &bv = tcverts[tris[j].vert[1]],
                        &cv = tcverts[tris[j].vert[2]];

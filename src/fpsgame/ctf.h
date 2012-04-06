@@ -591,14 +591,16 @@ struct ctfclientmode : clientmode
             const char *flagname = m_hold && (!f.owner || lastmillis%1000 < 500) ? "flags/neutral" : (m_hold ? ctfteamflag(f.owner->team) : f.team)==ctfteamflag(player1->team) ? "flags/blue" : "flags/red";
             float angle;
             vec pos = interpflagpos(f, angle);
+#if 0
             if(m_hold)
                 rendermodel(flagname, ANIM_MAPMODEL|ANIM_LOOP,
                         pos, angle, 0,
-                        MDL_GHOST | MDL_CULL_VFC | (f.droptime || f.owner ? MDL_LIGHT : 0),
+                        MDL_GHOST | MDL_CULL_VFC,
                         NULL, NULL, 0, 0, 0.5f + 0.5f*(2*fabs(fmod(lastmillis/1000.0f, 1.0f) - 0.5f)));
+#endif
             rendermodel(flagname, ANIM_MAPMODEL|ANIM_LOOP,
                         pos, angle, 0,
-                        MDL_DYNSHADOW | MDL_CULL_VFC | MDL_CULL_OCCLUDED | (f.droptime || f.owner ? MDL_LIGHT : 0),
+                        MDL_CULL_VFC | MDL_CULL_OCCLUDED,
                         NULL, NULL, 0, 0, 0.3f + (f.vistime ? 0.7f*min((lastmillis - f.vistime)/1000.0f, 1.0f) : 0.0f));
 
             if(m_protect && canaddparticles() && f.owner && insidebase(f, f.owner->feetpos()))

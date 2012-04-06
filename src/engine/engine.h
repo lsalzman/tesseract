@@ -228,7 +228,7 @@ extern int hasstencil;
 extern float nearplane;
 extern int farplane;
 extern int hdr;
-extern bool envmapping, minimapping, renderedgame;
+extern bool envmapping, minimapping;
 extern const glmatrixf viewmatrix;
 extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, fogmatrix, invfogmatrix, envmatrix;
 extern bvec fogcolor;
@@ -236,7 +236,6 @@ extern bvec fogcolor;
 extern void gl_checkextensions();
 extern void gl_init(int w, int h, int bpp, int depth, int fsaa);
 extern void cleangl();
-extern void rendergame(bool mainpass = false);
 extern void invalidatepostfx();
 extern void gl_drawframe(int w, int h);
 extern void gl_drawmainmenu(int w, int h);
@@ -345,13 +344,13 @@ extern void findshadowmms();
 extern void findcsmshadowvas();
 extern void findcsmshadowmms();
 
+extern void rendershadowmapworld();
+extern void batchshadowmapmodels();
+
 extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcspheresidemask(const vec &p, float radius, float bias);
 extern int calcspheretetramask(const vec &p, float radius, float bias);
-
-extern void rendershadowmapworld(bool omni = true);
-extern void rendershadowmapmodels(bool omni = false);
 
 // ents
 extern char *entname(entity &e);
@@ -400,7 +399,7 @@ extern void rendermapmodels();
 extern void renderreflectedgeom(bool causticspass = false, bool fogpass = false);
 extern void renderreflectedmapmodels();
 extern void renderoutline();
-extern bool rendersky(bool explicitonly = false);
+extern void rendershadowmapworld();
 
 extern bool isfoggedsphere(float rad, const vec &cv);
 extern int isvisiblesphere(float rad, const vec &cv);
@@ -573,11 +572,14 @@ struct mapmodelinfo { string name; model *m; };
 extern void findanims(const char *pattern, vector<int> &anims);
 extern void loadskin(const char *dir, const char *altdir, Texture *&skin, Texture *&masks);
 extern mapmodelinfo *getmminfo(int i);
+extern void resetmodelbatches();
 extern void startmodelquery(occludequery *query);
 extern void endmodelquery();
-extern void lockmodelbatches();
-extern void unlockmodelbatches();
 extern void rendermodelbatches();
+extern void shadowmaskbatchedmodels();
+extern void rendermodelbatches();
+extern void rendermapmodel(int idx, int anim, const vec &o, float yaw = 0, float pitch = 0, int flags = MDL_CULL_VFC | MDL_CULL_DIST, int basetime = 0, float size = 1);
+extern void clearbatchedmapmodels();
 extern void preloadmodelshaders();
 extern void preloadusedmapmodels(bool msg = false, bool bih = false);
 

@@ -210,7 +210,7 @@ struct skelmodel : animmodel
             mesh::calctangents(bumpverts, verts, verts, numverts, tris, numtris, areaweight);
         }
 
-        void calcbb(int frame, vec &bbmin, vec &bbmax, const matrix3x4 &m)
+        void calcbb(vec &bbmin, vec &bbmax, const matrix3x4 &m)
         {
             loopj(numverts)
             {
@@ -223,7 +223,7 @@ struct skelmodel : animmodel
             }
         }
 
-        void gentris(int frame, Texture *tex, vector<BIH::tri> *out, const matrix3x4 &m)
+        void gentris(Texture *tex, vector<BIH::tri> *out, const matrix3x4 &m)
         {
             loopj(numtris)
             {

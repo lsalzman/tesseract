@@ -278,8 +278,8 @@ struct animmodel : model
             DELETEA(name);
         }
 
-        virtual void calcbb(int frame, vec &bbmin, vec &bbmax, const matrix3x4 &m) {}
-        virtual void gentris(int frame, Texture *tex, vector<BIH::tri> *out, const matrix3x4 &m) {}
+        virtual void calcbb(vec &bbmin, vec &bbmax, const matrix3x4 &m) {}
+        virtual void gentris(Texture *tex, vector<BIH::tri> *out, const matrix3x4 &m) {}
 
         virtual void setshader(Shader *s) 
         { 
@@ -423,16 +423,16 @@ struct animmodel : model
         }            
 
         virtual int findtag(const char *name) { return -1; }
-        virtual void concattagtransform(part *p, int frame, int i, const matrix3x4 &m, matrix3x4 &n) {}
+        virtual void concattagtransform(part *p, int i, const matrix3x4 &m, matrix3x4 &n) {}
 
-        void calcbb(int frame, vec &bbmin, vec &bbmax, const matrix3x4 &m)
+        void calcbb(vec &bbmin, vec &bbmax, const matrix3x4 &m)
         {
-            loopv(meshes) meshes[i]->calcbb(frame, bbmin, bbmax, m);
+            loopv(meshes) meshes[i]->calcbb(bbmin, bbmax, m);
         }
 
-        void gentris(int frame, vector<skin> &skins, vector<BIH::tri> *tris, const matrix3x4 &m)
+        void gentris(vector<skin> &skins, vector<BIH::tri> *tris, const matrix3x4 &m)
         {
-            loopv(meshes) meshes[i]->gentris(frame, skins[i].tex && skins[i].tex->type&Texture::ALPHA ? skins[i].tex : NULL, tris, m);
+            loopv(meshes) meshes[i]->gentris(skins[i].tex && skins[i].tex->type&Texture::ALPHA ? skins[i].tex : NULL, tris, m);
         }
 
         virtual int totalframes() const { return 1; }
@@ -572,33 +572,33 @@ struct animmodel : model
             if(meshes) meshes->cleanup();
         }
 
-        void calcbb(int frame, vec &bbmin, vec &bbmax, const matrix3x4 &m)
+        void calcbb(vec &bbmin, vec &bbmax, const matrix3x4 &m)
         {
             matrix3x4 t = m;
             t.translate(translate);
             t.scale(model->scale);
-            meshes->calcbb(frame, bbmin, bbmax, t);
+            meshes->calcbb(bbmin, bbmax, t);
             loopv(links)
             {
                 matrix3x4 n;
-                meshes->concattagtransform(this, frame, links[i].tag, m, n);
+                meshes->concattagtransform(this, links[i].tag, m, n);
                 n.transformedtranslate(links[i].translate, model->scale);
-                links[i].p->calcbb(frame, bbmin, bbmax, n);
+                links[i].p->calcbb(bbmin, bbmax, n);
             }
         }
 
-        void gentris(int frame, vector<BIH::tri> *tris, const matrix3x4 &m)
+        void gentris(vector<BIH::tri> *tris, const matrix3x4 &m)
         {
             matrix3x4 t = m;
             t.translate(translate);
             t.scale(model->scale);
-            meshes->gentris(frame, skins, tris, t);
+            meshes->gentris(skins, tris, t);
             loopv(links)
             {
                 matrix3x4 n;
-                meshes->concattagtransform(this, frame, links[i].tag, m, n);
+                meshes->concattagtransform(this, links[i].tag, m, n);
                 n.transformedtranslate(links[i].translate, model->scale);
-                links[i].p->gentris(frame, tris, n);
+                links[i].p->gentris(tris, n);
             }
         }
 
@@ -1067,12 +1067,12 @@ struct animmodel : model
         if(offsetpitch) m.rotate_around_y(-offsetpitch*RAD);
     }
 
-    void gentris(int frame, vector<BIH::tri> *tris)
+    void gentris(vector<BIH::tri> *tris)
     {
         if(parts.empty()) return;
         matrix3x4 m;
         initmatrix(m);
-        parts[0]->gentris(frame, tris, m);
+        parts[0]->gentris(tris, m);
     }
 
     void preloadBIH()
@@ -1085,7 +1085,7 @@ struct animmodel : model
     {
         if(bih) return bih;
         vector<BIH::tri> tris[2];
-        gentris(0, tris);
+        gentris(tris);
         bih = new BIH(tris);
         return bih;
     }
@@ -1187,13 +1187,13 @@ struct animmodel : model
         loopv(parts) loopvj(parts[i]->skins) parts[i]->skins[j].cullface = cullface;
     }
 
-    void calcbb(int frame, vec &center, vec &radius)
+    void calcbb(vec &center, vec &radius)
     {
         if(parts.empty()) return;
         vec bbmin(1e16f, 1e16f, 1e16f), bbmax(-1e16f, -1e16f, -1e16f);
         matrix3x4 m;
         initmatrix(m); 
-        parts[0]->calcbb(frame, bbmin, bbmax, m);
+        parts[0]->calcbb(bbmin, bbmax, m);
         radius = bbmax;
         radius.sub(bbmin);
         radius.mul(0.5f);

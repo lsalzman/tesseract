@@ -1410,14 +1410,6 @@ void drawfogoverlay(int fogmat, float fogblend, int abovemat)
     defaultshader->set();
 }
 
-bool renderedgame = false;
-
-void rendergame(bool mainpass)
-{
-    game::rendergame(mainpass);
-    if(!shadowmapping) renderedgame = true;
-}
-
 VARP(reflectmms, 0, 1, 1);
 VARR(refractsky, 0, 0, 1);
 
@@ -1528,7 +1520,7 @@ void drawreflection(float z, bool refract)
     renderdecals();
 
     if(reflectmms) renderreflectedmapmodels();
-    rendergame();
+    game::rendergame();
 
     if(refracting && z>=0 && !isthirdperson() && fabs(camera1->o.z-z) <= 0.5f*(player->eyeheight + player->aboveeye))
     {   
@@ -2509,7 +2501,7 @@ VAR(csmfarplane, 64, 512, 4096);
 VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
-FVAR(csmpolyfactor, -1e3f, 1.5f, 1e3f);
+FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
 FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
 FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
 
@@ -3058,13 +3050,8 @@ void rendercsmshadowmaps()
     findcsmshadowvas(); // no culling here
     findcsmshadowmms(); // no culling here
 
-    extern void rendershadowmapworld();
-    extern void rendershadowmapmodels();
-
-    lockmodelbatches();
-    rendershadowmapmodels();
-    rendergame();
-    unlockmodelbatches();
+    shadowmaskbatchedmodels();
+    batchshadowmapmodels();
 
     loopi(csmsplitn)
     {
@@ -3085,6 +3072,8 @@ void rendercsmshadowmaps()
         rendershadowmapworld();
         rendermodelbatches();
     }
+
+    clearbatchedmapmodels();
 }
 
 void rendershadowmaps()
@@ -3131,13 +3120,8 @@ void rendershadowmaps()
         findshadowvas();
         findshadowmms();
 
-        extern void rendershadowmapworld();
-        extern void rendershadowmapmodels();
-
-        lockmodelbatches();
-        rendershadowmapmodels();
-        rendergame();
-        unlockmodelbatches();
+        shadowmaskbatchedmodels();
+        batchshadowmapmodels();
 
         glMatrixMode(GL_PROJECTION);
         glLoadMatrixf(smprojmatrix);
@@ -3204,6 +3188,8 @@ void rendershadowmaps()
                 rendermodelbatches();
             }
         }
+
+        clearbatchedmapmodels();
     }
 }
 
@@ -3551,11 +3537,13 @@ void gl_drawframe(int w, int h)
     setenvparamf("gdepthunpackparams", SHPARAM_PIXEL, 39, -farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f));
     
     rendergeom(causticspass);
+    resetmodelbatches();
     rendermapmodels();
     maskgbuffer("c");
     renderdecals(true);
     maskgbuffer("cngd");
-    rendergame(true);
+    game::rendergame();
+    rendermodelbatches();
     if(!isthirdperson())
     {
         project(curavatarfov, aspect, farplane, false, false, false, avatardepth);
@@ -3807,7 +3795,6 @@ void gl_drawframe(int w, int h)
 
     gl_drawhud(w, h);
 
-    renderedgame = false;
     timer_nextframe();
 }
 
