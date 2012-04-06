@@ -944,6 +944,22 @@ void updatefpshistory(int millis)
     if(fpspos>=MAXFPSHISTORY) fpspos = 0;
 }
 
+void getframemillis(float &avg, float &bestdiff, float &worstdiff)
+{
+    int total = fpshistory[MAXFPSHISTORY-1], best = total, worst = total;
+    loopi(MAXFPSHISTORY-1)
+    {
+        int millis = fpshistory[i];
+        total += millis;
+        if(millis < best) best = millis;
+        if(millis > worst) worst = millis;
+    }
+
+    avg = total/float(MAXFPSHISTORY);
+    best = best - avg;
+    worstdiff = avg - worst;    
+}
+
 void getfps(int &fps, int &bestdiff, int &worstdiff)
 {
     int total = fpshistory[MAXFPSHISTORY-1], best = total, worst = total;
@@ -991,7 +1007,7 @@ int getclockmillis()
     return max(millis, totalmillis);
 }
 
-VAR(cputimer, 0, 0, 1);
+VAR(frametimer, 0, 0, 1);
 int framemillis = 0; // frame time (ie does not take into account the swap)
 
 int main(int argc, char **argv)
@@ -1231,8 +1247,11 @@ int main(int argc, char **argv)
         inbetweenframes = false;
         if(mainmenu) gl_drawmainmenu(screen->w, screen->h);
         else gl_drawframe(screen->w, screen->h);
-        framemillis = getclockmillis() - millis;
-        if (cputimer) glFinish();
+        if(frametimer)
+        {
+            framemillis = getclockmillis() - millis;
+            glFinish();
+        }
         swapbuffers();
         renderedframe = inbetweenframes = true;
     }
