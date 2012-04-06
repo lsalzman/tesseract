@@ -1844,8 +1844,6 @@ static void rendergeommultipass(renderstate &cur, int pass, bool fogpass)
 
 VAR(oqgeom, 0, 1, 1);
 
-extern int foo;
-
 void rendergeom(float causticspass, bool fogpass)
 {
     if(causticspass && (!causticscale || !causticmillis)) causticspass = 0;

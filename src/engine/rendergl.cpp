@@ -3445,6 +3445,7 @@ void gl_drawframe(int w, int h)
     lights.setsize(0);
     lightorder.setsize(0);
     loopi(LIGHTTILE_H) loopj(LIGHTTILE_W) lighttiles[i][j].setsize(0);
+
     shadowmaps.setsize(0);
     shadowatlaspacker.reset();
     csm.sunlight = sunlightinsert(shadowmaps, csm.idx);
