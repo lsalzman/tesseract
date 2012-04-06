@@ -624,18 +624,20 @@ COMMAND(glext, "s");
 #define CHECKERROR() do { GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x\n", __FILE__, __LINE__, error); }} while(0)
 
 // GPU-side timing information will use OGL timers
-enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_SHADING, TIMER_N};
+enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N};
 #define TIMER_CPU TIMER_CPU_SM
 static const char *timer_string[] = {
     "shadow map",
-    "gbuffer",
+    "g-buffer",
     "deferred shading",
     "hdr processing",
     "ambient obscurance",
     "alpha geometry",
     "buffer splitting",
     "buffer merging",
+
     "shadow map",
+    "g-buffer",
     "deferred shading"
 };
 static const int timer_query_n = 4;
@@ -3497,6 +3499,7 @@ void gl_drawframe(int w, int h)
 
     // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
 
+    timer_begin(TIMER_CPU_GBUFFER);
     timer_begin(TIMER_GBUFFER);
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
     glViewport(0, 0, gw, gh);
@@ -3535,6 +3538,7 @@ void gl_drawframe(int w, int h)
         project(fovy, aspect, farplane);
     }
     timer_end(TIMER_GBUFFER);
+    timer_end(TIMER_CPU_GBUFFER);
 
     if(ao) 
     {
