@@ -2912,8 +2912,7 @@ void collectlights()
             if(smviscull)
             {
                 if(isfoggedsphere(e->attr1, e->o)) continue;
-                ivec bo = ivec(e->o).sub(e->attr1), br = ivec(e->attr1*2+1, e->attr1*2+1, e->attr1*2+1);
-                if(pvsoccluded(bo, br) || bboccluded(bo, br)) continue;
+                if(pvsoccludedsphere(e->o, e->attr1)) continue;
             }
             calcspherescissor(e->o, e->attr1, sx1, sy1, sx2, sy2);
             calcspheredepth(e->o, e->attr1, sz1, sz2);

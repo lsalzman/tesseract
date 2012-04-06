@@ -210,6 +210,7 @@ extern int compactvslots();
 // pvs
 extern void clearpvs();
 extern bool pvsoccluded(const ivec &bborigin, const ivec &bbsize);
+extern bool pvsoccludedsphere(const vec &center, float radius);
 extern bool waterpvsoccluded(int height);
 extern void setviewcell(const vec &p);
 extern void savepvs(stream *f);

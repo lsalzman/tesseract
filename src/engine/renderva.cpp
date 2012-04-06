@@ -749,9 +749,9 @@ void renderdepthobstacles(const vec &bbmin, const vec &bbmax, float scale, float
     defaultshader->set();
 }
 
-int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
+int calcbbsidemask(const ivec &bbmin, const ivec &bbmax, const vec &lightpos, float lightradius, float bias)
 {
-    vec pmin = vec(bbmin).sub(lightpos).div(lightradius), pmax = vec(bbmax).sub(lightpos).div(lightradius);
+    vec pmin = bbmin.tovec().sub(lightpos).div(lightradius), pmax = bbmax.tovec().sub(lightpos).div(lightradius);
     int mask = 0x3F;
     float dp1 = pmax.x + pmax.y, dn1 = pmax.x - pmin.y, ap1 = fabs(dp1), an1 = fabs(dn1),
           dp2 = pmin.x + pmin.y, dn2 = pmin.x - pmax.y, ap2 = fabs(dp2), an2 = fabs(dn2);
@@ -789,14 +789,14 @@ int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, floa
     return mask;
 }
 
-int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias)
+int calcbbtetramask(const ivec &bbmin, const ivec &bbmax, const vec &lightpos, float lightradius, float bias)
 {
     // top 1: +1, +1, +1
     // top 2: -1, -1, +1
     // bot 1: +1, -1, -1,
     // bot 2: -1, +1, -1
 
-    vec pmin = vec(bbmin).sub(lightpos).div(lightradius), pmax = vec(bbmax).sub(lightpos).div(lightradius);
+    vec pmin = bbmin.tovec().sub(lightpos).div(lightradius), pmax = bbmax.tovec().sub(lightpos).div(lightradius);
     int mask = 0xF;
 
     bias *= 2;
@@ -1129,12 +1129,17 @@ void findshadowvas(vector<vtxarray *> &vas)
         float dist = vadist(&v, shadoworigin);
         if(dist < shadowradius || !smdistcull)
         {
-            vec bbmin = v.geommin.tovec(), bbmax = v.geommax.tovec();
-            if(smbbcull)
-                v.shadowmask = smtetra ? 
-                    calcbbtetramask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias) : 
-                    calcbbsidemask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias);
-            else v.shadowmask = smtetra ? 0xF : 0x3F;
+            switch(shadowmapping)
+            {
+                case SM_TETRA:
+                    v.shadowmask = smbbcull ? calcbbtetramask(v.geommin, v.geommax, shadoworigin, shadowradius, shadowbias) : 0xF;
+                    break;
+                case SM_CUBEMAP:
+                    v.shadowmask = smbbcull ? calcbbsidemask(v.geommin, v.geommax, shadoworigin, shadowradius, shadowbias) : 0x3F;
+                    break;
+                default:
+                    continue;
+            }
             addshadowva(&v, dist);
             if(v.children.length()) findshadowvas(v.children);
         }
