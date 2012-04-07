@@ -1713,14 +1713,11 @@ void texscale(float *scale)
 }
 COMMAND(texscale, "f");
 
-void texlayer(int *layer, char *name, int *mode, float *scale)
+void texlayer(int *layer)
 {
     if(slots.empty()) return;
     Slot &s = *slots.last();
     s.variants->layer = *layer < 0 ? max(slots.length()-1+*layer, 0) : *layer;
-    s.layermaskname = name[0] ? newstring(path(makerelpath("packages", name))) : NULL; 
-    s.layermaskmode = *mode;
-    s.layermaskscale = *scale <= 0 ? 1 : *scale;
     propagatevslot(s.variants, 1<<VSLOT_LAYER);
 }
 COMMAND(texlayer, "isif");
@@ -2006,20 +2003,6 @@ Texture *loadthumbnail(Slot &slot)
         }
     }
     return t;
-}
-
-void loadlayermasks()
-{
-    loopv(slots)
-    {
-        Slot &slot = *slots[i];
-        if(slot.loaded && slot.layermaskname && !slot.layermask) 
-        {
-            slot.layermask = new ImageData;
-            texturedata(*slot.layermask, slot.layermaskname);
-            if(!slot.layermask->data) DELETEP(slot.layermask);
-        }
-    }
 }
 
 // environment mapped reflections

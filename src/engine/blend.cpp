@@ -459,7 +459,74 @@ void shrinkblendmap(int octant)
 {
     blendmap.shrink(octant&3);
 }
- 
+
+static int calcblendlayer(uchar &type, BlendMapNode &node, int bmx, int bmy, int bmsize, int cx, int cy, int cw, int ch)
+{
+    if(type==BM_BRANCH)
+    {
+        bmsize /= 2;
+        int layer = -1;
+        if(cy < bmy + bmsize)
+        {
+            if(cx < bmx + bmsize) 
+            {
+                int clayer = calcblendlayer(node.branch->type[0], node.branch->children[0], bmx, bmy, bmsize, cx, cy, cw, ch);
+                if(layer < 0) layer = clayer; else if(clayer != layer) return LAYER_BLEND;
+            }
+            if(cx + cw > bmx + bmsize)
+            {
+                int clayer = calcblendlayer(node.branch->type[1], node.branch->children[1], bmx+bmsize, bmy, bmsize, cx, cy, cw, ch);
+                if(layer < 0) layer = clayer; else if(clayer != layer) return LAYER_BLEND;
+            }
+        }
+        if(cy + ch > bmy + bmsize)
+        {
+            if(cx < bmx + bmsize) 
+            {
+                int clayer = calcblendlayer(node.branch->type[2], node.branch->children[2], bmx, bmy+bmsize, bmsize, cx, cy, cw, ch);
+                if(layer < 0) layer = clayer; else if(clayer != layer) return LAYER_BLEND;
+            }
+            if(cx + cw > bmx + bmsize) 
+            {
+                int clayer = calcblendlayer(node.branch->type[3], node.branch->children[3], bmx+bmsize, bmy+bmsize, bmsize, cx, cy, cw, ch);
+                if(clayer < 0) layer = clayer; else if(clayer != layer) return LAYER_BLEND;
+            }
+        }
+        return layer >= 0 ? layer : LAYER_TOP;
+    }
+    uchar val;
+    if(type == BM_SOLID) val = node.solid->val;
+    else
+    {
+        int x1 = clamp(cx - bmx, 0, bmsize), y1 = clamp(cy - bmy, 0, bmsize),
+            x2 = clamp(cx+cw - bmx, 0, bmsize), y2 = clamp(cy+ch - bmy, 0, bmsize);
+        uchar *src = &node.image->data[y1*BM_IMAGE_SIZE + x1];
+        val = src[0];
+        loopi(y2-y1)
+        {
+            loopj(x2-x1) if(src[j] != val) return LAYER_BLEND;
+            src += BM_IMAGE_SIZE;
+        }
+    }
+    switch(val)
+    {
+        case 0xFF: return LAYER_TOP;
+        case 0: return LAYER_BOTTOM;
+        default: return LAYER_BLEND;
+    }
+}
+
+int calcblendlayer(int x1, int y1, int x2, int y2)
+{
+    int bmsize = worldsize>>BM_SCALE,
+        ux1 = max(x1, 0) >> BM_SCALE,
+        ux2 = (min(x2, worldsize) + (1<<BM_SCALE)-1) >> BM_SCALE,
+        uy1 = max(y1, 0) >> BM_SCALE,
+        uy2 = (min(y2, worldsize) + (1<<BM_SCALE)-1) >> BM_SCALE;
+    if(ux1 >= ux2 || uy1 >= uy2) return LAYER_TOP;
+    return calcblendlayer(blendmap.type, blendmap, 0, 0, bmsize, ux1, uy1, ux2-ux1, uy2-uy1);
+}
+
 struct BlendBrush
 {
     char *name;

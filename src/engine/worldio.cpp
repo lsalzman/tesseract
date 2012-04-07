@@ -881,7 +881,7 @@ bool save_world(const char *mname, bool nolms)
     const vector<extentity *> &ents = entities::getents();
     loopv(ents) if(ents[i]->type!=ET_EMPTY || nolms) hdr.numents++;
     hdr.numpvs = nolms ? 0 : getnumviewcells();
-    hdr.lightmaps = nolms ? 0 : lightmaps.length();
+    hdr.lightmaps = 0;
     hdr.blendmap = shouldsaveblendmap();
     hdr.numvars = 0;
     hdr.numvslots = numvslots;
@@ -952,19 +952,6 @@ bool save_world(const char *mname, bool nolms)
 
     if(!nolms) 
     {
-        if(lightmaps.length()) renderprogress(0, "saving lightmaps...");
-        loopv(lightmaps)
-        {
-            LightMap &lm = lightmaps[i];
-            f->putchar(lm.type | (lm.unlitx>=0 ? 0x80 : 0));
-            if(lm.unlitx>=0)
-            {
-                f->putlil<ushort>(ushort(lm.unlitx));
-                f->putlil<ushort>(ushort(lm.unlity));
-            }
-            f->write(lm.data, lm.bpp*LM_PACKW*LM_PACKH);
-            renderprogress(float(i+1)/lightmaps.length(), "saving lightmaps...");
-        }
         if(getnumviewcells()>0) { renderprogress(0, "saving pvs..."); savepvs(f); }
     }
     if(shouldsaveblendmap()) { renderprogress(0, "saving blendmap..."); saveblendmap(f); }
@@ -1196,22 +1183,19 @@ bool load_world(const char *mname, const char *cname)        // still supports a
     {
         if(hdr.version >= 7) loopi(hdr.lightmaps)
         {
-            renderprogress(i/(float)hdr.lightmaps, "loading lightmaps...");
-            LightMap &lm = lightmaps.add();
+            int type = 0;
             if(hdr.version >= 17)
             {
-                int type = f->getchar();
-                lm.type = type&0x7F;
+                type = f->getchar();
                 if(hdr.version >= 20 && type&0x80)
                 {
-                    lm.unlitx = f->getlil<ushort>();
-                    lm.unlity = f->getlil<ushort>();
+                    f->getlil<ushort>();
+                    f->getlil<ushort>();
                 }
             }
-            if(lm.type&LM_ALPHA && (lm.type&LM_TYPE)!=LM_BUMPMAP1) lm.bpp = 4;
-            lm.data = new uchar[lm.bpp*LM_PACKW*LM_PACKH];
-            f->read(lm.data, lm.bpp * LM_PACKW * LM_PACKH);
-            lm.finalize();
+            int bpp = 3;
+            if(type&(1<<4) && (type&0x0F)!=2) bpp = 4;
+            f->seek(bpp*512*512, SEEK_CUR);
         }
 
         if(hdr.version >= 25 && hdr.numpvs > 0) loadpvs(f, hdr.numpvs);
@@ -1230,11 +1214,6 @@ bool load_world(const char *mname, const char *cname)        // still supports a
     execfile(cfgname, false);
     identflags &= ~IDF_OVERRIDDEN;
    
-    extern void fixlightmapnormals();
-    if(hdr.version <= 25) fixlightmapnormals();
-    extern void fixrotatedlightmaps();
-    if(hdr.version <= 31) fixrotatedlightmaps();
-
     preloadusedmapmodels(true);
 
     game::preload();

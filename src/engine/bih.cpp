@@ -17,7 +17,7 @@ bool BIH::triintersect(tri &t, const vec &o, const vec &ray, float maxdist, floa
     float f = t.c.dot(q) / det;
     if(f < 0 || f > maxdist) return false;
     if(!(mode&RAY_SHADOW) && &t >= noclip) return false;
-    if(t.tex && (mode&RAY_ALPHAPOLY)==RAY_ALPHAPOLY && (t.tex->alphamask || (lightmapping <= 1 && (loadalphamask(t.tex), t.tex->alphamask))))
+    if(t.tex && (mode&RAY_ALPHAPOLY)==RAY_ALPHAPOLY && (t.tex->alphamask || (loadalphamask(t.tex), t.tex->alphamask)))
     {
         int si = clamp(int(t.tex->xs * (t.tc[0] + u*(t.tc[2] - t.tc[0]) + v*(t.tc[4] - t.tc[0]))), 0, t.tex->xs-1),
             ti = clamp(int(t.tex->ys * (t.tc[1] + u*(t.tc[3] - t.tc[1]) + v*(t.tc[5] - t.tc[1]))), 0, t.tex->ys-1);
@@ -273,7 +273,7 @@ bool mmintersect(const extentity &e, const vec &o, const vec &ray, float maxdist
         if(!m->shadow || e.flags&extentity::F_NOSHADOW) return false;
     }
     else if((mode&RAY_ENTS)!=RAY_ENTS && (!m->collide || e.flags&extentity::F_NOCOLLIDE)) return false;
-    if(!m->bih && (lightmapping > 1 || !m->setBIH())) return false;
+    if(!m->bih && !m->setBIH()) return false;
     vec mo = vec(o).sub(e.o), mray(ray);
     float v = mo.dot(mray), inside = m->bih->radius - mo.squaredlen();
     if((inside < 0 && v > 0) || inside + v*v < 0) return false;

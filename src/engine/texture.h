@@ -521,12 +521,8 @@ struct Slot
     uint texmask;
     char *autograss;
     Texture *grasstex, *thumbnail;
-    char *layermaskname;
-    int layermaskmode;
-    float layermaskscale;
-    ImageData *layermask;
 
-    Slot(int index = -1) : index(index), variants(NULL), autograss(NULL), layermaskname(NULL), layermask(NULL) { reset(); }
+    Slot(int index = -1) : index(index), variants(NULL), autograss(NULL) { reset(); }
     
     void reset()
     {
@@ -538,10 +534,6 @@ struct Slot
         DELETEA(autograss);
         grasstex = NULL;
         thumbnail = NULL;
-        DELETEA(layermaskname);
-        layermaskmode = 0;
-        layermaskscale = 1;
-        if(layermask) DELETEP(layermask);
     }
 
     void cleanup()

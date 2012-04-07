@@ -383,7 +383,6 @@ void renderwater()
 
     varray::enable();
 
-    vec ambient(max(skylightcolor[0], ambientcolor[0]), max(skylightcolor[1], ambientcolor[1]), max(skylightcolor[2], ambientcolor[2]));
     float offset = -WATER_OFFSET;
     loopi(MAXREFLECTIONS)
     {
@@ -438,7 +437,7 @@ void renderwater()
                 if(varray::data.length()) varray::end();
                 const vec &lightpos = light ? light->o : vec(worldsize/2, worldsize/2, worldsize);
                 float lightrad = light && light->attr1 ? light->attr1 : worldsize*8.0f;
-                const vec &lightcol = (light ? vec(light->attr2, light->attr3, light->attr4) : vec(ambient)).div(255.0f).mul(waterspec/100.0f);
+                const vec &lightcol = (light ? vec(light->attr2, light->attr3, light->attr4) : vec(ambientcolor.x, ambientcolor.y, ambientcolor.z)).div(255.0f).mul(waterspec/100.0f);
                 setlocalparamf("lightpos", SHPARAM_VERTEX, 2, lightpos.x, lightpos.y, lightpos.z);
                 setlocalparamf("lightcolor", SHPARAM_PIXEL, 3, lightcol.x, lightcol.y, lightcol.z);
                 setlocalparamf("lightradius", SHPARAM_PIXEL, 4, lightrad, lightrad, lightrad);

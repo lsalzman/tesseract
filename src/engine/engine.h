@@ -182,7 +182,6 @@ extern Texture *textureload(const char *name, int clamp = 0, bool mipit = true, 
 extern int texalign(void *data, int w, int bpp);
 extern void cleanuptexture(Texture *t);
 extern void loadalphamask(Texture *t);
-extern void loadlayermasks();
 extern Texture *cubemapload(const char *name, bool mipit = true, bool msg = true, bool transient = false);
 extern void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapside &side);
 extern void loadshaders();
@@ -645,6 +644,7 @@ extern bool loadblendmap(stream *f, int info);
 extern void saveblendmap(stream *f);
 extern uchar shouldsaveblendmap();
 extern bool usesblendmap(int x1 = 0, int y1 = 0, int x2 = worldsize, int y2 = worldsize);
+extern int calcblendlayer(int x1, int y1, int x2, int y2);
 extern void updateblendtextures(int x1 = 0, int y1 = 0, int x2 = worldsize, int y2 = worldsize);
 extern void bindblendtexture(const ivec &p);
 extern void clearblendtextures();

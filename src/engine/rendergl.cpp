@@ -368,7 +368,7 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
-    extern int batchlightmaps, fpdepthfx, gdepthstencil;
+    extern int fpdepthfx, gdepthstencil;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
@@ -380,8 +380,6 @@ void gl_checkextensions()
     {
         reservevpparams = 10;
         rtsharefb = 0; // work-around for strange driver stalls involving when using many FBOs
-        extern int filltjoints;
-        if(!hasext(exts, "GL_EXT_gpu_shader4")) filltjoints = 0; // DX9 or less NV cards seem to not cause many sparklies
         
         if(hasFBO && !hasTF) nvidia_scissor_bug = 1; // 5200 bug, clearing with scissor on an FBO messes up on reflections, may affect lesser cards too 
         extern int fpdepthfx;
@@ -399,7 +397,6 @@ void gl_checkextensions()
             if(hwtexsize < 4096) 
             {
                 maxtexsize = hwtexsize >= 2048 ? 512 : 256;
-                batchlightmaps = 0;
             }
         }
 
@@ -2409,8 +2406,8 @@ struct cascaded_shadow_map
 
 static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
 {
-    extern int sunlight, skylight; // hack here
-    if(sunlight == 0 && skylight == 0) return false; // no sunlight
+    extern int sunlight; // hack here
+    if(sunlight == 0) return false; // no sunlight
 #if 1
     loopi(csmsplitn)
     {
@@ -2479,7 +2476,6 @@ static void updatesplitdist(splitfrustum *f, float nd, float fd)
 
 void cascaded_shadow_map::sunlightgetmodelmatrix()
 {
-    extern int sunlightyaw, sunlightpitch;
     this->model = viewmatrix;
     this->model.rotate_around_x(sunlightpitch*RAD);
     this->model.rotate_around_z((180-sunlightyaw)*RAD);
@@ -2496,7 +2492,6 @@ FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
 
 void cascaded_shadow_map::sunlightgetprojmatrix()
 {
-    extern vec sunlightdir;
     splitfrustum f[csmmaxsplitn];
     vec lightup, lightright;
     lightview = vec(sunlightdir).neg();
@@ -2720,14 +2715,11 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         // sunlight is processed first
         if(csm.sunlight && csmdeferredshading)
         {
-            extern bvec sunlightcolor, skylightcolor;
-            extern int sunlight;
-            bvec color = sunlight ? sunlightcolor : skylightcolor;
             if(ao && aosun) deferredcsmaoshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
             else deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
             setlocalparamf("cameraview", SHPARAM_PIXEL, 3, camdir.x, camdir.y, camdir.z);
             setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
-            setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, color.x*lightscale, color.y*lightscale, color.z*lightscale);
+            setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, sunlightcolor.x*lightscale, sunlightcolor.y*lightscale, sunlightcolor.z*lightscale);
             setlocalparamf("csmfar", SHPARAM_PIXEL, 6, float(csmfarplane), 1.f / float(csmfarsmoothdistance));
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
@@ -4086,7 +4078,7 @@ void gl_drawhud(int w, int h)
 
                 abovehud -= 2*FONTH;
                 draw_textf("wtr:%dk(%d%%) wvt:%dk(%d%%) evt:%dk eva:%dk", FONTH/2, abovehud, wtris/1024, curstats[0], wverts/1024, curstats[1], curstats[2], curstats[3]);
-                draw_textf("ond:%d va:%d gl:%d(%d) oq:%d lm:%d rp:%d pvs:%d", FONTH/2, abovehud+FONTH, allocnodes*8, allocva, curstats[4], curstats[5], curstats[6], lightmaps.length(), curstats[7], getnumviewcells());
+                draw_textf("ond:%d va:%d gl:%d(%d) oq:%d rp:%d pvs:%d", FONTH/2, abovehud+FONTH, allocnodes*8, allocva, curstats[4], curstats[5], curstats[6], curstats[7], getnumviewcells());
                 limitgui = abovehud;
             }
 
