@@ -2482,7 +2482,7 @@ void cascaded_shadow_map::sunlightgetmodelmatrix()
     extern int sunlightyaw, sunlightpitch;
     this->model = viewmatrix;
     this->model.rotate_around_x(sunlightpitch*RAD);
-    this->model.rotate_around_z((sunlightyaw+90)*RAD);
+    this->model.rotate_around_z((180-sunlightyaw)*RAD);
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);

@@ -403,8 +403,8 @@ namespace game
         particle_splash(PART_SPARK, 200, 300, v, 0xB49B4B, 0.24f);
         playsound(S_RLHIT, &v);
         particle_fireball(v, RL_DAMRAD, gun!=GUN_GL ? PART_EXPLOSION : PART_EXPLOSION_BLUE, -1, gun!=GUN_GL ? 0xFF8080 : 0x80FFFF, 4.0f);
-        if(gun==GUN_RL) adddynlight(v, 1.15f*RL_DAMRAD, vec(2, 1.5f, 1), 900, 100, 0, RL_DAMRAD/2, vec(1, 0.75f, 0.5f));
-        else if(gun==GUN_GL) adddynlight(v, 1.15f*RL_DAMRAD, vec(0.5f, 1.5f, 2), 900, 100, 0, 8, vec(0.25f, 1, 1));
+        if(gun==GUN_RL) adddynlight(v, 1.15f*RL_DAMRAD, vec(4, 3.0f, 2.0), 900, 100, 0, RL_DAMRAD/2, vec(2.0, 1.5f, 1.0f));
+        else if(gun==GUN_GL) adddynlight(v, 1.15f*RL_DAMRAD, vec(1.0f, 3.0f, 4.0), 900, 100, 0, 8, vec(0.5f, 2, 2));
         else adddynlight(v, 1.15f*RL_DAMRAD, vec(2, 1.5f, 1), 900, 100);
         int numdebris = gun==GUN_BARREL ? rnd(max(maxbarreldebris-5, 1))+5 : rnd(maxdebris-5)+5;
         vec debrisvel = owner->o==v ? vec(0, 0, 0) : vec(owner->o).sub(v).normalize(), debrisorigin(v);
@@ -578,7 +578,7 @@ namespace game
                     particle_flare(hudgunorigin(gun, from, sg[i], d), sg[i], 300, PART_STREAK, 0xFFC864, 0.28f);
                     if(!local) adddecal(DECAL_BULLET, sg[i], vec(from).sub(sg[i]).normalize(), 2.0f);
                 }
-                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), 30, vec(0.5f, 0.375f, 0.25f), 100, 100, DL_FLASH, 0, vec(0, 0, 0), d);
+                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), 30, vec(1.0f, 0.75f, 0.5f), 100, 100, DL_FLASH, 0, vec(0, 0, 0), d);
                 break;
             }
 
@@ -590,7 +590,7 @@ namespace game
                 if(muzzleflash && d->muzzle.x >= 0)
                     particle_flare(d->muzzle, d->muzzle, gun==GUN_CG ? 100 : 200, PART_MUZZLE_FLASH1, 0xFFFFFF, gun==GUN_CG ? 2.25f : 1.25f, d);
                 if(!local) adddecal(DECAL_BULLET, to, vec(from).sub(to).normalize(), 2.0f);
-                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), gun==GUN_CG ? 30 : 15, vec(0.5f, 0.375f, 0.25f), gun==GUN_CG ? 50 : 100, gun==GUN_CG ? 50 : 100, DL_FLASH, 0, vec(0, 0, 0), d);
+                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), gun==GUN_CG ? 30 : 15, vec(1.0f, 0.75f, 0.5f), gun==GUN_CG ? 50 : 100, gun==GUN_CG ? 50 : 100, DL_FLASH, 0, vec(0, 0, 0), d);
                 break;
             }
 
@@ -612,7 +612,7 @@ namespace game
                 up.z += dist/8;
                 if(muzzleflash && d->muzzle.x >= 0)
                     particle_flare(d->muzzle, d->muzzle, 200, PART_MUZZLE_FLASH2, 0xFFFFFF, 1.5f, d);
-                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), 20, vec(0.5f, 0.375f, 0.25f), 100, 100, DL_FLASH, 0, vec(0, 0, 0), d);
+                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), 20, vec(1.0f, 0.75f, 0.5f), 100, 100, DL_FLASH, 0, vec(0, 0, 0), d);
                 newbouncer(from, up, local, id, d, BNC_GRENADE, 1500, guns[GUN_GL].projspeed);
                 break;
             }
@@ -623,7 +623,7 @@ namespace game
                 if(muzzleflash && d->muzzle.x >= 0)
                     particle_flare(d->muzzle, d->muzzle, 150, PART_MUZZLE_FLASH3, 0xFFFFFF, 1.25f, d);
                 if(!local) adddecal(DECAL_BULLET, to, vec(from).sub(to).normalize(), 3.0f);
-                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), 25, vec(0.5f, 0.375f, 0.25f), 75, 75, DL_FLASH, 0, vec(0, 0, 0), d);
+                if(muzzlelight) adddynlight(hudgunorigin(gun, d->o, to, d), 25, vec(1.0f, 0.75f, 0.5f), 75, 75, DL_FLASH, 0, vec(0, 0, 0), d);
                 break;
         }
 
