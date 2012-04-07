@@ -351,6 +351,10 @@ extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightp
 extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcspheresidemask(const vec &p, float radius, float bias);
 extern int calcspheretetramask(const vec &p, float radius, float bias);
+extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
+extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
+extern int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax);
+extern int calcspherecsmsplits(const vec &center, float radius);
 
 // ents
 extern char *entname(entity &e);

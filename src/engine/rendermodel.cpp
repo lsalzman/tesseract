@@ -601,7 +601,7 @@ static inline int shadowmaskmodel(const vec &center, float radius)
             if(center.dist(shadoworigin) >= radius + shadowradius) return 0;
             return calcspheresidemask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
         case SM_CASCADE:
-            return ~0;
+            return calcspherecsmsplits(center, radius);
     }
     return 0;
 }

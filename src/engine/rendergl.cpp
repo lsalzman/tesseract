@@ -2392,36 +2392,45 @@ static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort 
 // cascaded shadow maps
 struct cascaded_shadow_map
 {
-    glmatrixf model;              // model view is shared by all splits
-    glmatrixf proj[csmmaxsplitn]; // one projection per split
-    glmatrixf tex[csmmaxsplitn];  // to compute the shadow map coordinates
-    int idx[csmmaxsplitn];        // shadowmapinfo indices
-    float fard[csmmaxsplitn];     // far distance in player frustum
-    vec lightview;                // view vector for light
-    void sunlightgetmodelmatrix();// compute the shared model matrix
-    void sunlightgetprojmatrix(); // compute each cropped projection matrix
-    void sunlightgettexmatrix();  // get matrices used for shadow mapping
-    bool sunlight;                // is there any sunlight?
+    struct splitinfo
+    {
+        glmatrixf proj; // one projection per split
+        glmatrixf tex;  // to compute the shadowmap coordinates
+        int idx;        // shadowmapinfo indices
+        float fardist;  // far distance in player frustum
+        plane cull[4];  // world space culling planes of the split's projected sides
+    };
+    glmatrixf model;                // model view is shared by all splits
+    splitinfo splits[csmmaxsplitn]; // per-split parameters
+    vec lightview;                  // view vector for light
+    void setup(vector<shadowmapinfo> &sms); // insert shadowmaps for each split frustum if there is sunlight
+    void getmodelmatrix();          // compute the shared model matrix
+    void getprojmatrix();           // compute each cropped projection matrix
+    void gettexmatrix();            // get matrices used for shadow mapping
+    void gencullplanes();           // generate culling planes for the mvp matrix
+    bool used;                      // rendered this frame?
 };
 
-static bool sunlightinsert(vector<shadowmapinfo> &sms, int *csmidx)
+void cascaded_shadow_map::setup(vector<shadowmapinfo> &sms)
 {
-    extern int sunlight; // hack here
-    if(sunlight == 0) return false; // no sunlight
-#if 1
+    used = sunlight != 0;
+    if(!used) return; // no sunlight
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
-        //const bool inserted = shadowatlaspacker.insert(smx, smy, smmaxsize, smmaxsize);
-        const bool inserted = shadowatlaspacker.insert(smx, smy, csmmaxsize, csmmaxsize);
-        if(!inserted) fatal("cascaded shadow maps MUST be packed");
-        shadowmapinfo *sm = addshadowmap(sms, smx, smy, csmmaxsize, csmidx[i]);
+        if(!shadowatlaspacker.insert(smx, smy, csmmaxsize, csmmaxsize))
+        {
+            //fatal("cascaded shadow maps MUST be packed");
+            used = false;
+            return;
+        }
+        shadowmapinfo *sm = addshadowmap(sms, smx, smy, csmmaxsize, splits[i].idx);
         sm->light = -1;
     }
-    return true;
-#else
-    return false;
-#endif
+    getmodelmatrix();
+    getprojmatrix();
+    gettexmatrix();
+    gencullplanes();
 }
 
 struct splitfrustum
@@ -2474,23 +2483,24 @@ static void updatesplitdist(splitfrustum *f, float nd, float fd)
     f[csmsplitn-1].farplane = fd;
 }
 
-void cascaded_shadow_map::sunlightgetmodelmatrix()
+void cascaded_shadow_map::getmodelmatrix()
 {
-    this->model = viewmatrix;
-    this->model.rotate_around_x(sunlightpitch*RAD);
-    this->model.rotate_around_z((180-sunlightyaw)*RAD);
+    model = viewmatrix;
+    model.rotate_around_x(sunlightpitch*RAD);
+    model.rotate_around_z((180-sunlightyaw)*RAD);
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
-VAR(csmfarplane, 64, 512, 4096);
+VAR(csmfarplane, 64, 2048, 16384);
 VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
 FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
 FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
 FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
+VAR(csmcull, 0, 1, 1);
 
-void cascaded_shadow_map::sunlightgetprojmatrix()
+void cascaded_shadow_map::getprojmatrix()
 {
     splitfrustum f[csmmaxsplitn];
     vec lightup, lightright;
@@ -2539,9 +2549,57 @@ void cascaded_shadow_map::sunlightgetprojmatrix()
 
         // modify mvp with a scale and offset
         // now compute the update model view matrix for this split
-        this->proj[i].ortho(minv.x, maxv.x, minv.y, maxv.y, -maxz, -minz);
-        this->fard[i] = f[i].farplane;
+        this->splits[i].proj.ortho(minv.x, maxv.x, minv.y, maxv.y, -maxz, -minz);
+        this->splits[i].fardist = f[i].farplane;
     }
+}
+
+void cascaded_shadow_map::gencullplanes()
+{
+    loopi(csmsplitn)
+    {
+        splitinfo &split = splits[i];
+        glmatrixf mvp;
+        mvp.mul(split.proj, model);
+        vec4 px = mvp.getrow(0), py = mvp.getrow(1), pw = mvp.getrow(3);
+        split.cull[0] = plane(vec4(pw).add(px)).normalize(); // left plane
+        split.cull[1] = plane(vec4(pw).sub(px)).normalize(); // right plane
+        split.cull[2] = plane(vec4(pw).add(py)).normalize(); // bottom plane
+        split.cull[3] = plane(vec4(pw).sub(py)).normalize(); // top plane
+    }        
+}
+
+cascaded_shadow_map csm;
+
+int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax)
+{
+    int mask = (1<<csmsplitn)-1;
+    if(csmcull) loopi(csmsplitn)
+    {
+        const cascaded_shadow_map::splitinfo &split = csm.splits[i];
+        loopk(4)
+        {
+            const plane &p = split.cull[k];
+            ivec o(p.x < 0 ? bbmin.x : bbmax.x, p.y < 0 ? bbmin.y : bbmax.y, p.z < 0 ? bbmin.z : bbmax.z);
+            if(o.dist(p) < 0) { mask &= ~(1<<i); break; }
+        }
+    }
+    return mask;
+}
+
+int calcspherecsmsplits(const vec &center, float radius)
+{
+    int mask = (1<<csmsplitn)-1;
+    if(csmcull) loopi(csmsplitn)
+    {
+        const cascaded_shadow_map::splitinfo &split = csm.splits[i];
+        loopk(4)
+        {
+            const plane &p = split.cull[k];
+            if(p.dist(center) < -radius) { mask &= ~(1<<i); break; }
+        }
+    }
+    return mask;
 }
 
 static int playing_around_with_buffer_splitting;
@@ -2615,20 +2673,19 @@ vector<int> lightorder;
 vector<int> lighttiles[LIGHTTILE_H][LIGHTTILE_W];
 vector<shadowmapinfo> shadowmaps;
 
-void cascaded_shadow_map::sunlightgettexmatrix()
+void cascaded_shadow_map::gettexmatrix()
 {
     loopi(csmsplitn)
     {
-        const shadowmapinfo &sm = shadowmaps[this->idx[i]];
+        const shadowmapinfo &sm = shadowmaps[splits[i].idx];
         const float scale = 0.5f*float(sm.size);
         const float bias = csmbias * (1024.0 / sm.size); 
-        this->tex[i].mul(this->proj[i], this->model);
-        this->tex[i].scale(scale, scale, 0.5f);
-        this->tex[i].translate(scale + sm.x, scale + sm.y, 0.5f - 0.5f*bias);
+        glmatrixf &tex = splits[i].tex;
+        tex.mul(splits[i].proj, model);
+        tex.scale(scale, scale, 0.5f);
+        tex.translate(scale + sm.x, scale + sm.y, 0.5f - 0.5f*bias);
     }
 }
-
-cascaded_shadow_map csm;
 
 static inline bool sortlights(int x, int y)
 {
@@ -2713,7 +2770,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         static const char * const splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
 
         // sunlight is processed first
-        if(csm.sunlight && csmdeferredshading)
+        if(csm.used && csmdeferredshading)
         {
             if(ao && aosun) deferredcsmaoshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
             else deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
@@ -2724,9 +2781,9 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             glMatrixMode(GL_TEXTURE);
             loopi(csmsplitn)
             {
-                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 7+i, csm.fard[i]);
+                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 7+i, csm.splits[i].fardist);
                 glActiveTexture_(GL_TEXTURE0_ARB+i+1);
-                glLoadMatrixf(csm.tex[i].v);
+                glLoadMatrixf(csm.splits[i].tex.v);
             }
             glActiveTexture_(GL_TEXTURE0_ARB);
             glMatrixMode(GL_MODELVIEW);
@@ -3000,12 +3057,12 @@ void rendercsmshadowmaps()
 
     loopi(csmsplitn)
     {
-        const shadowmapinfo &sm = shadowmaps[csm.idx[i]];
+        const shadowmapinfo &sm = shadowmaps[csm.splits[i].idx];
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
         glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf(csm.proj[i].v);
+        glLoadMatrixf(csm.splits[i].proj.v);
         glMatrixMode(GL_MODELVIEW);
         glLoadMatrixf(csm.model.v);
         glViewport(sm.x, sm.y, sm.size, sm.size);
@@ -3031,16 +3088,8 @@ void rendershadowmaps()
         lightinfo &l = lights[sm.light];
 
         int sidemask;
-        if(smtetra)
-        {
-            extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
-            sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
-        }
-        else
-        {
-            extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
-            sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
-        }
+        if(smtetra) sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
+        else sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
 
         float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
         GLfloat smprojmatrix[16] =
@@ -3399,13 +3448,7 @@ void gl_drawframe(int w, int h)
 
     shadowmaps.setsize(0);
     shadowatlaspacker.reset();
-    csm.sunlight = sunlightinsert(shadowmaps, csm.idx);
-    if(csm.sunlight)
-    {
-        csm.sunlightgetmodelmatrix();
-        csm.sunlightgetprojmatrix();
-        csm.sunlightgettexmatrix();
-    }
+    csm.setup(shadowmaps);
 
     if(!debugcsm)
     {
@@ -3418,7 +3461,7 @@ void gl_drawframe(int w, int h)
         glLoadMatrixf(csm.model.v);
         glMatrixMode(GL_PROJECTION);
         const int splitid = ::min(debugcsm-1, csmsplitn-1);
-        glLoadMatrixf(csm.proj[splitid].v);
+        glLoadMatrixf(csm.splits[splitid].proj.v);
     }
 
     readmatrices();
@@ -3539,7 +3582,7 @@ void gl_drawframe(int w, int h)
     glPushMatrix();
 
     // sun light
-    if(csm.sunlight && csmshadowmap)
+    if(csm.used && csmshadowmap)
     {
         if(csmpolyfactor || csmpolyoffset)
         {

@@ -141,6 +141,11 @@ struct vec
     {
         return dist_to_bb(o, T(o).add(size));
     }
+    
+    template<class T> float project_bb(const T &min, const T &max) const
+    {
+        return x*(x < 0 ? max.x : min.x) + y*(y < 0 ? max.y : min.y) + z*(z < 0 ? max.z : min.z);
+    }
 };
 
 #define VEC_OP(OP)                                                    \

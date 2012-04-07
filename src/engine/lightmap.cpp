@@ -300,7 +300,7 @@ void show_calclight_progress()
     renderprogress(bar1, text1);
 }
 
-static void calcsurfaces(cube &c, const ivec &co, int size, int usefacemask)
+static void calcsurfaces(cube &c, const ivec &co, int size, int usefacemask, int preview = 0)
 {
     surfaceinfo surfaces[6];
     vertinfo litverts[6*2*MAXFACEVERTS];
@@ -395,6 +395,8 @@ static void calcsurfaces(cube &c, const ivec &co, int size, int usefacemask)
             }
         }
 
+        if(preview) { surf.numverts |= preview; continue; }
+
         int surflayer = LAYER_TOP;
         if(vslot.layer)
         {
@@ -415,7 +417,8 @@ static void calcsurfaces(cube &c, const ivec &co, int size, int usefacemask)
         }
         surf.numverts |= surflayer;
     }
-    loopk(6)
+    if(preview) setsurfaces(c, surfaces, litverts, numlitverts);
+    else loopk(6)
     {
         surfaceinfo &surf = surfaces[k];
         if(surf.used())
@@ -444,13 +447,8 @@ static void calcsurfaces(cube *c, const ivec &co, int size)
         {
             if(c[i].ext)
             {
-                loopj(6)
-                {
-                    surfaceinfo &surf = c[i].ext->surfaces[j];
-                    if(surf.lmid[0] >= LMID_RESERVED || surf.lmid[1] >= LMID_RESERVED) goto nextcube;
-                    surf.clear();
-                }
-            }
+                loopj(6) c[i].ext->surfaces[j].clear();
+            }    
             int usefacemask = 0;
             loopj(6) if(c[i].texture[j] != DEFAULT_SKY && (!(c[i].merged&(1<<j)) || (c[i].ext && c[i].ext->surfaces[j].numverts&MAXFACEVERTS)))
             {
@@ -458,18 +456,29 @@ static void calcsurfaces(cube *c, const ivec &co, int size)
             }
             if(usefacemask) calcsurfaces(c[i], o, size, usefacemask);
         }
-    nextcube:;
     }
 }
 
 static inline bool previewblends(cube &c, const ivec &o, int size)
 {
+    if(isempty(c) || c.material&MAT_ALPHA) return false;
     int usefacemask = 0;
-    loopj(6) if(c.texture[j] != DEFAULT_SKY && (!(c.merged&(1<<j)) || (c.ext && c.ext->surfaces[j].numverts&MAXFACEVERTS)))
-    {
+    loopj(6) if(c.texture[j] != DEFAULT_SKY && lookupvslot(c.texture[j], false).layer)
         usefacemask |= visibletris(c, j, o.x, o.y, o.z, size)<<(4*j);
+    if(!usefacemask) return false;
+    int layer = calcblendlayer(o.x, o.y, o.x + size, o.y + size);
+    if(!(layer&LAYER_BOTTOM))
+    {
+        if(!c.ext) return false;
+        bool blends = false;
+        loopi(6) if(c.ext->surfaces[i].numverts&LAYER_BOTTOM)
+        {
+            c.ext->surfaces[i].brighten();
+            blends = true;
+        }
+        return blends;
     }
-    if(usefacemask) calcsurfaces(c, o, size, usefacemask);
+    calcsurfaces(c, o, size, usefacemask, layer);
     return true;
 }
 

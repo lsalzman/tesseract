@@ -96,7 +96,7 @@ void addvisibleva(vtxarray *va)
     float dist = vadist(va, camera1->o);
     va->distance = int(dist); /*cv.dist(camera1->o) - va->size*SQRT3/2*/
 
-    int hash = min(int(dist*VASORTSIZE/worldsize), VASORTSIZE-1);
+    int hash = clamp(int(dist*VASORTSIZE/worldsize), 0, VASORTSIZE-1);
     vtxarray **prev = &vasort[hash], *cur = vasort[hash];
 
     while(cur && va->distance >= cur->distance)
@@ -1095,10 +1095,10 @@ void addshadowva(vtxarray *va, float dist)
 {
     va->rdistance = int(dist);
 
-    int hash = min(int(dist*VASORTSIZE/worldsize), VASORTSIZE-1);
+    int hash = clamp(int(dist*VASORTSIZE/worldsize), 0, VASORTSIZE-1);
     vtxarray **prev = &vasort[hash], *cur = vasort[hash];
 
-    while(cur && va->rdistance >= cur->rdistance)
+    while(cur && va->rdistance > cur->rdistance)
     {
         prev = &cur->rnext;
         cur = cur->rnext;
@@ -1129,13 +1129,16 @@ void findshadowvas(vector<vtxarray *> &vas)
         float dist = vadist(&v, shadoworigin);
         if(dist < shadowradius || !smdistcull)
         {
+            ivec bbmin, bbmax;
+            if(v.children.length() || v.mapmodels.length()) { bbmin = v.bbmin; bbmax = v.bbmax; }
+            else { bbmin = v.geommin; bbmax = v.geommax; }
             switch(shadowmapping)
             {
                 case SM_TETRA:
-                    v.shadowmask = smbbcull ? calcbbtetramask(v.geommin, v.geommax, shadoworigin, shadowradius, shadowbias) : 0xF;
+                    v.shadowmask = smbbcull ? calcbbtetramask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias) : 0xF;
                     break;
                 case SM_CUBEMAP:
-                    v.shadowmask = smbbcull ? calcbbsidemask(v.geommin, v.geommax, shadoworigin, shadowradius, shadowbias) : 0x3F;
+                    v.shadowmask = smbbcull ? calcbbsidemask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias) : 0x3F;
                     break;
                 default:
                     continue;
@@ -1158,10 +1161,16 @@ void findcsmshadowvas(vector<vtxarray *> &vas)
     loopv(vas)
     {
         vtxarray &v = *vas[i];
-        v.shadowmask = ~0x0;
-        float dist = 0.f;
-        addshadowva(&v, dist);
-        if(v.children.length()) findcsmshadowvas(v.children);
+        ivec bbmin, bbmax;
+        if(v.children.length() || v.mapmodels.length()) { bbmin = v.bbmin; bbmax = v.bbmax; }
+        else { bbmin = v.geommin; bbmax = v.geommax; }
+        v.shadowmask = calcbbcsmsplits(bbmin, bbmax);
+        if(v.shadowmask)
+        {
+            float dist = sunlightdir.project_bb(bbmin, bbmax);
+            addshadowva(&v, dist);
+            if(v.children.length()) findcsmshadowvas(v.children);
+        }
     }
 }
 
@@ -1233,7 +1242,7 @@ void findshadowmms()
     }
 }
 
-void findcsmshadowmms() // XXX implement the culling stuff
+void findcsmshadowmms()
 {
     shadowmms = NULL;
     octaentities **lastmms = &shadowmms; 
@@ -1242,6 +1251,8 @@ void findcsmshadowmms() // XXX implement the culling stuff
         loopvj(va->mapmodels)
         {
             octaentities *oe = va->mapmodels[j];
+            if(!calcbbcsmsplits(oe->bbmin, oe->bbmax))
+                continue;
             oe->rnext = NULL;
             *lastmms = oe;
             lastmms = &oe->rnext;
