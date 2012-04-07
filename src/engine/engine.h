@@ -356,6 +356,9 @@ extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, 
 extern int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax);
 extern int calcspherecsmsplits(const vec &center, float radius);
 
+extern void loaddeferredlightshaders();
+extern void cleardeferredlightshaders();
+
 // ents
 extern char *entname(entity &e);
 extern bool haveselent();

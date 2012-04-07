@@ -13,6 +13,7 @@ HVARFR(sunlight, 0, 0, 0xFFFFFF,
     if(sunlight <= 255) sunlight |= (sunlight<<8) | (sunlight<<16);
     sunlightcolor = bvec((sunlight>>16)&0xFF, (sunlight>>8)&0xFF, sunlight&0xFF);
     setupsunlight();
+    cleardeferredlightshaders();
 });
 FVARFR(sunlightscale, 0, 1, 16, setupsunlight());
 vec sunlightdir(0, 0, 1);
@@ -560,17 +561,13 @@ VARF(fullbrightlevel, 0, 128, 255, initlights());
 void clearlights()
 {
     clearlightcache();
+    cleardeferredlightshaders();
 }
 
 void initlights()
 {
-    if(fullbright && editmode)
-    {
-        clearlights();
-        return;
-    }
-
     clearlightcache();
+    loaddeferredlightshaders();
 }
 
 void lightreaching(const vec &target, vec &color, vec &dir, bool fast, extentity *t, float ambient)

@@ -2326,11 +2326,11 @@ VAR(smmaxsize, 1, 384, 1024);
 //VAR(smmaxsize, 1, 4096, 4096);
 VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
-VAR(smtetra, 0, 0, 1);
+VARF(smtetra, 0, 0, 1, cleardeferredlightshaders());
 VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
-VAR(smgather, 0, 0, 1);
+VARF(smgather, 0, 0, 1, cleardeferredlightshaders());
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
 
@@ -2408,20 +2408,17 @@ struct cascaded_shadow_map
     void getprojmatrix();           // compute each cropped projection matrix
     void gettexmatrix();            // get matrices used for shadow mapping
     void gencullplanes();           // generate culling planes for the mvp matrix
-    bool used;                      // rendered this frame?
 };
 
 void cascaded_shadow_map::setup(vector<shadowmapinfo> &sms)
 {
-    used = sunlight != 0;
-    if(!used) return; // no sunlight
+    if(!sunlight) return; // no sunlight
     loopi(csmsplitn)
     {
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         if(!shadowatlaspacker.insert(smx, smy, csmmaxsize, csmmaxsize))
         {
             //fatal("cascaded shadow maps MUST be packed");
-            used = false;
             return;
         }
         shadowmapinfo *sm = addshadowmap(sms, smx, smy, csmmaxsize, splits[i].idx);
@@ -2649,12 +2646,12 @@ VAR(debugbuffersplit, 0, 0, 1);
 
 static int playsing_around_with_timer_queries_here;
 
-VARF(ao, 0, 1, 1, cleanupao());
+VARF(ao, 0, 1, 1, { cleanupao(); cleardeferredlightshaders(); });
 FVAR(aoradius, 0, 4, 256);
 FVAR(aodark, 1e-3f, 3, 1e3f);
 FVAR(aosharp, 1e-3f, 1, 1e3f);
 FVAR(aomin, 0, 0.25f, 1);
-VAR(aosun, 0, 1, 1);
+VARF(aosun, 0, 1, 1, cleardeferredlightshaders());
 VAR(aoblur, 0, 4, 7);
 FVAR(aosigma, 0.005f, 0.5f, 2.0f);
 VAR(aoiter, 0, 0, 4);
@@ -2687,6 +2684,45 @@ void cascaded_shadow_map::gettexmatrix()
     }
 }
 
+static Shader *deferredlightshader = NULL;
+
+void cleardeferredlightshaders()
+{
+    deferredlightshader = NULL;
+}
+
+void loaddeferredlightshaders()
+{
+    string shadow, sun;
+    int shadowlen = 0, sunlen = 0;
+
+    shadow[shadowlen++] = 'p';
+    if(smtetra) shadow[shadowlen++] = 't';
+    if(smgather && (hasTG || hasT4)) shadow[shadowlen++] = 'g';
+    shadow[shadowlen] = '\0';
+
+    if(ao) sun[sunlen++] = 'a';
+    if(sunlight)
+    {
+        sun[sunlen++] = 'c';
+        sun[sunlen++] = '0' + csmsplitn;
+        if(smgather && (hasTG || hasTG)) sun[sunlen++] = 'g';
+        if(ao && aosun) sun[sunlen++] = 'A';
+        
+    }
+    sun[sunlen] = '\0';
+
+    defformatstring(name)("deferredlight%s%s", shadow, sun);
+    deferredlightshader = lookupshaderbyname(name);
+    if(!deferredlightshader)
+    {
+        defformatstring(cmd)("deferredlightshader \"%s\" \"%s\" %d", shadow, sun, csmsplitn);
+        execute(cmd);
+        deferredlightshader = lookupshaderbyname(name);
+        if(!deferredlightshader) deferredlightshader = (Shader *)(void *)-1;
+    }
+}
+
 static inline bool sortlights(int x, int y)
 {
     const lightinfo &xl = lights[x], &yl = lights[y];
@@ -2698,6 +2734,9 @@ VAR(culllighttiles, 0, 1, 1);
 
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
+    if(!deferredlightshader) loaddeferredlightshaders();
+    if(deferredlightshader == (Shader *)(void *)-1) return;
+
     glEnable(GL_SCISSOR_TEST);
 
     if(!depthtestlights) glDisable(GL_DEPTH_TEST);
@@ -2744,21 +2783,32 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    static Shader *deferredlightshader = NULL, *deferredshadowshader = NULL, *deferredlightaoshader = NULL, *deferredshadowaoshader = NULL, *deferredcsmshader = NULL, *deferredcsmaoshader = NULL;
-    if(!deferredlightshader) deferredlightshader = lookupshaderbyname("deferredlight");
-    if(!deferredshadowshader) deferredshadowshader = lookupshaderbyname("deferredshadow");
-    if(!deferredlightaoshader) deferredlightaoshader = lookupshaderbyname("deferredlightao");
-    if(!deferredshadowaoshader) deferredshadowaoshader = lookupshaderbyname("deferredshadowao");
-    if(!deferredcsmshader) deferredcsmshader = lookupshaderbyname("deferredcsm");
-    if(!deferredcsmaoshader) deferredcsmaoshader = lookupshaderbyname("deferredcsmao");
-
     setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
     setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
     if(ao) setenvparamf("aoscale", SHPARAM_PIXEL, 2, float(aow)/gw, float(aoh)/gh, aomin, 1.0f-aomin);
+    float lightscale = 2.0f*(hdr ? 0.25f : 1)/255.0f;
+    setenvparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale);
+
+    if(sunlight && csmdeferredshading)
+    {
+        static const char * const splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
+        setenvparamf("cameraview", SHPARAM_PIXEL, 4, camdir.x, camdir.y, camdir.z);
+        setenvparamf("sunlightdir", SHPARAM_PIXEL, 5, sunlightdir.x, sunlightdir.y, sunlightdir.z);
+        setenvparamf("sunlightcolor", SHPARAM_PIXEL, 6, sunlightcolor.x*lightscale, sunlightcolor.y*lightscale, sunlightcolor.z*lightscale);
+        setenvparamf("csmfar", SHPARAM_PIXEL, 7, float(csmfarplane), 1.f / float(csmfarsmoothdistance));
+        glMatrixMode(GL_TEXTURE);
+        loopi(csmsplitn)
+        {
+            setenvparamf(splitfar[i], SHPARAM_PIXEL, 8+i, csm.splits[i].fardist);
+            glActiveTexture_(GL_TEXTURE1_ARB+i);
+            glLoadMatrixf(csm.splits[i].tex.v);
+        }
+        glActiveTexture_(GL_TEXTURE0_ARB);
+        glMatrixMode(GL_MODELVIEW);
+    }
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
-    float lightscale = 2.0f*(hdr ? 0.25f : 1)/255.0f;
     for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
     {
         vector<int> &tile = lighttiles[y][x];
@@ -2767,40 +2817,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         static const char * const lightcolor[] = { "light0color", "light1color", "light2color", "light3color", "light4color", "light5color", "light6color", "light7color" };
         static const char * const shadowparams[] = { "shadow0params", "shadow1params", "shadow2params", "shadow3params", "shadow4params", "shadow5params", "shadow6params", "shadow7params" };
         static const char * const shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset", "shadow4offset", "shadow5offset", "shadow6offset", "shadow7offset" };
-        static const char * const splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
 
-        // sunlight is processed first
-        if(csm.used && csmdeferredshading)
-        {
-            if(ao && aosun) deferredcsmaoshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
-            else deferredcsmshader->setvariant(csmsplitn-1, smgather && (hasTG || hasT4) ? 1 : 0);
-            setlocalparamf("cameraview", SHPARAM_PIXEL, 3, camdir.x, camdir.y, camdir.z);
-            setlocalparamf("lightview", SHPARAM_PIXEL, 4, csm.lightview.x, csm.lightview.y, csm.lightview.z);
-            setlocalparamf("lightcolor", SHPARAM_PIXEL, 5, sunlightcolor.x*lightscale, sunlightcolor.y*lightscale, sunlightcolor.z*lightscale);
-            setlocalparamf("csmfar", SHPARAM_PIXEL, 6, float(csmfarplane), 1.f / float(csmfarsmoothdistance));
-            glMatrixMode(GL_TEXTURE);
-            loopi(csmsplitn)
-            {
-                setlocalparamf(splitfar[i], SHPARAM_PIXEL, 7+i, csm.splits[i].fardist);
-                glActiveTexture_(GL_TEXTURE0_ARB+i+1);
-                glLoadMatrixf(csm.splits[i].tex.v);
-            }
-            glActiveTexture_(GL_TEXTURE0_ARB);
-            glMatrixMode(GL_MODELVIEW);
-            const int startx = x*gw/LIGHTTILE_W, starty = y*gh/LIGHTTILE_H;
-            const int endx = (x+1)*gw/LIGHTTILE_W, endy = (y+1)*gh/LIGHTTILE_H;
-            glScissor(startx, starty, endx-startx, endy-starty);
-            glBegin(GL_TRIANGLE_STRIP);
-            glVertex3f( 1, -1, -1);
-            glVertex3f(-1, -1, -1);
-            glVertex3f( 1,  1, -1);
-            glVertex3f(-1,  1, -1);
-            glEnd();
-        }
-
-        if(debugcsm) continue;
-
-        // point lights are processed here
         for(int i = 0;;)
         {
             int n = min(tile.length() - i, 8);
@@ -2811,43 +2828,26 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 if((lights[tile[i+j]].shadowmap >= 0) != shadowmap) { n = j; break; }
             }
 
-            if(!i && ao)
-            {
-                if(shadowmap && !smnoshadow) deferredshadowaoshader->setvariant(n-1, (smtetra ? 1 : 0) + (smgather && (hasTG || hasT4) ? 2 : 0));
-                else if(n > 0) deferredlightaoshader->setvariant(n-1, 0);
-                else deferredlightaoshader->set();
-            }
-            else if(shadowmap && !smnoshadow) deferredshadowshader->setvariant(n-1, (smtetra ? 1 : 0) + (smgather && (hasTG || hasT4) ? 2 : 0));
-            else if(n > 0) deferredlightshader->setvariant(n-1, 0);
-            else deferredlightshader->set();
-
-            if(!i)
-            {
-                extern bvec ambientcolor;
-                setlocalparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale);
-            }
-            else
-            {
-                setlocalparamf("lightscale", SHPARAM_PIXEL, 3, 0, 0, 0, 0);
-            }
-
+            if(!n) deferredlightshader->set();
+            else deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0));
+        
             float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
             loopj(n)
             {
                 lightinfo &l = lights[tile[i+j]];
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 4 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
-                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 5 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
+                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 16 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
+                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 17 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[l.shadowmap];
                     float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
                           bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
-                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 6 + 4*j,
+                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 18 + 4*j,
                         0.5f * (sm.size - smborder),
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
                         sm.size,
                         0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
-                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 7 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
+                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 19 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
                 sx1 = min(sx1, l.sx1);
                 sy1 = min(sy1, l.sy1);
@@ -3520,9 +3520,9 @@ void gl_drawframe(int w, int h)
     screenmatrix.translate(-1.0f, -1.0f, -1.0f);
     eyematrix.mul(invprojmatrix, screenmatrix);
 
-    setenvparamf("gdepthscale", SHPARAM_PIXEL, 38, eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]);
-    setenvparamf("gdepthpackparams", SHPARAM_VERTEX, 39, -1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane);
-    setenvparamf("gdepthunpackparams", SHPARAM_PIXEL, 39, -farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f));
+    setenvparamf("gdepthscale", SHPARAM_PIXEL, 54, eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]);
+    setenvparamf("gdepthpackparams", SHPARAM_VERTEX, 55, -1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane);
+    setenvparamf("gdepthunpackparams", SHPARAM_PIXEL, 55, -farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f));
     
     rendergeom(causticspass);
     resetmodelbatches();
@@ -3582,7 +3582,7 @@ void gl_drawframe(int w, int h)
     glPushMatrix();
 
     // sun light
-    if(csm.used && csmshadowmap)
+    if(sunlight && csmshadowmap)
     {
         if(csmpolyfactor || csmpolyoffset)
         {

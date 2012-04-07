@@ -137,8 +137,6 @@ void toggleedit(bool force)
     stoppaintblendmap();
     keyrepeat(editmode);
     editing = entediting = editmode;
-    extern int fullbright;
-    if(fullbright) initlights();
     if(!force) game::edittoggled(editmode);
 }
 
