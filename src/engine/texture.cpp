@@ -1470,10 +1470,10 @@ static void mergevslot(VSlot &dst, const VSlot &src, int diff, Slot *slot = NULL
 {
     if(diff & (1<<VSLOT_SHPARAM)) loopv(src.params) 
     {
-        const ShaderParam &sp = src.params[i];
+        const SlotShaderParam &sp = src.params[i];
         loopvj(dst.params)
         {
-            ShaderParam &dp = dst.params[j];
+            SlotShaderParam &dp = dst.params[j];
             if(sp.name == dp.name)
             {
                 memcpy(dp.val, sp.val, sizeof(dp.val));
@@ -1546,7 +1546,7 @@ static bool comparevslot(const VSlot &dst, const VSlot &src, int diff)
         if(src.params.length() != dst.params.length()) return false;
         loopv(src.params) 
         {
-            const ShaderParam &sp = src.params[i], &dp = dst.params[i];
+            const SlotShaderParam &sp = src.params[i], &dp = dst.params[i];
             if(sp.name != dp.name || memcmp(sp.val, dp.val, sizeof(sp.val))) return false;
         }
     }

@@ -2,23 +2,16 @@
 
 #include "engine.h"
 
-struct GlobalShaderParamState : ShaderParamState
-{
-    uint version;
-
-    GlobalShaderParamState() : version(0) {}
-};
-
 Shader *Shader::lastshader = NULL;
 
 Shader *defaultshader = NULL, *rectshader = NULL, *cubemapshader = NULL, *notextureshader = NULL, *nocolorshader = NULL, *foggedshader = NULL, *foggednotextureshader = NULL, *stdworldshader = NULL, *lineshader = NULL, *foggedlineshader = NULL;
 
-static hashtable<const char *, Shader> shaders;
-static Shader *curshader = NULL;
-static vector<ShaderParam> curparams;
-static GlobalShaderParamState vertexparamstate[RESERVEDSHADERPARAMS + MAXSHADERPARAMS], pixelparamstate[RESERVEDSHADERPARAMS + MAXSHADERPARAMS];
+static hashtable<const char *, GlobalShaderParamState> globalparams(256);
+static hashtable<const char *, int> localparams(256);
+static hashtable<const char *, Shader> shaders(256);
+static Shader *slotshader = NULL;
+static vector<SlotShaderParam> slotparams;
 static bool standardshader = false, initshaders = false, forceshaders = true;
-static uint paramversion = 0;
 
 VAR(reservevpparams, 1, 16, 0);
 VAR(maxtexcoords, 1, 0, 0);
@@ -178,17 +171,14 @@ static void linkglslprogram(Shader &s, bool msg = true)
         glUseProgramObject_(s.program);
         loopi(8)
         {
-            defformatstring(arg)("tex%d", i);
-            GLint loc = glGetUniformLocation_(s.program, arg);
+            static const char * const texnames[8] = { "tex0", "tex1", "tex2", "tex3", "tex4", "tex5", "tex6", "tex7" };
+            GLint loc = glGetUniformLocation_(s.program, texnames[i]);
             if(loc != -1) glUniform1i_(loc, i);
         }
         loopv(s.defaultparams)
         {
-            ShaderParam &param = s.defaultparams[i];
-            string pname;
-            if(param.type==SHPARAM_UNIFORM) copystring(pname, param.name);
-            else formatstring(pname)("%s%d", param.type==SHPARAM_VERTEX ? "v" : "p", param.index);
-            param.loc = glGetUniformLocation_(s.program, pname);
+            SlotShaderParamState &param = s.defaultparams[i];
+            param.loc = glGetUniformLocation_(s.program, param.name);
         }
         loopv(s.uniformlocs) bindglsluniform(s, s.uniformlocs[i]);
         glUseProgramObject_(0);
@@ -245,63 +235,49 @@ bool checkglslsupport()
     return success!=0;
 }
 
-#define ALLOCEXTPARAM 0xFF
-#define UNUSEDEXTPARAM 0xFE
-            
-static int addextparam(Shader &s, const char *name, int type, int index, int loc)
+int getlocalparam(const char *name)
 {
-    if(!(s.numextparams%4))
-    {
-        LocalShaderParamState *extparams = new LocalShaderParamState[s.numextparams+4];
-        if(s.extparams)
-        {
-            memcpy(extparams, s.extparams, s.numextparams*sizeof(LocalShaderParamState));
-            delete[] s.extparams;
-        }
-        s.extparams = extparams;
-    }
-    int extindex = s.numextparams;
-    LocalShaderParamState &ext = s.extparams[extindex];
-    ext.name = name;
-    ext.type = type;
-    ext.index = index;
-    ext.loc = loc;
-    s.numextparams++;
-    return extindex;
+    return localparams.access(name, int(localparams.numelems));
 }
 
-static void allocglsluniformparam(Shader &s, int type, int index, bool local = false)
+static int addlocalparam(Shader &s, const char *name, int loc, GLenum format)
 {
-    ShaderParamState &val = (type==SHPARAM_VERTEX ? vertexparamstate[index] : pixelparamstate[index]);
-    int loc = val.name ? glGetUniformLocation_(s.program, val.name) : -1;
-    if(loc == -1)
+    int idx = getlocalparam(name);
+    if(idx >= s.localparamremap.length())
     {
-        defformatstring(altname)("%s%d", type==SHPARAM_VERTEX ? "v" : "p", index);
-        loc = glGetUniformLocation_(s.program, altname);
+        int n = idx + 1 - s.localparamremap.length();
+        memset(s.localparamremap.pad(n), 0xFF, n);
     }
-    if(loc >= 0) loopi(s.numextparams)
+    s.localparamremap[idx] = s.localparams.length();
+
+    LocalShaderParamState &l = s.localparams.add();
+    l.name = name;
+    l.loc = loc;
+    l.format = format;
+    return idx;
+}
+
+GlobalShaderParamState *getglobalparam(const char *name)
+{
+    GlobalShaderParamState *param = globalparams.access(name);
+    if(!param)
     {
-        LocalShaderParamState &ext = s.extparams[i];
-        if(ext.loc != loc) continue;
-        if(ext.type==SHPARAM_LOOKUP) 
-        {
-            ext.name = val.name;
-            ext.type = type;
-            ext.index = local ? -1 : index;
-        }
-        if(type==SHPARAM_VERTEX) s.extvertparams[index] = i;
-        else s.extpixparams[index] = i;
-        return;
+        param = &globalparams[name];
+        param->name = name;
+        memset(param->val, -1, sizeof(param->val));
+        param->version = -1;
     }
-    if(loc == -1)
-    {
-        if(type==SHPARAM_VERTEX) s.extvertparams[index] = local ? UNUSEDEXTPARAM : ALLOCEXTPARAM;
-        else s.extpixparams[index] = local ? UNUSEDEXTPARAM : ALLOCEXTPARAM;
-        return;
-    }
-    int extindex = addextparam(s, val.name, type, local ? -1 : index, loc);
-    if(type==SHPARAM_VERTEX) s.extvertparams[index] = extindex;
-    else s.extpixparams[index] = extindex;
+    return param;
+}
+
+static GlobalShaderParamUse *addglobalparam(Shader &s, GlobalShaderParamState *param, int loc, GLenum format)
+{
+    GlobalShaderParamUse &g = s.globalparams.add();
+    g.param = param;
+    g.version = -2;
+    g.loc = loc;
+    g.format = format;
+    return &g;
 }
 
 static void setglsluniformformat(Shader &s, const char *name, GLenum format, int size)
@@ -311,12 +287,16 @@ static void setglsluniformformat(Shader &s, const char *name, GLenum format, int
         case GL_FLOAT:
         case GL_FLOAT_VEC2_ARB:
         case GL_FLOAT_VEC3_ARB:
-            break;
         case GL_FLOAT_VEC4_ARB:
+        case GL_FLOAT_MAT2_ARB:
+        case GL_FLOAT_MAT3_ARB:
+        case GL_FLOAT_MAT4_ARB:
+            break;
         default:
             return;
     }
-    if(size > 1 || !strncmp(name, "gl_", 3)) return;
+    if(!strncmp(name, "gl_", 3)) return;
+
     int loc = glGetUniformLocation_(s.program, name);
     if(loc < 0) return;
     loopvj(s.defaultparams) if(s.defaultparams[j].loc == loc)
@@ -324,13 +304,14 @@ static void setglsluniformformat(Shader &s, const char *name, GLenum format, int
         s.defaultparams[j].format = format;
         return;
     }
-    loopj(s.numextparams) if(s.extparams[j].loc == loc)
-    {
-        s.extparams[j].format = format;
-        return;
-    }
-    int extindex = addextparam(s, NULL, SHPARAM_LOOKUP, -1, loc);
-    if(extindex >= 0) s.extparams[extindex].format = format;
+    loopvj(s.uniformlocs) if(s.uniformlocs[j].loc == loc) return;
+    loopvj(s.globalparams) if(s.globalparams[j].loc == loc) return;
+    loopvj(s.localparams) if(s.localparams[j].loc == loc) return;
+
+    name = getshaderparamname(name);
+    GlobalShaderParamState *param = globalparams.access(name);
+    if(param) addglobalparam(s, param, loc, format);
+    else addlocalparam(s, name, loc, format);
 }
 
 static void allocglslactiveuniforms(Shader &s)
@@ -351,21 +332,7 @@ static void allocglslactiveuniforms(Shader &s)
     } 
 }
 
-static inline bool duplicateenvparam(GlobalShaderParamState &param)
-{
-    loopj(RESERVEDSHADERPARAMS) 
-    {
-        GlobalShaderParamState &vp = vertexparamstate[j];
-        if(vp.name && !vp.local && vp.version > param.version && !strcmp(vp.name, param.name))
-            return true;
-        GlobalShaderParamState &pp = pixelparamstate[j];
-        if(pp.name && !pp.local && pp.version > param.version && !strcmp(pp.name, param.name))
-            return true;
-    }
-    return false;
-}
-
-void Shader::allocenvparams(Slot *slot)
+void Shader::allocparams(Slot *slot)
 {
     if(slot)
     {
@@ -399,183 +366,108 @@ void Shader::allocenvparams(Slot *slot)
             }
         }
     }
-    if(!extvertparams) 
-    {
-        extvertparams = new uchar[2*RESERVEDSHADERPARAMS];
-        extpixparams = extvertparams + RESERVEDSHADERPARAMS;
-    }
-    memset(extvertparams, ALLOCEXTPARAM, 2*RESERVEDSHADERPARAMS);
-    loopi(RESERVEDSHADERPARAMS) if(vertexparamstate[i].name && !vertexparamstate[i].local && !duplicateenvparam(vertexparamstate[i]))
-        allocglsluniformparam(*this, SHPARAM_VERTEX, i);
-    loopi(RESERVEDSHADERPARAMS) if(pixelparamstate[i].name && !pixelparamstate[i].local && !duplicateenvparam(pixelparamstate[i]))
-        allocglsluniformparam(*this, SHPARAM_PIXEL, i);
     allocglslactiveuniforms(*this);
 }
 
-static inline void setuniformval(LocalShaderParamState &l, const float *val)
+int GlobalShaderParamState::nextversion = 0;
+
+void GlobalShaderParamState::resetversions()
 {
-    if(memcmp(l.curval, val, sizeof(l.curval)))
-    {
-        memcpy(l.curval, val, sizeof(l.curval));
-        switch(l.format)
+    enumerate(shaders, Shader, s, 
+    { 
+        loopv(s.globalparams)
         {
-            case GL_FLOAT:          glUniform1fv_(l.loc, 1, l.curval); break;
-            case GL_FLOAT_VEC2_ARB: glUniform2fv_(l.loc, 1, l.curval); break;
-            case GL_FLOAT_VEC3_ARB: glUniform3fv_(l.loc, 1, l.curval); break;
-            case GL_FLOAT_VEC4_ARB: glUniform4fv_(l.loc, 1, l.curval); break;
+            GlobalShaderParamUse &u = s.globalparams[i];
+            if(u.version != u.param->version) u.version = -2;
         }
-    }
-}
-
-static inline void flushparam(int type, int index)
-{
-    ShaderParamState &val = (type==SHPARAM_VERTEX ? vertexparamstate[index] : pixelparamstate[index]);
-    if(Shader::lastshader)
+    });
+    nextversion = 0;
+    enumerate(globalparams, GlobalShaderParamState, g, { g.version = ++nextversion; });
+    enumerate(shaders, Shader, s,
     {
-        uchar &extindex = (type==SHPARAM_VERTEX ? Shader::lastshader->extvertparams[index] : Shader::lastshader->extpixparams[index]);
-        if(extindex == ALLOCEXTPARAM) allocglsluniformparam(*Shader::lastshader, type, index, val.local);
-        if(extindex < Shader::lastshader->numextparams)
-            setuniformval(Shader::lastshader->extparams[extindex], val.val);
-    }
-}
-
-static inline bool sortparamversions(const GlobalShaderParamState *x, const GlobalShaderParamState *y)
-{
-    return x->version < y->version;
-}
-
-static uint resetparamversions()
-{
-    GlobalShaderParamState *params[2*(RESERVEDSHADERPARAMS + MAXSHADERPARAMS)];
-    loopi(RESERVEDSHADERPARAMS + MAXSHADERPARAMS)
-    {
-        params[2*i+0] = &vertexparamstate[i];  
-        params[2*i+1] = &pixelparamstate[i];
-    }
-    quicksort(params, 2*(RESERVEDSHADERPARAMS + MAXSHADERPARAMS), sortparamversions);
-    paramversion = 0;
-    loopi(2*(RESERVEDSHADERPARAMS + MAXSHADERPARAMS)) params[i]->version = ++paramversion;
-    return paramversion;
-}
- 
-static inline ShaderParamState &setparamf(const char *name, int type, int index, float x, float y, float z, float w)
-{
-    GlobalShaderParamState &val = (type==SHPARAM_VERTEX ? vertexparamstate[index] : pixelparamstate[index]);
-    val.name = name;
-    val.version = ++paramversion > 0 ? paramversion : resetparamversions();
-    if(val.dirty==ShaderParamState::INVALID || val.val[0]!=x || val.val[1]!=y || val.val[2]!=z || val.val[3]!=w)
-    {
-        val.val[0] = x;
-        val.val[1] = y;
-        val.val[2] = z;
-        val.val[3] = w;
-        val.dirty = ShaderParamState::DIRTY;
-    }
-    return val;
-}
-
-static inline ShaderParamState &setparamfv(const char *name, int type, int index, const float *v)
-{
-    GlobalShaderParamState &val = (type==SHPARAM_VERTEX ? vertexparamstate[index] : pixelparamstate[index]);
-    val.name = name;
-    val.version = ++paramversion > 0 ? paramversion : resetparamversions();
-    if(val.dirty==ShaderParamState::INVALID || memcmp(val.val, v, sizeof(val.val)))
-    {
-        memcpy(val.val, v, sizeof(val.val));
-        val.dirty = ShaderParamState::DIRTY;
-    }
-    return val;
+        loopv(s.globalparams)
+        {
+            GlobalShaderParamUse &u = s.globalparams[i];
+            if(u.version >= 0) u.version = u.param->version;
+        }
+    });
 }
 
 void setenvparamf(const char *name, int type, int index, float x, float y, float z, float w)
 {
-    ShaderParamState &val = setparamf(name, type, index, x, y, z, w);
-    val.local = false;
+    GlobalShaderParam param(name);
+    param.set(x, y, z, w);
 }
 
 void setenvparamfv(const char *name, int type, int index, const float *v)
 {
-    ShaderParamState &val = setparamfv(name, type, index, v);
-    val.local = false;
+    GlobalShaderParam param(name);
+    param.set(v[0], v[1], v[2], v[3]);
 }
 
 void flushenvparamf(const char *name, int type, int index, float x, float y, float z, float w)
 {
-    ShaderParamState &val = setparamf(name, type, index, x, y, z, w);
-    val.local = false;
-    flushparam(type, index);
+    GlobalShaderParam param(name);
+    param.set(x, y, z, w);
+    Shader::lastshader->set();
 }
 
 void flushenvparamfv(const char *name, int type, int index, const float *v)
 {
-    ShaderParamState &val = setparamfv(name, type, index, v);
-    val.local = false;
-    flushparam(type, index);
+    GlobalShaderParam param(name);
+    param.set(v[0], v[1], v[2], v[3]);
+    Shader::lastshader->set();
 }
 
 void setlocalparamf(const char *name, int type, int index, float x, float y, float z, float w)
 {
-    ShaderParamState &val = setparamf(name, type, index, x, y, z, w);
-    val.local = true;
-    flushparam(type, index);
+    LocalShaderParam param(name);
+    param.set(x, y, z, w);
 }
 
 void setlocalparamfv(const char *name, int type, int index, const float *v)
 {
-    ShaderParamState &val = setparamfv(name, type, index, v);
-    val.local = true;
-    flushparam(type, index);
+    LocalShaderParam param(name);
+    param.set(v[0], v[1], v[2], v[3]);
 }
 
-void Shader::flushenvparams(Slot *slot)
-{
-    if(!used) allocenvparams(slot);
-            
-    loopi(numextparams)
-    {
-        LocalShaderParamState &ext = extparams[i];
-        if(ext.index >= 0)
-            setuniformval(ext, ext.type==SHPARAM_VERTEX ? vertexparamstate[ext.index].val : pixelparamstate[ext.index].val);
-    }
-    used = true;
-}
-
-static inline void setglslslotparam(const ShaderParam &p, LocalShaderParamState &l, uint &mask, int i)
+static inline void setslotparam(SlotShaderParamState &l, uint &mask, int i, const float *val)
 {
     if(!(mask&(1<<i)))
     {
         mask |= 1<<i;
-        setuniformval(l, p.val);
-    }
-}
-
-static inline void setglslslotparams(vector<LocalShaderParamState> &defaultparams, Slot &slot, VSlot &vslot)
-{
-    uint unimask = 0;
-    loopv(vslot.params)
-    {
-        ShaderParam &p = vslot.params[i];
-        if(!defaultparams.inrange(p.loc)) continue;
-        LocalShaderParamState &l = defaultparams[p.loc];
-        setglslslotparam(p, l, unimask, p.loc);
-    }
-    loopv(slot.params)
-    {
-        ShaderParam &p = slot.params[i];
-        if(!defaultparams.inrange(p.loc)) continue;
-        LocalShaderParamState &l = defaultparams[p.loc];
-        setglslslotparam(p, l, unimask, p.loc);
-    }
-    loopv(defaultparams)
-    {
-        LocalShaderParamState &l = defaultparams[i];
-        setglslslotparam(l, l, unimask, i);
+        switch(l.format)
+        {
+            case GL_FLOAT:          glUniform1fv_(l.loc, 1, val); break;
+            case GL_FLOAT_VEC2_ARB: glUniform2fv_(l.loc, 1, val); break;
+            case GL_FLOAT_VEC3_ARB: glUniform3fv_(l.loc, 1, val); break;
+            case GL_FLOAT_VEC4_ARB: glUniform4fv_(l.loc, 1, val); break;
+        }
     }
 }
 
 void Shader::setslotparams(Slot &slot, VSlot &vslot)
 {
-    setglslslotparams(defaultparams, slot, vslot);
+    uint unimask = 0;
+    loopv(vslot.params)
+    {
+        SlotShaderParam &p = vslot.params[i];
+        if(!defaultparams.inrange(p.loc)) continue;
+        SlotShaderParamState &l = defaultparams[p.loc];
+        setslotparam(l, unimask, p.loc, p.val);
+    }
+    loopv(slot.params)
+    {
+        SlotShaderParam &p = slot.params[i];
+        if(!defaultparams.inrange(p.loc)) continue;
+        SlotShaderParamState &l = defaultparams[p.loc];
+        setslotparam(l, unimask, p.loc, p.val);
+    }
+    loopv(defaultparams)
+    {
+        SlotShaderParamState &l = defaultparams[i];
+        setslotparam(l, unimask, i, l.val);
+    }
 }
 
 void Shader::bindprograms()
@@ -605,11 +497,9 @@ void Shader::cleanup(bool invalid)
     if(vsobj) { if(reusevs) glDeleteObject_(vsobj); vsobj = 0; }
     if(psobj) { if(reuseps) glDeleteObject_(psobj); psobj = 0; }
     if(program) { glDeleteObject_(program); program = 0; }
-    numextparams = 0;
-    DELETEA(extparams);
-    DELETEA(extvertparams);
-    extpixparams = NULL;
-    loopv(defaultparams) memset(defaultparams[i].curval, -1, sizeof(defaultparams[i].curval));
+    localparams.setsize(0);
+    localparamremap.setsize(0);
+    globalparams.setsize(0);
     if(standard || invalid)
     {
         type = SHADER_INVALID;
@@ -624,6 +514,7 @@ void Shader::cleanup(bool invalid)
         loopi(MAXSHADERDETAIL) fastshader[i] = this;
         reusevs = reuseps = NULL;
     }
+    else loopv(defaultparams) defaultparams[i].loc = -1;
 }
 
 static void genattriblocs(Shader &s, const char *vs, const char *ps)
@@ -689,7 +580,7 @@ Shader *newshader(int type, const char *name, const char *vs, const char *ps, Sh
         }
     }
     if(variant) loopv(variant->defaultparams) s.defaultparams.add(variant->defaultparams[i]);
-    else loopv(curparams) s.defaultparams.add(curparams[i]);
+    else loopv(slotparams) s.defaultparams.add(slotparams[i]);
     s.attriblocs.setsize(0);
     s.uniformlocs.setsize(0);
     genattriblocs(s, vs, ps);
@@ -758,7 +649,7 @@ static void gengenericvariant(Shader &s, const char *sname, const char *vs, cons
 
 static void genuniformdefs(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps, Shader *variant = NULL)
 {
-    if(variant ? variant->defaultparams.empty() : curparams.empty()) return;
+    if(variant ? variant->defaultparams.empty() : slotparams.empty()) return;
     const char *vsmain = findglslmain(vs), *psmain = findglslmain(ps);
     if(!vsmain || !psmain) return;
     vsbuf.put(vs, vsmain - vs);
@@ -769,9 +660,9 @@ static void genuniformdefs(vector<char> &vsbuf, vector<char> &psbuf, const char 
         vsbuf.put(uni, strlen(uni));
         psbuf.put(uni, strlen(uni));
     }
-    else loopv(curparams)
+    else loopv(slotparams)
     {
-        defformatstring(uni)("\nuniform vec4 %s;\n", curparams[i].name);
+        defformatstring(uni)("\nuniform vec4 %s;\n", slotparams[i].name);
         vsbuf.put(uni, strlen(uni));
         psbuf.put(uni, strlen(uni));
     }
@@ -806,7 +697,7 @@ void useshader(Shader *s)
     standardshader = s->standard;
     forceshaders = false;
     identflags &= ~IDF_PERSIST;
-    curparams.shrink(0);
+    slotparams.shrink(0);
     execute(defer);
     identflags = oldflags;
     forceshaders = wasforcing;
@@ -875,7 +766,7 @@ void shader(int *type, char *name, char *vs, char *ps)
    
     if((!hasCM && strstr(ps, "textureCube")) || (!hasTR && strstr(ps, "texture2DRect")))
     {
-        curparams.shrink(0);
+        slotparams.shrink(0);
         return;
     }
  
@@ -891,12 +782,12 @@ void shader(int *type, char *name, char *vs, char *ps)
         if(vsbuf.length()) vs = vsbuf.getbuf(); \
         if(psbuf.length()) ps = psbuf.getbuf(); \
     }
-    GENSHADER(curparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps));
+    GENSHADER(slotparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps));
     Shader *s = newshader(*type, name, vs, ps);
     if(s)
     {
     }
-    curparams.shrink(0);
+    slotparams.shrink(0);
 }
 
 void variantshader(int *type, char *name, int *row, char *vs, char *ps)
@@ -915,8 +806,6 @@ void variantshader(int *type, char *name, int *row, char *vs, char *ps)
     //renderprogress(loadprogress, info);
     vector<char> vsbuf, psbuf, vsbak, psbak;
     GENSHADER(s->defaultparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps, s));
-//    if (strcmp(name, "deferredcsm") == 0)
-//        printf(ps);
     Shader *v = newshader(*type, varname, vs, ps, s, *row);
     if(v)
     {
@@ -926,68 +815,68 @@ void variantshader(int *type, char *name, int *row, char *vs, char *ps)
 
 void setshader(char *name)
 {
-    curparams.shrink(0);
+    slotparams.shrink(0);
     Shader *s = shaders.access(name);
     if(!s)
     {
         conoutf(CON_ERROR, "no such shader: %s", name);
     }
-    else curshader = s;
+    else slotshader = s;
 }
 
-ShaderParam *findshaderparam(Slot &s, const char *name, int type = -1, int index = -1)
+static float *findslotparam(Slot &s, const char *name)
 {
     loopv(s.params)
     {
-        ShaderParam &param = s.params[i];
-        if((name && param.name && !strcmp(name, param.name)) || (param.type==type && param.index==index)) return &param;
+        SlotShaderParam &param = s.params[i];
+        if(!strcmp(name, param.name)) return param.val;
     }
     if(!s.shader->detailshader) return NULL;
     loopv(s.shader->detailshader->defaultparams)
     {
-        ShaderParam &param = s.shader->detailshader->defaultparams[i];
-        if((name && param.name && !strcmp(name, param.name)) || (param.type==type && param.index==index)) return &param;
+        SlotShaderParamState &param = s.shader->detailshader->defaultparams[i];
+        if(!strcmp(name, param.name)) return param.val;
     }
     return NULL;
 }
 
-ShaderParam *findshaderparam(VSlot &s, const char *name, int type = -1, int index = -1)
+static float *findslotparam(VSlot &s, const char *name)
 {
     loopv(s.params)
     {
-        ShaderParam &param = s.params[i];
-        if((name && param.name && !strcmp(name, param.name)) || (param.type==type && param.index==index)) return &param;
+        SlotShaderParam &param = s.params[i];
+        if(!strcmp(name, param.name)) return param.val;
     }
-    return findshaderparam(*s.slot, name, type, index);
+    return findslotparam(*s.slot, name);
 }
 
 void resetslotshader()
 {
-    curshader = NULL;
-    curparams.shrink(0);
+    slotshader = NULL;
+    slotparams.shrink(0);
 }
 
 void setslotshader(Slot &s)
 {
-    s.shader = curshader;
+    s.shader = slotshader;
     if(!s.shader)
     {
         s.shader = stdworldshader;
         return;
     }
-    loopv(curparams) s.params.add(curparams[i]);
+    loopv(slotparams) s.params.add(slotparams[i]);
 }
 
-static void linkslotshaderparams(vector<ShaderParam> &params, Shader *sh, bool load)
+static void linkslotshaderparams(vector<SlotShaderParam> &params, Shader *sh, bool load)
 {
     if(sh) loopv(params)
     {
         int loc = -1;
-        ShaderParam &param = params[i];
+        SlotShaderParam &param = params[i];
         loopv(sh->defaultparams)
         {
-            ShaderParam &dparam = sh->defaultparams[i];
-            if(param.name ? dparam.name==param.name : dparam.type==param.type && dparam.index==param.index)
+            SlotShaderParamState &dparam = sh->defaultparams[i];
+            if(dparam.name==param.name)
             {
                 if(memcmp(param.val, dparam.val, sizeof(param.val))) loc = i;
                 break;
@@ -1019,8 +908,8 @@ void linkvslotshader(VSlot &s, bool load)
 
     if(s.slot->texmask&(1<<TEX_GLOW))
     {
-        ShaderParam *cparam = findshaderparam(s, "glowcolor");
-        if(cparam) loopk(3) s.glowcolor[k] = clamp(cparam->val[k], 0.0f, 1.0f);
+        const float *cparam = findslotparam(s, "glowcolor");
+        if(cparam) loopk(3) s.glowcolor[k] = clamp(cparam[k], 0.0f, 1.0f);
     }
 }
 
@@ -1074,18 +963,13 @@ const char *getshaderparamname(const char *name)
     return name;
 }
 
-void addshaderparam(const char *name, int type, int n, float x, float y, float z, float w)
+void addslotparam(const char *name, float x, float y, float z, float w)
 {
-    if((type==SHPARAM_VERTEX || type==SHPARAM_PIXEL) && (n<0 || n>=MAXSHADERPARAMS))
-    {
-        conoutf(CON_ERROR, "shader param index must be 0..%d\n", MAXSHADERPARAMS-1);
-        return;
-    }
     if(name) name = getshaderparamname(name);
-    loopv(curparams)
+    loopv(slotparams)
     {
-        ShaderParam &param = curparams[i];
-        if(param.type == type && (name ? param.name==name : param.index == n))
+        SlotShaderParam &param = slotparams[i];
+        if(param.name==name)
         {
             param.val[0] = x;
             param.val[1] = y;
@@ -1094,17 +978,13 @@ void addshaderparam(const char *name, int type, int n, float x, float y, float z
             return;
         }
     }
-    ShaderParam param = {name, type, n, -1, {x, y, z, w}};
-    curparams.add(param);
+    SlotShaderParam param = {name, -1, {x, y, z, w}};
+    slotparams.add(param);
 }
 
-ICOMMAND(setvertexparam, "iffff", (int *n, float *x, float *y, float *z, float *w), addshaderparam(NULL, SHPARAM_VERTEX, *n, *x, *y, *z, *w));
-ICOMMAND(setpixelparam, "iffff", (int *n, float *x, float *y, float *z, float *w), addshaderparam(NULL, SHPARAM_PIXEL, *n, *x, *y, *z, *w));
-ICOMMAND(setuniformparam, "sffff", (char *name, float *x, float *y, float *z, float *w), addshaderparam(name, SHPARAM_UNIFORM, -1, *x, *y, *z, *w));
-ICOMMAND(setshaderparam, "sffff", (char *name, float *x, float *y, float *z, float *w), addshaderparam(name, SHPARAM_LOOKUP, -1, *x, *y, *z, *w));
-ICOMMAND(defvertexparam, "siffff", (char *name, int *n, float *x, float *y, float *z, float *w), addshaderparam(name[0] ? name : NULL, SHPARAM_VERTEX, *n, *x, *y, *z, *w));
-ICOMMAND(defpixelparam, "siffff", (char *name, int *n, float *x, float *y, float *z, float *w), addshaderparam(name[0] ? name : NULL, SHPARAM_PIXEL, *n, *x, *y, *z, *w));
-ICOMMAND(defuniformparam, "sffff", (char *name, float *x, float *y, float *z, float *w), addshaderparam(name, SHPARAM_UNIFORM, -1, *x, *y, *z, *w));
+ICOMMAND(setuniformparam, "sffff", (char *name, float *x, float *y, float *z, float *w), addslotparam(name, *x, *y, *z, *w));
+ICOMMAND(setshaderparam, "sffff", (char *name, float *x, float *y, float *z, float *w), addslotparam(name, *x, *y, *z, *w));
+ICOMMAND(defuniformparam, "sffff", (char *name, float *x, float *y, float *z, float *w), addslotparam(name, *x, *y, *z, *w));
 
 #define NUMPOSTFXBINDS 10
 
@@ -1306,11 +1186,6 @@ void cleanupshaders()
     enumerate(shaders, Shader, s, s.cleanup());
     Shader::lastshader = NULL;
     glUseProgramObject_(0);
-    loopi(RESERVEDSHADERPARAMS + MAXSHADERPARAMS)
-    {
-        vertexparamstate[i].dirty = ShaderParamState::INVALID;
-        pixelparamstate[i].dirty = ShaderParamState::INVALID;
-    }
 }
 
 void reloadshaders()

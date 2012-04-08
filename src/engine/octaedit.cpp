@@ -1717,7 +1717,7 @@ void vshaderparam(const char *name, float *x, float *y, float *z, float *w)
     ds.changed = 1<<VSLOT_SHPARAM;
     if(name[0])
     {
-        ShaderParam p = { getshaderparamname(name), SHPARAM_LOOKUP, -1, -1, {*x, *y, *z, *w} };
+        SlotShaderParam p = { getshaderparamname(name), -1, {*x, *y, *z, *w} };
         ds.params.add(p);
     }
     mpeditvslot(ds, allfaces, sel, true);
