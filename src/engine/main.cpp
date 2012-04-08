@@ -659,7 +659,6 @@ void resetgl()
     extern void cleanshadowmap();
     extern void cleanreflections();
     extern void cleanupglare();
-    extern void cleanupdepthfx();
     extern void cleanupshaders();
     extern void cleanupgl();
     recorder::cleanup();
@@ -670,7 +669,6 @@ void resetgl()
     cleanuptextures();
     cleanupblendmap();
     cleanreflections();
-    cleanupdepthfx();
     cleanupshaders();
     cleanupgl();
     

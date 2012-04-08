@@ -6,6 +6,9 @@
 Shader *particleshader = NULL, *particlenotextureshader = NULL;
 
 VARP(particlesize, 20, 100, 500);
+
+VARP(softparticles, 0, 1, 1);
+VARP(softparticleblend, 1, 8, 64);
     
 // Check emit_particles() to limit the rate that paricles can be emitted for models/sparklies
 // Automatically stops particles being emitted when paused or in reflective drawing
@@ -171,7 +174,6 @@ struct partrenderer
     virtual void reset() = 0;
     virtual void resettracked(physent *owner) { }   
     virtual particle *addpart(const vec &o, const vec &d, int fade, int color, float size, int gravity = 0) = 0;    
-    virtual int adddepthfx(vec &bbmin, vec &bbmax) { return 0; }
     virtual void update() { }
     virtual void render() = 0;
     virtual bool haswork() = 0;
@@ -787,7 +789,6 @@ typedef varenderer<PT_PART> quadrenderer;
 typedef varenderer<PT_TAPE> taperenderer;
 typedef varenderer<PT_TRAIL> trailrenderer;
 
-#include "depthfx.h"
 #include "explosion.h"
 #include "lensflare.h"
 #include "lightning.h"
@@ -797,30 +798,6 @@ struct softquadrenderer : quadrenderer
     softquadrenderer(const char *texname, int type, int collide = 0)
         : quadrenderer(texname, type|PT_SOFT, collide)
     {
-    }
-
-    int adddepthfx(vec &bbmin, vec &bbmax)
-    {
-        if(!depthfxtex.highprecision() && !depthfxtex.emulatehighprecision()) return 0;
-        int numsoft = 0;
-        loopi(numparts)
-        {
-            particle &p = parts[i];
-            float radius = p.size*SQRT2;
-            vec o, d;
-            int blend, ts;
-            calc(&p, blend, ts, o, d, false);
-            if(!isfoggedsphere(radius, p.o) && (depthfxscissor!=2 || depthfxtex.addscissorbox(p.o, radius))) 
-            {
-                numsoft++;
-                loopk(3)
-                {
-                    bbmin[k] = min(bbmin[k], o[k] - radius);
-                    bbmax[k] = max(bbmax[k], o[k] + radius);
-                }
-            }
-        }
-        return numsoft;
     }
 };
 
@@ -852,36 +829,6 @@ static partrenderer *parts[] =
     &flares                                                                                        // lens flares - must be done last
 };
 
-void finddepthfxranges()
-{
-    depthfxmin = vec(1e16f, 1e16f, 1e16f);
-    depthfxmax = vec(0, 0, 0);
-    numdepthfxranges = fireballs.finddepthfxranges(depthfxowners, depthfxranges, 0, MAXDFXRANGES, depthfxmin, depthfxmax);
-    numdepthfxranges = bluefireballs.finddepthfxranges(depthfxowners, depthfxranges, numdepthfxranges, MAXDFXRANGES, depthfxmin, depthfxmax);
-    loopk(3)
-    {
-        depthfxmin[k] -= depthfxmargin;
-        depthfxmax[k] += depthfxmargin;
-    }
-    if(depthfxparts)
-    {
-        loopi(sizeof(parts)/sizeof(parts[0]))
-        {
-            partrenderer *p = parts[i];
-            if(p->type&PT_SOFT && p->adddepthfx(depthfxmin, depthfxmax))
-            {
-                if(!numdepthfxranges)
-                {
-                    numdepthfxranges = 1;
-                    depthfxowners[0] = NULL;
-                    depthfxranges[0] = 0;
-                }
-            }
-        }
-    }              
-    if(depthfxscissor<2 && numdepthfxranges>0) depthfxtex.addscissorbox(depthfxmin, depthfxmax);
-}
- 
 VARFP(maxparticles, 10, 4000, 40000, particleinit());
 VARFP(fewparticles, 10, 100, 40000, particleinit());
 
@@ -960,7 +907,7 @@ void renderparticles(bool mainpass)
     bool rendered = false;
     uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD;
    
-    /*if(binddepthfxtex())*/ if(!reflecting && !refracting && depthfx) flagmask |= PT_SOFT;
+    if(!reflecting && !refracting && softparticles) flagmask |= PT_SOFT;
 
     loopi(sizeof(parts)/sizeof(parts[0]))
     {
@@ -975,7 +922,7 @@ void renderparticles(bool mainpass)
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);             
 
             float colorscale = hdr ? 0.25f : 1;
-            setenvparamf("colorscale", SHPARAM_VERTEX, 4, colorscale, colorscale, colorscale, 1);
+            GLOBALPARAM(colorscale, (colorscale, colorscale, colorscale, 1));
 
             particleshader->set();
             glGetFloatv(GL_FOG_COLOR, oldfogc);
@@ -1013,10 +960,7 @@ void renderparticles(bool mainpass)
                 if(flags&PT_SOFT)
                 {
                     SETSHADER(particlesoft);
-                    setlocalparamf("softparams", SHPARAM_VERTEX, 5, -1.0f/depthfxpartblend, 0, 0);
-                    setlocalparamf("softparams", SHPARAM_PIXEL, 5, -1.0f/depthfxpartblend, 0, 0);
-
-                    binddepthfxparams(depthfxpartblend);
+                    LOCALPARAM(softparams, (-1.0f/softparticleblend, 0, 0));
                 }
                 else particleshader->set();
             }

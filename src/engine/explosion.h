@@ -1,3 +1,6 @@
+VARP(softexplosion, 0, 1, 1);
+VARP(softexplosionblend, 1, 16, 64);
+
 //cache our unit hemisphere
 static GLushort *hemiindices = NULL;
 static vec *hemiverts = NULL;
@@ -155,7 +158,7 @@ static void setupexplosion()
     if(!expmodtex[1]) expmodtex[1] = createexpmodtex(64, 0.25f);
     lastexpmodtex = 0;
 
-    if(!reflecting && !refracting && depthfx)
+    if(!reflecting && !refracting && softparticles && softexplosion)
     {
         if(explosion2d) SETSHADER(explosion2dsoft); else SETSHADER(explosion3dsoft);
     }
@@ -292,64 +295,6 @@ struct fireballrenderer : listrenderer
         deleteexplosions();
     }
 
-    int finddepthfxranges(void **owners, float *ranges, int numranges, int maxranges, vec &bbmin, vec &bbmax)
-    {
-        static struct fireballent : physent
-        {
-            fireballent()
-            {
-                type = ENT_CAMERA;
-                collidetype = COLLIDE_AABB;
-            }
-        } e;
-
-        for(listparticle *p = list; p; p = p->next)
-        {
-            int ts = p->fade <= 5 ? 1 : lastmillis-p->millis;
-            float pmax = p->val,
-                  size = p->fade ? float(ts)/p->fade : 1,
-                  psize = (p->size + pmax * size)*WOBBLE;
-            if(2*(p->size + pmax)*WOBBLE < depthfxblend ||
-               (!depthfxtex.highprecision() && !depthfxtex.emulatehighprecision() && psize > depthfxscale - depthfxbias) ||
-               isfoggedsphere(psize, p->o)) continue;
-
-            e.o = p->o;
-            e.radius = e.xradius = e.yradius = e.eyeheight = e.aboveeye = psize;
-            if(::collide(&e, vec(0, 0, 0), 0, false)) continue;
-
-            if(depthfxscissor==2 && !depthfxtex.addscissorbox(p->o, psize)) continue;
-
-            vec dir = camera1->o;
-            dir.sub(p->o);
-            float dist = dir.magnitude();
-            dir.mul(psize/dist).add(p->o);
-            float depth = depthfxtex.eyedepth(dir);
-
-            loopk(3)
-            {
-                bbmin[k] = min(bbmin[k], p->o[k] - psize);
-                bbmax[k] = max(bbmax[k], p->o[k] + psize);
-            }
-
-            int pos = numranges;
-            loopi(numranges) if(depth < ranges[i]) { pos = i; break; }
-            if(pos >= maxranges) continue;
-
-            if(numranges > pos)
-            {
-                int moved = min(numranges-pos, maxranges-(pos+1));
-                memmove(&ranges[pos+1], &ranges[pos], moved*sizeof(float));
-                memmove(&owners[pos+1], &owners[pos], moved*sizeof(void *));
-            }
-            if(numranges < maxranges) numranges++;
-
-            ranges[pos] = depth;
-            owners[pos] = p;
-        }
-
-        return numranges;
-    }
-
     void seedemitter(particleemitter &pe, const vec &o, const vec &d, int fade, float size, int gravity)
     {
         pe.maxfade = max(pe.maxfade, fade);
@@ -393,24 +338,20 @@ struct fireballrenderer : listrenderer
             s.rotate(-lastmillis/7.0f*RAD, rotdir);
             t.rotate(-lastmillis/7.0f*RAD, rotdir);
 
-            setlocalparamf("texgenS", SHPARAM_VERTEX, 2, 0.5f*s.x, 0.5f*s.y, 0.5f*s.z, 0.5f);
-            setlocalparamf("texgenT", SHPARAM_VERTEX, 3, 0.5f*t.x, 0.5f*t.y, 0.5f*t.z, 0.5f);
+            LOCALPARAM(texgenS, (0.5f*s.x, 0.5f*s.y, 0.5f*s.z, 0.5f));
+            LOCALPARAM(texgenT, (0.5f*t.x, 0.5f*t.y, 0.5f*t.z, 0.5f));
         }
 
-        setlocalparamf("center", SHPARAM_VERTEX, 0, o.x, o.y, o.z);
-        setlocalparamf("animstate", SHPARAM_VERTEX, 1, size, psize, pmax, float(lastmillis));
-        if(2*(p->size + pmax)*WOBBLE >= depthfxblend)
+        LOCALPARAM(center, (o));
+        LOCALPARAM(animstate, (size, psize, pmax, float(lastmillis)));
+        if(2*(p->size + pmax)*WOBBLE >= softexplosionblend)
         {
-            setlocalparamf("softparams", SHPARAM_VERTEX, 5, -1.0f/depthfxblend, 0, inside ? blend/(2*255.0f) : 0);
-            setlocalparamf("softparams", SHPARAM_PIXEL, 5, -1.0f/depthfxblend, 0, inside ? blend/(2*255.0f) : 0);
+            LOCALPARAM(softparams, (-1.0f/softexplosionblend, 0, inside ? blend/(2*255.0f) : 0));
         }
         else
         {
-            setlocalparamf("softparams", SHPARAM_VERTEX, 5, 0, -1, inside ? blend/(2*255.0f) : 0);
-            setlocalparamf("softparams", SHPARAM_PIXEL, 5, 0, -1, inside ? blend/(2*255.0f) : 0);
+            LOCALPARAM(softparams, (0, -1, inside ? blend/(2*255.0f) : 0));
         }
-
-        //binddepthfxparams(depthfxblend, inside ? blend/(2*255.0f) : 0, 2*(p->size + pmax)*WOBBLE >= depthfxblend, p);
 
         glRotatef(lastmillis/7.0f, -rotdir.x, rotdir.y, -rotdir.z);
         glScalef(-psize, psize, -psize);

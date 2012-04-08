@@ -753,7 +753,7 @@ void bindblendtexture(const ivec &p)
     {
         BlendTexture &bt = blendtexs[i];
         int tsize = 1<<min(worldscale, 12);
-        setenvparamf("blendmapparams", SHPARAM_VERTEX, 7, bt.x, bt.y, 1.0f/tsize, 1.0f/tsize);
+        GLOBALPARAM(blendmapparams, (bt.x, bt.y, 1.0f/tsize, 1.0f/tsize));
         glBindTexture(GL_TEXTURE_2D, bt.tex);
         break;
     }

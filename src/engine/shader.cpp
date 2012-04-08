@@ -393,44 +393,6 @@ void GlobalShaderParamState::resetversions()
     });
 }
 
-void setenvparamf(const char *name, int type, int index, float x, float y, float z, float w)
-{
-    GlobalShaderParam param(name);
-    param.set(x, y, z, w);
-}
-
-void setenvparamfv(const char *name, int type, int index, const float *v)
-{
-    GlobalShaderParam param(name);
-    param.set(v[0], v[1], v[2], v[3]);
-}
-
-void flushenvparamf(const char *name, int type, int index, float x, float y, float z, float w)
-{
-    GlobalShaderParam param(name);
-    param.set(x, y, z, w);
-    Shader::lastshader->set();
-}
-
-void flushenvparamfv(const char *name, int type, int index, const float *v)
-{
-    GlobalShaderParam param(name);
-    param.set(v[0], v[1], v[2], v[3]);
-    Shader::lastshader->set();
-}
-
-void setlocalparamf(const char *name, int type, int index, float x, float y, float z, float w)
-{
-    LocalShaderParam param(name);
-    param.set(x, y, z, w);
-}
-
-void setlocalparamfv(const char *name, int type, int index, const float *v)
-{
-    LocalShaderParam param(name);
-    param.set(v[0], v[1], v[2], v[3]);
-}
-
 static inline void setslotparam(SlotShaderParamState &l, uint &mask, int i, const float *val)
 {
     if(!(mask&(1<<i)))
@@ -1066,7 +1028,7 @@ void renderpostfx()
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, postfxfb);
     }
 
-    setenvparamf("millis", SHPARAM_VERTEX, 1, lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f);
+    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
 
     loopv(postfxpasses)
     {
@@ -1087,8 +1049,7 @@ void renderpostfx()
             h = tex >= 0 ? max(screen->h>>postfxtexs[tex].scale, 1) : screen->h;
         glViewport(0, 0, w, h);
         p.shader->set();
-        setlocalparamfv("params", SHPARAM_VERTEX, 0, p.params.v);
-        setlocalparamfv("params", SHPARAM_PIXEL, 0, p.params.v);
+        LOCALPARAM(params, (p.params));
         int tw = w, th = h, tmu = 0;
         loopj(NUMPOSTFXBINDS) if(p.inputs&(1<<j) && binds[j] >= 0)
         {
@@ -1250,17 +1211,17 @@ void setblurshader(int pass, int size, int radius, float *weights, float *offset
         s = lookupshaderbyname(name);
     }
     s->set();
-    setlocalparamfv("weights", SHPARAM_PIXEL, 0, weights);
-    setlocalparamfv("weights2", SHPARAM_PIXEL, 2, &weights[4]);
-    setlocalparamf("offsets", SHPARAM_VERTEX, 1,
+    LOCALPARAM(weights, (weights[0], weights[1], weights[2], weights[3]));
+    LOCALPARAM(weights2, (weights[4], weights[5], weights[6], weights[7]));
+    LOCALPARAM(offsets, (
         pass==0 ? offsets[1]/size : offsets[0]/size,
         pass==1 ? offsets[1]/size : offsets[0]/size,
         (offsets[2] - offsets[1])/size,
-        (offsets[3] - offsets[2])/size);
+        (offsets[3] - offsets[2])/size));
     loopk(4)
     {
-        static const char *names[4] = { "offset4", "offset5", "offset6", "offset7" };
-        setlocalparamf(names[k], SHPARAM_PIXEL, 3+k,
+        static LocalShaderParam offsets2[4] = { "offset4", "offset5", "offset6", "offset7" };
+        offsets2[k].set(
             pass==0 ? offsets[4+k]/size : offsets[0]/size,
             pass==1 ? offsets[4+k]/size : offsets[0]/size,
             0, 0);

@@ -638,9 +638,8 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
     glBindTexture(GL_TEXTURE_2D, tex);
     glColor4ub((blendbrushcolor>>16)&0xFF, (blendbrushcolor>>8)&0xFF, blendbrushcolor&0xFF, 0x40);
 
-    GLfloat s[4] = { 1.0f/w, 0, 0, -x/w }, t[4] = { 0, 1.0f/h, 0, -y/h };
-    setlocalparamfv("texgenS", SHPARAM_VERTEX, 0, s);
-    setlocalparamfv("texgenT", SHPARAM_VERTEX, 1, t);
+    LOCALPARAM(texgenS, (1.0f/w, 0, 0, -x/w));
+    LOCALPARAM(texgenT, (0, 1.0f/h, 0, -y/h));
 
     vtxarray *prev = NULL;
     for(vtxarray *va = visibleva; va; va = va->next)
@@ -679,76 +678,6 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
     notextureshader->set();
 }
  
-void renderdepthobstacles(const vec &bbmin, const vec &bbmax, float scale, float *ranges, int numranges)
-{
-    float scales[4] = { 0, 0, 0, 0 }, offsets[4] = { 0, 0, 0, 0 };
-    if(numranges < 0)
-    {
-        SETSHADER(depthfxsplitworld);
-
-        loopi(-numranges)
-        {
-            if(!i) scales[i] = 1.0f/scale;
-            else scales[i] = scales[i-1]*256;
-        }
-    }
-    else
-    {
-        SETSHADER(depthfxworld);
-
-        if(!numranges) loopi(4) scales[i] = 1.0f/scale;
-        else loopi(numranges) 
-        {
-            scales[i] = 1.0f/scale;
-            offsets[i] = -ranges[i]/scale;
-        }
-    }
-    setlocalparamfv("depthscale", SHPARAM_VERTEX, 0, scales);
-    setlocalparamfv("depthoffsets", SHPARAM_VERTEX, 1, offsets);
-
-    glDisable(GL_TEXTURE_2D);
-    glEnableClientState(GL_VERTEX_ARRAY);
-
-    vtxarray *prev = NULL;
-    for(vtxarray *va = visibleva; va; va = va->next)
-    {
-        if(!va->texs || va->occluded >= OCCLUDE_GEOM || 
-           va->o.x > bbmax.x || va->o.y > bbmax.y || va->o.z > bbmax.z ||
-           va->o.x + va->size < bbmin.x || va->o.y + va->size < bbmin.y || va->o.z + va->size < bbmin.z)
-           continue;
-
-        if(!prev || va->vbuf != prev->vbuf)
-        {
-            if(hasVBO)
-            {
-                glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
-            }
-            glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
-        }
-
-        drawvatris(va, 3*va->tris, va->edata);
-        xtravertsva += va->verts;
-        if(va->alphabacktris + va->alphafronttris > 0) 
-        {
-            drawvatris(va, 3*(va->alphabacktris + va->alphafronttris), va->edata + 3*(va->tris + va->blendtris));
-            xtravertsva += 3*(va->alphabacktris + va->alphafronttris);
-        }
-
-        prev = va;
-    }
-
-    if(hasVBO)
-    {
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-    }
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glEnable(GL_TEXTURE_2D);
-
-    defaultshader->set();
-}
-
 int calcbbsidemask(const ivec &bbmin, const ivec &bbmax, const vec &lightpos, float lightradius, float bias)
 {
     vec pmin = bbmin.tovec().sub(lightpos).div(lightradius), pmax = bbmax.tovec().sub(lightpos).div(lightradius);
@@ -1518,13 +1447,13 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         {
             cur.colorscale = vslot.colorscale;
             cur.alphascale = alpha;
-            setenvparamf("colorparams", SHPARAM_PIXEL, 6, alpha*vslot.colorscale.x, alpha*vslot.colorscale.y, alpha*vslot.colorscale.z, alpha);
+            GLOBALPARAM(colorparams, (alpha*vslot.colorscale.x, alpha*vslot.colorscale.y, alpha*vslot.colorscale.z, alpha));
         }
     }
     else if(cur.colorscale != vslot.colorscale)
     {
         cur.colorscale = vslot.colorscale;
-        setenvparamf("colorparams", SHPARAM_PIXEL, 6, vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1);
+        GLOBALPARAM(colorparams, (vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1));
     }
     int tmu = cur.diffusetmu+1, envmaptmu = -1;
     if(slot.shader->type&SHADER_ENVMAP) envmaptmu = tmu++;
@@ -1584,7 +1513,7 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
     }
 
     if(cur.texgendim == dim) return;
-    setenvparamf("texgenscroll", SHPARAM_VERTEX, 0, cur.texgenscrollS, cur.texgenscrollT);
+    GLOBALPARAM(texgenscroll, (cur.texgenscrollS, cur.texgenscrollT));
 
     cur.texgendim = dim;
 }
@@ -1768,8 +1697,7 @@ void setupcaustics(int tmu, float blend, GLfloat *color = NULL)
 {
     if(!caustictex[0]) loadcaustics(true);
 
-    GLfloat s[4] = { 0.011f, 0, 0.0066f, 0 };
-    GLfloat t[4] = { 0, 0.011f, 0.0066f, 0 };
+    vec4 s(0.011f, 0, 0.0066f, 0), t(0, 0.011f, 0.0066f, 0);
     loopk(3)
     {
         s[k] *= 100.0f/causticscale;
@@ -1788,9 +1716,9 @@ void setupcaustics(int tmu, float blend, GLfloat *color = NULL)
     static Shader *causticshader = NULL;
     if(!causticshader) causticshader = lookupshaderbyname("caustic");
     causticshader->set();
-    setlocalparamfv("texgenS", SHPARAM_VERTEX, 0, s);
-    setlocalparamfv("texgenT", SHPARAM_VERTEX, 1, t);
-    setlocalparamf("frameoffset", SHPARAM_PIXEL, 0, blend*(1-frac), blend*frac, blend);
+    LOCALPARAM(texgenS, (s));
+    LOCALPARAM(texgenT, (t));
+    LOCALPARAM(frameoffset, (blend*(1-frac), blend*frac, blend));
 }
 
 void setupTMUs(renderstate &cur, float causticspass, bool fogpass)
@@ -1799,10 +1727,10 @@ void setupTMUs(renderstate &cur, float causticspass, bool fogpass)
     glEnableClientState(GL_COLOR_ARRAY);
     loopi(8-1) { glActiveTexture_(GL_TEXTURE1_ARB+i); glEnable(GL_TEXTURE_2D); }
     glActiveTexture_(GL_TEXTURE0_ARB);
-    setenvparamf("colorparams", SHPARAM_PIXEL, 6, 1, 1, 1, 1);
-    setenvparamf("camera", SHPARAM_VERTEX, 4, camera1->o.x, camera1->o.y, camera1->o.z, 1);
-    setenvparamf("ambient", SHPARAM_PIXEL, 5, ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f);
-    setenvparamf("millis", SHPARAM_VERTEX, 6, lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f);
+    GLOBALPARAM(colorparams, (1, 1, 1, 1));
+    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
+    GLOBALPARAM(ambient, (ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f));
+    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
  
     glColor4fv(cur.color);
 

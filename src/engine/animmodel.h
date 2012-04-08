@@ -87,7 +87,7 @@ struct animmodel : model
 
         void setshaderparams(mesh *m, const animstate *as, bool masked, bool skinned = true)
         {
-            setenvparamf("texscroll", SHPARAM_VERTEX, 5, lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f);
+            GLOBALPARAM(texscroll, (lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f));
 
             if(!skinned) return;
                 
@@ -98,8 +98,8 @@ struct animmodel : model
                 curpulse -= floor(curpulse);
                 curglow += glowdelta*2*fabs(curpulse - 0.5f);
             }
-            setenvparamf("maskscale", SHPARAM_PIXEL, 4, 0.5f*spec*lightmodels, 0.5f*curglow*glowmodels);
-            if(envmaptmu>=0 && envmapmax>0) setenvparamf("envmapscale", bumpmapped() ? SHPARAM_PIXEL : SHPARAM_VERTEX, 3, envmapmin-envmapmax, envmapmax);
+            GLOBALPARAM(maskscale, (0.5f*spec*lightmodels, 0.5f*curglow*glowmodels));
+            if(envmaptmu>=0 && envmapmax>0) GLOBALPARAM(envmapscale, (envmapmin-envmapmax, envmapmax));
         }
 
         Shader *loadshader(bool shouldenvmap, bool masked)
@@ -825,7 +825,7 @@ struct animmodel : model
                         matrixstack[matrixpos].transposedtransform(smtetraclipplane, p);
                         p.scale(model->scale);
                         p.translate(translate);
-                        setenvparamf("tetramodelclip", SHPARAM_VERTEX, 2, p.x, p.y, p.z, p.offset); 
+                        GLOBALPARAM(tetramodelclip, (p));
                     }
                 }
                 else
@@ -837,7 +837,7 @@ struct animmodel : model
                     vec ocampos;
                     matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
                     ocampos.div(resize).sub(translate);
-                    setenvparamf("camera", SHPARAM_VERTEX, 1, ocampos.x, ocampos.y, ocampos.z, 1);
+                    GLOBALPARAM(camera, (ocampos.x, ocampos.y, ocampos.z, 1));
                 }
             }
 

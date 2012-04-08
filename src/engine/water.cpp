@@ -339,8 +339,8 @@ void renderwater()
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(s));
     }
 
-    setenvparamf("camera", SHPARAM_VERTEX, 0, camera1->o.x, camera1->o.y, camera1->o.z);
-    setenvparamf("millis", SHPARAM_VERTEX, 1, lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f);
+    GLOBALPARAM(camera, (camera1->o));
+    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
 
     #define SETWATERSHADER(which, name) \
     do { \
@@ -420,7 +420,7 @@ void renderwater()
                 if(waterfade) 
                 {
                     float fadeheight = ref.height+offset+(below ? -2 : 2);
-                    setlocalparamf("waterheight", SHPARAM_VERTEX, 7, fadeheight, fadeheight, fadeheight);
+                    LOCALPARAM(waterheight, (fadeheight, fadeheight, fadeheight));
                 }
             }
         }
@@ -438,9 +438,9 @@ void renderwater()
                 const vec &lightpos = light ? light->o : vec(worldsize/2, worldsize/2, worldsize);
                 float lightrad = light && light->attr1 ? light->attr1 : worldsize*8.0f;
                 const vec &lightcol = (light ? vec(light->attr2, light->attr3, light->attr4) : vec(ambientcolor.x, ambientcolor.y, ambientcolor.z)).div(255.0f).mul(waterspec/100.0f);
-                setlocalparamf("lightpos", SHPARAM_VERTEX, 2, lightpos.x, lightpos.y, lightpos.z);
-                setlocalparamf("lightcolor", SHPARAM_PIXEL, 3, lightcol.x, lightcol.y, lightcol.z);
-                setlocalparamf("lightradius", SHPARAM_PIXEL, 4, lightrad, lightrad, lightrad);
+                LOCALPARAM(lightpos, (lightpos));
+                LOCALPARAM(lightcolor, (lightcol));
+                LOCALPARAM(lightradius, (lightrad, lightrad, lightrad));
                 lastlight = light;
             }
 
@@ -449,7 +449,7 @@ void renderwater()
                 if(varray::data.length()) varray::end();
                 float depth = !waterfog ? 1.0f : min(0.75f*m.depth/waterfog, 0.95f);
                 depth = max(depth, !below && (waterreflect || (waterenvmap && hasCM)) ? 0.3f : 0.6f);
-                setlocalparamf("depth", SHPARAM_PIXEL, 5, depth, 1.0f-depth);
+                LOCALPARAM(depth, (depth, 1.0f-depth));
                 lastdepth = m.depth;
             }
 

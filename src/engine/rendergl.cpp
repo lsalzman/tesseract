@@ -371,13 +371,12 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
-    extern int fpdepthfx, gdepthstencil;
+    extern int gdepthstencil;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
         gdepthstencil = 0; // some ATI GPUs do not support reading from depth-stencil textures, so only use depth-stencil renderbuffer for now
         minimizetcusage = 1;
-		if(hasTF && hasNVFB) fpdepthfx = 1;
     }
     else if(nvidia)
     {
@@ -385,9 +384,6 @@ void gl_checkextensions()
         rtsharefb = 0; // work-around for strange driver stalls involving when using many FBOs
         
         if(hasFBO && !hasTF) nvidia_scissor_bug = 1; // 5200 bug, clearing with scissor on an FBO messes up on reflections, may affect lesser cards too 
-        extern int fpdepthfx;
-        if(hasTF && (!strstr(renderer, "GeForce") || !checkseries(renderer, 6000, 6600)))
-            fpdepthfx = 1; // FP filtering causes software fallback on 6200?
     }
     else
     {
@@ -600,18 +596,11 @@ void gl_checkextensions()
     if(hasext(exts, "GL_EXT_gpu_shader4"))
     {
         // on DX10 or above class cards (i.e. GF8 or RadeonHD) enable expensive features
-        extern int grass, depthfxsize, depthfxrect, depthfxfilter, blurdepthfx;
+        extern int grass;
         grass = 1;
         if(hasOQ)
         {
             waterfallrefract = 1;
-            if(hasTR)
-            {
-                depthfxsize = 10;
-                depthfxrect = 1;
-                depthfxfilter = 0;
-                blurdepthfx = 0;
-            }
         }
     }
 }
@@ -1462,8 +1451,7 @@ void drawreflection(float z, bool refract)
     if(fading)
     {
         float scale = fogging ? -0.25f : 0.25f, offset = 2*fabs(scale) - scale*z;
-        setenvparamf("waterfadeparams", SHPARAM_VERTEX, 8, scale, offset, -scale, offset + camera1->o.z*scale);
-        setenvparamf("waterfadeparams", SHPARAM_PIXEL, 8, scale, offset, -scale, offset + camera1->o.z*scale);
+        GLOBALPARAM(waterfadeparams, (scale, offset, -scale, offset + camera1->o.z*scale));
     }
 
     if(reflecting)
@@ -2617,9 +2605,9 @@ void viewbuffersplitmerge()
     splitshader->set();
     const float split[] = {4.f, 4.f};
     const float tiledim[] = {float(w)/split[0], float(h)/split[1]};
-    setlocalparamf("tiledim", SHPARAM_PIXEL, 0, tiledim[0], tiledim[1]);
-    setlocalparamf("rcptiledim", SHPARAM_PIXEL, 2, 1.f/tiledim[0], 1.f/tiledim[1]);
-    setlocalparamf("split", SHPARAM_PIXEL, 4, split[0], split[1]);
+    LOCALPARAM(tiledim, (tiledim[0], tiledim[1]));
+    LOCALPARAM(rcptiledim, (1.f/tiledim[0], 1.f/tiledim[1]));
+    LOCALPARAM(split, (split[0], split[1]));
     timer_begin(TIMER_SPLITTING);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glBegin(GL_TRIANGLE_STRIP);
@@ -2635,9 +2623,9 @@ void viewbuffersplitmerge()
     mergeshader->set();
     const float split[] = {4.f, 4.f};
     const float tiledim[] = {float(w)/split[0], float(h)/split[1]};
-    setlocalparamf("tiledim", SHPARAM_PIXEL, 0, tiledim[0], tiledim[1]);
-    setlocalparamf("split", SHPARAM_PIXEL, 2, split[0], split[1]);
-    setlocalparamf("rcpsplit", SHPARAM_PIXEL, 4, 1.f / split[0], 1.f / split[1]);
+    LOCALPARAM(tiledim, (tiledim[0], tiledim[1]));
+    LOCALPARAM(rcptiledim, (1.f/tiledim[0], 1.f/tiledim[1]));
+    LOCALPARAM(split, (split[0], split[1]));
     timer_begin(TIMER_MERGING);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glBegin(GL_TRIANGLE_STRIP);
@@ -2792,23 +2780,23 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    setenvparamf("camera", SHPARAM_PIXEL, 0, camera1->o.x, camera1->o.y, camera1->o.z);
-    setenvparamf("shadowatlasscale", SHPARAM_PIXEL, 1, 1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE);
-    if(ao) setenvparamf("aoscale", SHPARAM_PIXEL, 2, float(aow)/gw, float(aoh)/gh, aomin, 1.0f-aomin);
+    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z));
+    GLOBALPARAM(shadowatlasscale, (1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE));
+    if(ao) GLOBALPARAM(aoscale, (float(aow)/gw, float(aoh)/gh, aomin, 1.0f-aomin));
     float lightscale = 2.0f*(hdr ? 0.25f : 1)/255.0f;
-    setenvparamf("lightscale", SHPARAM_PIXEL, 3, ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale);
+    GLOBALPARAM(lightscale, (ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale));
 
     if(sunlight && csmdeferredshading)
     {
-        static const char * const splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
-        setenvparamf("cameraview", SHPARAM_PIXEL, 4, camdir.x, camdir.y, camdir.z);
-        setenvparamf("sunlightdir", SHPARAM_PIXEL, 5, sunlightdir.x, sunlightdir.y, sunlightdir.z);
-        setenvparamf("sunlightcolor", SHPARAM_PIXEL, 6, sunlightcolor.x*lightscale, sunlightcolor.y*lightscale, sunlightcolor.z*lightscale);
-        setenvparamf("csmfar", SHPARAM_PIXEL, 7, float(csmfarplane), 1.f / float(csmfarsmoothdistance));
+        static GlobalShaderParam splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
+        GLOBALPARAM(cameraview, (camdir));
+        GLOBALPARAM(sunlightdir, (sunlightdir));
+        GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale, sunlightcolor.y*lightscale, sunlightcolor.z*lightscale));
+        GLOBALPARAM(csmfar, (float(csmfarplane), 1.f / float(csmfarsmoothdistance)));
         glMatrixMode(GL_TEXTURE);
         loopi(csmsplitn)
         {
-            setenvparamf(splitfar[i], SHPARAM_PIXEL, 8+i, csm.splits[i].fardist);
+            splitfar[i].set(csm.splits[i].fardist);
             glActiveTexture_(GL_TEXTURE1_ARB+i);
             glLoadMatrixf(csm.splits[i].tex.v);
         }
@@ -2822,10 +2810,10 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     {
         vector<int> &tile = lighttiles[y][x];
 
-        static const char * const lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos", "light4pos", "light5pos", "light6pos", "light7pos" };
-        static const char * const lightcolor[] = { "light0color", "light1color", "light2color", "light3color", "light4color", "light5color", "light6color", "light7color" };
-        static const char * const shadowparams[] = { "shadow0params", "shadow1params", "shadow2params", "shadow3params", "shadow4params", "shadow5params", "shadow6params", "shadow7params" };
-        static const char * const shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset", "shadow4offset", "shadow5offset", "shadow6offset", "shadow7offset" };
+        static LocalShaderParam lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos", "light4pos", "light5pos", "light6pos", "light7pos" };
+        static LocalShaderParam lightcolor[] = { "light0color", "light1color", "light2color", "light3color", "light4color", "light5color", "light6color", "light7color" };
+        static LocalShaderParam shadowparams[] = { "shadow0params", "shadow1params", "shadow2params", "shadow3params", "shadow4params", "shadow5params", "shadow6params", "shadow7params" };
+        static LocalShaderParam shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset", "shadow4offset", "shadow5offset", "shadow6offset", "shadow7offset" };
 
         for(int i = 0;;)
         {
@@ -2844,19 +2832,19 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             loopj(n)
             {
                 lightinfo &l = lights[tile[i+j]];
-                setlocalparamf(lightpos[j], SHPARAM_PIXEL, 16 + 4*j, l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
-                setlocalparamf(lightcolor[j], SHPARAM_PIXEL, 17 + 4*j, l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
+                lightpos[j].set(l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
+                lightcolor[j].set(l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[l.shadowmap];
                     float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
                           bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
-                    setlocalparamf(shadowparams[j], SHPARAM_PIXEL, 18 + 4*j,
+                    shadowparams[j].set(
                         0.5f * (sm.size - smborder),
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
                         sm.size,
                         0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
-                    setlocalparamf(shadowoffset[j], SHPARAM_PIXEL, 19 + 4*j, sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
+                    shadowoffset[j].set(sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
                 sx1 = min(sx1, l.sx1);
                 sy1 = min(sy1, l.sy1);
@@ -3156,7 +3144,7 @@ void rendershadowmaps()
                 {
                     smtetraclipplane.toplane(vec(-smviewmatrix.v[2], -smviewmatrix.v[6], 0), l.o);
                     smtetraclipplane.offset += smtetraborder/(0.5f*sm.size);
-                    setenvparamf("tetraclip", SHPARAM_VERTEX, 1, smtetraclipplane.x, smtetraclipplane.y, smtetraclipplane.z, smtetraclipplane.offset);
+                    GLOBALPARAM(tetraclip, (smtetraclipplane));
                 }
 
                 shadowside = side;
@@ -3208,7 +3196,7 @@ void setbilateralshader(int radius, int pass, float sigma, float depth, bool lin
     if(linear) s->setvariant(0, packed ? 1 : 0);
     else s->set();
     sigma *= 2*radius;
-    setlocalparamf("bilateralparams", SHPARAM_PIXEL, 0, 1.0f/(2*sigma*sigma), 1.0f/(depth*depth), pass==0 ? stepx : 0, pass==1 ? stepy : 0);
+    LOCALPARAM(bilateralparams, (1.0f/(2*sigma*sigma), 1.0f/(depth*depth), pass==0 ? stepx : 0, pass==1 ? stepy : 0));
 }
 
 void renderao()
@@ -3246,8 +3234,8 @@ void renderao()
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    setlocalparamf("aoparams", SHPARAM_PIXEL, 0, aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, (2.0f*M_PI*aodark)/aotaps, aosharp);
-    setlocalparamf("offsetscale", SHPARAM_PIXEL, 1, xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]);
+    LOCALPARAM(aoparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, (2.0f*M_PI*aodark)/aotaps, aosharp));
+    LOCALPARAM(offsetscale, (xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]));
     screenquad(gw, gh, aow/float(1<<aonoise), aoh/float(1<<aonoise));
 
     if(aobilateral)
@@ -3353,7 +3341,7 @@ void processhdr()
         glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
         SETSHADER(hdraccum);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-        setlocalparamf("accumscale", SHPARAM_PIXEL, 0, lasthdraccum ? pow(hdraccumscale, float(lastmillis - lasthdraccum)/hdraccummillis) : 0);
+        LOCALPARAM(accumscale, (lasthdraccum ? pow(hdraccumscale, float(lastmillis - lasthdraccum)/hdraccummillis) : 0));
         screenquad(2, 2);
         glDisable(GL_BLEND);
 
@@ -3374,8 +3362,7 @@ void processhdr()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
     glViewport(0, 0, b0w, b0h);
     SETSHADER(hdrbloom);
-    setlocalparamf("bloomparams", SHPARAM_VERTEX, 0, -bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax);
-    setlocalparamf("bloomparams", SHPARAM_PIXEL, 0, -bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax);
+    LOCALPARAM(bloomparams, (-bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax));
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
     screenquad(pw, ph);
 
@@ -3400,9 +3387,8 @@ void processhdr()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, gw, gh);
     SETSHADER(hdrtonemap);
-    setlocalparamf("bloomsize", SHPARAM_VERTEX, 0, b0w, b0h);
-    setlocalparamf("hdrparams", SHPARAM_VERTEX, 1, -hdrbright, bloomscale, hdrtonemin, hdrtonemax);
-    setlocalparamf("hdrparams", SHPARAM_PIXEL, 1, -hdrbright, bloomscale, hdrtonemin, hdrtonemax);
+    LOCALPARAM(bloomsize, (b0w, b0h));
+    LOCALPARAM(hdrparams, (-hdrbright, bloomscale, hdrtonemin, hdrtonemax));
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
@@ -3489,8 +3475,6 @@ void gl_drawframe(int w, int h)
         if(dopostfx)
         {
 #if 0
-            drawglaretex();
-            drawdepthfxtex();
             drawreflections();
 #endif
         }
@@ -3529,9 +3513,9 @@ void gl_drawframe(int w, int h)
     screenmatrix.translate(-1.0f, -1.0f, -1.0f);
     eyematrix.mul(invprojmatrix, screenmatrix);
 
-    setenvparamf("gdepthscale", SHPARAM_PIXEL, 54, eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]);
-    setenvparamf("gdepthpackparams", SHPARAM_VERTEX, 55, -1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane);
-    setenvparamf("gdepthunpackparams", SHPARAM_PIXEL, 55, -farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f));
+    GLOBALPARAM(gdepthscale, (eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]));
+    GLOBALPARAM(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane));
+    GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f)));
     
     rendergeom(causticspass);
     resetmodelbatches();
@@ -3742,8 +3726,6 @@ void gl_drawframe(int w, int h)
 #if 0
     if(hasFBO) 
     {
-        drawglaretex();
-        drawdepthfxtex();
         drawreflections();
     }
 #endif
@@ -3780,7 +3762,6 @@ void gl_drawframe(int w, int h)
     if(hdr) processhdr();
 
     //addmotionblur();
-    //addglare();
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogblend, abovemat);
     //renderpostfx();
 
@@ -4036,13 +4017,6 @@ void gl_drawhud(int w, int h)
     glLoadIdentity();
     
     glColor3f(1, 1, 1);
-
-    extern int debugdepthfx;
-    if(debugdepthfx)
-    {
-        extern void viewdepthfxtex();
-        viewdepthfxtex();
-    }
 
     if(debugshadowatlas) viewshadowatlas();
     else if(debugbuffersplit) viewbuffersplitmerge();

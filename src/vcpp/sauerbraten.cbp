@@ -184,10 +184,6 @@
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
-		<Unit filename="..\engine\depthfx.h">
-			<Option target="default" />
-			<Option target="debug" />
-		</Unit>
 		<Unit filename="..\engine\dynlight.cpp">
 			<Option target="default" />
 			<Option target="debug" />

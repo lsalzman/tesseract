@@ -924,10 +924,6 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath="..\engine\depthfx.h"
-					>
-				</File>
-				<File
 					RelativePath="..\engine\dynlight.cpp"
 					>
 					<FileConfiguration

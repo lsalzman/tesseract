@@ -699,7 +699,7 @@ void rendermaterials()
 
                             if(!usedcamera)
                             {
-                                setenvparamf("camera", SHPARAM_VERTEX, 0, camera1->o.x, camera1->o.y, camera1->o.z);
+                                GLOBALPARAM(camera, (camera1->o));
                                 usedcamera = true;
                             }
 
@@ -729,7 +729,7 @@ void rendermaterials()
                             {
                                 Texture *dudv = wslot.sts.inrange(5) ? wslot.sts[5].t : notexture;
                                 float scale = 8.0f/(dudv->ys*wslot.scale);
-                                setlocalparamf("dudvoffset", SHPARAM_PIXEL, 1, 0, scale*16*lastmillis/1000.0f);
+                                LOCALPARAM(dudvoffset, (0, scale*16*lastmillis/1000.0f));
 
                                 glActiveTexture_(GL_TEXTURE1_ARB);
                                 glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(4) ? wslot.sts[4].t->id : notexture->id);
@@ -817,7 +817,7 @@ void rendermaterials()
                             glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(m.envmap));
                             if(!usedcamera) 
                             {
-                                setenvparamf("camera", SHPARAM_VERTEX, 0, camera1->o.x, camera1->o.y, camera1->o.z);
+                                GLOBALPARAM(camera, (camera1->o));
                                 usedcamera = true;
                             }
                             envmapped = m.envmap;

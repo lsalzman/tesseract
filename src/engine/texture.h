@@ -417,6 +417,9 @@ struct LocalShaderParam
     void set(const glmatrixf &m) { set(&m); }
 };
 
+#define LOCALPARAM(name, vals) do { static LocalShaderParam param( #name ); param.set vals ; } while(0)
+#define GLOBALPARAM(name, vals) do { static GlobalShaderParam param( #name ); param.set vals ; } while(0) 
+
 #define SETSHADER(name) \
     do { \
         static Shader *name##shader = NULL; \
@@ -706,10 +709,6 @@ extern void setslotshader(Slot &s);
 extern void linkslotshader(Slot &s, bool load = true);
 extern void linkvslotshader(VSlot &s, bool load = true);
 extern void linkslotshaders();
-extern void setenvparamf(const char *name, int type, int index, float x = 0, float y = 0, float z = 0, float w = 0);
-extern void setenvparamfv(const char *name, int type, int index, const float *v);
-extern void setlocalparamf(const char *name, int type, int index, float x = 0, float y = 0, float z = 0, float w = 0);
-extern void setlocalparamfv(const char *name, int type, int index, const float *v);
 extern const char *getshaderparamname(const char *name);
 
 #define MAXDYNLIGHTS 5
