@@ -2832,7 +2832,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             }
 
             if(!n) deferredlightshader->set();
-            else deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0));
+            else deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i || (!ao && !sunlight) ? 2 : 0));
         
             float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
             loopj(n)
