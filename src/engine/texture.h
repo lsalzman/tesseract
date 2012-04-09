@@ -121,7 +121,7 @@ enum { SHPARAM_LOOKUP = 0, SHPARAM_VERTEX, SHPARAM_PIXEL, SHPARAM_UNIFORM };
 struct GlobalShaderParamState
 {
     const char *name;
-    float val[16];
+    float val[32];
     int version;
 
     static int nextversion;
@@ -137,7 +137,7 @@ struct GlobalShaderParamState
 
 struct ShaderParamBinding
 {
-    int loc;
+    int loc, size;
     GLenum format;
 };
 
@@ -152,10 +152,10 @@ struct GlobalShaderParamUse : ShaderParamBinding
         if(version == param->version) return;
         switch(format)
         {
-            case GL_FLOAT:          glUniform1fv_(loc, 1, param->val); break;
-            case GL_FLOAT_VEC2_ARB: glUniform2fv_(loc, 1, param->val); break;
-            case GL_FLOAT_VEC3_ARB: glUniform3fv_(loc, 1, param->val); break;
-            case GL_FLOAT_VEC4_ARB: glUniform4fv_(loc, 1, param->val); break;
+            case GL_FLOAT:          glUniform1fv_(loc, size, param->val); break;
+            case GL_FLOAT_VEC2_ARB: glUniform2fv_(loc, size, param->val); break;
+            case GL_FLOAT_VEC3_ARB: glUniform3fv_(loc, size, param->val); break;
+            case GL_FLOAT_VEC4_ARB: glUniform4fv_(loc, size, param->val); break;
             case GL_FLOAT_MAT2_ARB: glUniformMatrix2fv_(loc, 1, GL_TRUE, param->val); break;
             case GL_FLOAT_MAT3_ARB: glUniformMatrix3fv_(loc, 1, GL_TRUE, param->val); break;
             case GL_FLOAT_MAT4_ARB: glUniformMatrix4fv_(loc, 1, GL_FALSE, param->val); break;
@@ -185,6 +185,7 @@ struct SlotShaderParamState : LocalShaderParamState
     { 
         name = p.name; 
         loc = -1; 
+        size = 1;
         format = GL_FLOAT_VEC4_ARB; 
         memcpy(val, p.val, sizeof(val)); 
     }
@@ -369,6 +370,14 @@ struct GlobalShaderParam
     void set(const plane &p) { set(p.x, p.y, p.z, p.offset); }
     void set(const matrix3x3 &m) { memcpy(resolve()->val, m.a.v, sizeof(m.a.v)); }
     void set(const glmatrixf &m) { memcpy(resolve()->val, m.v, sizeof(m.v)); }
+    
+    template<class T>
+    T *reserve(int n = 1) { return (T *)resolve()->val; }
+
+    void set(const vec *v, int n = 1) { memcpy(reserve<vec>(n), v, n*sizeof(vec)); }
+    void set(const vec2 *v, int n = 1) { memcpy(reserve<vec2>(n), v, n*sizeof(vec2)); }
+    void set(const vec4 *v, int n = 1) { memcpy(reserve<vec4>(n), v, n*sizeof(vec4)); }
+    void set(const plane *p, int n = 1) { memcpy(reserve<plane>(n), p, n*sizeof(plane)); }
 };
 
 struct LocalShaderParam

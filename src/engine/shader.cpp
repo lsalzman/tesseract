@@ -240,7 +240,7 @@ int getlocalparam(const char *name)
     return localparams.access(name, int(localparams.numelems));
 }
 
-static int addlocalparam(Shader &s, const char *name, int loc, GLenum format)
+static int addlocalparam(Shader &s, const char *name, int loc, int size, GLenum format)
 {
     int idx = getlocalparam(name);
     if(idx >= s.localparamremap.length())
@@ -253,6 +253,7 @@ static int addlocalparam(Shader &s, const char *name, int loc, GLenum format)
     LocalShaderParamState &l = s.localparams.add();
     l.name = name;
     l.loc = loc;
+    l.size = size;
     l.format = format;
     return idx;
 }
@@ -270,12 +271,13 @@ GlobalShaderParamState *getglobalparam(const char *name)
     return param;
 }
 
-static GlobalShaderParamUse *addglobalparam(Shader &s, GlobalShaderParamState *param, int loc, GLenum format)
+static GlobalShaderParamUse *addglobalparam(Shader &s, GlobalShaderParamState *param, int loc, int size, GLenum format)
 {
     GlobalShaderParamUse &g = s.globalparams.add();
     g.param = param;
     g.version = -2;
     g.loc = loc;
+    g.size = size;
     g.format = format;
     return &g;
 }
@@ -310,8 +312,8 @@ static void setglsluniformformat(Shader &s, const char *name, GLenum format, int
 
     name = getshaderparamname(name);
     GlobalShaderParamState *param = globalparams.access(name);
-    if(param) addglobalparam(s, param, loc, format);
-    else addlocalparam(s, name, loc, format);
+    if(param) addglobalparam(s, param, loc, size, format);
+    else addlocalparam(s, name, loc, size, format);
 }
 
 static void allocglslactiveuniforms(Shader &s)
@@ -326,8 +328,10 @@ static void allocglslactiveuniforms(Shader &s)
         GLenum format = GL_FLOAT_VEC4_ARB;
         name[0] = '\0';
         glGetActiveUniform_(s.program, i, sizeof(name)-1, &namelen, &size, &format, name);
-        if(namelen <= 0) continue;
+        if(namelen <= 0 || size <= 0) continue;
         name[clamp(int(namelen), 0, (int)sizeof(name)-2)] = '\0'; 
+        char *brak = strchr(name, '[');
+        if(brak) *brak = '\0';
         setglsluniformformat(s, name, format, size);
     } 
 }

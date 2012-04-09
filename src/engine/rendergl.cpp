@@ -2701,23 +2701,20 @@ VAR(debugao, 0, 0, 1);
 
 void cascaded_shadow_map::bindparams()
 {
-    static GlobalShaderParam splitcenter[] = { "split0center", "split1center", "split2center", "split3center", "split4center", "split5center", "split6center", "split7center" };
-    static GlobalShaderParam splitbounds[] = { "split0bounds", "split1bounds", "split2bounds", "split3bounds", "split4bounds", "split5bounds", "split6bounds", "split7bounds" };
-    static GlobalShaderParam splitscale[] = { "split0scale", "split1scale", "split2scale", "split3scale", "split4scale", "split5scale", "split6scale", "split7scale" };
-    static GlobalShaderParam splitoffset[] = { "split0offset", "split1offset", "split2offset", "split3offset", "split4offset", "split5offset", "split6offset", "split7offset" };
+    static GlobalShaderParam splitcenter("splitcenter"), splitbounds("splitbounds"), splitscale("splitscale"), splitoffset("splitoffset");
+    vec *splitcenterv = splitcenter.reserve<vec>(csmsplitn),
+        *splitboundsv = splitbounds.reserve<vec>(csmsplitn),
+        *splitscalev = splitscale.reserve<vec>(csmsplitn),
+        *splitoffsetv = splitoffset.reserve<vec>(csmsplitn);
     loopi(csmsplitn)
     {
         cascaded_shadow_map::splitinfo &split = csm.splits[i];
         const shadowmapinfo &sm = shadowmaps[split.idx];
         const float bias = csmbias * (1024.0 / sm.size);
-        vec center = vec(split.bbmin).add(split.bbmax).mul(0.5f),
-            bounds = vec(split.bbmax).sub(split.bbmin).mul(0.5f*(sm.size - 2*smborder)/sm.size),
-            scale(0.5f*sm.size*split.proj.v[0], 0.5f*sm.size*split.proj.v[5], 0.5f*split.proj.v[10]),
-            offset(0.5f*sm.size*(split.proj.v[12] + 1) + sm.x, 0.5f*sm.size*(split.proj.v[13] + 1) + sm.y, 0.5f*(split.proj.v[14] + 1 - bias));
-        splitcenter[i].set(center);
-        splitbounds[i].set(bounds);
-        splitscale[i].set(scale);
-        splitoffset[i].set(offset);
+        splitcenterv[i] = vec(split.bbmin).add(split.bbmax).mul(0.5f);
+        splitboundsv[i] = vec(split.bbmax).sub(split.bbmin).mul(0.5f*(sm.size - 2*smborder)/sm.size);
+        splitscalev[i] = vec(0.5f*sm.size*split.proj.v[0], 0.5f*sm.size*split.proj.v[5], 0.5f*split.proj.v[10]);
+        splitoffsetv[i] = vec(0.5f*sm.size*(split.proj.v[12] + 1) + sm.x, 0.5f*sm.size*(split.proj.v[13] + 1) + sm.y, 0.5f*(split.proj.v[14] + 1 - bias));
     }
     glMatrixMode(GL_TEXTURE);
     glActiveTexture_(GL_TEXTURE1_ARB);
@@ -2844,10 +2841,10 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     {
         vector<int> &tile = lighttiles[y][x];
 
-        static LocalShaderParam lightpos[] = { "light0pos", "light1pos", "light2pos", "light3pos", "light4pos", "light5pos", "light6pos", "light7pos" };
-        static LocalShaderParam lightcolor[] = { "light0color", "light1color", "light2color", "light3color", "light4color", "light5color", "light6color", "light7color" };
-        static LocalShaderParam shadowparams[] = { "shadow0params", "shadow1params", "shadow2params", "shadow3params", "shadow4params", "shadow5params", "shadow6params", "shadow7params" };
-        static LocalShaderParam shadowoffset[] = { "shadow0offset", "shadow1offset", "shadow2offset", "shadow3offset", "shadow4offset", "shadow5offset", "shadow6offset", "shadow7offset" };
+        static LocalShaderParam lightpos("lightpos"), lightcolor("lightcolor"), shadowparams("shadowparams"), shadowoffset("shadowoffset");
+        static vec4 lightposv[8], shadowparamsv[8];
+        static vec lightcolorv[8];
+        static vec2 shadowoffsetv[8];
 
         for(int i = 0;;)
         {
@@ -2859,26 +2856,23 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 if((lights[tile[i+j]].shadowmap >= 0) != shadowmap) { n = j; break; }
             }
 
-            if(!n) deferredlightshader->set();
-            else deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i || (!ao && !sunlight) ? 2 : 0));
-        
             float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
             loopj(n)
             {
                 lightinfo &l = lights[tile[i+j]];
-                lightpos[j].set(l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
-                lightcolor[j].set(l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
+                lightposv[j] = vec4(l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
+                lightcolorv[j] = vec(l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[l.shadowmap];
                     float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
                           bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
-                    shadowparams[j].set(
+                    shadowparamsv[j] = vec4(
                         0.5f * (sm.size - smborder),
                         -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
                         sm.size,
                         0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
-                    shadowoffset[j].set(sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
+                    shadowoffsetv[j] = vec2(sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
                 sx1 = min(sx1, l.sx1);
                 sy1 = min(sy1, l.sy1);
@@ -2889,6 +2883,19 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             }
             if(!i) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
             else if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) continue;
+
+            if(n) 
+            {
+                deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i || (!ao && !sunlight) ? 2 : 0));
+                lightpos.set(lightposv, n);
+                lightcolor.set(lightcolorv, n);
+                if(shadowmap)   
+                {
+                    shadowparams.set(shadowparamsv, n);
+                    shadowoffset.set(shadowoffsetv, n);
+                }
+            } 
+            else deferredlightshader->set();
 
             sx1 = max(sx1, bsx1);
             sy1 = max(sy1, bsy1);
