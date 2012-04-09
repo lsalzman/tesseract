@@ -470,7 +470,7 @@ struct batchedmodel
 {
     vec pos, center;
     float radius, yaw, pitch, sizescale;
-    int anim, basetime, basetime2, flags, shadowmask, attached;
+    int anim, basetime, basetime2, flags, visible, attached;
     dynent *d;
     occludequery *query;
     int next;
@@ -570,14 +570,14 @@ static inline bool cullmodel(model *m, const vec &center, float radius, int flag
     }
     if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
     {
-        if(!reflecting && !refracting && d)
+        if(!reflecting && !refracting)
         {
             d->occluded = OCCLUDE_PARENT;
-            if(flags&MDL_CULL_QUERY && hasOQ && oqfrags && oqdynent) rendermodelquery(m, d, center, radius);
+            if(flags&MDL_CULL_QUERY) rendermodelquery(m, d, center, radius);
         }
         return true;
     }
-    else if(flags&MDL_CULL_QUERY && hasOQ && oqfrags && oqdynent && d && d->query && d->query->owner==d && checkquery(d->query))
+    else if(flags&MDL_CULL_QUERY && d->query && d->query->owner==d && checkquery(d->query))
     {
         if(!reflecting && !refracting)
         {
@@ -612,7 +612,7 @@ void shadowmaskbatchedmodels()
     {
         batchedmodel &b = batchedmodels[i];
         if(b.flags&MDL_MAPMODEL) break;
-        b.shadowmask = shadowmaskmodel(b.center, b.radius);
+        b.visible = shadowmaskmodel(b.center, b.radius);
     }
 }
 
@@ -628,7 +628,20 @@ void rendermodelbatches()
         {
             batchedmodel &bm = batchedmodels[j];
             j = bm.next;
-            if(!(bm.shadowmask&(1<<shadowside))) continue;
+            if(!(bm.visible&(1<<shadowside))) continue;
+            if(!rendered) { b.m->startrender(); rendered = true; }
+            renderbatchedmodel(b.m, bm);
+        }
+        else if(b.flags&MDL_MAPMODEL) for(int j = b.batched; j >= 0;)
+        {
+            batchedmodel &bm = batchedmodels[j];
+            j = bm.next;
+            if(bm.query!=query)
+            {
+                if(query) endquery(query);
+                query = bm.query;
+                if(query) startquery(query);
+            }
             if(!rendered) { b.m->startrender(); rendered = true; }
             renderbatchedmodel(b.m, bm);
         }
@@ -637,14 +650,18 @@ void rendermodelbatches()
             batchedmodel &bm = batchedmodels[j];
             j = bm.next;
             if(cullmodel(b.m, bm.center, bm.radius, bm.flags, bm.d)) continue;
-            if(bm.flags&MDL_CULL_QUERY) bm.d->query = bm.query = newquery(bm.d);
-            if(bm.query!=query)
-            {
-                if(query) endquery(query);
-                query = bm.query;
-                if(query) startquery(query);
-            }
             if(!rendered) { b.m->startrender(); rendered = true; }
+            if(bm.flags&MDL_CULL_QUERY) 
+            {
+                bm.d->query = newquery(bm.d);
+                if(bm.d->query) 
+                {
+                    startquery(bm.d->query);
+                    renderbatchedmodel(b.m, bm);
+                    endquery(bm.d->query);
+                    continue;
+                }
+            }
             renderbatchedmodel(b.m, bm);
         }
         if(query) endquery(query);
@@ -732,13 +749,13 @@ void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, int
     center.add(o);
     radius *= size;
 
-    int shadowmask = 0;
+    int visible = 0;
     if(shadowmapping) 
     {
-        shadowmask = shadowmaskmodel(center, radius);
-        if(!shadowmask) return;
+        visible = shadowmaskmodel(center, radius);
+        if(!visible) return;
     }
-    else if(flags&(MDL_CULL_VFC|MDL_CULL_DIST|MDL_CULL_OCCLUDED|MDL_CULL_QUERY) && cullmodel(m, center, radius, flags))
+    else if(flags&(MDL_CULL_VFC|MDL_CULL_DIST|MDL_CULL_OCCLUDED) && cullmodel(m, center, radius, flags))
         return;
 
     batchedmodel &b = batchedmodels.add();
@@ -753,7 +770,7 @@ void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, int
     b.basetime2 = 0;
     b.sizescale = size;
     b.flags = flags | MDL_MAPMODEL;
-    b.shadowmask = shadowmask;
+    b.visible = visible;
     b.d = NULL;
     b.attached = -1;
     addbatchedmodel(m, b, batchedmodels.length()-1);
@@ -790,7 +807,7 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
 
     if(flags&MDL_CULL_QUERY)
     {
-        if(shadowmapping || !hasOQ || !oqfrags || !oqdynent || !d) flags &= ~MDL_CULL_QUERY;
+        if(!hasOQ || !oqfrags || !oqdynent || !d) flags &= ~MDL_CULL_QUERY;
     }
 
     if(flags&MDL_NOBATCH)

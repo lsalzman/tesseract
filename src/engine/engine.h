@@ -421,13 +421,13 @@ extern void resetqueries();
 extern int getnumqueries();
 extern void drawbb(const ivec &bo, const ivec &br, const vec &camera = camera1->o);
 
-#define startquery(query) { glBeginQuery_(GL_SAMPLES_PASSED_ARB, ((occludequery *)(query))->id); }
+#define startquery(query) do { glBeginQuery_(GL_SAMPLES_PASSED_ARB, ((occludequery *)(query))->id); } while(0)
 #define endquery(query) \
-    { \
+    do { \
         glEndQuery_(GL_SAMPLES_PASSED_ARB); \
         extern int ati_oq_bug; \
         if(ati_oq_bug) glFlush(); \
-    }
+    } while(0)
 
 // dynlight
 
