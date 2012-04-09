@@ -570,7 +570,7 @@ static inline bool cullmodel(model *m, const vec &center, float radius, int flag
     }
     if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
     {
-        if(!reflecting && !refracting)
+        if(!reflecting && !refracting && d)
         {
             d->occluded = OCCLUDE_PARENT;
             if(flags&MDL_CULL_QUERY) rendermodelquery(m, d, center, radius);
