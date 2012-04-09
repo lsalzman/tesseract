@@ -129,6 +129,10 @@ extern PFNGLGETCOMPRESSEDTEXIMAGEARBPROC   glGetCompressedTexImage_;
 // GL_EXT_depth_bounds_test
 extern PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_;
 
+extern void glerror(const char *file, int line, GLenum error);
+
+#define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
+
 #include "varray.h"
 
 extern dynent *player;

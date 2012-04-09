@@ -132,6 +132,22 @@ void *getprocaddress(const char *name)
     return SDL_GL_GetProcAddress(name);
 }
 
+void glerror(const char *file, int line, GLenum error)
+{
+    const char *desc = "unknown";
+    switch(error)
+    {
+    case GL_NO_ERROR: desc = "no error"; break;
+    case GL_INVALID_ENUM: desc = "invalid enum"; break;
+    case GL_INVALID_VALUE: desc = "invalid value"; break;
+    case GL_INVALID_OPERATION: desc = "invalid operation"; break;
+    case GL_STACK_OVERFLOW: desc = "stack overflow"; break;
+    case GL_STACK_UNDERFLOW: desc = "stack underflow"; break;
+    case GL_OUT_OF_MEMORY: desc = "out of memory"; break;
+    }
+    printf("GL error: %s:%d: %s (%x)\n", file, line, desc, error);
+}
+
 VAR(ati_oq_bug, 0, 0, 1);
 VAR(ati_minmax_bug, 0, 0, 1);
 VAR(ati_cubemap_bug, 0, 0, 1);
@@ -611,9 +627,6 @@ void glext(char *ext)
     intret(hasext(exts, ext) ? 1 : 0);
 }
 COMMAND(glext, "s");
-
-//#define CHECKERROR(body) do { body; GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x: %s\n", __FILE__, __LINE__, error, #body); }} while(0)
-#define CHECKERROR() do { GLenum error = glGetError(); if(error != GL_NO_ERROR) {printf("%s:%d:%x\n", __FILE__, __LINE__, error); }} while(0)
 
 // GPU-side timing information will use OGL timers
 enum {TIMER_SM=0u, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N};
@@ -3666,7 +3679,7 @@ void gl_drawframe(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
 
-    CHECKERROR();
+    GLERROR;
     timer_begin(TIMER_CPU_SHADING);
     timer_begin(TIMER_SHADING);
     glBlendFunc(GL_ONE, GL_ONE);
@@ -3747,7 +3760,7 @@ void gl_drawframe(int w, int h)
     }
 
     defaultshader->set();
-    CHECKERROR();
+    GLERROR;
 
 #endif
 

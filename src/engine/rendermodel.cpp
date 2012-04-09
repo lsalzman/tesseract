@@ -637,6 +637,7 @@ void rendermodelbatches()
             batchedmodel &bm = batchedmodels[j];
             j = bm.next;
             if(cullmodel(b.m, bm.center, bm.radius, bm.flags, bm.d)) continue;
+            if(bm.flags&MDL_CULL_QUERY) bm.d->query = bm.query = newquery(bm.d);
             if(bm.query!=query)
             {
                 if(query) endquery(query);
@@ -787,12 +788,15 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
         //if(a[i].m && a[i].m->type()!=m->type()) a[i].m = NULL;
     }
 
-    bool doOQ = flags&MDL_CULL_QUERY && hasOQ && oqfrags && oqdynent && d;
+    if(flags&MDL_CULL_QUERY)
+    {
+        if(!hasOQ || !oqfrags || !oqdynent || !d) flags &= ~MDL_CULL_QUERY;
+    }
 
     if(flags&MDL_NOBATCH)
     {
         if(cullmodel(m, center, radius, flags, d)) return;
-        if(doOQ) 
+        if(flags&MDL_CULL_QUERY) 
         {
             d->query = newquery(d);
             if(d->query) startquery(d->query);
@@ -801,7 +805,7 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
         if(flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
         m->render(anim, basetime, basetime2, o, yaw, pitch, d, a, size);
         m->endrender();
-        if(doOQ && d->query) endquery(d->query);
+        if(flags&MDL_CULL_QUERY && d->query) endquery(d->query);
         return;
     }
 
@@ -820,7 +824,6 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
     b.d = d;
     b.attached = a ? modelattached.length() : -1;
     if(a) for(int i = 0;; i++) { modelattached.add(a[i]); if(!a[i].tag) break; }
-    if(doOQ) d->query = b.query = newquery(d);
     addbatchedmodel(m, b, batchedmodels.length()-1);
 }
 
