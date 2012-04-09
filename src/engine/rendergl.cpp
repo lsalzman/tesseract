@@ -2316,7 +2316,7 @@ FVAR(smcubeprec, 1e-3f, 1, 1e3f);
 
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
-VAR(smborder, 0, 4, 16);
+VAR(smborder, 0, 2, 16);
 VAR(smminradius, 0, 16, 10000);
 VAR(smminsize, 1, 96, 1024);
 VAR(smmaxsize, 1, 384, 1024);
@@ -2369,45 +2369,50 @@ void viewshadowatlas()
 }
 VAR(debugshadowatlas, 0, 0, 1);
 
-static const uint csmmaxsplitn = 8, csmminsplitn = 1;
-VAR(csmmaxsize, 256, 1024, 2048);
-VAR(csmsplitn, csmminsplitn, 3, csmmaxsplitn);
-FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
-FVAR(csmdeferredshading, 0, 1, 1);
-FVAR(csmshadowmap, 0, 1, 1);
+vector<lightinfo> lights;
+vector<int> lightorder;
+vector<int> lighttiles[LIGHTTILE_H][LIGHTTILE_W];
+vector<shadowmapinfo> shadowmaps;
 
-static shadowmapinfo *addshadowmap(vector<shadowmapinfo> &sms, ushort x, ushort y, int size, int &idx)
+static shadowmapinfo *addshadowmap(ushort x, ushort y, int size, int &idx)
 {
-    idx = sms.length();
-    shadowmapinfo *sm = &sms.add();
+    idx = shadowmaps.length();
+    shadowmapinfo *sm = &shadowmaps.add();
     sm->x = x;
     sm->y = y;
     sm->size = size;
     return sm;
 }
 
+static const uint csmmaxsplitn = 8, csmminsplitn = 1;
+VAR(csmmaxsize, 256, 768, 2048);
+VAR(csmsplitn, csmminsplitn, 3, csmmaxsplitn);
+FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
+FVAR(csmdeferredshading, 0, 1, 1);
+FVAR(csmshadowmap, 0, 1, 1);
+
 // cascaded shadow maps
 struct cascaded_shadow_map
 {
     struct splitinfo
     {
-        glmatrixf proj; // one projection per split
-        glmatrixf tex;  // to compute the shadowmap coordinates
-        int idx;        // shadowmapinfo indices
-        float fardist;  // far distance in player frustum
-        plane cull[4];  // world space culling planes of the split's projected sides
+        glmatrixf proj;   // one projection per split
+        int idx;          // shadowmapinfo indices
+        vec bbmin, bbmax; // max extents of shadowmap in sunlight model space
+        float fardist;    // far distance in player frustum
+        plane cull[4];    // world space culling planes of the split's projected sides
     };
     glmatrixf model;                // model view is shared by all splits
     splitinfo splits[csmmaxsplitn]; // per-split parameters
     vec lightview;                  // view vector for light
-    void setup(vector<shadowmapinfo> &sms); // insert shadowmaps for each split frustum if there is sunlight
+    void setup();                   // insert shadowmaps for each split frustum if there is sunlight
     void getmodelmatrix();          // compute the shared model matrix
     void getprojmatrix();           // compute each cropped projection matrix
-    void gettexmatrix();            // get matrices used for shadow mapping
     void gencullplanes();           // generate culling planes for the mvp matrix
+    void bindparams();              // bind any shader params necessary for lighting
 };
 
-void cascaded_shadow_map::setup(vector<shadowmapinfo> &sms)
+void cascaded_shadow_map::setup()
 {
     if(!sunlight) return; // no sunlight
     loopi(csmsplitn)
@@ -2418,12 +2423,11 @@ void cascaded_shadow_map::setup(vector<shadowmapinfo> &sms)
             //fatal("cascaded shadow maps MUST be packed");
             return;
         }
-        shadowmapinfo *sm = addshadowmap(sms, smx, smy, csmmaxsize, splits[i].idx);
+        shadowmapinfo *sm = addshadowmap(smx, smy, csmmaxsize, splits[i].idx);
         sm->light = -1;
     }
     getmodelmatrix();
     getprojmatrix();
-    gettexmatrix();
     gencullplanes();
 }
 
@@ -2485,7 +2489,7 @@ void cascaded_shadow_map::getmodelmatrix()
 }
 
 FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
-VAR(csmfarplane, 64, 2048, 16384);
+VAR(csmfarplane, 64, 768, 16384);
 VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
@@ -2512,6 +2516,8 @@ void cascaded_shadow_map::getprojmatrix()
     // compute each split projection matrix
     loopi(csmsplitn)
     {
+        splitinfo &split = this->splits[i];
+
         // find z extent
         float minz = -worldsize, maxz = worldsize; // improve that
 
@@ -2534,17 +2540,19 @@ void cascaded_shadow_map::getprojmatrix()
         vec tp, tc;
         this->model.transform(p, tp);
         this->model.transform(c, tc);
-        const float pradius = tp.dist2(tc) * csmpradiustweak, step = (2.0f*pradius) / csmmaxsize;
+        const float pradius = tp.dist2(tc) * csmpradiustweak, step = (2.0f*pradius) / shadowmaps[split.idx].size;
         vec2 minv = vec2(tc).sub(pradius), maxv = vec2(tc).add(pradius);
-        maxv.x -= fmod(maxv.x, step);
-        maxv.y -= fmod(maxv.y, step);
         minv.x -= fmod(minv.x, step);
         minv.y -= fmod(minv.y, step);
+        maxv.x -= fmod(maxv.x, step);
+        maxv.y -= fmod(maxv.y, step);
+        split.bbmin = vec(minv, -maxz);
+        split.bbmax = vec(maxv, -minz);
 
         // modify mvp with a scale and offset
         // now compute the update model view matrix for this split
-        this->splits[i].proj.ortho(minv.x, maxv.x, minv.y, maxv.y, -maxz, -minz);
-        this->splits[i].fardist = f[i].farplane;
+        split.proj.ortho(minv.x, maxv.x, minv.y, maxv.y, -maxz, -minz);
+        split.fardist = f[i].farplane;
     }
 }
 
@@ -2568,15 +2576,31 @@ cascaded_shadow_map csm;
 int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax)
 {
     int mask = (1<<csmsplitn)-1;
-    if(csmcull) loopi(csmsplitn)
+    if(!csmcull) return mask;
+    loopi(csmsplitn)
     {
         const cascaded_shadow_map::splitinfo &split = csm.splits[i];
-        loopk(4)
+        int k; 
+        for(k = 0; k < 4; k++)
         {
             const plane &p = split.cull[k];
-            ivec o(p.x < 0 ? bbmin.x : bbmax.x, p.y < 0 ? bbmin.y : bbmax.y, p.z < 0 ? bbmin.z : bbmax.z);
-            if(o.dist(p) < 0) { mask &= ~(1<<i); break; }
+            ivec omin, omax;
+            if(p.x > 0) { omin.x = bbmin.x; omax.x = bbmax.x; } else { omin.x = bbmax.x; omax.x = bbmin.x; }
+            if(p.y > 0) { omin.y = bbmin.y; omax.y = bbmax.y; } else { omin.y = bbmax.y; omax.y = bbmin.y; }
+            if(p.z > 0) { omin.z = bbmin.z; omax.z = bbmax.z; } else { omin.z = bbmax.z; omax.z = bbmin.z; }
+            if(omax.dist(p) < 0) { mask &= ~(1<<i); goto nextsplit; }
+            if(omin.dist(p) < 0) goto notinside;
         }
+        mask &= (2<<i)-1;
+        break;
+    notinside:
+        while(++k < 4)
+        {
+            const plane &p = split.cull[k];
+            ivec omax(p.x > 0 ? bbmax.x : bbmin.x, p.y > 0 ? bbmax.y : bbmin.y, p.z > 0 ? bbmax.z : bbmin.z);
+            if(omax.dist(p) < 0) { mask &= ~(1<<i); break; }
+        }
+    nextsplit:;
     }
     return mask;
 }
@@ -2584,14 +2608,27 @@ int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax)
 int calcspherecsmsplits(const vec &center, float radius)
 {
     int mask = (1<<csmsplitn)-1;
-    if(csmcull) loopi(csmsplitn)
+    if(!csmcull) return mask;
+    loopi(csmsplitn)
     {
         const cascaded_shadow_map::splitinfo &split = csm.splits[i];
-        loopk(4)
+        int k;
+        for(k = 0; k < 4; k++)
+        {
+            const plane &p = split.cull[k];
+            float dist = p.dist(center);
+            if(dist < -radius) { mask &= ~(1<<i); goto nextsplit; }
+            if(dist < radius) goto notinside;
+        }
+        mask &= (2<<i)-1;
+        break;
+    notinside:
+        while(++k < 4)
         {
             const plane &p = split.cull[k];
             if(p.dist(center) < -radius) { mask &= ~(1<<i); break; }
         }
+    nextsplit:;
     }
     return mask;
 }
@@ -2644,7 +2681,7 @@ VAR(debugbuffersplit, 0, 0, 1);
 static int playsing_around_with_timer_queries_here;
 
 VARF(ao, 0, 1, 1, { cleanupao(); cleardeferredlightshaders(); });
-FVAR(aoradius, 0, 4, 256);
+FVAR(aoradius, 0, 3, 256);
 FVAR(aodark, 1e-3f, 3, 1e3f);
 FVAR(aosharp, 1e-3f, 1, 1e3f);
 FVAR(aomin, 0, 0.25f, 1);
@@ -2662,23 +2699,31 @@ VARF(aopackdepth, 0, 1, 1, { if(aobilateral) cleanupao(); });
 VAR(aotaps, 1, 5, 12);
 VAR(debugao, 0, 0, 1);
 
-vector<lightinfo> lights;
-vector<int> lightorder;
-vector<int> lighttiles[LIGHTTILE_H][LIGHTTILE_W];
-vector<shadowmapinfo> shadowmaps;
-
-void cascaded_shadow_map::gettexmatrix()
+void cascaded_shadow_map::bindparams()
 {
+    static GlobalShaderParam splitcenter[] = { "split0center", "split1center", "split2center", "split3center", "split4center", "split5center", "split6center", "split7center" };
+    static GlobalShaderParam splitbounds[] = { "split0bounds", "split1bounds", "split2bounds", "split3bounds", "split4bounds", "split5bounds", "split6bounds", "split7bounds" };
+    static GlobalShaderParam splitscale[] = { "split0scale", "split1scale", "split2scale", "split3scale", "split4scale", "split5scale", "split6scale", "split7scale" };
+    static GlobalShaderParam splitoffset[] = { "split0offset", "split1offset", "split2offset", "split3offset", "split4offset", "split5offset", "split6offset", "split7offset" };
     loopi(csmsplitn)
     {
-        const shadowmapinfo &sm = shadowmaps[splits[i].idx];
-        const float scale = 0.5f*float(sm.size);
-        const float bias = csmbias * (1024.0 / sm.size); 
-        glmatrixf &tex = splits[i].tex;
-        tex.mul(splits[i].proj, model);
-        tex.scale(scale, scale, 0.5f);
-        tex.translate(scale + sm.x, scale + sm.y, 0.5f - 0.5f*bias);
+        cascaded_shadow_map::splitinfo &split = csm.splits[i];
+        const shadowmapinfo &sm = shadowmaps[split.idx];
+        const float bias = csmbias * (1024.0 / sm.size);
+        vec center = vec(split.bbmin).add(split.bbmax).mul(0.5f),
+            bounds = vec(split.bbmax).sub(split.bbmin).mul(0.5f*(sm.size - 2*smborder)/sm.size),
+            scale(0.5f*sm.size*split.proj.v[0], 0.5f*sm.size*split.proj.v[5], 0.5f*split.proj.v[10]),
+            offset(0.5f*sm.size*(split.proj.v[12] + 1) + sm.x, 0.5f*sm.size*(split.proj.v[13] + 1) + sm.y, 0.5f*(split.proj.v[14] + 1 - bias));
+        splitcenter[i].set(center);
+        splitbounds[i].set(bounds);
+        splitscale[i].set(scale);
+        splitoffset[i].set(offset);
     }
+    glMatrixMode(GL_TEXTURE);
+    glActiveTexture_(GL_TEXTURE1_ARB);
+    glLoadMatrixf(csm.model.v);
+    glActiveTexture_(GL_TEXTURE0_ARB);
+    glMatrixMode(GL_MODELVIEW);
 }
 
 static Shader *deferredlightshader = NULL;
@@ -2786,22 +2831,11 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     float lightscale = 2.0f*(hdr ? 0.25f : 1)/255.0f;
     GLOBALPARAM(lightscale, (ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale));
 
-    if(sunlight && csmdeferredshading)
+    if(sunlight && csmdeferredshading) 
     {
-        static GlobalShaderParam splitfar[] = { "split0far", "split1far", "split2far", "split3far", "split4far", "split5far", "split6far", "split7far" };
-        GLOBALPARAM(cameraview, (camdir));
         GLOBALPARAM(sunlightdir, (sunlightdir));
         GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale, sunlightcolor.y*lightscale, sunlightcolor.z*lightscale));
-        GLOBALPARAM(csmfar, (float(csmfarplane), 1.f / float(csmfarsmoothdistance)));
-        glMatrixMode(GL_TEXTURE);
-        loopi(csmsplitn)
-        {
-            splitfar[i].set(csm.splits[i].fardist);
-            glActiveTexture_(GL_TEXTURE1_ARB+i);
-            glLoadMatrixf(csm.splits[i].tex.v);
-        }
-        glActiveTexture_(GL_TEXTURE0_ARB);
-        glMatrixMode(GL_MODELVIEW);
+        csm.bindparams();
     }
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
@@ -3010,7 +3044,7 @@ void packlights()
         int smidx = -1;
         if(smnoshadow <= 1 && l.radius > smminradius && (!l.query || l.query->owner != &l || !checkquery(l.query)) && shadowatlaspacker.insert(smx, smy, smw, smh))
         {
-            sm = addshadowmap(shadowmaps, smx, smy, smsize, smidx);
+            sm = addshadowmap(smx, smy, smsize, smidx);
             sm->light = idx;
             l.shadowmap = smidx;
             smused += smsize*smsize*(smtetra ? 2 : 6);
@@ -3443,7 +3477,7 @@ void gl_drawframe(int w, int h)
 
     shadowmaps.setsize(0);
     shadowatlaspacker.reset();
-    csm.setup(shadowmaps);
+    csm.setup();
 
     if(!debugcsm)
     {
