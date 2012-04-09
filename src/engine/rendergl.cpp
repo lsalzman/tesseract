@@ -3571,20 +3571,26 @@ void gl_drawframe(int w, int h)
     GLOBALPARAM(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane));
     GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f)));
     
+    GLERROR;
     rendergeom(causticspass);
+    GLERROR;
     resetmodelbatches();
     rendermapmodels();
+    GLERROR;
     maskgbuffer("c");
     renderdecals(true);
+    GLERROR;
     maskgbuffer("cngd");
     game::rendergame();
     rendermodelbatches();
+    GLERROR;
     if(!isthirdperson())
     {
         project(curavatarfov, aspect, farplane, false, false, false, avatardepth);
         game::renderavatar();
         project(fovy, aspect, farplane);
     }
+    GLERROR;
     timer_end(TIMER_GBUFFER);
     timer_end(TIMER_CPU_GBUFFER);
 
@@ -3593,11 +3599,13 @@ void gl_drawframe(int w, int h)
         renderao();
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
         glViewport(0, 0, gw, gh);
+        GLERROR;
     }
     
     // render grass after AO to avoid disturbing shimmering patterns
     generategrass();
     rendergrass();
+    GLERROR;
 
     int deferred_weirdness_ends_here;
     
