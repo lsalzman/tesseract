@@ -1334,10 +1334,12 @@ static void setfog(int fogmat, float below = 1, int abovemat = MAT_AIR)
     blendfog(fogmat, below, logblend, start, end, fogc);
     if(below < 1) blendfog(abovemat, 1-below, 1-logblend, start, end, fogc);
 
+    if(hdr) loopk(3) fogc[k] *= 0.5f;
+
     glFogf(GL_FOG_START, start);
     glFogf(GL_FOG_END, end);
     glFogfv(GL_FOG_COLOR, fogc);
-    glClearColor(fogc[0], fogc[1], fogc[2], 1.0f);
+    //glClearColor(fogc[0], fogc[1], fogc[2], 1.0f);
 }
 
 static void blendfogoverlay(int fogmat, float blend, float *overlay)

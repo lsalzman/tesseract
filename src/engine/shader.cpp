@@ -618,6 +618,57 @@ static void gengenericvariant(Shader &s, const char *sname, const char *vs, cons
     newshader(s.type, varname, vschanged ? vsv.getbuf() : reuse, pschanged ? psv.getbuf() : reuse, &s, row);
 }
 
+static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps)
+{
+    const char *vspragma = strstr(vs, "#pragma CUBE2_fog"), *pspragma = strstr(ps, "#pragma CUBE2_fog");
+    if(!vspragma && !pspragma) return;
+    static const int pragmalen = strlen("#pragma CUBE2_fog");
+    const char *vsend = strrchr(vs, '}');
+    if(vsend)
+    {
+        vsbuf.put(vs, vsend - vs);
+        const char *vsdef = "\n#define FOG_COORD ";
+        const char *vsfog = "\ngl_FogFragCoord = -dot((FOG_COORD), gl_ModelViewMatrixTranspose[2]);\n";
+        int clen = 0;
+        if(vspragma)
+        {
+            vspragma += pragmalen;
+            while(*vspragma && !iscubespace(*vspragma)) vspragma++;
+            vspragma += strspn(vspragma, " \t\v\f");
+            clen = strcspn(vspragma, "\r\n");
+        }
+        if(clen <= 0) { vspragma = "gl_Vertex"; clen = strlen(vspragma); }
+        vsbuf.put(vsdef, strlen(vsdef));
+        vsbuf.put(vspragma, clen);
+        vsbuf.put(vsfog, strlen(vsfog));
+        vsbuf.put(vsend, strlen(vsend)+1);
+    }
+    const char *psend = strrchr(ps, '}');
+    if(psend)
+    {
+        psbuf.put(ps, psend - ps);
+        const char *psdef = "\n#define FOG_COLOR ";
+        const char *psfog =
+            pspragma && !strncmp(pspragma+pragmalen, "rgba", 4) ?
+                "\ngl_FragColor = mix((FOG_COLOR), gl_FragColor, clamp((gl_Fog.end - gl_FogFragCoord) * gl_Fog.scale, 0.0, 1.0));\n" :
+                "\ngl_FragColor.rgb = mix((FOG_COLOR).rgb, gl_FragColor.rgb, clamp((gl_Fog.end - gl_FogFragCoord) * gl_Fog.scale, 0.0, 1.0));\n";
+        int clen = 0;
+        if(pspragma)
+        {
+            pspragma += pragmalen;
+            while(iscubealpha(*pspragma)) pspragma++;
+            while(*pspragma && !iscubespace(*pspragma)) pspragma++;
+            pspragma += strspn(pspragma, " \t\v\f");
+            clen = strcspn(pspragma, "\r\n");
+        }
+        if(clen <= 0) { pspragma = "gl_Fog.color"; clen = strlen(pspragma); }
+        psbuf.put(psdef, strlen(psdef));
+        psbuf.put(pspragma, clen);
+        psbuf.put(psfog, strlen(psfog));
+        psbuf.put(psend, strlen(psend)+1);
+    }
+}
+
 static void genuniformdefs(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps, Shader *variant = NULL)
 {
     if(variant ? variant->defaultparams.empty() : slotparams.empty()) return;
@@ -754,6 +805,7 @@ void shader(int *type, char *name, char *vs, char *ps)
         if(psbuf.length()) ps = psbuf.getbuf(); \
     }
     GENSHADER(slotparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps));
+    GENSHADER(strstr(vs, "#pragma CUBE2_fog") || strstr(ps, "#pragma CUBE2_fog"), genfogshader(vsbuf, psbuf, vs, ps));
     Shader *s = newshader(*type, name, vs, ps);
     if(s)
     {
@@ -777,6 +829,7 @@ void variantshader(int *type, char *name, int *row, char *vs, char *ps)
     //renderprogress(loadprogress, info);
     vector<char> vsbuf, psbuf, vsbak, psbak;
     GENSHADER(s->defaultparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps, s));
+    GENSHADER(strstr(vs, "#pragma CUBE2_fog") || strstr(ps, "#pragma CUBE2_fog"), genfogshader(vsbuf, psbuf, vs, ps));
     Shader *v = newshader(*type, varname, vs, ps, s, *row);
     if(v)
     {
