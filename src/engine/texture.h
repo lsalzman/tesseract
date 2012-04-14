@@ -196,6 +196,7 @@ enum
     SHADER_DEFAULT    = 0, 
     SHADER_NORMALSLMS = 1<<0, 
     SHADER_ENVMAP     = 1<<1,
+    SHADER_REFRACT    = 1<<2,
     SHADER_OPTION     = 1<<3,
 
     SHADER_INVALID    = 1<<8,
@@ -576,6 +577,8 @@ enum
     VSLOT_LAYER, 
     VSLOT_ALPHA,
     VSLOT_COLOR,
+    VSLOT_RESERVED, // used by RE
+    VSLOT_REFRACT,
     VSLOT_NUM 
 };
    
@@ -593,6 +596,8 @@ struct VSlot
     float alphafront, alphaback;
     vec colorscale;
     vec glowcolor;
+    float refractscale;
+    vec refractcolor;
 
     VSlot(Slot *slot = NULL, int index = -1) : slot(slot), next(NULL), index(index), changed(0)
     { 
@@ -614,6 +619,8 @@ struct VSlot
         alphaback = 0;
         colorscale = vec(1, 1, 1);
         glowcolor = vec(1, 1, 1);
+        refractscale = 0;
+        refractcolor = vec(1, 1, 1);
     }
 
     void cleanup()

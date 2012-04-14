@@ -1702,6 +1702,21 @@ void vcolor(float *r, float *g, float *b)
 }
 COMMAND(vcolor, "fff");
 
+void vrefract(float *k, float *r, float *g, float *b)
+{
+    if(noedit() || (nompedit && multiplayer())) return;
+    VSlot ds;
+    ds.changed = 1<<VSLOT_REFRACT;
+    ds.refractscale = clamp(*k, 0.0f, 1.0f);
+    if(ds.refractscale > 0 && (*r > 0 || *g > 0 || *b > 0))
+        ds.refractcolor = vec(clamp(*r, 0.0f, 1.0f), clamp(*g, 0.0f, 1.0f), clamp(*b, 0.0f, 1.0f));
+    else
+        ds.refractcolor = vec(1, 1, 1);
+    mpeditvslot(ds, allfaces, sel, true);
+
+}
+COMMAND(vrefract, "ffff");
+
 void vreset()
 {
     if(noedit() || (nompedit && multiplayer())) return;

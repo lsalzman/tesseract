@@ -234,7 +234,7 @@ extern int farplane;
 extern int hdr;
 extern bool envmapping, minimapping;
 extern const glmatrixf viewmatrix;
-extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, fogmatrix, invfogmatrix, envmatrix;
+extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, fogmatrix, invfogmatrix, envmatrix, eyematrix, worldmatrix;
 extern bvec fogcolor;
 
 extern void gl_checkextensions();
@@ -250,6 +250,8 @@ extern bool calcspherescissor(const vec &center, float size, float &sx1, float &
 extern bool calcbbscissor(const vec &bbmin, const vec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2);
 extern int pushscissor(float sx1, float sy1, float sx2, float sy2);
 extern void popscissor();
+extern void screenquad(float sw, float sh);
+extern void screenquad(float sw, float sh, float sw2, float sh2);
 extern void recomputecamera();
 extern void findorientation();
 extern void writecrosshairs(stream *f);
@@ -396,18 +398,19 @@ extern void updatevabbs(bool force = false);
 // renderva
 
 extern int oqfrags;
-extern float alphafrontsx1, alphafrontsx2, alphafrontsy1, alphafrontsy2, alphabacksx1, alphabacksx2, alphabacksy1, alphabacksy2;
+extern float alphafrontsx1, alphafrontsx2, alphafrontsy1, alphafrontsy2, alphabacksx1, alphabacksx2, alphabacksy1, alphabacksy2, alpharefractsx1, alpharefractsx2, alpharefractsy1, alpharefractsy2;
 extern uint alphatiles[LIGHTTILE_H];
 
 extern void visiblecubes(bool cull = true);
 extern void setvfcP(float z = -1, const vec &bbmin = vec(-1, -1, -1), const vec &bbmax = vec(1, 1, 1));
 extern void savevfcP();
 extern void restorevfcP();
-extern void rendergeom(float causticspass = 0, bool fogpass = false);
+extern void rendergeom(bool fogpass = false);
 extern int findalphavas(bool fogpass = false);
+extern void renderrefractmask();
 extern void renderalphageom(int side, bool fogpass = false);
 extern void rendermapmodels();
-extern void renderreflectedgeom(bool causticspass = false, bool fogpass = false);
+extern void renderreflectedgeom(bool fogpass = false);
 extern void renderreflectedmapmodels();
 extern void renderoutline();
 extern void rendershadowmapworld();
@@ -454,14 +457,14 @@ extern bool reflecting, fading, fogging;
 extern float reflectz;
 extern int reflectdist, vertwater, waterrefract, waterreflect, waterfade, caustics, waterfallrefract, waterfog, lavafog;
 extern bvec watercolor, waterfallcolor, lavacolor;
+extern float watersx1, watersy1, watersx2, watersy2;
 
-extern void cleanreflections();
-extern void queryreflections();
-extern void drawreflections();
 extern void renderwater();
 extern void renderlava(const materialsurface &m, Texture *tex, float scale);
 extern void loadcaustics(bool force = false);
 extern void preloadwatershaders(bool force = false);
+extern bool calcwaterscissor();
+extern void renderwatermask();
 
 // depthfx
 extern bool depthfxing;

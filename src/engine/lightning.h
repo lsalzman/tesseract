@@ -106,7 +106,7 @@ struct lightningrenderer : listrenderer
     void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
     {
         blend = min(blend<<2, 255);
-        float colorscale = (hdr ? 0.25f : 1)/255.0f, r = color[0]*colorscale, g = color[1]*colorscale, b = color[2]*colorscale, a = blend/255.0f;
+        float colorscale = (hdr ? 0.5f : 1)/255.0f, r = color[0]*colorscale, g = color[1]*colorscale, b = color[2]*colorscale, a = blend/255.0f;
         if(type&PT_MOD) //multiply alpha into color
             glColor3f(r*a, g*a, b*a);
         else

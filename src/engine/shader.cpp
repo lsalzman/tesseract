@@ -169,9 +169,9 @@ static void linkglslprogram(Shader &s, bool msg = true)
     if(success)
     {
         glUseProgramObject_(s.program);
-        loopi(8)
+        loopi(10)
         {
-            static const char * const texnames[8] = { "tex0", "tex1", "tex2", "tex3", "tex4", "tex5", "tex6", "tex7" };
+            static const char * const texnames[10] = { "tex0", "tex1", "tex2", "tex3", "tex4", "tex5", "tex6", "tex7", "tex8", "tex9" };
             GLint loc = glGetUniformLocation_(s.program, texnames[i]);
             if(loc != -1) glUniform1i_(loc, i);
         }
@@ -341,13 +341,18 @@ void Shader::allocparams(Slot *slot)
     if(slot)
     {
 #define UNIFORMTEX(name, tmu) \
-        { \
+        do { \
             loc = glGetUniformLocation_(program, name); \
             int val = tmu; \
             if(loc != -1) glUniform1i_(loc, val); \
-        }
+        } while(0)
         int loc, tmu = 1;
         if(type & SHADER_ENVMAP) UNIFORMTEX("envmap", tmu++);
+        if(type & SHADER_REFRACT) 
+        {
+            UNIFORMTEX("refractmask", 7);
+            UNIFORMTEX("refractlight", 8);
+        }
         UNIFORMTEX("blendmap", 7);
         int stex = 0;
         loopv(slot->sts)

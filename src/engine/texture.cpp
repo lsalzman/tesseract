@@ -1455,6 +1455,11 @@ static void propagatevslot(VSlot &dst, const VSlot &src, int diff, bool edit = f
         dst.alphaback = src.alphaback;
     }
     if(diff & (1<<VSLOT_COLOR)) dst.colorscale = src.colorscale;
+    if(diff & (1<<VSLOT_REFRACT))
+    {
+        dst.refractscale = src.refractscale;
+        dst.refractcolor = src.refractcolor;
+    }
 }
 
 static void propagatevslot(VSlot *root, int changed)
@@ -1510,6 +1515,11 @@ static void mergevslot(VSlot &dst, const VSlot &src, int diff, Slot *slot = NULL
         dst.alphaback = src.alphaback;
     }
     if(diff & (1<<VSLOT_COLOR)) dst.colorscale.mul(src.colorscale);
+    if(diff & (1<<VSLOT_REFRACT))
+    {
+        dst.refractscale *= src.refractscale;
+        dst.refractcolor.mul(src.refractcolor);
+    }
 }
 
 void mergevslot(VSlot &dst, const VSlot &src, const VSlot &delta)
@@ -1557,6 +1567,7 @@ static bool comparevslot(const VSlot &dst, const VSlot &src, int diff)
     if(diff & (1<<VSLOT_LAYER) && dst.layer != src.layer) return false;
     if(diff & (1<<VSLOT_ALPHA) && (dst.alphafront != src.alphafront || dst.alphaback != src.alphaback)) return false;
     if(diff & (1<<VSLOT_COLOR) && dst.colorscale != src.colorscale) return false;
+    if(diff & (1<<VSLOT_REFRACT) && (dst.refractscale != src.refractscale || dst.refractcolor != src.refractcolor)) return false;
     return true;
 }
 
@@ -1740,6 +1751,19 @@ void texcolor(float *r, float *g, float *b)
     propagatevslot(s.variants, 1<<VSLOT_COLOR);
 }
 COMMAND(texcolor, "fff");
+
+void texrefract(float *k, float *r, float *g, float *b)
+{
+    if(slots.empty()) return;
+    Slot &s = *slots.last();
+    s.variants->refractscale = clamp(*k, 0.0f, 1.0f);
+    if(s.variants->refractscale > 0 && (*r > 0 || *g > 0 || *b > 0))
+        s.variants->refractcolor = vec(clamp(*r, 0.0f, 1.0f), clamp(*g, 0.0f, 1.0f), clamp(*b, 0.0f, 1.0f));
+    else
+        s.variants->refractcolor = vec(1, 1, 1);
+    propagatevslot(s.variants, 1<<VSLOT_REFRACT);
+}
+COMMAND(texrefract, "ffff");
 
 static int findtextype(Slot &s, int type, int last = -1)
 {

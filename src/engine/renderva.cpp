@@ -576,7 +576,7 @@ void renderoutline()
     for(vtxarray *va = visibleva; va; va = va->next)
     {
         if(va->occluded >= OCCLUDE_BB) continue;
-        if(!va->alphaback && !va->alphafront && (!va->texs || va->occluded >= OCCLUDE_GEOM)) continue;
+        if((!va->texs || va->occluded >= OCCLUDE_GEOM) && !va->alphaback && !va->alphafront && !va->refracttris) continue;
 
         if(!prev || va->vbuf != prev->vbuf)
         {
@@ -593,10 +593,10 @@ void renderoutline()
             drawvatris(va, 3*va->tris, va->edata);
             xtravertsva += va->verts;
         }
-        if(va->alphaback || va->alphafront)
+        if(va->alphaback || va->alphafront || va->refract)
         {
-            drawvatris(va, 3*(va->alphabacktris + va->alphafronttris), &va->edata[3*(va->tris + va->blendtris)]);
-            xtravertsva += 3*(va->alphabacktris + va->alphafronttris);
+            drawvatris(va, 3*(va->alphabacktris + va->alphafronttris + va->refracttris), &va->edata[3*(va->tris + va->blendtris)]);
+            xtravertsva += 3*(va->alphabacktris + va->alphafronttris + va->refracttris);
         }
         
         prev = va;
@@ -1228,6 +1228,8 @@ struct renderstate
     GLfloat color[4], fogcolor[4];
     vec colorscale;
     float alphascale;
+    float refractscale;
+    vec refractcolor;
     int blendx, blendy;
     GLuint textures[8];
     Slot *slot, *texgenslot;
@@ -1235,7 +1237,7 @@ struct renderstate
     float texgenscrollS, texgenscrollT;
     int texgendim;
 
-    renderstate() : colormask(true), depthmask(true), blending(false), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
+    renderstate() : colormask(true), depthmask(true), blending(false), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
     {
         loopk(4) color[k] = 1;
         loopk(8) textures[k] = 0;
@@ -1322,7 +1324,7 @@ static void mergetexs(renderstate &cur, vtxarray *va, elementset *texs = NULL, i
             texs += va->texs + va->blends;
             edata += 3*(va->tris + va->blendtris);
             numtexs = va->alphaback;
-            if(cur.alphaing > 1) numtexs += va->alphafront;
+            if(cur.alphaing > 1) numtexs += va->alphafront + va->refract;
         }
     }
 
@@ -1449,6 +1451,13 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
             cur.alphascale = alpha;
             GLOBALPARAM(colorparams, (alpha*vslot.colorscale.x, alpha*vslot.colorscale.y, alpha*vslot.colorscale.z, alpha));
         }
+        if(cur.alphaing > 1 && vslot.refractscale > 0 && (cur.refractscale != vslot.refractscale || cur.refractcolor != vslot.refractcolor))
+        {
+            extern int gh;
+            cur.refractscale = vslot.refractscale;
+            cur.refractcolor = vslot.refractcolor;
+            GLOBALPARAM(refractparams, (vslot.refractcolor.x*(1-alpha), vslot.refractcolor.y*(1-alpha), vslot.refractcolor.z*(1-alpha), vslot.refractscale*gh));
+        }
     }
     else if(cur.colorscale != vslot.colorscale)
     {
@@ -1521,6 +1530,7 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
 static inline void changeshader(renderstate &cur, Slot &slot, VSlot &vslot)
 {
     if(cur.blending) slot.shader->setvariant(0, 0, slot, vslot);
+    else if(cur.alphaing > 1 && vslot.refractscale > 0) slot.shader->setvariant(0, 1, slot, vslot);
     else slot.shader->set(slot, vslot);
 }
 
@@ -1594,7 +1604,7 @@ void renderzpass(renderstate &cur, vtxarray *va)
     {
         firsttex += va->texs + va->blends;
         edata += 3*(va->tris + va->blendtris);
-        numtris = va->alphabacktris + va->alphafronttris;
+        numtris = va->alphabacktris + va->alphafronttris + va->refracttris;
         xtravertsva += 3*numtris;
     }
     else xtravertsva += va->verts;
@@ -1664,97 +1674,33 @@ void renderva(renderstate &cur, vtxarray *va, int pass = RENDERPASS_GBUFFER, boo
     }
 }
 
-#define NUMCAUSTICS 32
-
-static Texture *caustictex[NUMCAUSTICS] = { NULL };
-
-void loadcaustics(bool force)
-{
-    static bool needcaustics = false;
-    if(force) needcaustics = true;
-    if(!caustics || !needcaustics) return;
-    useshaderbyname("caustic");
-    if(caustictex[0]) return;
-    loopi(NUMCAUSTICS)
-    {
-        defformatstring(name)("<grey><mad:-0.6,0.6>packages/caustics/caust%.2d.png", i);
-        caustictex[i] = textureload(name);
-    }
-}
-
 void cleanupva()
 {
     clearvas(worldroot);
     clearqueries();
-    loopi(NUMCAUSTICS) caustictex[i] = NULL;
 }
 
-VARR(causticscale, 0, 50, 10000);
-VARR(causticmillis, 0, 75, 1000);
-VARFP(caustics, 0, 1, 1, loadcaustics());
-
-void setupcaustics(int tmu, float blend, GLfloat *color = NULL)
+void setupTMUs(renderstate &cur, bool fogpass)
 {
-    if(!caustictex[0]) loadcaustics(true);
-
-    vec4 s(0.011f, 0, 0.0066f, 0), t(0, 0.011f, 0.0066f, 0);
-    loopk(3)
-    {
-        s[k] *= 100.0f/causticscale;
-        t[k] *= 100.0f/causticscale;
-    }
-    int tex = (lastmillis/causticmillis)%NUMCAUSTICS;
-    float frac = float(lastmillis%causticmillis)/causticmillis;
-    if(color) color[3] = frac;
-    else glColor4f(1, 1, 1, frac);
-    loopi(2)
-    {
-        glActiveTexture_(GL_TEXTURE0_ARB+tmu+i);
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, caustictex[(tex+i)%NUMCAUSTICS]->id);
-    }
-    static Shader *causticshader = NULL;
-    if(!causticshader) causticshader = lookupshaderbyname("caustic");
-    causticshader->set();
-    LOCALPARAM(texgenS, (s));
-    LOCALPARAM(texgenT, (t));
-    LOCALPARAM(frameoffset, (blend*(1-frac), blend*frac, blend));
-}
-
-void setupTMUs(renderstate &cur, float causticspass, bool fogpass)
-{
+    glActiveTexture_(GL_TEXTURE0_ARB);
+    glClientActiveTexture_(GL_TEXTURE0_ARB);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glEnableClientState(GL_NORMAL_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
-    loopi(8-1) { glActiveTexture_(GL_TEXTURE1_ARB+i); glEnable(GL_TEXTURE_2D); }
-    glActiveTexture_(GL_TEXTURE0_ARB);
     GLOBALPARAM(colorparams, (1, 1, 1, 1));
     GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
     GLOBALPARAM(ambient, (ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f));
     GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
- 
     glColor4fv(cur.color);
-
-    // diffusetmu
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glMatrixMode(GL_TEXTURE);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
 }
 
-void cleanupTMUs(renderstate &cur, float causticspass, bool fogpass)
+void cleanupTMUs(renderstate &cur, bool fogpass)
 {
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glMatrixMode(GL_TEXTURE);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-
-    glDisableClientState(GL_NORMAL_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
-    loopi(8-1) { glActiveTexture_(GL_TEXTURE1_ARB+i); glDisable(GL_TEXTURE_2D); }
-
     glActiveTexture_(GL_TEXTURE0_ARB);
     glClientActiveTexture_(GL_TEXTURE0_ARB);
-    glEnable(GL_TEXTURE_2D);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
 }
 
 #define FIRSTVA (reflecting ? reflectedva : visibleva)
@@ -1785,10 +1731,8 @@ static void rendergeommultipass(renderstate &cur, int pass, bool fogpass)
 
 VAR(oqgeom, 0, 1, 1);
 
-void rendergeom(float causticspass, bool fogpass)
+void rendergeom(bool fogpass)
 {
-    if(causticspass && (!causticscale || !causticmillis)) causticspass = 0;
-
     bool mainpass = !reflecting && !refracting && !envmapping,
          doOQ = hasOQ && oqfrags && oqgeom && mainpass,
          doZP = doOQ && zpass;
@@ -1800,7 +1744,7 @@ void rendergeom(float causticspass, bool fogpass)
     }
     if(!doZP) 
     {
-        setupTMUs(cur, causticspass, fogpass);
+        setupTMUs(cur, fogpass);
     }
 
     resetbatches();
@@ -1866,7 +1810,7 @@ void rendergeom(float causticspass, bool fogpass)
         if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
         if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
 		glFlush();
-        setupTMUs(cur, causticspass, fogpass);
+        setupTMUs(cur, fogpass);
         if(!multipassing) { multipassing = true; glDepthFunc(GL_LEQUAL); }
         cur.vbuf = 0;
         cur.texgendim = -1;
@@ -1938,31 +1882,7 @@ void rendergeom(float causticspass, bool fogpass)
         glDepthMask(GL_TRUE);
     }
 
-    cleanupTMUs(cur, causticspass, fogpass);
-
-    if(causticspass)
-    {
-        if(!multipassing) { multipassing = true; glDepthFunc(GL_LEQUAL); }
-        glDepthMask(GL_FALSE);
-        glEnable(GL_BLEND);
-
-        static GLfloat zerofog[4] = { 0, 0, 0, 1 };
-        glGetFloatv(GL_FOG_COLOR, cur.fogcolor);
-
-        setupcaustics(0, causticspass);
-        glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
-        glFogfv(GL_FOG_COLOR, zerofog);
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-        rendergeommultipass(cur, RENDERPASS_CAUSTICS, fogpass);
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        glActiveTexture_(GL_TEXTURE1_ARB);
-        glDisable(GL_TEXTURE_2D);
-        glActiveTexture_(GL_TEXTURE0_ARB);
-
-        glFogfv(GL_FOG_COLOR, cur.fogcolor);
-        glDisable(GL_BLEND);
-        glDepthMask(GL_TRUE);
-    }
+    cleanupTMUs(cur, fogpass);
 
     if(multipassing) glDepthFunc(GL_LESS);
 
@@ -1986,21 +1906,22 @@ void rendergeom(float causticspass, bool fogpass)
 }
 
 static vector<vtxarray *> alphavas;
-static int alphabackvas = 0;
+static int alphabackvas = 0, alpharefractvas = 0;
 float alphafrontsx1 = -1, alphafrontsx2 = 1, alphafrontsy1 = -1, alphafrontsy2 = -1,
-      alphabacksx1 = -1, alphabacksx2 = 1, alphabacksy1 = -1, alphabacksy2 = -1;
+      alphabacksx1 = -1, alphabacksx2 = 1, alphabacksy1 = -1, alphabacksy2 = -1,
+      alpharefractsx1 = -1, alpharefractsx2 = 1, alpharefractsy1 = -1, alpharefractsy2 = 1;
 uint alphatiles[LIGHTTILE_H];
 
 int findalphavas(bool fogpass)
 {
     alphavas.setsize(0);
-    alphafrontsx1 = alphafrontsy1 = alphabacksx1 = alphabacksy1 = 1;
-    alphafrontsx2 = alphafrontsy2 = alphabacksx2 = alphabacksy2 = -1;
-    alphabackvas = 0;
+    alphafrontsx1 = alphafrontsy1 = alphabacksx1 = alphabacksy1 = alpharefractsx1 = alpharefractsy1 = 1;
+    alphafrontsx2 = alphafrontsy2 = alphabacksx2 = alphabacksy2 = alpharefractsx2 = alpharefractsy2 = -1;
+    alphabackvas = alpharefractvas = 0;
     memset(alphatiles, 0, sizeof(alphatiles));
     for(vtxarray *va = FIRSTVA; va; va = NEXTVA)
     {
-        if(!va->alphabacktris && !va->alphafronttris) continue;
+        if(!va->alphabacktris && !va->alphafronttris && !va->refracttris) continue;
         if(refracting)
         {
             if((refracting < 0 ? va->alphamin.z > reflectz : va->alphamax.z <= reflectz) || va->occluded >= OCCLUDE_BB) continue;
@@ -2035,8 +1956,49 @@ int findalphavas(bool fogpass)
             alphabacksx2 = max(alphabacksx2, sx2);
             alphabacksy2 = max(alphabacksy2, sy2);
         }
+        if(va->refracttris)
+        {
+            alpharefractvas++;
+            if(!calcbbscissor(va->refractmin.tovec(), va->refractmax.tovec(), sx1, sy1, sx2, sy2)) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+            alpharefractsx1 = min(alpharefractsx1, sx1);
+            alpharefractsy1 = min(alpharefractsy1, sy1);
+            alpharefractsx2 = max(alpharefractsx2, sx2);
+            alpharefractsy2 = max(alpharefractsy2, sy2);
+        }
     }
-    return (alphavas.length() ? 2 : 0) | (alphabackvas ? 1 : 0);
+    return (alpharefractvas ? 4 : 0) | (alphavas.length() ? 2 : 0) | (alphabackvas ? 1 : 0);
+}
+
+void renderrefractmask()
+{
+    glEnableClientState(GL_VERTEX_ARRAY);
+
+    vtxarray *prev = NULL;
+    loopv(alphavas)
+    {
+        vtxarray *va = alphavas[i];
+        if(!va->refracttris) continue;
+
+        if(!prev || va->vbuf != prev->vbuf)
+        {
+            if(hasVBO)
+            {
+                glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+            }
+            glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
+        }
+
+        drawvatris(va, 3*va->refracttris, &va->edata[3*(va->tris + va->blendtris + va->alphabacktris + va->alphafronttris)]);
+        xtravertsva += 3*va->refracttris;
+    }
+
+    if(hasVBO)
+    {
+        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    }
+    glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void renderalphageom(int side, bool fogpass)
@@ -2049,7 +2011,7 @@ void renderalphageom(int side, bool fogpass)
     
     glEnableClientState(GL_VERTEX_ARRAY);
 
-    setupTMUs(cur, 0, fogpass);
+    setupTMUs(cur, fogpass);
 
     if(side == 2)
     {
@@ -2064,7 +2026,7 @@ void renderalphageom(int side, bool fogpass)
         glCullFace(GL_BACK);
     }
    
-    cleanupTMUs(cur, 0, fogpass);
+    cleanupTMUs(cur, fogpass);
 
     if(hasVBO)
     {
@@ -2104,14 +2066,14 @@ void findreflectedvas(vector<vtxarray *> &vas, int prevvfc = VFC_PART_VISIBLE)
     }
 }
 
-void renderreflectedgeom(bool causticspass, bool fogpass)
+void renderreflectedgeom(bool fogpass)
 {
     if(reflecting)
     {
         reflectedva = NULL;
         findreflectedvas(varoot);
-        rendergeom(causticspass ? 1 : 0, fogpass);
+        rendergeom(fogpass);
     }
-    else rendergeom(causticspass ? 1 : 0, fogpass);
+    else rendergeom(fogpass);
 }                
 

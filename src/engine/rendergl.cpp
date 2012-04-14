@@ -152,7 +152,6 @@ VAR(ati_oq_bug, 0, 0, 1);
 VAR(ati_minmax_bug, 0, 0, 1);
 VAR(ati_cubemap_bug, 0, 0, 1);
 VAR(ati_ubo_bug, 0, 0, 1);
-VAR(nvidia_scissor_bug, 0, 0, 1);
 VAR(sdl_backingstore_bug, -1, 0, 1);
 VAR(minimizetcusage, 1, 0, 0);
 VAR(usetexrect, 1, 0, 0);
@@ -398,8 +397,6 @@ void gl_checkextensions()
     {
         reservevpparams = 10;
         rtsharefb = 0; // work-around for strange driver stalls involving when using many FBOs
-        
-        if(hasFBO && !hasTF) nvidia_scissor_bug = 1; // 5200 bug, clearing with scissor on an FBO messes up on reflections, may affect lesser cards too 
     }
     else
     {
@@ -416,8 +413,6 @@ void gl_checkextensions()
         }
 
         reservevpparams = 20;
-
-        if(!hasOQ) waterrefract = 0;
     }
 
     if(hasext(exts, "GL_ARB_shading_language_100") && hasext(exts, "GL_ARB_shader_objects") && hasext(exts, "GL_ARB_vertex_shader") && hasext(exts, "GL_ARB_fragment_shader"))
@@ -607,17 +602,6 @@ void gl_checkextensions()
         glDepthBounds_ = (PFNGLDEPTHBOUNDSEXTPROC) getprocaddress("glDepthBoundsEXT");
         hasDBT = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_depth_bounds_test extension.");
-    }
-
-    if(hasext(exts, "GL_EXT_gpu_shader4"))
-    {
-        // on DX10 or above class cards (i.e. GF8 or RadeonHD) enable expensive features
-        extern int grass;
-        grass = 1;
-        if(hasOQ)
-        {
-            waterfallrefract = 1;
-        }
     }
 }
 
@@ -1005,7 +989,7 @@ void recomputecamera()
 
 extern const glmatrixf viewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, 1, 0), vec4(0, -1, 0, 0));
 extern const glmatrixf invviewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, -1, 0), vec4(0, 1, 0, 0));
-glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix, screenmatrix, eyematrix;
+glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix, eyematrix, worldmatrix, linearworldmatrix;
 
 void readmatrices()
 {
@@ -1628,8 +1612,6 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 
     drawskybox(farplane);
 
-//    queryreflections();
-
     rendermapmodels();
     renderalphageom();
 
@@ -1768,7 +1750,6 @@ void drawminimap()
     xtravertsva = xtraverts = glde = gbatches = 0;
 
     visiblecubes(false);
-    queryreflections();
     drawreflections();
 
     loopi(minimapheight > 0 && minimapheight < minimapcenter.z + minimapradius.z ? 2 : 1)
@@ -1911,8 +1892,14 @@ void screenquad(float sw, float sh, float sw2, float sh2)
     glEnd();
 }
 
-int gw = -1, gh = -1, bloomw = -1, bloomh = -1, aow = -1, aoh = -1, lasthdraccum = 0;
-GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0, hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 }, aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
+int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
+GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0;
+GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 };
+GLuint refractfbo = 0, refracttex = 0;
+GLenum bloomformat = 0, hdrformat = 0;
+
+int aow = -1, aoh = -1;
+GLuint aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
 
 extern int bloomsize, bloomprec;
 
@@ -1930,11 +1917,11 @@ void setupbloom(int w, int h)
 
     loopi(5) if(!bloomfbo[i]) glGenFramebuffers_(1, &bloomfbo[i]);
 
-    GLenum format = bloomprec >= 3 && hasTF ? GL_RGB16F_ARB : (bloomprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
-    createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(bloomtex[3], bloomw, bloomh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
+    bloomformat = bloomprec >= 3 && hasTF ? GL_RGB16F_ARB : (bloomprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
+    createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[3], bloomw, bloomh, NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
 
     static uchar gray[3] = { 32, 32, 32 };
     static float grayf[3] = { 0.125f, 0.125f, 0.125f };
@@ -2116,8 +2103,8 @@ void setupgbuffer(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
-    GLenum format = hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB));
-    createtexture(hdrtex, gw, gh, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
+    hdrformat = hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB));
+    createtexture(hdrtex, gw, gh, NULL, 3, 1, hdrformat, GL_TEXTURE_RECTANGLE_ARB);
 
     if(gdepthformat)
     {
@@ -2137,6 +2124,31 @@ void setupgbuffer(int w, int h)
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
         fatal("failed allocating HDR buffer!");
 
+    if(!refracttex) glGenTextures(1, &refracttex);
+    if(!refractfbo) glGenFramebuffers_(1, &refractfbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
+
+    createtexture(refracttex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+
+    if(gdepthformat)
+    {
+        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+        if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+    }
+    else
+    {
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+        if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+        else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+    }
+
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, refracttex, 0);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating refraction buffer!");
+ 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 
     cleanupbloom();
@@ -2154,6 +2166,8 @@ void cleanupgbuffer()
     if(gdepthrb) { glDeleteRenderbuffers_(1, &gdepthrb); gdepthrb = 0; }
     if(hdrfbo) { glDeleteFramebuffers_(1, &hdrfbo); hdrfbo = 0; }
     if(hdrtex) { glDeleteTextures(1, &hdrtex); hdrtex = 0; }
+    if(refractfbo) { glDeleteFramebuffers_(1, &refractfbo); refractfbo = 0; }
+    if(refracttex) { glDeleteTextures(1, &refracttex); refracttex = 0; }
     gw = gh = -1;
 }
 
@@ -2166,7 +2180,24 @@ void viewdepth()
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, gw); glVertex2i(0, 0);
+    glTexCoord2f(0, gh); glVertex2i(0, 0);
+    glTexCoord2f(gw, gh); glVertex2i(w, 0);
+    glTexCoord2f(0, 0); glVertex2i(0, h);
+    glTexCoord2f(gw, 0); glVertex2i(w, h);
+    glEnd();
+    notextureshader->set();
+}
+
+VAR(debugrefract, 0, 0, 1);
+
+void viewrefract()
+{
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    rectshader->set();
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, gh); glVertex2i(0, 0);
     glTexCoord2f(gw, gh); glVertex2i(w, 0);
     glTexCoord2f(0, 0); glVertex2i(0, h);
     glTexCoord2f(gw, 0); glVertex2i(w, h);
@@ -2191,7 +2222,7 @@ VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 
 FVARR(hdrbright, 1e-3f, 0.18f, 1e3f);
-FVAR(hdrtonemin, 1e-3f, 0.5f, 1e3f);
+FVAR(hdrtonemin, 1e-3f, 0.75f, 1e3f);
 FVAR(hdrtonemax, 1e-3f, 2.0f, 1e3f);
 FVARR(bloombright, 1e-3f, 2.0f, 1e3f);
 FVAR(bloomlummin, 1e-3f, 0.1f, 1e3f);
@@ -2699,6 +2730,7 @@ FVAR(aodark, 1e-3f, 3, 1e3f);
 FVAR(aosharp, 1e-3f, 1, 1e3f);
 FVAR(aomin, 0, 0.25f, 1);
 VARF(aosun, 0, 1, 1, cleardeferredlightshaders());
+FVAR(aosunmin, 0, 0.5f, 1);
 VAR(aoblur, 0, 4, 7);
 FVAR(aosigma, 0.005f, 0.5f, 2.0f);
 VAR(aoiter, 0, 0, 4);
@@ -2723,7 +2755,7 @@ void cascaded_shadow_map::bindparams()
     {
         cascaded_shadow_map::splitinfo &split = csm.splits[i];
         const shadowmapinfo &sm = shadowmaps[split.idx];
-        const float bias = csmbias * (1024.0 / sm.size);
+        const float bias = csmbias * (1024.0f / sm.size);
         splitcenterv[i] = vec(split.bbmin).add(split.bbmax).mul(0.5f);
         splitboundsv[i] = vec(split.bbmax).sub(split.bbmin).mul(0.5f*(sm.size - 2*smborder)/sm.size);
         splitscalev[i] = vec(0.5f*sm.size*split.proj.v[0], 0.5f*sm.size*split.proj.v[5], 0.5f*split.proj.v[10]);
@@ -2742,6 +2774,8 @@ void cleardeferredlightshaders()
 {
     deferredlightshader = NULL;
 }
+
+SVARF(deferredlightsuffix, "", cleardeferredlightshaders());
 
 void loaddeferredlightshaders()
 {
@@ -2764,7 +2798,7 @@ void loaddeferredlightshaders()
     }
     sun[sunlen] = '\0';
 
-    defformatstring(name)("deferredlight%s%s", shadow, sun);
+    defformatstring(name)("deferredlight%s%s%s", shadow, sun, deferredlightsuffix);
     deferredlightshader = lookupshaderbyname(name);
     if(!deferredlightshader)
     {
@@ -2815,30 +2849,18 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    glmatrixf worldmatrix;
-    if(gdepthformat)
-    {
-        worldmatrix.mul(invprojmatrix, screenmatrix);
-        float xscale = worldmatrix.v[0], yscale = worldmatrix.v[5], xoffset = worldmatrix.v[12], yoffset = worldmatrix.v[13], zscale = worldmatrix.v[14];
-        GLfloat depthmatrix[16] =
-        {
-            xscale/zscale,  0,              0, 0,
-            0,              yscale/zscale,  0, 0,
-            xoffset/zscale, yoffset/zscale, 1, 0,
-            0,              0,              0, 1
-        };
-        worldmatrix.mul(invmvmatrix.v, depthmatrix);
-    }
-    else worldmatrix.mul(invmvpmatrix, screenmatrix);
-
     glMatrixMode(GL_TEXTURE);
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
     GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z));
     GLOBALPARAM(shadowatlasscale, (1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE));
-    if(ao) GLOBALPARAM(aoscale, (float(aow)/gw, float(aoh)/gh, aomin, 1.0f-aomin));
-    float lightscale = 2.0f*(hdr ? 0.25f : 1)/255.0f;
+    if(ao) 
+    {
+        GLOBALPARAM(aoscale, (float(aow)/gw, float(aoh)/gh));
+        GLOBALPARAM(aoparams, (aomin, 1.0f-aomin, aosunmin, 1.0f-aosunmin));
+    }
+    float lightscale = 2.0f*(hdr ? 0.5f : 1)/255.0f;
     GLOBALPARAM(lightscale, (ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale));
 
     if(sunlight && csmdeferredshading) 
@@ -3481,12 +3503,14 @@ void gl_drawframe(int w, int h)
     }
     else fogmat = MAT_AIR;    
     setfog(fogmat, fogblend, abovemat);
+#if 0
     if(fogmat!=MAT_AIR)
     {
         float blend = abovemat==MAT_AIR ? fogblend : 1.0f;
         fovy += blend*sinf(lastmillis/1000.0)*2.0f;
         aspect += blend*sinf(lastmillis/1000.0+PI)*0.1f;
     }
+#endif
 
     farplane = worldsize*2;
 
@@ -3562,17 +3586,31 @@ void gl_drawframe(int w, int h)
     glClear(GL_DEPTH_BUFFER_BIT|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
 
+    glmatrixf screenmatrix;
     screenmatrix.identity();
     screenmatrix.scale(2.0f/gw, 2.0f/gh, 2.0f);
     screenmatrix.translate(-1.0f, -1.0f, -1.0f);
     eyematrix.mul(invprojmatrix, screenmatrix);
+    linearworldmatrix.mul(invprojmatrix, screenmatrix);
+    float xscale = linearworldmatrix.v[0], yscale = linearworldmatrix.v[5], xoffset = linearworldmatrix.v[12], yoffset = linearworldmatrix.v[13], zscale = linearworldmatrix.v[14];
+    GLfloat depthmatrix[16] =
+    {
+        xscale/zscale,  0,              0, 0,
+        0,              yscale/zscale,  0, 0,
+        xoffset/zscale, yoffset/zscale, 1, 0,
+        0,              0,              0, 1
+    };
+    linearworldmatrix.mul(invmvmatrix.v, depthmatrix);
+    if(gdepthformat) worldmatrix = linearworldmatrix;
+    else worldmatrix.mul(invmvpmatrix, screenmatrix);
 
+    GLOBALPARAM(gsize, (gw, gh, 1.0f/gw, 1.0f/gh));
     GLOBALPARAM(gdepthscale, (eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]));
-    GLOBALPARAM(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane, -(255.0f*255.0f*255.0f)/farplane));
-    GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f), -farplane/(255.0f*255.0f*255.0f)));
-    
+    GLOBALPARAM(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane));
+    GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
+
     GLERROR;
-    rendergeom(causticspass);
+    rendergeom();
     GLERROR;
     resetmodelbatches();
     rendermapmodels();
@@ -3611,8 +3649,6 @@ void gl_drawframe(int w, int h)
     
     //extern int outline;
     //if(!wireframe && editmode && outline) renderoutline();
-
-    //queryreflections();
 
 #ifndef MORE_DEFERRED_WEIRDNESS
     timer_begin(TIMER_CPU_SM);
@@ -3678,7 +3714,7 @@ void gl_drawframe(int w, int h)
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
 
-    glViewport(0, 0, w, h);
+    glViewport(0, 0, gw, gh);
 
     if(smpolyfactor || smpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
     glCullFace(GL_BACK);
@@ -3707,18 +3743,83 @@ void gl_drawframe(int w, int h)
     rendermaterials();
 
     int hasalphavas = findalphavas();
-    if(hasalphavas)
+    bool haswater = calcwaterscissor();
+    if(hasalphavas || haswater)
     {
         timer_begin(TIMER_ALPHAGEOM);
+
+        if(!alphascissor)
+        {
+            alphafrontsx1 = alphafrontsy1 = alphabacksx1 = alphabacksy1 = alpharefractsx1 = alpharefractsy1 = watersx1 = watersy1 = -1;
+            alphafrontsx2 = alphafrontsy2 = alphabacksx2 = alphabacksy2 = alpharefractsx2 = alpharefractsy2 = watersx2 = watersy2 = 1;
+        }
+
+        if(hasalphavas&4 || haswater)
+        {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
+            glDepthMask(GL_FALSE);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+            float sx1 = min(alpharefractsx1, watersx1), sy1 = min(alpharefractsy1, watersy1),
+                  sx2 = max(alpharefractsx2, watersx2), sy2 = max(alpharefractsy2, watersy2);
+            bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
+            if(scissor)
+            {
+                int x1 = int(floor((sx1*0.5f+0.5f)*gw)), y1 = int(floor((sy1*0.5f+0.5f)*gh)),
+                    x2 = int(ceil((sx2*0.5f+0.5f)*gw)), y2 = int(ceil((sy2*0.5f+0.5f)*gh));
+                glEnable(GL_SCISSOR_TEST);
+                glScissor(x1, y1, x2 - x1, y2 - y1);
+            }
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            if(scissor) glDisable(GL_SCISSOR_TEST);
+            SETSHADER(refractmask);
+            if(hasalphavas&4) renderrefractmask();
+            if(haswater) renderwatermask();
+            glDepthMask(GL_TRUE);
+        }
+
         if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
 
-        if(!alphascissor) 
-        { 
-            alphafrontsx1 = alphafrontsy1 = alphabacksx1 = alphabacksy1 = -1;
-            alphafrontsx2 = alphafrontsy2 = alphabacksx2 = alphabacksy2 = 1;
-        }
-        loop(side, 2) if(hasalphavas&(1<<side))
+        glActiveTexture_(GL_TEXTURE7_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
+        glActiveTexture_(GL_TEXTURE8_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+        glActiveTexture_(GL_TEXTURE9_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+
+        glMatrixMode(GL_TEXTURE);
+        glLoadMatrixf(linearworldmatrix.v);
+        glActiveTexture_(GL_TEXTURE1_ARB);
+        glmatrixf raymatrix = mvmatrix.v;
+        loopk(4)
         {
+            raymatrix.v[0 + k*4] = 0.5f*gw*(raymatrix.v[2 + k*4] - raymatrix.v[0 + k*4]*projmatrix.v[0]);
+            raymatrix.v[1 + k*4] = 0.5f*gh*(raymatrix.v[2 + k*4] - raymatrix.v[1 + k*4]*projmatrix.v[5]);
+        }
+        glLoadMatrixf(raymatrix.v);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+        glMatrixMode(GL_MODELVIEW);
+
+        loop(side, 2) if(hasalphavas&(1<<side) || (side && haswater))
+        {
+            float sx1, sy1, sx2, sy2;
+            if(!side) { sx1 = alphabacksx1; sy1 = alphabacksy1; sx2 = alphabacksx2; sy2 = alphabacksy2; }
+            else 
+            { 
+                sx1 = alphafrontsx1; sy1 = alphafrontsy1; sx2 = alphafrontsx2; sy2 = alphafrontsy2;
+                if(haswater)
+                {
+                    sx1 = min(sx1, watersx1); 
+                    sy1 = min(sy1, watersy1); 
+                    sx2 = max(sx2, watersx2); 
+                    sy2 = max(sy2, watersy2); 
+                    int tx1 = max(int(floor((watersx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((watersy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+                        tx2 = min(int(ceil((watersx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((watersy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+                    for(int ty = ty1; ty < ty2; ty++) alphatiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;
+                }
+            } 
+
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
             if((gdepthstencil && hasDS) || gstencil)
             {
@@ -3728,9 +3829,6 @@ void gl_drawframe(int w, int h)
             else
             {
                 maskgbuffer("cg");
-                float sx1, sy1, sx2, sy2;
-                if(!side) { sx1 = alphabacksx1; sy1 = alphabacksy1; sx2 = alphabacksx2; sy2 = alphabacksy2; }
-                else { sx1 = alphafrontsx1; sy1 = alphafrontsy1; sx2 = alphafrontsx2; sy2 = alphafrontsy2; } 
                 bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
                 if(scissor) 
                 {
@@ -3745,7 +3843,8 @@ void gl_drawframe(int w, int h)
                 maskgbuffer("cngd");
             }
 
-            renderalphageom(1<<side);
+            if(hasalphavas&(1<<side)) renderalphageom(1<<side);
+            if(side && haswater) renderwater();
 
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
             if((gdepthstencil && hasDS) || gstencil)
@@ -3757,15 +3856,18 @@ void gl_drawframe(int w, int h)
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-            if(!side) renderlights(alphabacksx1, alphabacksy1, alphabacksx2, alphabacksy2, alphatiles);
-            else renderlights(alphafrontsx1, alphafrontsy1, alphafrontsx2, alphafrontsy2, alphatiles);
+            renderlights(sx1, sy1, sx2, sy2, alphatiles);
 
             glDisable(GL_BLEND);
         }
 
         if((gdepthstencil && hasDS) || gstencil) glDisable(GL_STENCIL_TEST);
+
         timer_end(TIMER_ALPHAGEOM);
     }
+
+    //drawreflections();
+    //renderwater();
 
     defaultshader->set();
     GLERROR;
@@ -4084,6 +4186,7 @@ void gl_drawhud(int w, int h)
     else if(debugbuffersplit) viewbuffersplitmerge();
     else if(debugao) viewao(); 
     else if(debugdepth) viewdepth();
+    else if(debugrefract) viewrefract();
 
     glEnable(GL_BLEND);
     
@@ -4145,13 +4248,13 @@ void gl_drawhud(int w, int h)
                        
             if(editmode || showeditstats)
             {
-                static int laststats = 0, prevstats[8] = { 0, 0, 0, 0, 0, 0, 0 }, curstats[8] = { 0, 0, 0, 0, 0, 0, 0 };
+                static int laststats = 0, prevstats[7] = { 0, 0, 0, 0, 0, 0, 0 }, curstats[7] = { 0, 0, 0, 0, 0, 0, 0 };
                 if(totalmillis - laststats >= statrate)
                 {
                     memcpy(prevstats, curstats, sizeof(prevstats));
                     laststats = totalmillis - (totalmillis%statrate);
                 }
-                int nextstats[8] =
+                int nextstats[7] =
                 {
                     vtris*100/max(wtris, 1),
                     vverts*100/max(wverts, 1),
@@ -4159,14 +4262,13 @@ void gl_drawhud(int w, int h)
                     xtravertsva/1024,
                     glde,
                     gbatches,
-                    getnumqueries(),
-                    rplanes
+                    getnumqueries()
                 };
-                loopi(8) if(prevstats[i]==curstats[i]) curstats[i] = nextstats[i];
+                loopi(7) if(prevstats[i]==curstats[i]) curstats[i] = nextstats[i];
 
                 abovehud -= 2*FONTH;
                 draw_textf("wtr:%dk(%d%%) wvt:%dk(%d%%) evt:%dk eva:%dk", FONTH/2, abovehud, wtris/1024, curstats[0], wverts/1024, curstats[1], curstats[2], curstats[3]);
-                draw_textf("ond:%d va:%d gl:%d(%d) oq:%d rp:%d pvs:%d", FONTH/2, abovehud+FONTH, allocnodes*8, allocva, curstats[4], curstats[5], curstats[6], curstats[7], getnumviewcells());
+                draw_textf("ond:%d va:%d gl:%d(%d) oq:%d pvs:%d", FONTH/2, abovehud+FONTH, allocnodes*8, allocva, curstats[4], curstats[5], curstats[6], getnumviewcells());
                 limitgui = abovehud;
             }
 

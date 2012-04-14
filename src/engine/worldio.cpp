@@ -754,6 +754,11 @@ void savevslot(stream *f, VSlot &vs, int prev)
     {
         loopk(3) f->putlil<float>(vs.colorscale[k]);
     }
+    if(vs.changed & (1<<VSLOT_REFRACT))
+    {
+        f->putlil<float>(vs.refractscale);
+        loopk(3) f->putlil<float>(vs.refractcolor[k]);
+    }
 }
 
 void savevslots(stream *f, int numvslots)
@@ -826,6 +831,11 @@ void loadvslot(stream *f, VSlot &vs, int changed)
     if(vs.changed & (1<<VSLOT_COLOR)) 
     {
         loopk(3) vs.colorscale[k] = f->getlil<float>();
+    }
+    if(vs.changed & (1<<VSLOT_REFRACT))
+    {
+        vs.refractscale = f->getlil<float>();
+        loopk(3) vs.refractcolor[k] = f->getlil<float>();
     }
 }
 

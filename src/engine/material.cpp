@@ -683,7 +683,7 @@ void rendermaterials()
                             if(!blended) { glEnable(GL_BLEND); blended = true; }
                             if(depth) { glDepthMask(GL_FALSE); depth = false; }
                         }
-                        else if((!waterfallrefract || reflecting || refracting) && (!hasCM || !waterfallenv))
+                        else if((/*!waterfallrefract ||*/ reflecting || refracting) && (!hasCM || !waterfallenv))
                         {
                             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
                             glColor3ubv(wfcol);
@@ -710,7 +710,7 @@ void rendermaterials()
                                 name##shader->set(); \
                             } while(0)
 
-                            if(waterfallrefract && !reflecting && !refracting)
+                            if(/*waterfallrefract &&*/ !reflecting && !refracting)
                             {
                                 if(hasCM && waterfallenv) SETWATERFALLSHADER(waterfallenvrefract);    
                                 else SETWATERFALLSHADER(waterfallrefract);
@@ -740,10 +740,12 @@ void rendermaterials()
                                     glActiveTexture_(GL_TEXTURE3_ARB);
                                     glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(wslot));
                                 }
-                                if(waterfallrefract && (!reflecting || !refracting))
+                                if(/*waterfallrefract &&*/ (!reflecting || !refracting))
                                 {
+#if 0
                                     extern void setupwaterfallrefract(GLenum tmu1, GLenum tmu2);
                                     setupwaterfallrefract(GL_TEXTURE4_ARB, GL_TEXTURE0_ARB);
+#endif
                                 }
                                 else glActiveTexture_(GL_TEXTURE0_ARB);
 

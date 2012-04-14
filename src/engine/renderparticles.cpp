@@ -921,7 +921,7 @@ void renderparticles(bool mainpass)
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);             
 
-            float colorscale = hdr ? 0.25f : 1;
+            float colorscale = hdr ? 0.5f : 1;
             GLOBALPARAM(colorscale, (colorscale, colorscale, colorscale, 1));
 
             particleshader->set();

@@ -148,7 +148,7 @@ struct flarerenderer : partrenderer
             flare *f = flares+i;
             vec center = f->center;
             vec axis = vec(f->o).sub(center);
-            float colorscale = (hdr ? 0.25f : 1)/255.0f, color[4] = {f->color[0]*colorscale, f->color[1]*colorscale, f->color[2]*colorscale, 1};
+            float colorscale = (hdr ? 0.5f : 1)/255.0f, color[4] = {f->color[0]*colorscale, f->color[1]*colorscale, f->color[2]*colorscale, 1};
             loopj(f->sparkle?12:9)
             {
                 const flaretype &ft = flaretypes[j];

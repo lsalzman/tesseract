@@ -1135,7 +1135,6 @@ void resetmap()
 {
     clearoverrides();
     clearmapsounds();
-    cleanreflections();
     resetblendmap();
     clearlights();
     clearpvs();

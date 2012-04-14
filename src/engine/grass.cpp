@@ -1,6 +1,6 @@
 #include "engine.h"
 
-VARP(grass, 0, 0, 1);
+VARP(grass, 0, 1, 1);
 VAR(dbggrass, 0, 0, 1);
 VARP(grassdist, 0, 256, 10000);
 FVARP(grasstaper, 0, 0.2, 1);

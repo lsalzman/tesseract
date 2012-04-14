@@ -355,7 +355,7 @@ struct fireballrenderer : listrenderer
 
         glRotatef(lastmillis/7.0f, -rotdir.x, rotdir.y, -rotdir.z);
         glScalef(-psize, psize, -psize);
-        float colorscale = (hdr ? 0.25 : 1)/255.0f;
+        float colorscale = (hdr ? 0.5f : 1)/255.0f;
         drawexplosion(inside, color[0]*colorscale, color[1]*colorscale, color[2]*colorscale, blend/255.0f);
 
         glPopMatrix();
