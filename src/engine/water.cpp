@@ -45,6 +45,7 @@ void setupcaustics(int tmu, float blend = 1)
 }
 
 VARFP(waterreflect, 0, 1, 1, { preloadwatershaders(); });
+VARR(waterreflectstep, 1, 32, 10000);
 VARFP(waterenvmap, 0, 1, 1, { preloadwatershaders(); });
 
 /* vertex water */
@@ -356,6 +357,7 @@ void renderwater()
     GLOBALPARAM(waterfog, (1.0f/waterfog));
     GLOBALPARAM(waterdeepfade, (255.0f/(waterdeep*waterdeepfadecolor.x), 255.0f/(waterdeep*waterdeepfadecolor.y), 255.0f/(waterdeep*waterdeepfadecolor.z)));
     GLOBALPARAM(waterspec, (0.5f*waterspec/100.0f));
+    GLOBALPARAM(waterreflectstep, (waterreflectstep));
 
     #define SETWATERSHADER(which, name) \
     do { \
