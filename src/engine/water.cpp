@@ -295,7 +295,7 @@ HVARFR(waterdeepfade, 0, 0x60BFFF, 0xFFFFFF,
     waterdeepfadecolor = bvec((waterdeepfade>>16)&0xFF, (waterdeepfade>>8)&0xFF, waterdeepfade&0xFF);
 });
 VARR(waterfog, 0, 30, 10000);
-VARR(waterdeep, 0, 40, 10000);
+VARR(waterdeep, 0, 50, 10000);
 HVARFR(waterfallcolour, 0, 0, 0xFFFFFF,
 {
     waterfallcolor = bvec((waterfallcolour>>16)&0xFF, (waterfallcolour>>8)&0xFF, waterfallcolour&0xFF);
