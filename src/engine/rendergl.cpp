@@ -448,6 +448,11 @@ void gl_checkextensions()
 
         extern bool checkglslsupport();
         if(checkglslsupport()) hasGLSL = true;
+        
+        const char *glslversion = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
+        conoutf(CON_INIT, "GLSL: %s", glslversion);
+        // @TODO disable smtetra if < 1.30
+        
     }
     if(!hasGLSL) fatal("GLSL support is required!");
  
