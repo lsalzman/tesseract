@@ -2800,7 +2800,6 @@ void loaddeferredlightshaders()
         sun[sunlen++] = '0' + csmsplitn;
         if(smgather && (hasTG || hasTG)) sun[sunlen++] = 'g';
         if(ao && aosun) sun[sunlen++] = 'A';
-        
     }
     sun[sunlen] = '\0';
 
@@ -2927,7 +2926,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
             if(n) 
             {
-                deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i || (!ao && !sunlight) ? 2 : 0));
+                deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0));
                 lightpos.set(lightposv, n);
                 lightcolor.set(lightcolorv, n);
                 if(shadowmap)   
@@ -3646,7 +3645,7 @@ void gl_drawframe(int w, int h)
         glViewport(0, 0, gw, gh);
         GLERROR;
     }
-    
+ 
     // render grass after AO to avoid disturbing shimmering patterns
     generategrass();
     rendergrass();
