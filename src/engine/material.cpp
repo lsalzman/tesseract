@@ -639,7 +639,7 @@ HVARFR(glasscolour, 0, 0xB0D8FF, 0xFFFFFF,
     glasscolor = bvec((glasscolour>>16)&0xFF, (glasscolour>>8)&0xFF, glasscolour&0xFF);
 });
 FVARR(glassrefract, 0, 0.1f, 1e3f);
-VARR(glassspec, 0, 150, 1000);
+VARR(glassspec, 0, 150, 200);
 VARFP(glassenv, 0, 1, 1, preloadglassshaders());
 
 void renderglass()

@@ -291,9 +291,11 @@ HVARFR(lavacolour, 0, 0xFF4000, 0xFFFFFF,
 });
 VARR(lavafog, 0, 50, 10000);
 
-VARR(waterspec, 0, 150, 1000);
+VARR(waterspec, 0, 150, 200);
 
 VARFP(waterfallenv, 0, 1, 1, preloadwatershaders());
+FVARR(waterfallrefract, 0, 0.1f, 1e3f);
+VARR(waterfallspec, 0, 150, 200);
 
 void preloadwatershaders(bool force)
 {
@@ -361,6 +363,10 @@ static void renderwaterfall(const materialsurface &m, float offset, const vec *n
 #define GENFACEVERTY(o,n, x,y,z, xv,yv,zv) GENFACEVERT(o,n, x,y,z, xv,yv,zv)
 }
 
+FVARR(lavaglowmin, 0, 0.25f, 2);
+FVARR(lavaglowmax, 0, 1.0f, 2);
+VARR(lavaspec, 0, 25, 200);
+
 void renderlava()
 {
     if(lavasurfs.empty() && lavafallsurfs.empty()) return;
@@ -368,12 +374,12 @@ void renderlava()
     MSlot &lslot = lookupmaterialslot(MAT_LAVA, false);
 
     SETSHADER(lava);
-
     float t = lastmillis/2000.0f;
     t -= floor(t);
     t = 1.0f - 2*fabs(t-0.5f);
     t = 0.5f + 0.5f*t;
-    glColor3f(t, t, t);
+    LOCALPARAM(lavaglow, (0.5f*(lavaglowmin + (lavaglowmax-lavaglowmin)*t)));
+    LOCALPARAM(lavaspec, (0.5f*lavaspec/100.0f));
 
     if(lavasurfs.length())
     {
@@ -428,7 +434,11 @@ void renderwaterfalls()
     wfyscale = TEX_SCALE/(tex->ys*wslot.scale);
   
     float colorscale = (hdr ? 0.5f : 1)/255.0f;
-    GLOBALPARAM(waterfallcolor, (waterfallcolor.x*colorscale, waterfallcolor.y*colorscale, waterfallcolor.z*colorscale));
+    bvec color = waterfallcolor.iszero() ? watercolor : waterfallcolor;
+    GLOBALPARAM(waterfallcolor, (color.x*colorscale, color.y*colorscale, color.z*colorscale));
+    extern int gh;
+    GLOBALPARAM(waterfallrefract, (waterfallrefract*gh));
+    GLOBALPARAM(waterfallspec, (0.5f*waterfallspec/100.0f));
  
     if(hasCM && waterfallenv) SETSHADER(waterfallenv);
     else SETSHADER(waterfall);
