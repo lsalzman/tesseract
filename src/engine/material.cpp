@@ -72,56 +72,6 @@ struct QuadNode
     }
 };
 
-static float wfwave, wfscroll, wfxscale, wfyscale;
-
-static void renderwaterfall(const materialsurface &m, float offset, const vec *normal = NULL)
-{
-    if(varray::data.empty())
-    {
-        varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
-        if(normal) varray::defattrib(varray::ATTRIB_NORMAL, 3, GL_FLOAT);
-        varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
-        varray::begin(GL_QUADS);
-    }
-    float x = m.o.x, y = m.o.y, zmin = m.o.z, zmax = zmin;
-    if(m.ends&1) zmin += -WATER_OFFSET-WATER_AMPLITUDE;
-    if(m.ends&2) zmax += wfwave;
-    int csize = m.csize, rsize = m.rsize;
-#define GENFACEORIENT(orient, v0, v1, v2, v3) \
-        case orient: v0 v1 v2 v3 break;
-#undef GENFACEVERTX
-#define GENFACEVERTX(orient, vert, mx,my,mz, sx,sy,sz) \
-            { \
-                vec v(mx sx, my sy, mz sz); \
-                varray::attrib<float>(v.x, v.y, v.z); \
-                GENFACENORMAL \
-                varray::attrib<float>(wfxscale*v.y, wfyscale*(v.z+wfscroll)); \
-            }
-#undef GENFACEVERTY
-#define GENFACEVERTY(orient, vert, mx,my,mz, sx,sy,sz) \
-            { \
-                vec v(mx sx, my sy, mz sz); \
-                varray::attrib<float>(v.x, v.y, v.z); \
-                GENFACENORMAL \
-                varray::attrib<float>(wfxscale*v.x, wfyscale*(v.z+wfscroll)); \
-            }
-#define GENFACENORMAL varray::attrib<float>(n.x, n.y, n.z);
-    if(normal) 
-    { 
-        vec n = *normal; 
-        switch(m.orient) { GENFACEVERTSXY(x, x, y, y, zmin, zmax, /**/, + csize, /**/, + rsize, + offset, - offset) }
-    }
-#undef GENFACENORMAL
-#define GENFACENORMAL
-    else switch(m.orient) { GENFACEVERTSXY(x, x, y, y, zmin, zmax, /**/, + csize, /**/, + rsize, + offset, - offset) }
-#undef GENFACENORMAL
-#undef GENFACEORIENT
-#undef GENFACEVERTX
-#define GENFACEVERTX(o,n, x,y,z, xv,yv,zv) GENFACEVERT(o,n, x,y,z, xv,yv,zv)
-#undef GENFACEVERTY
-#define GENFACEVERTY(o,n, x,y,z, xv,yv,zv) GENFACEVERT(o,n, x,y,z, xv,yv,zv)
-}
-
 static void drawmaterial(const materialsurface &m, float offset)
 {
     if(varray::data.empty())
@@ -217,6 +167,39 @@ void genmatsurfs(cube &c, int cx, int cy, int cz, int size, vector<materialsurfa
                 break;
             }
         }
+    }
+}
+
+void calcmatbb(vtxarray *va, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs)
+{
+    va->matmax = ivec(cx, cy, cz);
+    va->matmin = ivec(va->matmax).add(size);
+    loopv(matsurfs)
+    {
+        materialsurface &m = matsurfs[i];
+        switch(m.material)
+        {
+            case MAT_WATER:
+            case MAT_GLASS:
+            case MAT_LAVA:
+                if(m.flags&materialsurface::F_EDIT) continue;
+                break;
+
+            default:
+                continue;
+        }
+
+        int dim = dimension(m.orient),
+            r = R[dim],
+            c = C[dim];
+        va->matmin[dim] = min(va->matmin[dim], m.o[dim]);
+        va->matmax[dim] = max(va->matmax[dim], m.o[dim]);
+
+        va->matmin[r] = min(va->matmin[r], m.o[r]);
+        va->matmax[r] = max(va->matmax[r], m.o[r] + m.rsize);
+
+        va->matmin[c] = min(va->matmin[c], m.o[c]);
+        va->matmax[c] = max(va->matmax[c], m.o[c] + m.csize);
     }
 }
 
@@ -329,19 +312,23 @@ int optimizematsurfs(materialsurface *matbuf, int matsurfs)
     return matsurfs - (end-matbuf);
 }
 
-extern vector<vtxarray *> valist;
-
-struct waterinfo
+void preloadglassshaders(bool force = false)
 {
-    materialsurface *m;
-    double depth, area;
-};
+    static bool needglass = false;
+    if(force) needglass = true;
+    if(!needglass) return;
+
+    useshaderbyname("glass");
+
+    extern int glassenv;
+    if(glassenv) useshaderbyname("glassenv");
+}
+
+extern vector<vtxarray *> valist;
 
 void setupmaterials(int start, int len)
 {
     int hasmat = 0;
-    vector<waterinfo> water;
-    unionfind uf;
     if(!len) len = valist.length();
     for(int i = start; i < len; i++) 
     {
@@ -350,31 +337,7 @@ void setupmaterials(int start, int len)
         loopj(va->matsurfs)
         {
             materialsurface &m = va->matbuf[j];
-            if(m.material==MAT_WATER && m.orient==O_TOP)
-            {
-                m.index = water.length();
-                loopvk(water)
-                {
-                    materialsurface &n = *water[k].m;
-                    if(m.o.z!=n.o.z) continue;
-                    if(n.o.x+n.rsize==m.o.x || m.o.x+m.rsize==n.o.x)
-                    {
-                        if(n.o.y+n.csize>m.o.y && n.o.y<m.o.y+m.csize) uf.unite(m.index, n.index);
-                    }
-                    else if(n.o.y+n.csize==m.o.y || m.o.y+m.csize==n.o.y)
-                    {
-                        if(n.o.x+n.rsize>m.o.x && n.o.x<m.o.x+m.rsize) uf.unite(m.index, n.index);
-                    }
-                }
-                waterinfo &wi = water.add();
-                wi.m = &m;
-                vec center(m.o.x+m.rsize/2, m.o.y+m.csize/2, m.o.z-WATER_OFFSET);
-                m.light = brightestlight(center, vec(0, 0, 1));
-                float depth = raycube(center, vec(0, 0, -1), 10000);
-                wi.depth = double(depth)*m.rsize*m.csize;
-                wi.area = m.rsize*m.csize; 
-            }
-            else if(isliquid(m.material) && m.orient!=O_BOTTOM && m.orient!=O_TOP)
+            if(isliquid(m.material) && m.orient!=O_BOTTOM && m.orient!=O_TOP)
             {
                 m.ends = 0;
                 int dim = dimension(m.orient), coord = dimcoord(m.orient);
@@ -420,21 +383,6 @@ void setupmaterials(int start, int len)
                 skip = &m;
         }
     }
-    loopv(water)
-    {
-        int root = uf.find(i);
-        if(i==root) continue;
-        materialsurface &m = *water[i].m, &n = *water[root].m;
-        if(m.light && (!m.light->attr1 || !n.light || (n.light->attr1 && m.light->attr1 > n.light->attr1))) n.light = m.light;
-        water[root].depth += water[i].depth;
-        water[root].area += water[i].area;
-    }
-    loopv(water)
-    {
-        int root = uf.find(i);
-        water[i].m->light = water[root].m->light;
-        water[i].m->depth = (short)(water[root].depth/water[root].area);
-    }
     if(hasmat&(1<<MAT_WATER))
     {
         loadcaustics(true);
@@ -446,7 +394,11 @@ void setupmaterials(int start, int len)
         useshaderbyname("lava");
         lookupmaterialslot(MAT_LAVA);
     }
-    if(hasmat&(1<<MAT_GLASS)) useshaderbyname("glass");
+    if(hasmat&(1<<MAT_GLASS)) 
+    {
+        preloadglassshaders(true);
+        lookupmaterialslot(MAT_GLASS);
+    }
 }
 
 VARP(showmat, 0, 1, 1);
@@ -547,7 +499,7 @@ void rendermatgrid(vector<materialsurface *> &vismats)
     disablepolygonoffset(GL_POLYGON_OFFSET_LINE);
 }
 
-VARP(glassenv, 0, 1, 1);
+static float glassxscale = 0, glassyscale = 0;
 
 static void drawglass(const materialsurface &m, float offset, const vec *normal = NULL)
 {
@@ -555,19 +507,34 @@ static void drawglass(const materialsurface &m, float offset, const vec *normal 
     {
         varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
         if(normal) varray::defattrib(varray::ATTRIB_NORMAL, 3, GL_FLOAT);
-        varray::defattrib(varray::ATTRIB_TEXCOORD0, 3, GL_FLOAT);
+        varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
         varray::begin(GL_QUADS);
     }
     #define GENFACEORIENT(orient, v0, v1, v2, v3) \
         case orient: v0 v1 v2 v3 break;
-    #define GENFACEVERT(orient, vert, mx,my,mz, sx,sy,sz) \
+    #undef GENFACEVERTX
+    #define GENFACEVERTX(orient, vert, mx,my,mz, sx,sy,sz) \
         { \
             vec v(mx sx, my sy, mz sz); \
-            vec reflect = vec(v).sub(camera1->o); \
-            reflect[dimension(orient)] = -reflect[dimension(orient)]; \
             varray::attrib<float>(v.x, v.y, v.z); \
             GENFACENORMAL \
-            varray::attrib<float>(reflect.x, reflect.y, reflect.z); \
+            varray::attrib<float>(glassxscale*v.y, -glassyscale*v.z); \
+        }
+    #undef GENFACEVERTY
+    #define GENFACEVERTY(orient, vert, mx,my,mz, sx,sy,sz) \
+        { \
+            vec v(mx sx, my sy, mz sz); \
+            varray::attrib<float>(v.x, v.y, v.z); \
+            GENFACENORMAL \
+            varray::attrib<float>(glassxscale*v.x, -glassyscale*v.z); \
+        }
+    #undef GENFACEVERTZ
+    #define GENFACEVERTZ(orient, vert, mx,my,mz, sx,sy,sz) \
+        { \
+            vec v(mx sx, my sy, mz sz); \
+            varray::attrib<float>(v.x, v.y, v.z); \
+            GENFACENORMAL \
+            varray::attrib<float>(glassxscale*v.x, glassyscale*v.y); \
         }
     #define GENFACENORMAL varray::attrib<float>(n.x, n.y, n.z);
     float x = m.o.x, y = m.o.y, z = m.o.z, csize = m.csize, rsize = m.rsize;
@@ -581,323 +548,152 @@ static void drawglass(const materialsurface &m, float offset, const vec *normal 
     else switch(m.orient) { GENFACEVERTS(x, x, y, y, z, z, /**/, + csize, /**/, + rsize, + offset, - offset) }
     #undef GENFACENORMAL
     #undef GENFACEORIENT
-    #undef GENFACEVERT
+    #undef GENFACEVERTX
+    #define GENFACEVERTX(o,n, x,y,z, xv,yv,zv) GENFACEVERT(o,n, x,y,z, xv,yv,zv)
+    #undef GENFACEVERTY
+    #define GENFACEVERTY(o,n, x,y,z, xv,yv,zv) GENFACEVERT(o,n, x,y,z, xv,yv,zv)
+    #undef GENFACEVERTZ
+    #define GENFACEVERTZ(o,n, x,y,z, xv,yv,zv) GENFACEVERT(o,n, x,y,z, xv,yv,zv)
 }
 
-VARFP(waterfallenv, 0, 1, 1, preloadwatershaders());
+vector<materialsurface> editsurfs, glasssurfs, watersurfs, waterfallsurfs, lavasurfs, lavafallsurfs;
+
+float matsx1 = -1, matsy1 = -1, matsx2 = 1, matsy2 = 1, matrefractsx1 = -1, matrefractsy1 = -1, matrefractsx2 = 1, matrefractsy2 = 1;
+uint mattiles[LIGHTTILE_H];
+
+bool findmaterials()
+{
+    editsurfs.setsize(0);
+    glasssurfs.setsize(0);
+    watersurfs.setsize(0);
+    waterfallsurfs.setsize(0);
+    lavasurfs.setsize(0);
+    lavafallsurfs.setsize(0);
+    matsx1 = matsy1 = matrefractsx1 = matrefractsy1 = 1;
+    matsx2 = matsy2 = matrefractsx2 = matrefractsy2 = -1;
+    memset(mattiles, 0, sizeof(mattiles));
+    for(vtxarray *va = visibleva; va; va = va->next)
+    {
+        if(!va->matsurfs || va->occluded >= OCCLUDE_BB || va->curvfc >= VFC_FOGGED) continue;
+        if(editmode && showmat && !envmapping) 
+        {
+            loopi(va->matsurfs) editsurfs.add(va->matbuf[i]);
+            continue;
+        }
+        loopi(va->matsurfs)
+        {
+            materialsurface &m = va->matbuf[i];
+            if(m.flags&materialsurface::F_EDIT) continue;
+            switch(m.material)
+            {
+                case MAT_GLASS: glasssurfs.add(m); break;
+                case MAT_LAVA: if(m.orient == O_TOP) lavasurfs.add(m); else lavafallsurfs.add(m); break;
+                case MAT_WATER: if(m.orient == O_TOP) watersurfs.add(m); else waterfallsurfs.add(m); break;
+            }
+        }
+        float sx1, sy1, sx2, sy2;
+        if(!calcbbscissor(va->matmin, va->matmax, sx1, sy1, sx2, sy2)) continue;
+        matsx1 = min(matsx1, sx1);
+        matsy1 = min(matsy1, sy1);
+        matsx2 = max(matsx2, sx2);
+        matsy2 = max(matsy2, sy2);
+        if(va->matmask&((1<<MAT_GLASS)|(1<<MAT_WATER)))
+        {
+            matrefractsx1 = min(matrefractsx1, sx1);
+            matrefractsy1 = min(matrefractsy1, sy1);
+            matrefractsx2 = max(matrefractsx2, sx2);
+            matrefractsy2 = max(matrefractsy2, sy2);
+        }
+        masktiles(mattiles, sx1, sy1, sx2, sy2);
+    }
+    return glasssurfs.length() || watersurfs.length() || waterfallsurfs.length() || lavasurfs.length() || lavafallsurfs.length();
+}
+
+void rendermaterialmask()
+{
+    if(glasssurfs.empty() && watersurfs.empty() && waterfallsurfs.empty()) return;
+    glDisable(GL_CULL_FACE);
+    varray::enable();
+    loopv(glasssurfs) drawmaterial(glasssurfs[i], 0.1f);
+    loopv(watersurfs) drawmaterial(watersurfs[i], WATER_OFFSET);
+    loopv(waterfallsurfs) drawmaterial(waterfallsurfs[i], 0.1f);
+    xtraverts += varray::end();
+    varray::disable();
+    glEnable(GL_CULL_FACE);
+}
+
+extern const vec matnormals[6] =
+{
+    vec(-1, 0, 0),
+    vec( 1, 0, 0),
+    vec(0, -1, 0),
+    vec(0,  1, 0),
+    vec(0, 0, -1),
+    vec(0, 0,  1)
+};
+
+bvec glasscolor(0xB0, 0xD8, 0xFF);
+HVARFR(glasscolour, 0, 0xB0D8FF, 0xFFFFFF,
+{
+    if(!glasscolour) glasscolour = 0xB0D8FF;
+    glasscolor = bvec((glasscolour>>16)&0xFF, (glasscolour>>8)&0xFF, glasscolour&0xFF);
+});
+FVARR(glassrefract, 0, 0.1f, 1e3f);
+VARR(glassspec, 0, 150, 1000);
+VARFP(glassenv, 0, 1, 1, preloadglassshaders());
+
+void renderglass()
+{
+    if(glasssurfs.empty()) return;
+
+    MSlot &gslot = lookupmaterialslot(MAT_GLASS);
+
+    Texture *tex = gslot.sts.inrange(0) ? gslot.sts[0].t : notexture;
+    glassxscale = TEX_SCALE/(tex->xs*gslot.scale);
+    glassyscale = TEX_SCALE/(tex->ys*gslot.scale);
+
+    glActiveTexture_(GL_TEXTURE1_ARB);
+    glBindTexture(GL_TEXTURE_2D, tex->id);
+    glActiveTexture_(GL_TEXTURE0_ARB);
+
+    float colorscale = 1/255.0f;
+    GLOBALPARAM(glasscolor, (glasscolor.x*colorscale, glasscolor.y*colorscale, glasscolor.z*colorscale));
+    extern int gh;
+    GLOBALPARAM(glassrefract, (glassrefract*gh));
+    GLOBALPARAM(glassspec, (0.5f*glassspec/100.0f));
+
+    short envmap = EMID_NONE;
+    if(!glassenv) SETSHADER(glass);
+    loopv(glasssurfs)
+    {
+        materialsurface &m = glasssurfs[i];
+        if(m.envmap != envmap && glassenv)
+        {
+            xtraverts += varray::end();
+            if(m.envmap != EMID_NONE && glassenv) SETSHADER(glassenv);
+            else SETSHADER(glass);
+            glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(m.envmap));
+            envmap = m.envmap;
+        }
+        drawglass(m, 0.1f, &matnormals[m.orient]);
+    }    
+    xtraverts += varray::end();
+}
 
 void rendermaterials()
 {
-    vector<materialsurface *> vismats;
-    sortmaterials(vismats);
-    if(vismats.empty()) return;
-
     glDisable(GL_CULL_FACE);
-
     varray::enable();
 
-    MSlot &wslot = lookupmaterialslot(MAT_WATER, false), &lslot = lookupmaterialslot(MAT_LAVA, false);
-    uchar wcol[4] = { watercolor[0], watercolor[1], watercolor[2], 192 }, 
-          wfcol[4] = { waterfallcolor[0], waterfallcolor[1], waterfallcolor[2], 192 };
-    if(!wfcol[0] && !wfcol[1] && !wfcol[2]) memcpy(wfcol, wcol, 3);
-    int lastorient = -1, lastmat = -1;
-    GLenum textured = GL_TEXTURE_2D;
-    bool depth = true, blended = false, usedcamera = false, usedwaterfall = false;
-    short envmapped = EMID_NONE;
-    static const vec normals[6] =
-    {
-        vec(-1, 0, 0),
-        vec( 1, 0, 0),
-        vec(0, -1, 0),
-        vec(0,  1, 0),
-        vec(0, 0, -1),
-        vec(0, 0,  1)
-    };
+    GLOBALPARAM(camera, (camera1->o));
+    GLOBALPARAM(millis, (lastmillis/1000.0f));
 
-    static const float zerofog[4] = { 0, 0, 0, 1 };
-    float oldfogc[4];
-    glGetFloatv(GL_FOG_COLOR, oldfogc);
-    int lastfogtype = 1;
-    if(editmode && showmat && !envmapping)
-    {
-        glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
-        glEnable(GL_BLEND); blended = true;
-        glDisable(GL_TEXTURE_2D); textured = 0;
-        foggednotextureshader->set();
-        glFogfv(GL_FOG_COLOR, zerofog); lastfogtype = 0;
-        loopv(vismats)
-        {
-            const materialsurface &m = *vismats[i];
-            if(lastmat!=m.material)
-            {
-                xtraverts += varray::end();
-                switch(m.material)
-                {
-                    case MAT_WATER:    glColor3ub(255, 128,   0); break; // blue
-                    case MAT_CLIP:     glColor3ub(  0, 255, 255); break; // red
-                    case MAT_GLASS:    glColor3ub(255,   0,   0); break; // cyan
-                    case MAT_NOCLIP:   glColor3ub(255,   0, 255); break; // green
-                    case MAT_LAVA:     glColor3ub(  0, 128, 255); break; // orange
-                    case MAT_GAMECLIP: glColor3ub(  0,   0, 255); break; // yellow
-                    case MAT_DEATH:    glColor3ub(192, 192, 192); break; // black
-                    case MAT_ALPHA:    glColor3ub(  0, 255,   0); break; // pink
-                    default: continue;
-                }
-                lastmat = m.material;
-            }
-            drawmaterial(m, -0.1f);
-        }
-    }
-    else loopv(vismats)
-    {
-        const materialsurface &m = *vismats[i];
-        if(lastmat!=m.material || lastorient!=m.orient || (m.material==MAT_GLASS && envmapped && m.envmap != envmapped))
-        {
-            int fogtype = lastfogtype;
-            switch(m.material)
-            {
-                case MAT_WATER:
-                    if(!wslot.loaded || m.orient == O_TOP) continue;
-                    else if(lastmat==MAT_WATER) break;
-                    else
-                    {
-                        if(!wslot.sts.inrange(1)) continue;
-                        xtraverts += varray::end();
-                        glBindTexture(GL_TEXTURE_2D, wslot.sts[1].t->id);
-                        float angle = fmod(float(lastmillis/600.0f/(2*M_PI)), 1.0f), 
-                              s = angle - int(angle) - 0.5f;
-                        s *= 8 - fabs(s)*16;
-                        wfwave = vertwater ? WATER_AMPLITUDE*s-WATER_OFFSET : -WATER_OFFSET;
-                        wfscroll = 16.0f*lastmillis/1000.0f;
-                        wfxscale = TEX_SCALE/(wslot.sts[1].t->xs*wslot.scale);
-                        wfyscale = TEX_SCALE/(wslot.sts[1].t->ys*wslot.scale);
-                    }
-                    if(lastmat!=MAT_WATER || (lastorient==O_TOP)!=(m.orient==O_TOP))
-                    {
-                        if(m.orient==O_TOP)
-                        {
-                            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                            glColor4ubv(wcol);
-                            foggedshader->set();
-                            fogtype = 1;
-                            if(!blended) { glEnable(GL_BLEND); blended = true; }
-                            if(depth) { glDepthMask(GL_FALSE); depth = false; }
-                        }
-                        else if((/*!waterfallrefract ||*/ reflecting || refracting) && (!hasCM || !waterfallenv))
-                        {
-                            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
-                            glColor3ubv(wfcol);
-                            foggedshader->set();
-                            fogtype = 0;
-                            if(!blended) { glEnable(GL_BLEND); blended = true; }
-                            if(depth) { glDepthMask(GL_FALSE); depth = false; }
-                        }
-                        else
-                        {
-                            glColor3ubv(wfcol);
-                            fogtype = 1;
-
-                            if(!usedcamera)
-                            {
-                                GLOBALPARAM(camera, (camera1->o));
-                                usedcamera = true;
-                            }
-
-                            #define SETWATERFALLSHADER(name) \
-                            do { \
-                                static Shader *name##shader = NULL; \
-                                if(!name##shader) name##shader = lookupshaderbyname(#name); \
-                                name##shader->set(); \
-                            } while(0)
-
-                            if(/*waterfallrefract &&*/ !reflecting && !refracting)
-                            {
-                                if(hasCM && waterfallenv) SETWATERFALLSHADER(waterfallenvrefract);    
-                                else SETWATERFALLSHADER(waterfallrefract);
-                                if(blended) { glDisable(GL_BLEND); blended = false; }
-                                if(!depth) { glDepthMask(GL_TRUE); depth = true; }
-                            }
-                            else 
-                            {
-                                SETWATERFALLSHADER(waterfallenv);
-                                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                                if(!blended) { glEnable(GL_BLEND); blended = true; }
-                                if(depth) { glDepthMask(GL_FALSE); depth = false; }
-                            }
-
-                            if(!usedwaterfall)
-                            {
-                                Texture *dudv = wslot.sts.inrange(5) ? wslot.sts[5].t : notexture;
-                                float scale = 8.0f/(dudv->ys*wslot.scale);
-                                LOCALPARAM(dudvoffset, (0, scale*16*lastmillis/1000.0f));
-
-                                glActiveTexture_(GL_TEXTURE1_ARB);
-                                glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(4) ? wslot.sts[4].t->id : notexture->id);
-                                glActiveTexture_(GL_TEXTURE2_ARB);
-                                glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(5) ? wslot.sts[5].t->id : notexture->id);
-                                if(hasCM && waterfallenv)
-                                {
-                                    glActiveTexture_(GL_TEXTURE3_ARB);
-                                    glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(wslot));
-                                }
-                                if(/*waterfallrefract &&*/ (!reflecting || !refracting))
-                                {
-#if 0
-                                    extern void setupwaterfallrefract(GLenum tmu1, GLenum tmu2);
-                                    setupwaterfallrefract(GL_TEXTURE4_ARB, GL_TEXTURE0_ARB);
-#endif
-                                }
-                                else glActiveTexture_(GL_TEXTURE0_ARB);
-
-                                usedwaterfall = true;
-                            }
-                        }
-                    }
-                    if(textured!=GL_TEXTURE_2D) 
-                    { 
-                        if(textured) glDisable(textured);
-                        glEnable(GL_TEXTURE_2D);
-                        textured = GL_TEXTURE_2D; 
-                    }
-                    break;
-
-                case MAT_LAVA:
-                    if(!lslot.loaded) continue;
-                    if(lastmat==MAT_LAVA && lastorient!=O_TOP && m.orient!=O_TOP) break;
-                    else
-                    {
-                        int subslot = m.orient==O_TOP ? 0 : 1;
-                        if(!lslot.sts.inrange(subslot)) continue;
-                        xtraverts += varray::end();
-                        glBindTexture(GL_TEXTURE_2D, lslot.sts[subslot].t->id);
-                    }
-                    if(m.orient!=O_TOP)
-                    {
-                        float angle = fmod(float(lastmillis/2000.0f/(2*M_PI)), 1.0f),
-                              s = angle - int(angle) - 0.5f;
-                        s *= 8 - fabs(s)*16;
-                        wfwave = vertwater ? WATER_AMPLITUDE*s-WATER_OFFSET : -WATER_OFFSET;
-                        wfscroll = 16.0f*lastmillis/3000.0f;
-                        wfxscale = TEX_SCALE/(lslot.sts[1].t->xs*lslot.scale);
-                        wfyscale = TEX_SCALE/(lslot.sts[1].t->ys*lslot.scale);
-                    }
-                    if(lastmat!=MAT_LAVA)
-                    {
-                        if(!depth) { glDepthMask(GL_TRUE); depth = true; }
-                        if(blended) { glDisable(GL_BLEND); blended = false; }
-                        float t = lastmillis/2000.0f;
-                        t -= floor(t);
-                        t = 1.0f - 2*fabs(t-0.5f);
-                        t = 0.5f + 0.5f*t;
-                        glColor3f(t, t, t);
-                        static Shader *lavashader = NULL;
-                        if(!lavashader) lavashader = lookupshaderbyname("lava");
-                        lavashader->set();
-                        fogtype = 1;
-                    }
-                    if(textured!=GL_TEXTURE_2D)
-                    {
-                        if(textured) glDisable(textured);
-                        glEnable(GL_TEXTURE_2D);
-                        textured = GL_TEXTURE_2D;
-                    }
-                    break;
-
-                case MAT_GLASS:
-                    if((m.envmap==EMID_NONE || !glassenv || (envmapped==m.envmap && textured==GL_TEXTURE_CUBE_MAP_ARB)) && lastmat==MAT_GLASS) break;
-                    xtraverts += varray::end();
-                    if(m.envmap!=EMID_NONE && glassenv)
-                    {
-                        if(textured!=GL_TEXTURE_CUBE_MAP_ARB) 
-                        { 
-                            if(textured) glDisable(textured); 
-                            glEnable(GL_TEXTURE_CUBE_MAP_ARB); 
-                            textured = GL_TEXTURE_CUBE_MAP_ARB; 
-                        }
-                        if(envmapped!=m.envmap)
-                        {
-                            glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(m.envmap));
-                            if(!usedcamera) 
-                            {
-                                GLOBALPARAM(camera, (camera1->o));
-                                usedcamera = true;
-                            }
-                            envmapped = m.envmap;
-                        }
-                    }
-                    if(lastmat!=MAT_GLASS)
-                    {
-                        if(!blended) { glEnable(GL_BLEND); blended = true; }
-                        if(depth) { glDepthMask(GL_FALSE); depth = false; }
-                        if(m.envmap!=EMID_NONE && glassenv)
-                        {
-                            glBlendFunc(GL_ONE, GL_SRC_ALPHA);
-                            glColor3f(0, 0.5f, 1.0f);
-                            static Shader *glassshader = NULL;
-                            if(!glassshader) glassshader = lookupshaderbyname("glass");
-                            glassshader->set();
-                        }
-                        else
-                        {
-                            if(textured) 
-                            { 
-                                glDisable(textured);
-                                textured = 0;
-                            }
-                            glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
-                            glColor3f(0.3f, 0.15f, 0.0f);
-                            foggednotextureshader->set();
-                            fogtype = 0;
-                        }
-                    }
-                    break;
-                
-                default: continue;
-            }
-            lastmat = m.material;
-            lastorient = m.orient;
-            if(fogtype!=lastfogtype)
-            {
-                glFogfv(GL_FOG_COLOR, fogtype ? oldfogc : zerofog);
-                lastfogtype = fogtype;
-            }
-        }
-        switch(m.material)
-        {
-            case MAT_WATER:
-                renderwaterfall(m, 0.1f, hasCM && waterfallenv ? &normals[m.orient] : NULL);
-                break;
-
-            case MAT_LAVA:
-                if(m.orient==O_TOP) renderlava(m, lslot.sts[0].t, lslot.scale);
-                else renderwaterfall(m, 0.1f);
-                break;
-
-            case MAT_GLASS:
-                if(m.envmap!=EMID_NONE && glassenv) drawglass(m, 0.1f, &normals[m.orient]);
-                else drawmaterial(m, 0.1f);
-                break;
-        }
-    }
-
-    xtraverts += varray::end();
-
-    if(!depth) glDepthMask(GL_TRUE);
-    if(blended) glDisable(GL_BLEND);
-    if(!lastfogtype) glFogfv(GL_FOG_COLOR, oldfogc);
-    if(editmode && showmat && !envmapping)
-    {
-        foggedlineshader->set();
-        rendermatgrid(vismats);
-    }
+    renderlava();
+    renderwater();
+    renderwaterfalls();
+    renderglass();
 
     varray::disable();
-
     glEnable(GL_CULL_FACE);
-    if(textured!=GL_TEXTURE_2D)
-    {
-        if(textured) glDisable(textured);
-        glEnable(GL_TEXTURE_2D);
-    }
 }
 

@@ -2922,7 +2922,7 @@ void screenshot(char *filename)
 
 COMMAND(screenshot, "s");
 
-void flipnormalmapy(char *destfile, char *normalfile) // jpg/png /tga-> tga
+void flipnormalmapy(char *destfile, char *normalfile) // jpg/png/tga-> tga
 {
     ImageData ns;
     if(!loadimage(normalfile, ns)) return;
@@ -2946,6 +2946,18 @@ void mergenormalmaps(char *heightfile, char *normalfile) // jpg/png/tga + tga ->
     saveimage(normalfile, guessimageformat(normalfile, IMG_TGA), d);
 }
 
+void normalizenormalmap(char *destfile, char *normalfile) // jpg/png/tga-> tga
+{
+    ImageData ns;
+    if(!loadimage(normalfile, ns)) return;
+    ImageData d(ns.w, ns.h, 3);
+    readwritetex(d, ns,
+        *(bvec *)dst = bvec(src[0], src[1], src[2]).normalize();
+    );
+    saveimage(destfile, guessimageformat(destfile, IMG_TGA), d);
+}
+
 COMMAND(flipnormalmapy, "ss");
 COMMAND(mergenormalmaps, "ss");
+COMMAND(normalizenormalmap, "ss");
 

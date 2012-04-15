@@ -415,7 +415,7 @@ void renderreflectedmapmodels()
         octaentities **lastmms = &mms;
         for(vtxarray *va = reflectedva; va; va = va->rnext)
         {
-            if(va->mapmodels.empty() || va->distance > reflectdist) continue;
+            if(va->mapmodels.empty()) continue;
             loopv(va->mapmodels) 
             {
                 octaentities *oe = va->mapmodels[i];
@@ -501,7 +501,7 @@ void rendermapmodels()
     if(!colormask)
     {
         glDepthMask(GL_TRUE);
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, fading ? GL_FALSE : GL_TRUE);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
 }
 
@@ -1940,10 +1940,8 @@ int findalphavas(bool fogpass)
         if(fogpass ? va->alphamax.z <= reflectz-waterfog : va->curvfc==VFC_FOGGED) continue;
         alphavas.add(va);
         float sx1 = -1, sx2 = 1, sy1 = -1, sy2 = 1;
-        if(!calcbbscissor(va->alphamin.tovec(), va->alphamax.tovec(), sx1, sy1, sx2, sy2)) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
-        int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
-            tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
-        for(int ty = ty1; ty < ty2; ty++) alphatiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;  
+        if(!calcbbscissor(va->alphamin, va->alphamax, sx1, sy1, sx2, sy2)) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+        masktiles(alphatiles, sx1, sy1, sx2, sy2);
         alphafrontsx1 = min(alphafrontsx1, sx1);
         alphafrontsy1 = min(alphafrontsy1, sy1);
         alphafrontsx2 = max(alphafrontsx2, sx2);
@@ -1959,7 +1957,7 @@ int findalphavas(bool fogpass)
         if(va->refracttris)
         {
             alpharefractvas++;
-            if(!calcbbscissor(va->refractmin.tovec(), va->refractmax.tovec(), sx1, sy1, sx2, sy2)) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
+            if(!calcbbscissor(va->refractmin, va->refractmax, sx1, sy1, sx2, sy2)) { sx1 = sy1 = -1; sx2 = sy2 = 1; }
             alpharefractsx1 = min(alpharefractsx1, sx1);
             alpharefractsy1 = min(alpharefractsy1, sy1);
             alpharefractsx2 = max(alpharefractsx2, sx2);

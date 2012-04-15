@@ -544,7 +544,7 @@ static inline void rendermodelquery(model *m, dynent *d, const vec &center, floa
     int br = int(radius*2)+1;
     drawbb(ivec(int(center.x-radius), int(center.y-radius), int(center.z-radius)), ivec(br, br, br));
     endquery(d->query);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, fading ? GL_FALSE : GL_TRUE);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glDepthMask(GL_TRUE);
 }
 
@@ -564,7 +564,6 @@ static inline bool cullmodel(model *m, const vec &center, float radius, int flag
                 if(fogging && center.z+radius<reflectz-waterfog) return true;
                 if(center.z-radius>=reflectz) return true;
             }
-            if(center.dist(camera1->o)-radius>reflectdist) return true;
         }
         if(isfoggedsphere(radius, center)) return true;
     }

@@ -24,15 +24,9 @@ struct materialsurface
 
     ivec o;
     ushort csize, rsize;
-    union
-    {
-        short index;
-        short depth;
-    };
     uchar material, orient, flags, skip;
     union
     {
-        entity *light;
         ushort envmap;
         uchar ends;
     };
@@ -141,7 +135,7 @@ struct vtxarray
     ushort minvert, maxvert; // DRE info
     elementset *eslist;      // List of element indices sets (range) per texture
     materialsurface *matbuf; // buffer of material surfaces
-    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, refracttris, refract, texmask, matsurfs, distance, rdistance;
+    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, refracttris, refract, texmask, matsurfs, matmask, distance, rdistance;
     ivec o;
     int size;                // location and size of cube.
     ivec geommin, geommax;   // BB of geom

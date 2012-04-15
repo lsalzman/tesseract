@@ -247,7 +247,7 @@ extern void drawminimap();
 extern void enablepolygonoffset(GLenum type);
 extern void disablepolygonoffset(GLenum type);
 extern bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2);
-extern bool calcbbscissor(const vec &bbmin, const vec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2);
+extern bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2);
 extern int pushscissor(float sx1, float sy1, float sx2, float sy2);
 extern void popscissor();
 extern void screenquad(float sw, float sh);
@@ -330,6 +330,13 @@ static inline cubeext &ext(cube &c)
 
 #define LIGHTTILE_W 10
 #define LIGHTTILE_H 10
+
+static inline void masktiles(uint *tiles, float sx1, float sy1, float sx2, float sy2)
+{
+    int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
+        tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+    for(int ty = ty1; ty < ty2; ty++) tiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;
+}
 
 enum { SM_NONE = 0, SM_CUBEMAP, SM_TETRA, SM_CASCADE };
  
@@ -440,31 +447,37 @@ extern bool getdynlight(int n, vec &o, float &radius, vec &color);
 
 // material
 
+extern float matsx1, matsy1, matsx2, matsy2, matrefractsx1, matrefractsy1, matrefractsx2, matrefractsy2;
+extern uint mattiles[LIGHTTILE_H];
+extern vector<materialsurface> editsurfs, glasssurfs, watersurfs, waterfallsurfs, lavasurfs, lavafallsurfs;
+extern const vec matnormals[6];
+
 extern int showmat;
 
 extern int findmaterial(const char *name);
 extern void genmatsurfs(cube &c, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
-extern void rendermatsurfs(materialsurface *matbuf, int matsurfs);
-extern void rendermatgrid(materialsurface *matbuf, int matsurfs);
+extern void calcmatbb(vtxarray *va, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
 extern int optimizematsurfs(materialsurface *matbuf, int matsurfs);
 extern void setupmaterials(int start = 0, int len = 0);
+extern bool findmaterials();
+extern void rendermaterialmask();
 extern void rendermaterials();
 extern int visiblematerial(cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
 
 // water
 extern int refracting;
-extern bool reflecting, fading, fogging;
+extern bool reflecting, fogging;
 extern float reflectz;
-extern int reflectdist, vertwater, waterrefract, waterreflect, waterfade, caustics, waterfallrefract, waterfog, lavafog;
+extern int vertwater, waterreflect, caustics, waterfog, lavafog;
 extern bvec watercolor, waterfallcolor, lavacolor;
 extern float watersx1, watersy1, watersx2, watersy2;
 
 extern void renderwater();
+extern void renderwaterfalls();
+extern void renderlava();
 extern void renderlava(const materialsurface &m, Texture *tex, float scale);
 extern void loadcaustics(bool force = false);
 extern void preloadwatershaders(bool force = false);
-extern bool calcwaterscissor();
-extern void renderwatermask();
 
 // depthfx
 extern bool depthfxing;

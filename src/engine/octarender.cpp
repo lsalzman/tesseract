@@ -336,10 +336,22 @@ struct vacollect : verthash
 
         va->matbuf = NULL;
         va->matsurfs = matsurfs.length();
+        va->matmask = 0;
         if(va->matsurfs) 
         {
             va->matbuf = new materialsurface[matsurfs.length()];
             memcpy(va->matbuf, matsurfs.getbuf(), matsurfs.length()*sizeof(materialsurface));
+            loopv(matsurfs)
+            {
+                materialsurface &m = matsurfs[i];
+                if(m.flags&materialsurface::F_EDIT) continue;
+                switch(m.material)
+                {
+                    case MAT_GLASS: case MAT_LAVA: case MAT_WATER: break;
+                    default: continue;
+                }
+                va->matmask |= 1<<m.material;
+            }
         }
 
         va->eslist = NULL;
@@ -441,7 +453,7 @@ void reduceslope(ivec &n)
 }
 
 // [rotation][dimension]
-vec orientation_tangent [6][3] =
+extern const vec orientation_tangent [6][3] =
 {
     { vec(0,  1,  0), vec( 1, 0,  0), vec( 1,  0, 0) },
     { vec(0,  0, -1), vec( 0, 0, -1), vec( 0,  1, 0) },
@@ -450,7 +462,7 @@ vec orientation_tangent [6][3] =
     { vec(0, -1,  0), vec(-1, 0,  0), vec(-1,  0, 0) },
     { vec(0,  1,  0), vec( 1, 0,  0), vec( 1,  0, 0) },
 };
-vec orientation_binormal[6][3] =
+extern const vec orientation_binormal[6][3] =
 {
     { vec(0,  0, -1), vec( 0, 0, -1), vec( 0,  1, 0) },
     { vec(0, -1,  0), vec(-1, 0,  0), vec(-1,  0, 0) },
@@ -1215,38 +1227,6 @@ void calcgeombb(int cx, int cy, int cz, int size, ivec &bbmin, ivec &bbmax)
     bbmax = ivec(vmax.mul(8)).add(7).shr(3);
 }
 
-void calcmatbb(int cx, int cy, int cz, int size, ivec &bbmin, ivec &bbmax)
-{
-    bbmax = ivec(cx, cy, cz);
-    (bbmin = bbmax).add(size);
-    loopv(vc.matsurfs)
-    {
-        materialsurface &m = vc.matsurfs[i];
-        switch(m.material)
-        {
-            case MAT_WATER:
-            case MAT_GLASS:
-            case MAT_LAVA:
-                break;
-
-            default:
-                continue;
-        }
-
-        int dim = dimension(m.orient),
-            r = R[dim],
-            c = C[dim];
-        bbmin[dim] = min(bbmin[dim], m.o[dim]);
-        bbmax[dim] = max(bbmax[dim], m.o[dim]);
-
-        bbmin[r] = min(bbmin[r], m.o[r]);
-        bbmax[r] = max(bbmax[r], m.o[r] + m.rsize);
-
-        bbmin[c] = min(bbmin[c], m.o[c]);
-        bbmax[c] = max(bbmax[c], m.o[c] + m.csize);
-    }
-}
-
 void setva(cube &c, int cx, int cy, int cz, int size, int csi)
 {
     ASSERT(size <= 0x1000);
@@ -1270,7 +1250,7 @@ void setva(cube &c, int cx, int cy, int cz, int size, int csi)
         ext(c).va = va;
         va->geommin = bbmin;
         va->geommax = bbmax;
-        calcmatbb(cx, cy, cz, size, va->matmin, va->matmax);
+        calcmatbb(va, cx, cy, cz, size, vc.matsurfs);
         va->hasmerges = vahasmerges;
         va->mergelevel = vamergemax;
     }

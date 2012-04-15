@@ -1168,7 +1168,7 @@ bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, fl
     return sx1 < sx2 && sy1 < sy2;
 }
 
-bool calcbbscissor(const vec &bbmin, const vec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2)
+bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2)
 {
     vec4 v[8];
     sx1 = sy1 = 1;
@@ -1205,12 +1205,11 @@ bool calcbbscissor(const vec &bbmin, const vec &bbmax, float &sx1, float &sy1, f
             sy2 = max(sy2, y);
         }
     }
-    if(sx1 <= -1 && sy1 <= -1 && sx2 >= 1 && sy2 >= 1) return false;
     sx1 = max(sx1, -1.0f);
     sy1 = max(sy1, -1.0f);
     sx2 = min(sx2, 1.0f);
     sy2 = min(sy2, 1.0f);
-    return sx1 < sx2 && sy1 < sy2;
+    return true;
 }
 
 void calcspheredepth(const vec &center, float size, float &sz1, float &sz2)
@@ -3480,9 +3479,9 @@ void processhdr()
     timer_end(TIMER_HDR);
 }
 
-VAR(alphascissor, 0, 1, 1);
 VAR(gdepthclear, 0, 1, 1);
 VAR(gcolorclear, 0, 1, 1);
+FVAR(refractmargin, 0, 0.1f, 1);
 
 void gl_drawframe(int w, int h)
 {
@@ -3747,32 +3746,24 @@ void gl_drawframe(int w, int h)
 
     if(hdr) drawskybox(farplane);
 
-    rendermaterials();
-
     int hasalphavas = findalphavas();
-    bool haswater = calcwaterscissor();
-    if(hasalphavas || haswater)
+    bool hasmats = findmaterials();
+    if(hasalphavas || hasmats)
     {
         timer_begin(TIMER_ALPHAGEOM);
 
-        if(!alphascissor)
-        {
-            alphafrontsx1 = alphafrontsy1 = alphabacksx1 = alphabacksy1 = alpharefractsx1 = alpharefractsy1 = watersx1 = watersy1 = -1;
-            alphafrontsx2 = alphafrontsy2 = alphabacksx2 = alphabacksy2 = alpharefractsx2 = alpharefractsy2 = watersx2 = watersy2 = 1;
-        }
-
-        if(hasalphavas&4 || haswater)
+        if(hasalphavas&4 || (hasmats && matrefractsx1 < matrefractsx2 && matrefractsy1 < matrefractsy2))
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
             glDepthMask(GL_FALSE);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-            float sx1 = min(alpharefractsx1, watersx1), sy1 = min(alpharefractsy1, watersy1),
-                  sx2 = max(alpharefractsx2, watersx2), sy2 = max(alpharefractsy2, watersy2);
+            float sx1 = min(alpharefractsx1, matrefractsx1), sy1 = min(alpharefractsy1, matrefractsy1),
+                  sx2 = max(alpharefractsx2, matrefractsx2), sy2 = max(alpharefractsy2, matrefractsy2);
             bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
             if(scissor)
             {
-                int x1 = int(floor((sx1*0.5f+0.5f)*gw)), y1 = int(floor((sy1*0.5f+0.5f)*gh)),
-                    x2 = int(ceil((sx2*0.5f+0.5f)*gw)), y2 = int(ceil((sy2*0.5f+0.5f)*gh));
+                int x1 = int(floor(max(sx1*0.5f+0.5f-refractmargin*gh/gw, 0.0f)*gw)), y1 = int(floor(max(sy1*0.5f+0.5f-refractmargin, 0.0f)*gh)),
+                    x2 = int(ceil(min(sx2*0.5f+0.5f+refractmargin*gh/gw, 1.0f)*gw)), y2 = int(ceil(min(sy2*0.5f+0.5f+refractmargin, 1.0f)*gh));
                 glEnable(GL_SCISSOR_TEST);
                 glScissor(x1, y1, x2 - x1, y2 - y1);
             }
@@ -3781,7 +3772,7 @@ void gl_drawframe(int w, int h)
             if(scissor) glDisable(GL_SCISSOR_TEST);
             SETSHADER(refractmask);
             if(hasalphavas&4) renderrefractmask();
-            if(haswater) renderwatermask();
+            if(hasmats && matrefractsx1 < matrefractsx2 && matrefractsy1 < matrefractsy2) rendermaterialmask();
             glDepthMask(GL_TRUE);
         }
 
@@ -3808,22 +3799,22 @@ void gl_drawframe(int w, int h)
         glActiveTexture_(GL_TEXTURE0_ARB);
         glMatrixMode(GL_MODELVIEW);
 
-        loop(side, 2) if(hasalphavas&(1<<side) || (side && haswater))
+        loop(side, 2) if(hasalphavas&(1<<side) || (side && hasmats))
         {
+            uint tiles[LIGHTTILE_H];
             float sx1, sy1, sx2, sy2;
+            memcpy(tiles, alphatiles, sizeof(tiles));
             if(!side) { sx1 = alphabacksx1; sy1 = alphabacksy1; sx2 = alphabacksx2; sy2 = alphabacksy2; }
             else 
             { 
                 sx1 = alphafrontsx1; sy1 = alphafrontsy1; sx2 = alphafrontsx2; sy2 = alphafrontsy2;
-                if(haswater)
+                if(hasmats)
                 {
-                    sx1 = min(sx1, watersx1); 
-                    sy1 = min(sy1, watersy1); 
-                    sx2 = max(sx2, watersx2); 
-                    sy2 = max(sy2, watersy2); 
-                    int tx1 = max(int(floor((watersx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((watersy1 + 1)*0.5f*LIGHTTILE_H)), 0),
-                        tx2 = min(int(ceil((watersx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((watersy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
-                    for(int ty = ty1; ty < ty2; ty++) alphatiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;
+                    sx1 = min(sx1, matsx1); 
+                    sy1 = min(sy1, matsy1); 
+                    sx2 = max(sx2, matsx2); 
+                    sy2 = max(sy2, matsy2); 
+                    loopj(LIGHTTILE_H) tiles[j] |= mattiles[j];
                 }
             } 
 
@@ -3851,7 +3842,7 @@ void gl_drawframe(int w, int h)
             }
 
             if(hasalphavas&(1<<side)) renderalphageom(1<<side);
-            if(side && haswater) renderwater();
+            if(side && hasmats) rendermaterials();
 
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
             if((gdepthstencil && hasDS) || gstencil)
@@ -3863,7 +3854,7 @@ void gl_drawframe(int w, int h)
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-            renderlights(sx1, sy1, sx2, sy2, alphatiles);
+            renderlights(sx1, sy1, sx2, sy2, tiles);
 
             glDisable(GL_BLEND);
         }

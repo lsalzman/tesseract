@@ -422,15 +422,12 @@ void drawskybox(int farplane)
 
     if(fogdomemax && !fogdomeclouds)
     {
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
         drawfogdome(farplane);
         defaultshader->set();
     }
 
     if(cloudbox[0])
     {
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -450,8 +447,6 @@ void drawskybox(int farplane)
 
     if(cloudlayer[0] && cloudheight)
     {
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-
         glDisable(GL_CULL_FACE);
 
         glEnable(GL_BLEND);
@@ -473,7 +468,6 @@ void drawskybox(int farplane)
 
 	if(fogdomemax && fogdomeclouds)
 	{
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
         drawfogdome(farplane);
 	}
 
