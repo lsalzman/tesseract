@@ -462,6 +462,7 @@ extern void setupmaterials(int start = 0, int len = 0);
 extern bool findmaterials();
 extern void rendermaterialmask();
 extern void rendermaterials();
+extern void rendereditmaterials();
 extern int visiblematerial(cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
 
 // water

@@ -3872,35 +3872,9 @@ void gl_drawframe(int w, int h)
 
 #endif
 
-//    renderdecals(true);
-
-#if 0
-    if(!isthirdperson())
-    {
-        project(curavatarfov, aspect, farplane, false, false, false, avatardepth);
-        game::renderavatar();
-        project(fovy, aspect, farplane);
-    }
-#endif
-
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-#if 0
-    if(hasFBO) 
-    {
-        drawreflections();
-    }
-#endif
-
-    if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-    //renderwater();
-    //rendergrass();
-
-    //rendermaterials();
-    //renderalphageom();
-
-    if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    rendereditmaterials();
 
     glActiveTexture_(GL_TEXTURE2_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);

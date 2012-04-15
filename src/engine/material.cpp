@@ -405,11 +405,9 @@ VARP(showmat, 0, 1, 1);
 
 static int sortdim[3];
 static ivec sortorigin;
-static bool sortedit;
 
-static inline bool vismatcmp(const materialsurface *xm, const materialsurface *ym)
+static inline bool editmatcmp(const materialsurface &x, const materialsurface &y)
 {
-    const materialsurface &x = *xm, &y = *ym;
     int xdim = dimension(x.orient), ydim = dimension(y.orient);
     loopi(3)
     {
@@ -422,75 +420,59 @@ static inline bool vismatcmp(const materialsurface *xm, const materialsurface *y
         else if(dim==R[ydim]) ymax += y.rsize;
         if(xmax > ymin && ymax > xmin) continue;
         int c = sortorigin[dim];
-        if(c > xmin && c < xmax) return sortedit;
-        if(c > ymin && c < ymax) return !sortedit;
+        if(c > xmin && c < xmax) return true;
+        if(c > ymin && c < ymax) return false;
         xmin = abs(xmin - c);
         xmax = abs(xmax - c);
         ymin = abs(ymin - c);
         ymax = abs(ymax - c);
-        if(max(xmin, xmax) <= min(ymin, ymax)) return sortedit;
-        else if(max(ymin, ymax) <= min(xmin, xmax)) return !sortedit;
+        if(max(xmin, xmax) <= min(ymin, ymax)) return true;
+        else if(max(ymin, ymax) <= min(xmin, xmax)) return false;
     }
-    if(x.material < y.material) return sortedit;
-    if(x.material > y.material) return !sortedit;
+    if(x.material < y.material) return true;
+    //if(x.material > y.material) return false;
     return false;
 }
 
-extern vtxarray *visibleva, *reflectedva;
-
-void sortmaterials(vector<materialsurface *> &vismats)
+void sorteditmaterials()
 {
     sortorigin = ivec(camera1->o);
     if(reflecting) sortorigin.z = int(reflectz - (camera1->o.z - reflectz));
-    vec dir;
-    vecfromyawpitch(camera1->yaw, reflecting ? -camera1->pitch : camera1->pitch, 1, 0, dir);
-    loopi(3) { dir[i] = fabs(dir[i]); sortdim[i] = i; }
+    vec dir(fabs(camdir.x), fabs(camdir.y), fabs(camdir.z));
+    loopi(3) sortdim[i] = i;
     if(dir[sortdim[2]] > dir[sortdim[1]]) swap(sortdim[2], sortdim[1]);
     if(dir[sortdim[1]] > dir[sortdim[0]]) swap(sortdim[1], sortdim[0]);
     if(dir[sortdim[2]] > dir[sortdim[1]]) swap(sortdim[2], sortdim[1]);
-
-    for(vtxarray *va = reflecting ? reflectedva : visibleva; va; va = reflecting ? va->rnext : va->next)
-    {
-        if(!va->matsurfs || va->occluded >= OCCLUDE_BB) continue;
-        if(reflecting || refracting>0 ? va->o.z+va->size <= reflectz : va->o.z >= reflectz) continue;
-        loopi(va->matsurfs)
-        {
-            materialsurface &m = va->matbuf[i];
-            if(!editmode || !showmat || envmapping)
-            {
-                if(m.material==MAT_WATER && (m.orient==O_TOP || (refracting<0 && reflectz>worldsize))) { i += m.skip; continue; }
-                if(m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
-            }
-            vismats.add(&m);
-        }
-    }
-    sortedit = editmode && showmat && !envmapping;
-    vismats.sort(vismatcmp);
+    editsurfs.sort(editmatcmp);
 }
 
-void rendermatgrid(vector<materialsurface *> &vismats)
+void rendermatgrid()
 {
     enablepolygonoffset(GL_POLYGON_OFFSET_LINE);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     int lastmat = -1;
-    loopvrev(vismats)
+    float colorscale = (hdr ? 0.5f : 1)/255.0f;
+    loopvrev(editsurfs)
     {
-        materialsurface &m = *vismats[i];
+        materialsurface &m = editsurfs[i];
         if(m.material != lastmat)
         {
             xtraverts += varray::end();
-            lastmat = m.material;
+            bvec color;
             switch(m.material)
             {
-                case MAT_WATER:    glColor3ub( 0,  0, 85); break; // blue
-                case MAT_CLIP:     glColor3ub(85,  0,  0); break; // red
-                case MAT_GLASS:    glColor3ub( 0, 85, 85); break; // cyan
-                case MAT_NOCLIP:   glColor3ub( 0, 85,  0); break; // green
-                case MAT_LAVA:     glColor3ub(85, 40,  0); break; // orange
-                case MAT_GAMECLIP: glColor3ub(85, 85,  0); break; // yellow
-                case MAT_DEATH:    glColor3ub(40, 40, 40); break; // black
-                case MAT_ALPHA:    glColor3ub(85,  0, 85); break; // pink
+                case MAT_WATER:    color = bvec( 0,  0, 85); break; // blue
+                case MAT_CLIP:     color = bvec(85,  0,  0); break; // red
+                case MAT_GLASS:    color = bvec( 0, 85, 85); break; // cyan
+                case MAT_NOCLIP:   color = bvec( 0, 85,  0); break; // green
+                case MAT_LAVA:     color = bvec(85, 40,  0); break; // orange
+                case MAT_GAMECLIP: color = bvec(85, 85,  0); break; // yellow
+                case MAT_DEATH:    color = bvec(40, 40, 40); break; // black
+                case MAT_ALPHA:    color = bvec(85,  0, 85); break; // pink
+                default: continue;
             }
+            glColor3f(color.x*colorscale, color.y*colorscale, color.z*colorscale);
+            lastmat = m.material;
         }
         drawmaterial(m, -0.1f);
     }
@@ -560,6 +542,8 @@ vector<materialsurface> editsurfs, glasssurfs, watersurfs, waterfallsurfs, lavas
 
 float matsx1 = -1, matsy1 = -1, matsx2 = 1, matsy2 = 1, matrefractsx1 = -1, matrefractsy1 = -1, matrefractsx2 = 1, matrefractsy2 = 1;
 uint mattiles[LIGHTTILE_H];
+
+extern vtxarray *visibleva;
 
 bool findmaterials()
 {
@@ -693,6 +677,63 @@ void rendermaterials()
     renderwaterfalls();
     renderglass();
 
+    varray::disable();
+    glEnable(GL_CULL_FACE);
+}
+
+void rendereditmaterials()
+{
+    if(editsurfs.empty()) return;
+
+    sorteditmaterials();
+
+    glDisable(GL_CULL_FACE);
+    varray::enable();
+
+    foggednotextureshader->set();
+
+    static const float zerofog[4] = { 0, 0, 0, 1 };
+    float oldfogc[4];
+    glGetFloatv(GL_FOG_COLOR, oldfogc);
+    glFogfv(GL_FOG_COLOR, zerofog);
+    glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+    glEnable(GL_BLEND);
+
+    int lastmat = -1;
+    loopv(editsurfs)
+    {
+        const materialsurface &m = editsurfs[i];
+        if(lastmat!=m.material)
+        {
+            xtraverts += varray::end();
+            bvec color;
+            switch(m.material)
+            {
+                case MAT_WATER:    color = bvec(255, 128,   0); break; // blue
+                case MAT_CLIP:     color = bvec(  0, 255, 255); break; // red
+                case MAT_GLASS:    color = bvec(255,   0,   0); break; // cyan
+                case MAT_NOCLIP:   color = bvec(255,   0, 255); break; // green
+                case MAT_LAVA:     color = bvec(  0, 128, 255); break; // orange
+                case MAT_GAMECLIP: color = bvec(  0,   0, 255); break; // yellow
+                case MAT_DEATH:    color = bvec(192, 192, 192); break; // black
+                case MAT_ALPHA:    color = bvec(  0, 255,   0); break; // pink
+                default: continue;
+            }
+            glColor3ub(color.x, color.y, color.z);
+            lastmat = m.material;
+        }
+        drawmaterial(m, -0.1f);
+    }
+
+    xtraverts += varray::end();
+
+    glDisable(GL_BLEND);
+    glFogfv(GL_FOG_COLOR, oldfogc);
+
+    foggedlineshader->set();
+
+    rendermatgrid();
+    
     varray::disable();
     glEnable(GL_CULL_FACE);
 }
