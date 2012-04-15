@@ -3567,10 +3567,6 @@ void gl_drawframe(int w, int h)
 
     visiblecubes();
    
-    glClear(GL_DEPTH_BUFFER_BIT|(wireframe && editmode ? GL_COLOR_BUFFER_BIT : 0)|(hasstencil ? GL_STENCIL_BUFFER_BIT : 0));
-
-    if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); 
-
     int deferred_weirdness_starts_here;
 
     // just temporarily render world geometry into the g-buffer so we can slowly grow the g-buffers tendrils into the rendering pipeline
@@ -3615,6 +3611,8 @@ void gl_drawframe(int w, int h)
     GLOBALPARAM(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane));
     GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
 
+    if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
     GLERROR;
     rendergeom();
     GLERROR;
@@ -3635,6 +3633,9 @@ void gl_drawframe(int w, int h)
         project(fovy, aspect, farplane);
     }
     GLERROR;
+
+    if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
     timer_end(TIMER_GBUFFER);
     timer_end(TIMER_CPU_GBUFFER);
 
@@ -3841,8 +3842,12 @@ void gl_drawframe(int w, int h)
                 maskgbuffer("cngd");
             }
 
+            if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
             if(hasalphavas&(1<<side)) renderalphageom(1<<side);
             if(side && hasmats) rendermaterials();
+
+            if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
             if((gdepthstencil && hasDS) || gstencil)
@@ -3872,7 +3877,8 @@ void gl_drawframe(int w, int h)
 
 #endif
 
-    if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    extern int outline;
+    if(!wireframe && editmode && outline) renderoutline();
 
     rendereditmaterials();
 

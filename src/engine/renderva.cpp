@@ -566,7 +566,8 @@ void renderoutline()
     glEnableClientState(GL_VERTEX_ARRAY);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glColor3ub((outlinecolour>>16)&0xFF, (outlinecolour>>8)&0xFF, outlinecolour&0xFF);
+    float colorscale = (hdr ? 0.5f : 1)/255;
+    glColor3f(colorscale*((outlinecolour>>16)&0xFF), colorscale*((outlinecolour>>8)&0xFF), colorscale*(outlinecolour&0xFF));
 
     enablepolygonoffset(GL_POLYGON_OFFSET_LINE);
 
