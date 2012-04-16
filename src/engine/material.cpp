@@ -736,3 +736,18 @@ void rendereditmaterials()
     glEnable(GL_CULL_FACE);
 }
 
+void renderminimapmaterials()
+{
+    glDisable(GL_CULL_FACE);
+    varray::enable();
+
+    GLOBALPARAM(camera, (camera1->o));
+    GLOBALPARAM(millis, (lastmillis/1000.0f));
+
+    renderlava();
+    renderwater();
+
+    varray::disable();
+    glEnable(GL_CULL_FACE);
+}
+

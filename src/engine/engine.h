@@ -234,7 +234,8 @@ extern float curfov, fovy, aspect;
 extern float nearplane;
 extern int farplane;
 extern int hdr;
-extern bool envmapping, minimapping;
+extern bool envmapping;
+extern int minimapping;
 extern const glmatrixf viewmatrix;
 extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, eyematrix, worldmatrix;
 extern bvec fogcolor;
@@ -464,6 +465,7 @@ extern bool findmaterials();
 extern void rendermaterialmask();
 extern void rendermaterials();
 extern void rendereditmaterials();
+extern void renderminimapmaterials();
 extern int visiblematerial(cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
 
 // water

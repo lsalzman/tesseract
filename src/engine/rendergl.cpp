@@ -1365,7 +1365,8 @@ void drawfogoverlay(int fogmat, float fogblend, int abovemat)
     defaultshader->set();
 }
 
-bool envmapping = false, minimapping = false;
+bool envmapping = false;
+int minimapping = 0;
 
 GLuint minimaptex = 0;
 vec minimapcenter(0, 0, 0), minimapradius(0, 0, 0), minimapscale(0, 0, 0);
@@ -1401,125 +1402,6 @@ void clipminimap(ivec &bbmin, ivec &bbmax, cube *c = worldroot, int x = 0, int y
             loopk(3) bbmax[k] = max(bbmax[k], o[k] + size);
         }
     }
-}
-
-void drawminimap()
-{
-    if(!game::needminimap()) { clearminimap(); return; }
-
-#ifdef MINIMAP_DRAWING_IS_HORRIBLY_BROKEN
-    renderprogress(0, "generating mini-map...", 0, !renderedframe);
-
-    int size = 1<<minimapsize, sizelimit = min(hwtexsize, min(screen->w, screen->h));
-    while(size > sizelimit) size /= 2;
-    if(!minimaptex) glGenTextures(1, &minimaptex);
-
-    extern vector<vtxarray *> valist;
-    ivec bbmin(worldsize, worldsize, worldsize), bbmax(0, 0, 0);
-    loopv(valist)
-    {
-        vtxarray *va = valist[i];
-        loopk(3)
-        {
-            if(va->geommin[k]>va->geommax[k]) continue;
-            bbmin[k] = min(bbmin[k], va->geommin[k]);
-            bbmax[k] = max(bbmax[k], va->geommax[k]);
-        }
-    }
-    if(minimapclip)
-    {
-        ivec clipmin(worldsize, worldsize, worldsize), clipmax(0, 0, 0);
-        clipminimap(clipmin, clipmax);
-        loopk(2) bbmin[k] = max(bbmin[k], clipmin[k]);
-        loopk(2) bbmax[k] = min(bbmax[k], clipmax[k]); 
-    }
- 
-    minimapradius = bbmax.tovec().sub(bbmin.tovec()).mul(0.5f); 
-    minimapcenter = bbmin.tovec().add(minimapradius);
-    minimapradius.x = minimapradius.y = max(minimapradius.x, minimapradius.y);
-    minimapscale = vec((0.5f - 1.0f/size)/minimapradius.x, (0.5f - 1.0f/size)/minimapradius.y, 1.0f);
-
-    envmapping = minimapping = true;
-
-    physent *oldcamera = camera1;
-    static physent cmcamera;
-    cmcamera = *player;
-    cmcamera.reset();
-    cmcamera.type = ENT_CAMERA;
-    cmcamera.o = vec(minimapcenter.x, minimapcenter.y, max(minimapcenter.z + minimapradius.z + 1, float(minimapheight)));
-    cmcamera.yaw = 0;
-    cmcamera.pitch = -90;
-    cmcamera.roll = 0;
-    camera1 = &cmcamera;
-    setviewcell(vec(-1, -1, -1));
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, 0, camera1->o.z + 1);
-    glScalef(-1, 1, 1);
-    glMatrixMode(GL_MODELVIEW);
-
-    transplayer();
-
-    defaultshader->set();
-
-    GLfloat fogc[4] = { minimapcolor.x/255.0f, minimapcolor.y/255.0f, minimapcolor.z/255.0f, 1.0f };
-    glFogf(GL_FOG_START, 0);
-    glFogf(GL_FOG_END, 1000000);
-    glFogfv(GL_FOG_COLOR, fogc);
-
-    glClearColor(fogc[0], fogc[1], fogc[2], fogc[3]);
-    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-    glViewport(1, 1, size-2, size-2);
-    glScissor(1, 1, size-2, size-2);
-    glEnable(GL_SCISSOR_TEST);
-
-    glDisable(GL_FOG);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_TEXTURE_2D);
-
-    glFrontFace(GL_CCW);
-
-    xtravertsva = xtraverts = glde = gbatches = 0;
-
-    visiblecubes(false);
-    drawreflections();
-
-    loopi(minimapheight > 0 && minimapheight < minimapcenter.z + minimapradius.z ? 2 : 1)
-    {
-        if(i)
-        {
-            glClear(GL_DEPTH_BUFFER_BIT);
-            camera1->o.z = minimapheight;
-            transplayer();
-        }
-        rendergeom();
-        rendermapmodels();
-        renderwater();
-        rendermaterials();
-        renderalphageom();
-    }
-
-    glFrontFace(GL_CW);
-
-    glDisable(GL_TEXTURE_2D);
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_FOG);
-
-    glDisable(GL_SCISSOR_TEST);
-    glViewport(0, 0, screen->w, screen->h);
-
-    camera1 = oldcamera;
-    envmapping = minimapping = false;
-
-    glBindTexture(GL_TEXTURE_2D, minimaptex);
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, 0, 0, size, size, 0);
-    setuptexparameters(minimaptex, NULL, 3, 1, GL_RGB5, GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, 0);
-#endif
 }
 
 GLuint motiontex = 0;
@@ -2178,7 +2060,6 @@ struct cascaded_shadow_map
         glmatrixf proj;   // one projection per split
         int idx;          // shadowmapinfo indices
         vec bbmin, bbmax; // max extents of shadowmap in sunlight model space
-        float fardist;    // far distance in player frustum
         plane cull[4];    // world space culling planes of the split's projected sides
     };
     glmatrixf model;                // model view is shared by all splits
@@ -2218,6 +2099,18 @@ struct splitfrustum
 
 static void updatefrustumpoints(splitfrustum &f, const vec &pos, const vec &view, const vec &up, const vec &right)
 {
+    if(minimapping)
+    {
+        loopi(8)
+        {
+            vec p = minimapcenter;
+            p.x += i&1 ? minimapradius.x : -minimapradius.x;
+            p.y += i&2 ? minimapradius.y : -minimapradius.y;
+            p.z += i&4 ? minimapradius.z : -minimapradius.z;
+            f.point[i] = p;
+        }
+        return;
+    }
     const vec fc = pos + view*f.farplane;
     const vec nc = pos + view*f.nearplane;
     float near_height = tanf(curfov/2.0f*RAD) * f.nearplane;
@@ -2331,7 +2224,6 @@ void cascaded_shadow_map::getprojmatrix()
         // modify mvp with a scale and offset
         // now compute the update model view matrix for this split
         split.proj.ortho(minv.x, maxv.x, minv.y, maxv.y, -maxz, -minz);
-        split.fardist = f[i].farplane;
     }
 }
 
@@ -2503,23 +2395,27 @@ void cascaded_shadow_map::bindparams()
     glMatrixMode(GL_MODELVIEW);
 }
 
-static Shader *deferredlightshader = NULL;
+static Shader *deferredlightshader = NULL, *deferredminimapshader = NULL;
 
 void cleardeferredlightshaders()
 {
     deferredlightshader = NULL;
+    deferredminimapshader = NULL;
 }
 
 SVARF(deferredlightsuffix, "", cleardeferredlightshaders());
 
-void loaddeferredlightshaders()
+Shader *loaddeferredlightshader(const char *prefix = NULL)
 {
-    string shadow, sun;
-    int shadowlen = 0, sunlen = 0;
+    string common, shadow, sun;
+    int commonlen = 0, shadowlen = 0, sunlen = 0;
 
+    if(prefix) { commonlen = strlen(prefix); memcpy(common, prefix, commonlen); }
+    if(usegatherforsm()) common[commonlen++] = 'g';
+    common[commonlen] = '\0';
+ 
     shadow[shadowlen++] = 'p';
     if(smtetra) shadow[shadowlen++] = 't';
-    if(usegatherforsm()) shadow[shadowlen++] = 'g';
     shadow[shadowlen] = '\0';
 
     if(ao) sun[sunlen++] = 'a';
@@ -2527,20 +2423,25 @@ void loaddeferredlightshaders()
     {
         sun[sunlen++] = 'c';
         sun[sunlen++] = '0' + csmsplitn;
-        if(usegatherforsm()) sun[sunlen++] = 'g';
         if(ao && aosun) sun[sunlen++] = 'A';
     }
     sun[sunlen] = '\0';
 
-    defformatstring(name)("deferredlight%s%s%s", shadow, sun, deferredlightsuffix);
-    deferredlightshader = lookupshaderbyname(name);
-    if(!deferredlightshader)
+    defformatstring(name)("deferredlight%s%s%s%s", common, shadow, sun, deferredlightsuffix);
+    Shader *s = lookupshaderbyname(name);
+    if(!s)
     {
-        defformatstring(cmd)("deferredlightshader \"%s\" \"%s\" %d", shadow, sun, csmsplitn);
+        defformatstring(cmd)("deferredlightshader \"%s\" \"%s\" \"%s\" %d", common, shadow, sun, csmsplitn);
         execute(cmd);
-        deferredlightshader = lookupshaderbyname(name);
-        if(!deferredlightshader) deferredlightshader = (Shader *)(void *)-1;
+        s = lookupshaderbyname(name);
+        if(!s) s = (Shader *)(void *)-1;
     }
+    return s;
+}
+
+void loaddeferredlightshaders()
+{
+    deferredlightshader = loaddeferredlightshader();
 }
 
 static inline bool sortlights(int x, int y)
@@ -2554,7 +2455,8 @@ VAR(culllighttiles, 0, 1, 1);
 
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
-    if(!deferredlightshader || deferredlightshader == (Shader *)(void *)-1) return;
+    Shader *s = minimapping ? deferredminimapshader : deferredlightshader;
+    if(!s || s == (Shader *)(void *)-1) return;
 
     glEnable(GL_SCISSOR_TEST);
 
@@ -2662,7 +2564,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
             if(n) 
             {
-                deferredlightshader->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0));
+                s->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0));
                 lightpos.set(lightposv, n);
                 lightcolor.set(lightcolorv, n);
                 if(shadowmap)   
@@ -2671,7 +2573,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                     shadowoffset.set(shadowoffsetv, n);
                 }
             } 
-            else deferredlightshader->set();
+            else s->set();
 
             sx1 = max(sx1, bsx1);
             sy1 = max(sy1, bsy1);
@@ -2783,7 +2685,7 @@ void collectlights()
 
     lightorder.sort(sortlights);
 
-    if(smquery && hasOQ && oqfrags) loopv(lightorder)
+    if(!minimapping && smquery && hasOQ && oqfrags) loopv(lightorder)
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
@@ -3432,7 +3334,7 @@ void rendergbuffer()
         glClearColor(0, 0, 0, 0);
         maskgbuffer("cng");
     }
-    glClear(GL_DEPTH_BUFFER_BIT|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0));
+    glClear((minimapping < 2 ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(minimapping < 2 && ((gdepthstencil && hasDS) || gstencil) ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
 
     glmatrixf screenmatrix;
@@ -3440,18 +3342,28 @@ void rendergbuffer()
     screenmatrix.scale(2.0f/vieww, 2.0f/viewh, 2.0f);
     screenmatrix.translate(-1.0f, -1.0f, -1.0f);
     eyematrix.mul(invprojmatrix, screenmatrix);
-    linearworldmatrix.mul(invprojmatrix, screenmatrix);
-    float xscale = linearworldmatrix.v[0], yscale = linearworldmatrix.v[5], xoffset = linearworldmatrix.v[12], yoffset = linearworldmatrix.v[13], zscale = linearworldmatrix.v[14];
-    GLfloat depthmatrix[16] =
+    if(minimapping)
     {
-        xscale/zscale,  0,              0, 0,
-        0,              yscale/zscale,  0, 0,
-        xoffset/zscale, yoffset/zscale, 1, 0,
-        0,              0,              0, 1
-    };
-    linearworldmatrix.mul(invmvmatrix.v, depthmatrix);
-    if(gdepthformat) worldmatrix = linearworldmatrix;
-    else worldmatrix.mul(invmvpmatrix, screenmatrix);
+        linearworldmatrix.mul(invmvpmatrix, screenmatrix);
+        worldmatrix = linearworldmatrix;
+        glScissor(1, 1, vieww-2, viewh-2);
+        glEnable(GL_SCISSOR_TEST);
+    }
+    else
+    {
+        linearworldmatrix.mul(invprojmatrix, screenmatrix);
+        float xscale = linearworldmatrix.v[0], yscale = linearworldmatrix.v[5], xoffset = linearworldmatrix.v[12], yoffset = linearworldmatrix.v[13], zscale = linearworldmatrix.v[14];
+        GLfloat depthmatrix[16] =
+        {
+            xscale/zscale,  0,              0, 0,
+            0,              yscale/zscale,  0, 0,
+            xoffset/zscale, yoffset/zscale, 1, 0,
+            0,              0,              0, 1
+        };
+        linearworldmatrix.mul(invmvmatrix.v, depthmatrix);
+        if(gdepthformat) worldmatrix = linearworldmatrix;
+        else worldmatrix.mul(invmvpmatrix, screenmatrix);
+    }
 
     GLOBALPARAM(viewsize, (vieww, viewh, 1.0f/vieww, 1.0f/viewh));
     GLOBALPARAM(gdepthscale, (eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]));
@@ -3464,7 +3376,12 @@ void rendergbuffer()
     resetmodelbatches();
     rendermapmodels();
     GLERROR;
-    if(!envmapping)
+    if(minimapping)
+    {
+        renderminimapmaterials();
+        glDisable(GL_SCISSOR_TEST);
+    }
+    else if(!envmapping)
     {
         maskgbuffer("c");
         renderdecals(true);
@@ -3497,15 +3414,175 @@ void shadegbuffer()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
     glViewport(0, 0, vieww, viewh);
 
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    if(minimapping < 2)
+    {
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
 
-    renderlights();
+    if(minimapping) renderlights(2.0f/vieww - 1, 2.0f/viewh - 1, 1 - 2.0f/vieww, 1 - 2.0f/viewh);
+    else renderlights();
     GLERROR;
 
     glDisable(GL_BLEND);
     timer_end(TIMER_SHADING);
     timer_end(TIMER_CPU_SHADING);
+}
+
+void drawminimap()
+{
+    if(!game::needminimap()) { clearminimap(); return; }
+
+    renderprogress(0, "generating mini-map...", 0, !renderedframe);
+
+    if(!deferredminimapshader) deferredminimapshader = loaddeferredlightshader("m");
+
+    int size = 1<<minimapsize, sizelimit = min(hwtexsize, min(vieww, viewh));
+    while(size > sizelimit) size /= 2;
+    if(!minimaptex) glGenTextures(1, &minimaptex);
+
+    extern vector<vtxarray *> valist;
+    ivec bbmin(worldsize, worldsize, worldsize), bbmax(0, 0, 0);
+    loopv(valist)
+    {
+        vtxarray *va = valist[i];
+        loopk(3)
+        {
+            if(va->geommin[k]>va->geommax[k]) continue;
+            bbmin[k] = min(bbmin[k], va->geommin[k]);
+            bbmax[k] = max(bbmax[k], va->geommax[k]);
+        }
+    }
+    if(minimapclip)
+    {
+        ivec clipmin(worldsize, worldsize, worldsize), clipmax(0, 0, 0);
+        clipminimap(clipmin, clipmax);
+        loopk(2) bbmin[k] = max(bbmin[k], clipmin[k]);
+        loopk(2) bbmax[k] = min(bbmax[k], clipmax[k]);
+    }
+
+    minimapradius = bbmax.tovec().sub(bbmin.tovec()).mul(0.5f);
+    minimapcenter = bbmin.tovec().add(minimapradius);
+    minimapradius.x = minimapradius.y = max(minimapradius.x, minimapradius.y);
+    minimapscale = vec((0.5f - 1.0f/size)/minimapradius.x, (0.5f - 1.0f/size)/minimapradius.y, 1.0f);
+
+    envmapping = true;
+    minimapping = 1;
+
+    physent *oldcamera = camera1;
+    static physent cmcamera;
+    cmcamera = *player;
+    cmcamera.reset();
+    cmcamera.type = ENT_CAMERA;
+    cmcamera.o = vec(minimapcenter.x, minimapcenter.y, minimapheight > 0 ? minimapheight : minimapcenter.z + minimapradius.z + 1);
+    cmcamera.yaw = 0;
+    cmcamera.pitch = -90;
+    cmcamera.roll = 0;
+    camera1 = &cmcamera;
+    setviewcell(vec(-1, -1, -1));
+
+    int oldvieww = vieww, oldviewh = viewh;
+    vieww = viewh = size;
+
+    float zscale = max(float(minimapheight), minimapcenter.z + minimapradius.z + 1) + 1;
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, 0, 2*zscale);
+    glMatrixMode(GL_MODELVIEW);
+
+    transplayer();
+    readmatrices();
+
+    lights.setsize(0);
+    lightorder.setsize(0);
+    loopi(LIGHTTILE_H) loopj(LIGHTTILE_W) lighttiles[i][j].setsize(0);
+
+    shadowmaps.setsize(0);
+    shadowatlaspacker.reset();
+    csm.setup();
+
+    defaultshader->set();
+
+    float colorscale = (hdr ? 0.5f : 1)/255.0f;
+    GLfloat fogc[4] = { minimapcolor.x*colorscale, minimapcolor.y*colorscale, minimapcolor.z*colorscale, 1.0f };
+    glFogf(GL_FOG_START, 0);
+    glFogf(GL_FOG_END, 1000000);
+    glFogfv(GL_FOG_COLOR, fogc);
+
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+
+    xtravertsva = xtraverts = glde = gbatches = 0;
+
+    visiblecubes(false);
+    collectlights();
+    rendershadowatlas();
+    findmaterials();
+
+    rendergbuffer();
+    shadegbuffer();
+
+    if(minimapheight > 0 && minimapheight < minimapcenter.z + minimapradius.z)
+    {
+        minimapping = 2;
+        camera1->o.z = minimapcenter.z + minimapradius.z + 1;
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glTranslatef(0, 0, 1);
+        glOrtho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, 0, 2*zscale);
+        glMatrixMode(GL_MODELVIEW);
+        transplayer();
+        readmatrices();
+        rendergbuffer();
+        shadegbuffer();
+    }
+        
+    if(!minimapcolor.iszero()) 
+    {
+        SETSHADER(minimapcolor);
+        glColor3f(fogc[0], fogc[1], fogc[2]);
+        glDepthFunc(GL_LEQUAL);
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex3f(1, -1, 1);
+        glVertex3f(-1, -1, 1);
+        glVertex3f(1, 1, 1);
+        glVertex3f(-1, 1, 1);
+        glEnd();
+        glDepthFunc(GL_LESS);
+    }
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+
+    vieww = oldvieww;
+    viewh = oldviewh;
+
+    camera1 = oldcamera;
+    envmapping = false;
+    minimapping = 0;
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+    glViewport(0, 0, vieww, viewh);
+
+    if(hdr)
+    {
+        SETSHADER(hdrundo);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+        float x1 = -1, y1 = -1, x2 = x1 + (2.0f*size)/vieww, y2 = y1 + (2.0f*size)/viewh;
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex2f(x2, y1);
+        glVertex2f(x1, y1);
+        glVertex2f(x2, y2);
+        glVertex2f(x1, y2);
+        glEnd();
+        GLERROR;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, minimaptex);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, 0, 0, size, size, 0);
+    setuptexparameters(minimaptex, NULL, 3, 1, GL_RGB5, GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapside &side)

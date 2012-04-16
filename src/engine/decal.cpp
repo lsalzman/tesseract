@@ -252,7 +252,7 @@ struct decalrenderer
             {
                 SETSHADER(saturatedecal);
             }
-            else foggedshader->set();
+            else defaultshader->set();
         }
 
         glBindTexture(GL_TEXTURE_2D, tex->id);

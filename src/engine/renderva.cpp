@@ -1788,7 +1788,7 @@ void rendergeom()
     }
     glDisableClientState(GL_VERTEX_ARRAY);
 
-    if(!doZP)
+    if(!doZP && !minimapping)
     {
         glFlush();
         if(cur.colormask) { cur.colormask = false; glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); }
