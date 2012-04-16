@@ -234,7 +234,6 @@ void generategrass()
     {
         if(va->grasstris.empty() || va->occluded >= OCCLUDE_GEOM) continue;
         if(va->distance > grassdist) continue;
-        if(reflecting || refracting>0 ? va->o.z+va->size<reflectz : va->o.z>=reflectz) continue;
         gengrassquads(va);
     }
 }
@@ -263,12 +262,6 @@ void rendergrass()
     loopv(grassgroups)
     {
         grassgroup &g = grassgroups[i];
-
-        if(reflecting || refracting)
-        {
-            if(refracting < 0 ? g.tri->minz > reflectz : g.tri->maxz + grassheight < reflectz) continue;
-            if(isfoggedsphere(g.tri->radius, g.tri->center)) continue;
-        }
 
         if(texid != g.tex)
         {

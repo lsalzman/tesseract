@@ -526,7 +526,3 @@ void renderwater()
     }
 }
 
-int refracting = 0;
-bool reflecting = false, fogging = false;
-float reflectz = 1e16f;
-

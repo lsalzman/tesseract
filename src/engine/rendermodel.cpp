@@ -551,25 +551,10 @@ static inline void rendermodelquery(model *m, dynent *d, const vec &center, floa
 static inline bool cullmodel(model *m, const vec &center, float radius, int flags, dynent *d = NULL)
 {
     if(flags&MDL_CULL_DIST && center.dist(camera1->o)/radius>maxmodelradiusdistance) return true;
-    if(flags&MDL_CULL_VFC)
-    {
-        if(reflecting || refracting)
-        {
-            if(reflecting || refracting>0)
-            {
-                if(center.z+radius<=reflectz) return true;
-            }
-            else
-            {
-                if(fogging && center.z+radius<reflectz-waterfog) return true;
-                if(center.z-radius>=reflectz) return true;
-            }
-        }
-        if(isfoggedsphere(radius, center)) return true;
-    }
+    if(flags&MDL_CULL_VFC && isfoggedsphere(radius, center)) return true;
     if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
     {
-        if(!reflecting && !refracting && d)
+        if(d)
         {
             d->occluded = OCCLUDE_PARENT;
             if(flags&MDL_CULL_QUERY) rendermodelquery(m, d, center, radius);
@@ -578,11 +563,8 @@ static inline bool cullmodel(model *m, const vec &center, float radius, int flag
     }
     else if(flags&MDL_CULL_QUERY && d->query && d->query->owner==d && checkquery(d->query))
     {
-        if(!reflecting && !refracting)
-        {
-            if(d->occluded<OCCLUDE_BB) d->occluded++;
-            rendermodelquery(m, d, center, radius);
-        }
+        if(d->occluded<OCCLUDE_BB) d->occluded++;
+        rendermodelquery(m, d, center, radius);
         return true;
     }
     return false;

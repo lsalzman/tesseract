@@ -437,7 +437,6 @@ static inline bool editmatcmp(const materialsurface &x, const materialsurface &y
 void sorteditmaterials()
 {
     sortorigin = ivec(camera1->o);
-    if(reflecting) sortorigin.z = int(reflectz - (camera1->o.z - reflectz));
     vec dir(fabs(camdir.x), fabs(camdir.y), fabs(camdir.z));
     loopi(3) sortdim[i] = i;
     if(dir[sortdim[2]] > dir[sortdim[1]]) swap(sortdim[2], sortdim[1]);

@@ -158,7 +158,7 @@ static void setupexplosion()
     if(!expmodtex[1]) expmodtex[1] = createexpmodtex(64, 0.25f);
     lastexpmodtex = 0;
 
-    if(!reflecting && !refracting && softparticles && softexplosion)
+    if(softparticles && softexplosion)
     {
         if(explosion2d) SETSHADER(explosion2dsoft); else SETSHADER(explosion3dsoft);
     }
@@ -210,7 +210,7 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
         glBindTexture(GL_TEXTURE_2D, lastexpmodtex);
         glActiveTexture_(GL_TEXTURE0_ARB);
     }
-    int passes = !reflecting && !refracting && inside ? 2 : 1;
+    int passes = inside ? 2 : 1;
     if(!explosion2d)
     {
         if(inside) glScalef(1, 1, -1);
@@ -315,7 +315,6 @@ struct fireballrenderer : listrenderer
         bool inside = o.dist(camera1->o) <= psize*WOBBLE;
         vec oc(o);
         oc.sub(camera1->o);
-        if(reflecting) oc.z = o.z - reflectz;
 
         float yaw = inside ? camera1->yaw : atan2(oc.y, oc.x)/RAD - 90,
         pitch = (inside ? camera1->pitch : asin(oc.z/oc.magnitude())/RAD) - 90;

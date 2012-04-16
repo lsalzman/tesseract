@@ -211,7 +211,7 @@ struct animmodel : model
             {
                 if(alphablend)
                 {
-                    if(!enablealphablend && !reflecting && !refracting)
+                    if(!enablealphablend)
                     {
                         glEnable(GL_BLEND);
                         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

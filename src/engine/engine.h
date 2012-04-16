@@ -236,7 +236,7 @@ extern int farplane;
 extern int hdr;
 extern bool envmapping, minimapping;
 extern const glmatrixf viewmatrix;
-extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, fogmatrix, invfogmatrix, envmatrix, eyematrix, worldmatrix;
+extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, eyematrix, worldmatrix;
 extern bvec fogcolor;
 
 extern void gl_checkextensions();
@@ -412,16 +412,14 @@ extern float alphafrontsx1, alphafrontsx2, alphafrontsy1, alphafrontsy2, alphaba
 extern uint alphatiles[LIGHTTILE_H];
 
 extern void visiblecubes(bool cull = true);
-extern void setvfcP(float z = -1, const vec &bbmin = vec(-1, -1, -1), const vec &bbmax = vec(1, 1, 1));
+extern void setvfcP(const vec &bbmin = vec(-1, -1, -1), const vec &bbmax = vec(1, 1, 1));
 extern void savevfcP();
 extern void restorevfcP();
-extern void rendergeom(bool fogpass = false);
-extern int findalphavas(bool fogpass = false);
+extern void rendergeom();
+extern int findalphavas();
 extern void renderrefractmask();
-extern void renderalphageom(int side, bool fogpass = false);
+extern void renderalphageom(int side);
 extern void rendermapmodels();
-extern void renderreflectedgeom(bool fogpass = false);
-extern void renderreflectedmapmodels();
 extern void renderoutline();
 extern void rendershadowmapworld();
 
@@ -469,9 +467,6 @@ extern void rendereditmaterials();
 extern int visiblematerial(cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
 
 // water
-extern int refracting;
-extern bool reflecting, fogging;
-extern float reflectz;
 extern int vertwater, waterreflect, caustics, waterfog, lavafog;
 extern bvec watercolor, waterfallcolor, lavacolor;
 extern float watersx1, watersy1, watersx2, watersy2;

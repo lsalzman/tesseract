@@ -18,7 +18,6 @@ static bool canemit = false, regenemitters = false, canstep = false;
 
 static bool emit_particles()
 {
-    if(reflecting || refracting) return false;
     return canemit || emitoffset;
 }
 
@@ -861,13 +860,13 @@ void renderparticles(bool mainpass)
 {
     canstep = mainpass;
     //want to debug BEFORE the lastpass render (that would delete particles)
-    if(debugparticles && !reflecting && !refracting) 
+    if(debugparticles)
     {
         int n = sizeof(parts)/sizeof(parts[0]);
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
-        glOrtho(0, FONTH*n*2*screen->w/float(screen->h), FONTH*n*2, 0, -1, 1); //squeeze into top-left corner        
+        glOrtho(0, FONTH*n*2*vieww/float(viewh), FONTH*n*2, 0, -1, 1); //squeeze into top-left corner        
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
         glLoadIdentity();
@@ -907,7 +906,7 @@ void renderparticles(bool mainpass)
     bool rendered = false;
     uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD;
    
-    if(!reflecting && !refracting && softparticles) flagmask |= PT_SOFT;
+    if(softparticles) flagmask |= PT_SOFT;
 
     loopi(sizeof(parts)/sizeof(parts[0]))
     {

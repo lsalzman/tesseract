@@ -917,7 +917,7 @@ VAR(thirdperson, 0, 0, 2);
 FVAR(thirdpersondistance, 0, 20, 1000);
 physent *camera1 = NULL;
 bool detachedcamera = false;
-bool isthirdperson() { return player!=camera1 || detachedcamera || reflecting; }
+bool isthirdperson() { return player!=camera1 || detachedcamera; }
 
 void fixcamerarange()
 {
@@ -1043,8 +1043,6 @@ vec calcavatarpos(const vec &pos, float dist)
 VAR(reflectclip, 0, 6, 64);
 VAR(reflectclipavatar, -64, 0, 64);
 
-glmatrixf clipmatrix;
-
 static const glmatrixf dummymatrix;
 static int projectioncount = 0;
 void pushprojection(const glmatrixf &m = dummymatrix)
@@ -1052,11 +1050,6 @@ void pushprojection(const glmatrixf &m = dummymatrix)
     glMatrixMode(GL_PROJECTION);
     if(projectioncount <= 0) glPushMatrix();
     if(&m != &dummymatrix) glLoadMatrixf(m.v);
-    if(fogging)
-    {
-        glMultMatrixf(mvmatrix.v);
-        glMultMatrixf(invfogmatrix.v);
-    }
     glMatrixMode(GL_MODELVIEW);
     projectioncount++;
 }
@@ -1069,11 +1062,6 @@ void popprojection()
     if(projectioncount > 0)
     {
         glPushMatrix();
-        if(fogging)
-        {
-            glMultMatrixf(mvmatrix.v);
-            glMultMatrixf(invfogmatrix.v);
-        }
     }
     glMatrixMode(GL_MODELVIEW);
 }
@@ -1091,19 +1079,12 @@ void enablepolygonoffset(GLenum type)
         return;
     }
     
-    bool clipped = reflectz < 1e15f && reflectclip;
-
-    glmatrixf offsetmatrix = clipped ? clipmatrix : projmatrix;
+    glmatrixf offsetmatrix = projmatrix;
     offsetmatrix[14] += depthoffset * projmatrix[10];
 
     glMatrixMode(GL_PROJECTION);
-    if(!clipped) glPushMatrix();
+    glPushMatrix();
     glLoadMatrixf(offsetmatrix.v);
-    if(fogging)
-    {
-        glMultMatrixf(mvmatrix.v);
-        glMultMatrixf(invfogmatrix.v);
-    }
     glMatrixMode(GL_MODELVIEW);
 }
 
@@ -1115,29 +1096,16 @@ void disablepolygonoffset(GLenum type)
         return;
     }
     
-    bool clipped = reflectz < 1e15f && reflectclip;
-
     glMatrixMode(GL_PROJECTION);
-    if(clipped) 
-    {
-        glLoadMatrixf(clipmatrix.v);
-        if(fogging)
-        {
-            glMultMatrixf(mvmatrix.v);
-            glMultMatrixf(invfogmatrix.v);
-        }
-    }
-    else glPopMatrix();
+    glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
 }
 
 bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2)
 {
-    vec worldpos(center);
-    if(reflecting) worldpos.z = 2*reflectz - worldpos.z; 
-    vec e(mvmatrix.transformx(worldpos),
-          mvmatrix.transformy(worldpos),
-          mvmatrix.transformz(worldpos));
+    vec e(mvmatrix.transformx(center),
+          mvmatrix.transformy(center),
+          mvmatrix.transformz(center));
     if(e.z > 2*size) { sx1 = sy1 = 1; sx2 = sy2 = -1; return false; }
     float zzrr = e.z*e.z - size*size,
           dx = e.x*e.x + zzrr, dy = e.y*e.y + zzrr,
@@ -1217,9 +1185,7 @@ bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1,
 
 void calcspheredepth(const vec &center, float size, float &sz1, float &sz2)
 {
-    vec worldpos(center);
-    if(reflecting) worldpos.z = 2*reflectz - worldpos.z;
-    float z = mvmatrix.transformz(worldpos),
+    float z = mvmatrix.transformz(center),
           z1 = min(z + size, -1e-3f - nearplane), z2 = min(z - size, -1e-3f - nearplane);
     sz1 = (z1*projmatrix.v[10] + projmatrix.v[14]) / (z1*projmatrix.v[11] + projmatrix.v[15]);
     sz2 = (z2*projmatrix.v[10] + projmatrix.v[14]) / (z2*projmatrix.v[11] + projmatrix.v[15]);
@@ -1272,15 +1238,6 @@ void popscissor()
     if(scissoring>1) glScissor(oldscissor[0], oldscissor[1], oldscissor[2], oldscissor[3]);
     else if(scissoring) glDisable(GL_SCISSOR_TEST);
     scissoring = 0;
-}
-
-glmatrixf envmatrix;
-
-void setenvmatrix()
-{
-    envmatrix = fogging ? fogmatrix : mvmatrix;
-    if(reflecting) envmatrix.reflectz(reflectz);
-    envmatrix.transpose();
 }
 
 VARR(fog, 16, 4000, 1000024);
@@ -1406,169 +1363,6 @@ void drawfogoverlay(int fogmat, float fogblend, int abovemat)
 
     glEnable(GL_TEXTURE_2D);
     defaultshader->set();
-}
-
-VARP(reflectmms, 0, 1, 1);
-VARR(refractsky, 0, 0, 1);
-
-glmatrixf fogmatrix, invfogmatrix;
-
-void drawreflection(float z, bool refract)
-{
-#ifdef REFLECTIONS_ARE_HORRIBLY_BROKEN
-    reflectz = z < 0 ? 1e16f : z;
-    reflecting = !refract;
-    refracting = refract ? (z < 0 || camera1->o.z >= z ? -1 : 1) : 0;
-    fading = waterrefract && waterfade && hasFBO && z>=0;
-    fogging = refracting<0 && z>=0;
-
-    float oldfogstart, oldfogend, oldfogcolor[4];
-    glGetFloatv(GL_FOG_START, &oldfogstart);
-    glGetFloatv(GL_FOG_END, &oldfogend);
-    glGetFloatv(GL_FOG_COLOR, oldfogcolor);
-
-    if(fogging)
-    {
-        glFogf(GL_FOG_START, camera1->o.z - z);
-        glFogf(GL_FOG_END, camera1->o.z - (z-waterfog));
-        GLfloat m[16] =
-        {
-             1,   0,  0, 0,
-             0,   1,  0, 0,
-             0,   0,  1, 0,
-            -camera1->o.x, -camera1->o.y, -camera1->o.z, 1
-        };
-        memcpy(fogmatrix.v, m, sizeof(m));
-        invfogmatrix.invert(fogmatrix);
-        pushprojection();
-        glPushMatrix();
-        glLoadMatrixf(fogmatrix.v);
-        float fogc[4] = { watercolor.x/255.0f, watercolor.y/255.0f, watercolor.z/255.0f, 1.0f };
-        glFogfv(GL_FOG_COLOR, fogc);
-    }
-    else
-    {
-        glFogf(GL_FOG_START, (fog+64)/8);
-        glFogf(GL_FOG_END, fog);
-        float fogc[4] = { fogcolor.x/255.0f, fogcolor.y/255.0f, fogcolor.z/255.0f, 1.0f };
-        glFogfv(GL_FOG_COLOR, fogc);
-    }
-
-    if(fading)
-    {
-        float scale = fogging ? -0.25f : 0.25f, offset = 2*fabs(scale) - scale*z;
-        GLOBALPARAM(waterfadeparams, (scale, offset, -scale, offset + camera1->o.z*scale));
-    }
-
-    if(reflecting)
-    {
-        glPushMatrix();
-        glTranslatef(0, 0, 2*z);
-        glScalef(1, 1, -1);
-
-        glFrontFace(GL_CCW);
-    }
-
-    setenvmatrix();
-
-    if(reflectclip && z>=0)
-    {
-        float zoffset = reflectclip/4.0f, zclip;
-        if(refracting<0)
-        {
-            zclip = z+zoffset;
-            if(camera1->o.z<=zclip) zclip = z;
-        }
-        else
-        {
-            zclip = z-zoffset;
-            if(camera1->o.z>=zclip && camera1->o.z<=z+4.0f) zclip = z;
-            if(reflecting) zclip = 2*z - zclip;
-        }
-        plane clipplane;
-        invmvmatrix.transposedtransform(plane(0, 0, refracting>0 ? 1 : -1, refracting>0 ? -zclip : zclip), clipplane);
-        clipmatrix.clip(clipplane, projmatrix);
-        pushprojection(clipmatrix);
-    }
-
-    renderreflectedgeom(refracting<0 && z>=0 && caustics, fogging);
-
-    if(reflecting || refracting>0 || (refracting<0 && refractsky) || z<0)
-    {
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        if(reflectclip && z>=0) popprojection();
-        if(fogging) 
-        {
-            popprojection();
-            glPopMatrix();
-        }
-        drawskybox(farplane);
-        if(fogging) 
-        {
-            pushprojection();
-            glPushMatrix();
-            glLoadMatrixf(fogmatrix.v);
-        }
-        if(reflectclip && z>=0) pushprojection(clipmatrix);
-        if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-    }
-    else if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-
-    renderdecals();
-
-    if(reflectmms) renderreflectedmapmodels();
-    game::rendergame();
-
-    if(refracting && z>=0 && !isthirdperson() && fabs(camera1->o.z-z) <= 0.5f*(player->eyeheight + player->aboveeye))
-    {   
-        glmatrixf avatarproj;
-        avatarproj.perspective(curavatarfov, aspect, nearplane, farplane);
-        if(reflectclip)
-        {
-            popprojection();
-            glmatrixf avatarclip;
-            plane clipplane;
-            invmvmatrix.transposedtransform(plane(0, 0, refracting, reflectclipavatar/4.0f - refracting*z), clipplane);
-            avatarclip.clip(clipplane, avatarproj);
-            pushprojection(avatarclip);
-        }
-        else pushprojection(avatarproj);
-        game::renderavatar();
-        popprojection();
-        if(reflectclip) pushprojection(clipmatrix);
-    }
-
-    if(refracting) rendergrass();
-    rendermaterials();
-    renderalphageom(fogging);
-    renderparticles();
-
-    if(fading) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-    if(reflectclip && z>=0) popprojection();
-
-    if(reflecting)
-    {
-        glPopMatrix();
-
-        glFrontFace(GL_CW);
-    }
-
-    if(fogging) 
-    {
-        popprojection();
-        glPopMatrix();
-    }
-    glFogf(GL_FOG_START, oldfogstart);
-    glFogf(GL_FOG_END, oldfogend);
-    glFogfv(GL_FOG_COLOR, oldfogcolor);
-    
-    reflectz = 1e16f;
-    refracting = 0;
-    reflecting = fading = fogging = false;
-
-    setenvmatrix();
-#endif
 }
 
 bool envmapping = false, minimapping = false;
@@ -3747,7 +3541,6 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     transplayer();
     readmatrices();
     findorientation();
-    setenvmatrix();
 
     lights.setsize(0);
     lightorder.setsize(0);
@@ -3871,7 +3664,6 @@ void gl_drawframe(int w, int h)
 
     readmatrices();
     findorientation();
-    setenvmatrix();
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);

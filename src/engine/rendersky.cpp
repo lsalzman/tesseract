@@ -378,7 +378,6 @@ static void drawfogdome(int farplane)
     glRotatef(camera1->roll, 0, 1, 0);
     glRotatef(camera1->pitch, -1, 0, 0);
     glRotatef(camera1->yaw, 0, 0, -1);
-    if(reflecting) glScalef(1, 1, -1);
     glTranslatef(0, 0, farplane*fogdomeheight*0.5f);
     glScalef(farplane/2, farplane/2, farplane*(0.5f - fogdomeheight*0.5f));
     drawdome();
@@ -391,11 +390,6 @@ static void drawfogdome(int farplane)
 void drawskybox(int farplane)
 {
     float skyclip = 0, topclip = 1;
-    if(reflectz<worldsize)
-    {
-        if(refracting<0) topclip = 0.5f + 0.5f*(reflectz-camera1->o.z)/float(worldsize);
-        else if(reflectz>skyclip) skyclip = reflectz;
-    }
     if(skyclip) skyclip = 0.5f + 0.5f*(skyclip-camera1->o.z)/float(worldsize); 
 
     defaultshader->set();
@@ -416,7 +410,6 @@ void drawskybox(int farplane)
     glRotatef(camera1->roll, 0, 1, 0);
     glRotatef(camera1->pitch, -1, 0, 0);
     glRotatef(camera1->yaw+spinsky*lastmillis/1000.0f+yawsky, 0, 0, -1);
-    if(reflecting) glScalef(1, 1, -1);
     draw_envbox(farplane/2, skyclip, topclip, 0x3F, sky);
     glPopMatrix();
 
@@ -438,7 +431,6 @@ void drawskybox(int farplane)
         glRotatef(camera1->roll, 0, 1, 0);
         glRotatef(camera1->pitch, -1, 0, 0);
         glRotatef(camera1->yaw+spinclouds*lastmillis/1000.0f+yawclouds, 0, 0, -1);
-        if(reflecting) glScalef(1, 1, -1);
         draw_envbox(farplane/2, skyclip ? skyclip : cloudclip, topclip, 0x3F, clouds);
         glPopMatrix();
 
@@ -457,7 +449,6 @@ void drawskybox(int farplane)
         glRotatef(camera1->roll, 0, 1, 0);
         glRotatef(camera1->pitch, -1, 0, 0);
         glRotatef(camera1->yaw+spincloudlayer*lastmillis/1000.0f+yawcloudlayer, 0, 0, -1);
-        if(reflecting) glScalef(1, 1, -1);
         draw_env_overlay(farplane/2, cloudoverlay, cloudscrollx * lastmillis/1000.0f, cloudscrolly * lastmillis/1000.0f);
         glPopMatrix();
 
