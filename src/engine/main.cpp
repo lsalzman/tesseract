@@ -1239,6 +1239,8 @@ int main(int argc, char **argv)
 
         if(minimized) continue;
 
+        gl_setupframe(screen->w, screen->h);
+
         inbetweenframes = false;
         if(mainmenu) gl_drawmainmenu(screen->w, screen->h);
         else gl_drawframe(screen->w, screen->h);

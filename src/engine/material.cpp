@@ -642,8 +642,7 @@ void renderglass()
 
     float colorscale = 1/255.0f;
     GLOBALPARAM(glasscolor, (glasscolor.x*colorscale, glasscolor.y*colorscale, glasscolor.z*colorscale));
-    extern int gh;
-    GLOBALPARAM(glassrefract, (glassrefract*gh));
+    GLOBALPARAM(glassrefract, (glassrefract*viewh));
     GLOBALPARAM(glassspec, (0.5f*glassspec/100.0f));
 
     short envmap = EMID_NONE;

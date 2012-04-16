@@ -323,7 +323,7 @@ struct decalrenderer
         if(endvert==dstart) return;
 
         decalinfo &d = newdecal();
-        d.color = color;
+        d.color = hdr ? bvec(color).shr(1) : color;
         d.millis = lastmillis;
         d.startvert = dstart;
         d.endvert = endvert;

@@ -1454,10 +1454,9 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         }
         if(cur.alphaing > 1 && vslot.refractscale > 0 && (cur.refractscale != vslot.refractscale || cur.refractcolor != vslot.refractcolor))
         {
-            extern int gh;
             cur.refractscale = vslot.refractscale;
             cur.refractcolor = vslot.refractcolor;
-            GLOBALPARAM(refractparams, (vslot.refractcolor.x*(1-alpha), vslot.refractcolor.y*(1-alpha), vslot.refractcolor.z*(1-alpha), vslot.refractscale*gh));
+            GLOBALPARAM(refractparams, (vslot.refractcolor.x*(1-alpha), vslot.refractcolor.y*(1-alpha), vslot.refractcolor.z*(1-alpha), vslot.refractscale*viewh));
         }
     }
     else if(cur.colorscale != vslot.colorscale)

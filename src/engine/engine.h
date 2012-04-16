@@ -229,6 +229,8 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasAFBO, hasDS, hasTF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT;
 extern int hasstencil;
 
+extern int vieww, viewh;
+extern float curfov, fovy, aspect;
 extern float nearplane;
 extern int farplane;
 extern int hdr;
@@ -241,6 +243,7 @@ extern void gl_checkextensions();
 extern void gl_init(int w, int h, int bpp, int depth, int fsaa);
 extern void cleangl();
 extern void invalidatepostfx();
+extern void gl_setupframe(int w, int h);
 extern void gl_drawframe(int w, int h);
 extern void gl_drawmainmenu(int w, int h);
 extern void drawminimap();

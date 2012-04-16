@@ -2243,7 +2243,7 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
     glGenTextures(1, &tex);
     glViewport(0, 0, rendersize, rendersize);
     float yaw = 0, pitch = 0;
-    uchar *pixels = new uchar[3*rendersize*rendersize], *blurbuf = blur > 0 ? new uchar[3*rendersize*rendersize] : NULL;
+    uchar *pixels = new uchar[3*rendersize*rendersize*2];
     glPixelStorei(GL_PACK_ALIGNMENT, texalign(pixels, rendersize, 3));
     loopi(6)
     {
@@ -2263,20 +2263,18 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
             case GL_TEXTURE_CUBE_MAP_POSITIVE_Z_ARB: // up
                 yaw = 270; pitch = 90; break;
         }
-        glFrontFace((side.flipx==side.flipy)!=side.swapxy ? GL_CW : GL_CCW);
         drawcubemap(rendersize, o, yaw, pitch, side);
         glReadPixels(0, 0, rendersize, rendersize, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-        if(blurbuf)
+        uchar *outpixels = &pixels[3*rendersize*rendersize];
+        reorienttexture(pixels, rendersize, rendersize, 3, 3*rendersize, outpixels, !side.flipx, !side.flipy, side.swapxy);
+        if(blur > 0)
         {
-            blurtexture(blur, 3, rendersize, rendersize, blurbuf, pixels);
-            swap(blurbuf, pixels);
+            blurtexture(blur, 3, rendersize, rendersize, pixels, outpixels);
+            outpixels = pixels;
         }
-        createtexture(tex, texsize, texsize, pixels, 3, 2, GL_RGB5, side.target, rendersize, rendersize);
+        createtexture(tex, texsize, texsize, outpixels, 3, 2, GL_RGB5, side.target, rendersize, rendersize);
     }
-    glFrontFace(GL_CW);
     delete[] pixels;
-    if(blurbuf) delete[] blurbuf;
-    glViewport(0, 0, screen->w, screen->h);
     clientkeepalive();
     forcecubemapload(tex);
     return tex;
@@ -2356,7 +2354,7 @@ GLuint lookupenvmap(Slot &slot)
 
 GLuint lookupenvmap(ushort emid)
 {
-    if(emid==EMID_SKY || emid==EMID_CUSTOM) return skyenvmap ? skyenvmap->id : 0;
+    if(emid==EMID_SKY || emid==EMID_CUSTOM || envmapping) return skyenvmap ? skyenvmap->id : 0;
     if(emid==EMID_NONE || !envmaps.inrange(emid-EMID_RESERVED)) return 0;
     GLuint tex = envmaps[emid-EMID_RESERVED].tex;
     return tex ? tex : (skyenvmap ? skyenvmap->id : 0);

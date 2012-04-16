@@ -1446,6 +1446,7 @@ void allchanged(bool load)
     {
         updateblendtextures();
         seedparticles();
+        gl_setupframe(screen->w, screen->h);
         genenvmaps();
         drawminimap();
     }

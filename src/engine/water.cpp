@@ -436,8 +436,7 @@ void renderwaterfalls()
     float colorscale = (hdr ? 0.5f : 1)/255.0f;
     bvec color = waterfallcolor.iszero() ? watercolor : waterfallcolor;
     GLOBALPARAM(waterfallcolor, (color.x*colorscale, color.y*colorscale, color.z*colorscale));
-    extern int gh;
-    GLOBALPARAM(waterfallrefract, (waterfallrefract*gh));
+    GLOBALPARAM(waterfallrefract, (waterfallrefract*viewh));
     GLOBALPARAM(waterfallspec, (0.5f*waterfallspec/100.0f));
  
     if(hasCM && waterfallenv) SETSHADER(waterfallenv);
@@ -487,8 +486,7 @@ void renderwater()
     GLOBALPARAM(waterdeepfade, (255.0f/(waterdeep*waterdeepfadecolor.x), 255.0f/(waterdeep*waterdeepfadecolor.y), 255.0f/(waterdeep*waterdeepfadecolor.z)));
     GLOBALPARAM(waterspec, (0.5f*waterspec/100.0f));
     GLOBALPARAM(waterreflectstep, (waterreflectstep));
-    extern int gh;
-    GLOBALPARAM(waterrefract, (waterrefract*gh));
+    GLOBALPARAM(waterrefract, (waterrefract*viewh));
 
     #define SETWATERSHADER(which, name) \
     do { \
