@@ -2554,8 +2554,7 @@ VAR(culllighttiles, 0, 1, 1);
 
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
-    if(!deferredlightshader) loaddeferredlightshaders();
-    if(deferredlightshader == (Shader *)(void *)-1) return;
+    if(!deferredlightshader || deferredlightshader == (Shader *)(void *)-1) return;
 
     glEnable(GL_SCISSOR_TEST);
 
@@ -3611,6 +3610,7 @@ void gl_setupframe(int w, int h)
     if(bloomw < 0 || bloomh < 0) setupbloom(w, h);
     if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
     if(!shadowatlasfbo) setupshadowatlas();
+    if(!deferredlightshader) loaddeferredlightshaders();
 }
 
 void gl_drawframe(int w, int h)
