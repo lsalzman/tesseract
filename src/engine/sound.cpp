@@ -149,16 +149,17 @@ void stopmusic()
     DELETEP(musicstream);
 }
 
+VARF(sound, 0, 1, 1, initwarning("sound configuration", INIT_RESET, CHANGE_SOUND));
 VARF(soundchans, 1, 32, 128, initwarning("sound configuration", INIT_RESET, CHANGE_SOUND));
 VARF(soundfreq, 0, MIX_DEFAULT_FREQUENCY, 44100, initwarning("sound configuration", INIT_RESET, CHANGE_SOUND));
 VARF(soundbufferlen, 128, 1024, 4096, initwarning("sound configuration", INIT_RESET, CHANGE_SOUND));
 
 void initsound()
 {
-    if(Mix_OpenAudio(soundfreq, MIX_DEFAULT_FORMAT, 2, soundbufferlen)<0)
+    if(!sound || Mix_OpenAudio(soundfreq, MIX_DEFAULT_FORMAT, 2, soundbufferlen)<0)
     {
         nosound = true;
-        conoutf(CON_ERROR, "sound init failed (SDL_mixer): %s", (size_t)Mix_GetError());
+        if(sound) conoutf(CON_ERROR, "sound init failed (SDL_mixer): %s", (size_t)Mix_GetError());
         return;
     }
 	Mix_AllocateChannels(soundchans);	
@@ -576,8 +577,7 @@ int playsoundname(const char *s, const vec *loc, int vol, int loops, int fade, i
     return playsound(id, loc, NULL, loops, fade, chanid, radius, expire);
 }
 
-void sound(int *n) { playsound(*n); }
-COMMAND(sound, "i");
+ICOMMAND(sound, "i", (int *n), playsound(*n));
 
 void resetsound()
 {

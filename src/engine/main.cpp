@@ -111,7 +111,8 @@ void writeinitcfg()
     f->printf("shaderprecision %d\n", shaderprecision);
     extern int glineardepth;
     f->printf("glineardepth %d\n", glineardepth);
-    extern int soundchans, soundfreq, soundbufferlen;
+    extern int sound, soundchans, soundfreq, soundbufferlen;
+    f->printf("sound %d\n", sound);
     f->printf("soundchans %d\n", soundchans);
     f->printf("soundfreq %d\n", soundfreq);
     f->printf("soundbufferlen %d\n", soundbufferlen);
