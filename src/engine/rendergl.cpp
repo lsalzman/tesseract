@@ -1512,6 +1512,7 @@ void screenquad(float sw, float sh, float sw2, float sh2)
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0;
 GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 };
+int hdrclear = 0;
 GLuint refractfbo = 0, refracttex = 0;
 GLenum bloomformat = 0, hdrformat = 0;
 
@@ -1740,6 +1741,8 @@ void setupgbuffer(int w, int h)
 
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
         fatal("failed allocating HDR buffer!");
+
+    hdrclear = 3;
 
     if(!refracttex) glGenTextures(1, &refracttex);
     if(!refractfbo) glGenFramebuffers_(1, &refractfbo);
@@ -3371,6 +3374,11 @@ void rendergbuffer()
     GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
 
     GLERROR;
+    if(limitsky())
+    {
+        renderexplicitsky();
+        GLERROR;
+    }
     rendergeom();
     GLERROR;
     resetmodelbatches();
@@ -3408,23 +3416,30 @@ void shadegbuffer()
     GLERROR;
     timer_begin(TIMER_CPU_SHADING);
     timer_begin(TIMER_SHADING);
-    glBlendFunc(GL_ONE, GL_ONE);
-    glEnable(GL_BLEND);
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
     glViewport(0, 0, vieww, viewh);
 
-    if(minimapping < 2)
+    if(!minimapping) 
     {
-        glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
+        if(hdrclear > 0)
+        {
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            hdrclear--;
+        }
+        drawskybox(farplane);
     }
+
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
 
     if(minimapping) renderlights(2.0f/vieww - 1, 2.0f/viewh - 1, 1 - 2.0f/vieww, 1 - 2.0f/viewh);
     else renderlights();
     GLERROR;
 
     glDisable(GL_BLEND);
+
     timer_end(TIMER_SHADING);
     timer_end(TIMER_CPU_SHADING);
 }
@@ -3502,14 +3517,6 @@ void drawminimap()
     shadowatlaspacker.reset();
     csm.setup();
 
-    defaultshader->set();
-
-    float colorscale = (hdr ? 0.5f : 1)/255.0f;
-    GLfloat fogc[4] = { minimapcolor.x*colorscale, minimapcolor.y*colorscale, minimapcolor.z*colorscale, 1.0f };
-    glFogf(GL_FOG_START, 0);
-    glFogf(GL_FOG_END, 1000000);
-    glFogfv(GL_FOG_COLOR, fogc);
-
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
@@ -3521,6 +3528,13 @@ void drawminimap()
     findmaterials();
 
     rendergbuffer();
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
+    glViewport(0, 0, vieww, viewh);
+    float colorscale = (hdr ? 0.5f : 1)/255.0f;
+    glClearColor(minimapcolor.x*colorscale, minimapcolor.y*colorscale, minimapcolor.z*colorscale, 0); 
+    glClear(GL_COLOR_BUFFER_BIT);
+
     shadegbuffer();
 
     if(minimapheight > 0 && minimapheight < minimapcenter.z + minimapradius.z)
@@ -3538,20 +3552,6 @@ void drawminimap()
         shadegbuffer();
     }
         
-    if(!minimapcolor.iszero()) 
-    {
-        SETSHADER(minimapcolor);
-        glColor3f(fogc[0], fogc[1], fogc[2]);
-        glDepthFunc(GL_LEQUAL);
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex3f(1, -1, 1);
-        glVertex3f(-1, -1, 1);
-        glVertex3f(1, 1, 1);
-        glVertex3f(-1, 1, 1);
-        glEnd();
-        glDepthFunc(GL_LESS);
-    }
-
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
@@ -3583,6 +3583,8 @@ void drawminimap()
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, 0, 0, size, size, 0);
     setuptexparameters(minimaptex, NULL, 3, 1, GL_RGB5, GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    hdrclear = 3;
 }
 
 void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapside &side)
@@ -3644,9 +3646,6 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     shadegbuffer();
     GLERROR;
 
-    if(hdr) drawskybox(farplane);
-    GLERROR;
-
     renderalphageom();
     GLERROR;
 
@@ -3679,6 +3678,8 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
         glEnd();
         GLERROR;
     } 
+
+    hdrclear = 3;
 }
 
 void gl_setupframe(int w, int h)
@@ -3754,6 +3755,7 @@ void gl_drawframe(int w, int h)
     rendergbuffer();
 
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    else if(limitsky() && editmode) renderexplicitsky(true);
 
     if(ao) 
     {
@@ -3772,9 +3774,6 @@ void gl_drawframe(int w, int h)
     GLERROR;
 
     shadegbuffer();
-    GLERROR;
-
-    if(hdr) drawskybox(farplane);
     GLERROR;
 
     renderalphageom();

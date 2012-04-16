@@ -243,8 +243,6 @@ void rendergrass()
     if(!grass || !grassdist || grassgroups.empty() || dbggrass) return;
 
     glDisable(GL_CULL_FACE);
-    glEnable(GL_ALPHA_TEST);
-    glAlphaFunc(GL_GREATER, grasstest);
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_FLOAT, sizeof(grassvert), grassverts[0].pos.v);
@@ -257,6 +255,8 @@ void rendergrass()
 
     static Shader *grassshader = NULL;
     if(!grassshader) grassshader = lookupshaderbyname("grass");
+    
+    GLOBALPARAM(grasstest, (grasstest));
 
     int texid = -1, blend = -1;
     loopv(grassgroups)
@@ -290,7 +290,6 @@ void rendergrass()
     glDisableClientState(GL_COLOR_ARRAY);
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
-    glDisable(GL_ALPHA_TEST);
     glEnable(GL_CULL_FACE);
 }
 

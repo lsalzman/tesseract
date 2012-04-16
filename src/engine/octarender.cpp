@@ -27,6 +27,7 @@ enum
 {
     VBO_VBUF = 0,
     VBO_EBUF,
+    VBO_SKYBUF,
     NUMVBO
 };
 
@@ -87,6 +88,10 @@ void genvbo(int type, void *buf, int len, vtxarray **vas, int numva)
             case VBO_EBUF: 
                 va->ebuf = vbo; 
                 if(!hasVBO) va->edata = (ushort *)(data + (size_t)va->edata);
+                break;
+            case VBO_SKYBUF:
+                va->skybuf = vbo;
+                if(!hasVBO) va->skydata = (ushort *)(data + (size_t)va->skydata);
                 break;
         }
     }
@@ -238,19 +243,21 @@ struct vacollect : verthash
     ivec origin;
     int size;
     hashtable<sortkey, sortval> indices;
+    vector<ushort> skyindices;
     vector<sortkey> texs;
     vector<grasstri> grasstris;
     vector<materialsurface> matsurfs;
     vector<octaentities *> mapmodels;
-    int worldtris;
+    int worldtris, skytris;
     vec alphamin, alphamax;
     vec refractmin, refractmax;
 
     void clear()
     {
         clearverts();
-        worldtris = 0;
+        worldtris = skytris = 0;
         indices.clear();
+        skyindices.setsize(0);
         matsurfs.setsize(0);
         mapmodels.setsize(0);
         grasstris.setsize(0);
@@ -323,8 +330,9 @@ struct vacollect : verthash
         va->voffset = 0;
         if(va->verts)
         {
-            if(vbosize[VBO_VBUF] + verts.length() > maxvbosize || 
-               vbosize[VBO_EBUF] + worldtris > USHRT_MAX)
+            if(vbosize[VBO_VBUF] + verts.length() > maxvbosize ||
+               vbosize[VBO_EBUF] + worldtris > USHRT_MAX ||
+               vbosize[VBO_SKYBUF] + skytris > USHRT_MAX)
                 flushvbo();
 
             va->voffset = vbosize[VBO_VBUF];
@@ -352,6 +360,17 @@ struct vacollect : verthash
                 }
                 va->matmask |= 1<<m.material;
             }
+        }
+
+        va->skybuf = 0;
+        va->skydata = 0;
+        va->sky = skyindices.length();
+        if(va->sky)
+        {
+            va->skydata += vbosize[VBO_SKYBUF];
+            ushort *skydata = (ushort *)addvbo(va, VBO_SKYBUF, va->sky, sizeof(ushort));
+            memcpy(skydata, skyindices.getbuf(), va->sky*sizeof(ushort));
+            if(va->voffset) loopi(va->sky) skydata[i] += va->voffset;
         }
 
         va->eslist = NULL;
@@ -425,7 +444,7 @@ struct vacollect : verthash
 
     bool emptyva()
     {
-        return verts.empty() && matsurfs.empty() && grasstris.empty() && mapmodels.empty();
+        return verts.empty() && matsurfs.empty() && skyindices.empty() && grasstris.empty() && mapmodels.empty();
     }            
 } vc;
 
@@ -474,11 +493,11 @@ extern const vec orientation_binormal[6][3] =
 
 void addtris(const sortkey &key, int orient, vertex *verts, int *index, int numverts, int convex, int tj)
 {
-    int &total = vc.worldtris;
+    int &total = key.tex==DEFAULT_SKY ? vc.skytris : vc.worldtris;
     int edge = orient*(MAXFACEVERTS+1);
     loopi(numverts-2) if(index[0]!=index[i+1] && index[i+1]!=index[i+2] && index[i+2]!=index[0])
     {
-        vector<ushort> &idxs = vc.indices[key].tris;
+        vector<ushort> &idxs = key.tex==DEFAULT_SKY ? vc.skyindices : vc.indices[key].tris;
         int left = index[0], mid = index[i+1], right = index[i+2], start = left, i0 = left, i1 = -1;
         loopk(4)
         {
@@ -1005,6 +1024,7 @@ void destroyva(vtxarray *va, bool reparent)
     }
     if(va->vbuf) destroyvbo(va->vbuf);
     if(va->ebuf) destroyvbo(va->ebuf);
+    if(va->skybuf) destroyvbo(va->skybuf);
     if(va->eslist) delete[] va->eslist;
     if(va->matbuf) delete[] va->matbuf;
     delete va;
@@ -1406,6 +1426,13 @@ void octarender()                               // creates va s for all leaf cub
     updateva(worldroot, 0, 0, 0, worldsize/2, csi-1);
     loadprogress = 0;
     flushvbo();
+
+    explicitsky = 0;
+    loopv(valist)
+    {
+        vtxarray *va = valist[i];
+        explicitsky += va->sky;
+    }
 
     extern vtxarray *visibleva;
     visibleva = NULL;

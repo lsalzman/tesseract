@@ -1915,4 +1915,64 @@ void renderalphageom(int side)
     }
     glDisableClientState(GL_VERTEX_ARRAY);
 }
+
+HVARP(explicitskycolour, 0, 0x800080, 0xFFFFFF);
+
+bool renderexplicitsky(bool outline)
+{
+    vtxarray *prev = NULL;
+    for(vtxarray *va = visibleva; va; va = va->next)
+    {
+        if(va->occluded >= OCCLUDE_BB || !va->sky) continue;
+        if(!prev || va->vbuf != prev->vbuf)
+        {
+            if(!prev) 
+            {
+                glEnableClientState(GL_VERTEX_ARRAY);
+                if(outline)
+                {
+                    lineshader->set();
+                    bvec color((explicitskycolour>>16)&0xFF, (explicitskycolour>>8)&0xFF, explicitskycolour&0xFF);
+                    if(hdr) color.shr(1);
+                    glColor3ub(color.x, color.y, color.z);
+                    glDepthMask(GL_FALSE);
+                    enablepolygonoffset(GL_POLYGON_OFFSET_LINE);
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                }
+                else
+                {
+                    nocolorshader->set();
+                    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+                }
+            }
+            if(hasVBO)
+            {
+                glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->skybuf);
+            }
+            glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
+        }
+        drawvatris(va, va->sky, va->skydata);
+        xtraverts += va->sky/3;
+        prev = va;
+    }
+    if(!prev) return false;
+    if(outline)
+    {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        disablepolygonoffset(GL_POLYGON_OFFSET_LINE);
+        glDepthMask(GL_TRUE);
+    }
+    else
+    {
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    }
+    glDisableClientState(GL_VERTEX_ARRAY);
+    if(hasVBO)
+    {
+        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    }
+    return true;
+}
  

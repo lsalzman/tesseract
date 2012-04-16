@@ -626,7 +626,11 @@ extern void cleardecals();
 extern void renderdecals(bool mainpass = false);
 
 // rendersky
+extern int explicitsky;
+
 extern void drawskybox(int farplane);
+extern bool limitsky();
+extern bool renderexplicitsky(bool outline = false);
 
 // 3dgui
 extern void g3d_render();

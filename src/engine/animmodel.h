@@ -85,9 +85,10 @@ struct animmodel : model
         bool tangents() { return bumpmapped(); }
         bool alphatested() { return alphatest > 0 && (bumpmapped() && unlittex ? unlittex : tex)->type&Texture::ALPHA; }
 
-        void setshaderparams(mesh *m, const animstate *as, bool masked, bool skinned = true)
+        void setshaderparams(mesh *m, const animstate *as, bool masked, bool alphatested = false, bool skinned = true)
         {
             GLOBALPARAM(texscroll, (lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f));
+            if(alphatested) GLOBALPARAM(alphatest, (alphatest));
 
             if(!skinned) return;
                 
@@ -102,7 +103,7 @@ struct animmodel : model
             if(envmaptmu>=0 && envmapmax>0) GLOBALPARAM(envmapscale, (envmapmin-envmapmax, envmapmax));
         }
 
-        Shader *loadshader(bool shouldenvmap, bool masked)
+        Shader *loadshader(bool shouldenvmap, bool masked, bool alphatested)
         {
             #define DOMODELSHADER(name, body) \
                 do { \
@@ -110,30 +111,34 @@ struct animmodel : model
                     if(!name##shader) name##shader = useshaderbyname(#name); \
                     body; \
                 } while(0)
-            #define LOADMODELSHADER(name) DOMODELSHADER(name, return name##shader)
+            #define LOADMODELSHADER(name, alphaname) \
+                do { \
+                    if(alphatested) DOMODELSHADER(alphaname, return alphaname##shader); \
+                    else DOMODELSHADER(name, return name##shader); \
+                } while(0)
             #define SETMODELSHADER(m, name) DOMODELSHADER(name, (m)->setshader(name##shader))
             if(shader) return shader;
             else if(bumpmapped())
             {
                 if(shouldenvmap)
                 {
-                    if(lightmodels && !fullbright && (masked || spec>=0.01f)) LOADMODELSHADER(bumpenvmapmodel);
-                    else LOADMODELSHADER(bumpenvmapnospecmodel);
+                    if(lightmodels && !fullbright && (masked || spec>=0.01f)) LOADMODELSHADER(bumpenvmapmodel, bumpenvmapalphamodel);
+                    else LOADMODELSHADER(bumpenvmapnospecmodel, bumpenvmapnospecalphamodel);
                 }
-                else if(masked && lightmodels && !fullbright) LOADMODELSHADER(bumpmasksmodel);
-                else if(masked && glowmodels) LOADMODELSHADER(bumpmasksnospecmodel);
-                else if(spec>=0.01f && lightmodels && !fullbright) LOADMODELSHADER(bumpmodel);
-                else LOADMODELSHADER(bumpnospecmodel);
+                else if(masked && lightmodels && !fullbright) LOADMODELSHADER(bumpmasksmodel, bumpmasksalphamodel);
+                else if(masked && glowmodels) LOADMODELSHADER(bumpmasksnospecmodel, bumpmasksnospecalphamodel);
+                else if(spec>=0.01f && lightmodels && !fullbright) LOADMODELSHADER(bumpmodel, bumpalphamodel);
+                else LOADMODELSHADER(bumpnospecmodel, bumpnospecalphamodel);
             }
             else if(shouldenvmap)
             {
-                if(lightmodels && !fullbright && (masked || spec>=0.01f)) LOADMODELSHADER(envmapmodel);
-                else LOADMODELSHADER(envmapnospecmodel);
+                if(lightmodels && !fullbright && (masked || spec>=0.01f)) LOADMODELSHADER(envmapmodel, envmapalphamodel);
+                else LOADMODELSHADER(envmapnospecmodel, envmapnospecalphamodel);
             }
-            else if(masked && lightmodels && !fullbright) LOADMODELSHADER(masksmodel);
-            else if(masked && glowmodels) LOADMODELSHADER(masksnospecmodel);
-            else if(spec>=0.01f && lightmodels && !fullbright) LOADMODELSHADER(stdmodel);
-            else LOADMODELSHADER(nospecmodel);
+            else if(masked && lightmodels && !fullbright) LOADMODELSHADER(masksmodel, masksalphamodel);
+            else if(masked && glowmodels) LOADMODELSHADER(masksnospecmodel, masksnospecalphamodel);
+            else if(spec>=0.01f && lightmodels && !fullbright) LOADMODELSHADER(stdmodel, alphamodel);
+            else LOADMODELSHADER(nospecmodel, nospecalphamodel);
         }
 
         void preloadBIH()
@@ -144,12 +149,12 @@ struct animmodel : model
         void preloadshader()
         {
             bool shouldenvmap = envmapped();
-            loadshader(shouldenvmap, masks!=notexture && (lightmodels || glowmodels || shouldenvmap));
+            loadshader(shouldenvmap, masks!=notexture && (lightmodels || glowmodels || shouldenvmap), alphatested());
         }
  
-        void setshader(mesh *m, const animstate *as, bool masked)
+        void setshader(mesh *m, const animstate *as, bool masked, bool alphatested = false)
         {
-            m->setshader(loadshader(envmaptmu>=0 && envmapmax>0, masked));
+            m->setshader(loadshader(envmaptmu>=0 && envmapmax>0, masked, alphatested));
         }
 
         void bind(mesh *b, const animstate *as)
@@ -170,23 +175,16 @@ struct animmodel : model
                         glBindTexture(GL_TEXTURE_2D, s->id);
                         lasttex = s;
                     }
-                    if(!enablealphatest) { glEnable(GL_ALPHA_TEST); enablealphatest = true; }
-                    if(lastalphatest!=alphatest)
-                    {
-                        glAlphaFunc(GL_GREATER, alphatest);
-                        lastalphatest = alphatest;
-                    }
-                    setshaderparams(b, as, false, false);
+                    setshaderparams(b, as, false, true, false);
                     /*if(as->cur.anim&ANIM_SHADOW)*/ 
                     if(shadowmapping == SM_TETRA) SETMODELSHADER(b, alphashadowtetramodel);
                     else SETMODELSHADER(b, alphashadowmodel); 
                 }
                 else
                 {
-                    if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
                     /*if(as->cur.anim&ANIM_SHADOW)*/ 
                     if(shadowmapping == SM_TETRA) SETMODELSHADER(b, tetramodel);
-                    else SETMODELSHADER(b, nocolormodel);
+                    else SETMODELSHADER(b, shadowmodel);
                 }
                 return;
             }
@@ -194,8 +192,6 @@ struct animmodel : model
                     *n = bumpmapped() ? normalmap : NULL;
             if(!lightmodels && !glowmodels && (!envmapmodels || envmaptmu<0 || envmapmax<=0))
                 m = notexture;
-            setshaderparams(b, as, m!=notexture);
-            setshader(b, as, m!=notexture);
             if(s!=lasttex)
             {
                 glBindTexture(GL_TEXTURE_2D, s->id);
@@ -219,20 +215,9 @@ struct animmodel : model
                     }
                 }
                 else if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
-                if(alphatest>0)
-                {
-                    if(!enablealphatest) { glEnable(GL_ALPHA_TEST); enablealphatest = true; }
-                    if(lastalphatest!=alphatest)
-                    {
-                        glAlphaFunc(GL_GREATER, alphatest);
-                        lastalphatest = alphatest;
-                    }
-                }
-                else if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
             }
             else
             {
-                if(enablealphatest) { glDisable(GL_ALPHA_TEST); enablealphatest = false; }
                 if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
             }
             if(m!=lastmasks && m!=notexture)
@@ -258,6 +243,8 @@ struct animmodel : model
                 }
             }
             else if(enableenvmap) disableenvmap();
+            setshaderparams(b, as, m!=notexture, s->type&Texture::ALPHA && alphatest > 0);
+            setshader(b, as, m!=notexture, s->type&Texture::ALPHA && alphatest > 0);
         }
     };
 
@@ -1201,8 +1188,8 @@ struct animmodel : model
         center.add(radius);
     }
 
-    static bool enabletc, enablealphatest, enablealphablend, enableenvmap, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
-    static float lastalphatest, sizescale;
+    static bool enabletc, enablealphablend, enableenvmap, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
+    static float sizescale;
     static void *lastvbuf, *lasttcbuf, *lastnbuf, *lastxbuf, *lastbbuf, *lastsdata, *lastbdata;
     static GLuint lastebuf, lastenvmaptex, closestenvmaptex;
     static Texture *lasttex, *lastmasks, *lastnormalmap;
@@ -1211,9 +1198,8 @@ struct animmodel : model
 
     void startrender()
     {
-        enabletc = enablealphatest = enablealphablend = enableenvmap = enablenormals = enabletangents = enablebones = enabledepthoffset = false;
+        enabletc = enablealphablend = enableenvmap = enablenormals = enabletangents = enablebones = enabledepthoffset = false;
         enablecullface = true;
-        lastalphatest = -1;
         lastvbuf = lasttcbuf = lastxbuf = lastnbuf = lastbbuf = lastsdata = lastbdata = NULL;
         lastebuf = lastenvmaptex = closestenvmaptex = 0;
         lasttex = lastmasks = lastnormalmap = NULL;
@@ -1273,7 +1259,6 @@ struct animmodel : model
     void endrender()
     {
         if(lastvbuf || lastebuf) disablevbo();
-        if(enablealphatest) glDisable(GL_ALPHA_TEST);
         if(enablealphablend) glDisable(GL_BLEND);
         if(lastenvmaptex) disableenvmap(true);
         if(!enablecullface) glEnable(GL_CULL_FACE);
@@ -1281,11 +1266,11 @@ struct animmodel : model
     }
 };
 
-bool animmodel::enabletc = false, animmodel::enablealphatest = false, animmodel::enablealphablend = false,
+bool animmodel::enabletc = false, animmodel::enablealphablend = false,
      animmodel::enableenvmap = false, animmodel::enablecullface = true, 
      animmodel::enablenormals = false, animmodel::enabletangents = false, 
      animmodel::enablebones = false, animmodel::enabledepthoffset = false;
-float animmodel::lastalphatest = -1, animmodel::sizescale = 1;
+float animmodel::sizescale = 1;
 void *animmodel::lastvbuf = NULL, *animmodel::lasttcbuf = NULL, *animmodel::lastnbuf = NULL, *animmodel::lastxbuf = NULL, *animmodel::lastbbuf = NULL, *animmodel::lastsdata = NULL, *animmodel::lastbdata = NULL;
 GLuint animmodel::lastebuf = 0, animmodel::lastenvmaptex = 0, animmodel::closestenvmaptex = 0;
 Texture *animmodel::lasttex = NULL, *animmodel::lastmasks = NULL, *animmodel::lastnormalmap = NULL;

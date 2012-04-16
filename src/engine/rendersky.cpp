@@ -387,18 +387,32 @@ static void drawfogdome(int farplane)
     glEnable(GL_TEXTURE_2D);
 }
 
+VARNR(skytexture, useskytexture, 0, 1, 1);
+
+int explicitsky = 0;
+
+bool limitsky()
+{
+    return explicitsky && (useskytexture || editmode);
+}
+
 void drawskybox(int farplane)
 {
     float skyclip = 0, topclip = 1;
     if(skyclip) skyclip = 0.5f + 0.5f*(skyclip-camera1->o.z)/float(worldsize); 
 
+    if(limitsky())
+    {
+        renderexplicitsky();
+        glDisable(GL_DEPTH_TEST);
+    }
+    else
+    {
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+    }
+    
     defaultshader->set();
-
-    glDisable(GL_FOG);
-
-    glDepthFunc(GL_LEQUAL);
-
-    glDepthMask(GL_FALSE);
 
     if(clampsky) glDepthRange(1, 1);
 
@@ -464,10 +478,14 @@ void drawskybox(int farplane)
 
     if(clampsky) glDepthRange(0, 1);
 
-    glDepthMask(GL_TRUE);
-
-    glDepthFunc(GL_LESS);
-
-    glEnable(GL_FOG);
+    if(limitsky())
+    {
+        glEnable(GL_DEPTH_TEST);
+    }
+    else
+    {
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+    }
 }
 
