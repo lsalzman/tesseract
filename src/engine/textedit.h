@@ -339,7 +339,7 @@ struct editor
         }
         if(sy == ey) 
         {
-            if(sx == 0 || ex == lines[ey].len) removelines(sy, 1);
+            if(sx == 0 && ex == lines[ey].len) removelines(sy, 1);
             else lines[sy].del(sx, ex - sx);
         }
         else
