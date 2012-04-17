@@ -3803,9 +3803,9 @@ void gl_drawframe(int w, int h)
 
     if(hdr) processhdr();
 
-    //addmotionblur();
+    addmotionblur();
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogblend, abovemat);
-    //renderpostfx();
+    renderpostfx();
 
     defaultshader->set();
     g3d_render();
