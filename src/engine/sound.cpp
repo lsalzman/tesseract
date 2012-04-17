@@ -679,7 +679,7 @@ void initmumble()
         if(mumblelink)
         {
             mumbleinfo = (MumbleInfo *)MapViewOfFile(mumblelink, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(MumbleInfo));
-            if(mumbleinfo) wcsncpy(mumbleinfo->name, L"Sauerbraten", 256);
+            if(mumbleinfo) wcsncpy(mumbleinfo->name, L"Tesseract", 256);
         }
     #elif defined(_POSIX_SHARED_MEMORY_OBJECTS)
         defformatstring(shmname)("/MumbleLink.%d", getuid());
@@ -687,7 +687,7 @@ void initmumble()
         if(mumblelink >= 0)
         {
             mumbleinfo = (MumbleInfo *)mmap(NULL, sizeof(MumbleInfo), PROT_READ|PROT_WRITE, MAP_SHARED, mumblelink, 0);
-            if(mumbleinfo != (MumbleInfo *)-1) wcsncpy(mumbleinfo->name, L"Sauerbraten", 256);
+            if(mumbleinfo != (MumbleInfo *)-1) wcsncpy(mumbleinfo->name, L"Tesseract", 256);
         }
     #endif
     if(!VALID_MUMBLELINK) closemumble();
