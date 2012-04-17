@@ -2307,7 +2307,6 @@ int calcspherecsmsplits(const vec &center, float radius)
     return mask;
 }
 
-static int playing_around_with_buffer_splitting;
 void viewbuffersplitmerge()
 {
     const int w = screen->w, h = screen->h;
@@ -2351,8 +2350,6 @@ void viewbuffersplitmerge()
 #endif
 }
 VAR(debugbuffersplit, 0, 0, 1);
-
-static int playsing_around_with_timer_queries_here;
 
 VARF(ao, 0, 1, 1, { cleanupao(); cleardeferredlightshaders(); });
 FVAR(aoradius, 0, 3, 256);
@@ -3707,6 +3704,7 @@ void gl_drawframe(int w, int h)
     }
     else fogmat = MAT_AIR;    
     setfog(fogmat, fogblend, abovemat);
+    (void)causticspass;
 
     farplane = worldsize*2;
 

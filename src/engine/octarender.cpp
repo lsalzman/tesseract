@@ -952,7 +952,7 @@ void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
             if(!surf.numverts || surf.numverts&LAYER_TOP)
                 addcubeverts(vslot, i, size, pos, convex, c.texture[i], verts, numverts, hastj, envmap, grassy, (c.material&MAT_ALPHA)!=0, LAYER_TOP|(surf.numverts&LAYER_BLEND));
             if(surf.numverts&LAYER_BOTTOM)
-                addcubeverts(layer ? *layer : vslot, i, size, pos, convex, vslot.layer, surf.numverts&LAYER_DUP ? verts + numverts : verts, numverts, hastj, envmap2);
+                addcubeverts(layer ? *layer : vslot, i, size, pos, convex, vslot.layer, verts, numverts, hastj, envmap2);
         }
     }
     else
@@ -1129,7 +1129,6 @@ int genmergedfaces(cube &c, const ivec &co, int size, int minlevel = -1)
                 mf.tex = vslot.layer;
                 mf.envmap = envmap2;
                 mf.numverts &= ~LAYER_TOP;
-                if(surf.numverts&LAYER_DUP) mf.verts += numverts;
                 vamerges[level].add(mf);
             }
         }

@@ -195,8 +195,6 @@ static void clearsurfaces(cube *c)
                     loopk(numverts)
                     {
                         vertinfo &v = verts[k];
-                        v.u = 0;
-                        v.v = 0;
                         v.norm = 0;
                     }
                 }
