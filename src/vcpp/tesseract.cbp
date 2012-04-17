@@ -2,12 +2,12 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="sauerbraten" />
+		<Option title="tesseract" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="default">
-				<Option output="..\..\bin\sauerbraten.exe" prefix_auto="0" extension_auto="0" />
+				<Option output="..\..\bin\tesseract.exe" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="..\..\" />
 				<Option object_output=".objs\default" />
 				<Option type="1" />
@@ -43,7 +43,7 @@
 				</Linker>
 			</Target>
 			<Target title="debug">
-				<Option output="..\..\bin\sauerbraten.exe" prefix_auto="0" extension_auto="0" />
+				<Option output="..\..\bin\tesseract.exe" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="..\..\" />
 				<Option object_output=".objs\debug" />
 				<Option type="1" />
@@ -75,7 +75,7 @@
 				</Linker>
 			</Target>
 			<Target title="server">
-				<Option output="..\..\bin\sauerbraten-server.exe" prefix_auto="0" extension_auto="0" />
+				<Option output="..\..\bin\tesseract-server.exe" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="..\..\" />
 				<Option object_output=".objs\server" />
 				<Option type="1" />
@@ -111,7 +111,7 @@
 				</Linker>
 			</Target>
 			<Target title="master">
-				<Option output="..\..\bin\sauerbraten-master.exe" prefix_auto="0" extension_auto="0" />
+				<Option output="..\..\bin\tesseract-master.exe" prefix_auto="0" extension_auto="0" />
 				<Option working_dir="..\..\" />
 				<Option object_output=".objs\master" />
 				<Option type="1" />

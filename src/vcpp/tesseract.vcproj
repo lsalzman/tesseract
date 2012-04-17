@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8.00"
-	Name="sauerbraten"
+	Name="tesseract"
 	ProjectGUID="{06594C6D-6DA9-49DC-9A91-8F47221DDCFD}"
-	RootNamespace="sauerbraten"
+	RootNamespace="tesseract"
 	>
 	<Platforms>
 		<Platform
@@ -87,14 +87,14 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/MACHINE:I386"
 				AdditionalDependencies="enet.lib zdll.lib opengl32.lib SDL.lib SDL_image.lib ws2_32.lib SDL_mixer.lib winmm.lib dbghelp.lib kernel32.lib user32.lib"
-				OutputFile="..\..\bin\sauerbraten.exe"
+				OutputFile="..\..\bin\tesseract.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="..\lib"
 				GenerateManifest="true"
 				IgnoreAllDefaultLibraries="false"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile=".\Release/sauerbraten.pdb"
+				ProgramDatabaseFile=".\Release/tesseract.pdb"
 				GenerateMapFile="true"
 				MapFileName=".\Release/cube.map"
 				MapExports="true"
@@ -127,7 +127,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy release\sauerbraten.pdb ..\.."
+				CommandLine="copy release\tesseract.pdb ..\.."
 			/>
 		</Configuration>
 		<Configuration
@@ -193,7 +193,7 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/MACHINE:I386"
 				AdditionalDependencies="enet.lib zdll.lib opengl32.lib SDL.lib SDL_image.lib SDL_mixer.lib ws2_32.lib winmm.lib dbghelp.lib kernel32.lib user32.lib"
-				OutputFile="..\..\bin\sauerbraten_debug.exe"
+				OutputFile="..\..\bin\tesseract_debug.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="..\lib"
@@ -300,7 +300,7 @@
 				Name="VCLinkerTool"
 				AdditionalOptions="/MACHINE:I386"
 				AdditionalDependencies="enet.lib zdll.lib opengl32.lib SDL.lib SDL_image.lib ws2_32.lib SDL_mixer.lib winmm.lib dbghelp.lib kernel32.lib user32.lib"
-				OutputFile="..\..\bin\sauerbraten.exe"
+				OutputFile="..\..\bin\tesseract.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="..\lib"
@@ -389,7 +389,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\sauerbraten.rc"
+				RelativePath=".\tesseract.rc"
 				>
 			</File>
 			<Filter

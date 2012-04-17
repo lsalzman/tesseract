@@ -1,2 +1,2 @@
-#include "sauerbraten.rc"
+#include "tesseract.rc"
 CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "dpiaware.manifest"
