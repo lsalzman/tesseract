@@ -44,6 +44,10 @@ sunlightpitch
 You can also set sunlightyaw and sunlightpitch from your current direction with the following command:
 getsundir
 
+Screen-space ambient occlusion affects mostly ambient light and to a lesser degree sunlight,
+but it does not affect point lights. If you want to make use of SSAO in your map, just use 
+the ambient command to set an appropriate ambient light color/intensity.
+
 To make refractive alpha cubes:
 First mark the cubes with the alpha material. Use valpha or texalpha to set the transparency level as normal.
 Then use either of the following commands:
@@ -51,5 +55,4 @@ vrefract K [R G B]
 K is the strength of the refraction, on a scale of 0 to 1, 1 meaning distortion spanning the entire screen, 0.5 spanning half the screen, etc.
 The direction of the distortion is taken from the normal-map of the texture.
 R G B are optional and specify a color for the refraction, with each component being on a scale of 0 to 1 as well.
-
 
