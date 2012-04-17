@@ -2512,8 +2512,9 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
     if(sunlight && csmdeferredshading) 
     {
+        extern float sunlightscale;
         GLOBALPARAM(sunlightdir, (sunlightdir));
-        GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale, sunlightcolor.y*lightscale, sunlightcolor.z*lightscale));
+        GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
         csm.bindparams();
     }
 
