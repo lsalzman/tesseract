@@ -1,15 +1,15 @@
 #!/bin/sh
-# SAUER_DATA should refer to the directory in which Sauerbraten data files are placed.
-#SAUER_DATA=~/sauerbraten
-#SAUER_DATA=/usr/local/sauerbraten
-SAUER_DATA=.
+# TESS_DATA should refer to the directory in which Tesseract data files are placed.
+#TESS_DATA=~/sauerbraten
+#TESS_DATA=/usr/local/sauerbraten
+TESS_DATA=.
 
-# SAUER_BIN should refer to the directory in which Sauerbraten executable files are placed.
-SAUER_BIN=${SAUER_DATA}/bin_unix
+# TESS_BIN should refer to the directory in which Tesseract executable files are placed.
+TESS_BIN=${TESS_DATA}/bin_unix
 
-# SAUER_OPTIONS contains any command line options you would like to start Sauerbraten with.
-#SAUER_OPTIONS="-f"
-SAUER_OPTIONS="-q${HOME}/.sauerbraten -ktesseract"
+# TESS_OPTIONS contains any command line options you would like to start Tesseract with.
+#TESS_OPTIONS="-f"
+TESS_OPTIONS="-q${HOME}/.tesseract -ktesseract"
 
 # SYSTEM_NAME should be set to the name of your operating system.
 #SYSTEM_NAME=Linux
@@ -44,18 +44,18 @@ x86_64)
   ;;
 esac
 
-if [ -x ${SAUER_BIN}/native_client ]
+if [ -x ${TESS_BIN}/native_client ]
 then
   SYSTEM_NAME=native_
   MACHINE_NAME=
 fi
 
-if [ -x ${SAUER_BIN}/${SYSTEM_NAME}${MACHINE_NAME}client ]
+if [ -x ${TESS_BIN}/${SYSTEM_NAME}${MACHINE_NAME}client ]
 then
-  cd ${SAUER_DATA}
-  exec ${SAUER_BIN}/${SYSTEM_NAME}${MACHINE_NAME}client ${SAUER_OPTIONS} "$@"
+  cd ${TESS_DATA}
+  exec ${TESS_BIN}/${SYSTEM_NAME}${MACHINE_NAME}client ${TESS_OPTIONS} "$@"
 else
-  echo "Your platform does not have a pre-compiled Sauerbraten client."
+  echo "Your platform does not have a pre-compiled Tesseract client."
   echo "Please follow the following steps to build a native client:"
   echo "1) Ensure you have the SDL, SDL-image, SDL-mixer, and OpenGL libraries installed."
   echo "2) Change directory to src/ and type \"make install\"."
