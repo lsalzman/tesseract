@@ -205,6 +205,7 @@ struct decalrenderer
     {
         enablepolygonoffset(GL_POLYGON_OFFSET_FILL);
 
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
         glDepthMask(GL_FALSE);
         glEnable(GL_BLEND);
 
@@ -221,6 +222,7 @@ struct decalrenderer
 
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
         disablepolygonoffset(GL_POLYGON_OFFSET_FILL);
     }
@@ -229,13 +231,6 @@ struct decalrenderer
     {
         if(startvert==endvert) return;
 
-        float oldfogc[4];
-        if(flags&(DF_ADD|DF_INVMOD|DF_OVERBRIGHT))
-        {
-            glGetFloatv(GL_FOG_COLOR, oldfogc);
-            static float zerofog[4] = { 0, 0, 0, 1 }, grayfog[4] = { 0.5f, 0.5f, 0.5f, 1 };
-            glFogfv(GL_FOG_COLOR, flags&DF_OVERBRIGHT ? grayfog : zerofog);
-        }
         
         if(flags&DF_OVERBRIGHT) 
         {
@@ -252,7 +247,7 @@ struct decalrenderer
             {
                 SETSHADER(saturatedecal);
             }
-            else defaultshader->set();
+            else SETSHADER(decal);
         }
 
         glBindTexture(GL_TEXTURE_2D, tex->id);
@@ -269,8 +264,6 @@ struct decalrenderer
             glDrawArrays(GL_TRIANGLES, 0, endvert);
         }
         xtravertsva += count;
-
-        if(flags&(DF_ADD|DF_INVMOD|DF_OVERBRIGHT)) glFogfv(GL_FOG_COLOR, oldfogc);
     }
 
     decalinfo &newdecal()
