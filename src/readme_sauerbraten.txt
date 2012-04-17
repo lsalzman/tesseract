@@ -1,3 +1,7 @@
+Note that this is the license only for original Sauerbraten code, and does
+not cover new code provided as part of the Tesseract engine. For the 
+license governing those changes, please see the included "readme_tesseract.txt".
+
 Sauerbraten source code license, usage, and documentation.
 
 You may use the Sauerbraten source code if you abide by the ZLIB license
@@ -10,7 +14,7 @@ LICENSE
 
 Sauerbraten game engine source code, any release.
 
-Copyright (C) 2001-2011 Wouter van Oortmerssen, Lee Salzman, Mike Dysart, Robert Pointon, and Quinton Reeves
+Copyright (C) 2001-2012 Wouter van Oortmerssen, Lee Salzman, Mike Dysart, Robert Pointon, and Quinton Reeves
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages

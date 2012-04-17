@@ -7,7 +7,7 @@
 #ifndef STANDALONE
 
 #include "octa.h"
-#include "lightmap.h"
+#include "light.h"
 #include "bih.h"
 #include "texture.h"
 #include "model.h"

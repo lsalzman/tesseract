@@ -24,7 +24,7 @@
 		B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A880D06DB44005506F8 /* command.cpp */; };
 		B9AC7AD40D06DB44005506F8 /* console.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A890D06DB44005506F8 /* console.cpp */; };
 		B9AC7AD70D06DB44005506F8 /* grass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8C0D06DB44005506F8 /* grass.cpp */; };
-		B9AC7AD80D06DB44005506F8 /* lightmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8D0D06DB44005506F8 /* lightmap.cpp */; };
+		B9AC7AD80D06DB44005506F8 /* light.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8D0D06DB44005506F8 /* light.cpp */; };
 		B9AC7ADA0D06DB44005506F8 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A8F0D06DB44005506F8 /* main.cpp */; };
 		B9AC7ADB0D06DB44005506F8 /* material.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A900D06DB44005506F8 /* material.cpp */; };
 		B9AC7ADE0D06DB44005506F8 /* menus.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A930D06DB44005506F8 /* menus.cpp */; };
@@ -139,8 +139,8 @@
 		B9AC7A890D06DB44005506F8 /* console.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = console.cpp; sourceTree = "<group>"; };
 		B9AC7A8B0D06DB44005506F8 /* engine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = engine.h; sourceTree = "<group>"; };
 		B9AC7A8C0D06DB44005506F8 /* grass.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = grass.cpp; sourceTree = "<group>"; };
-		B9AC7A8D0D06DB44005506F8 /* lightmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = lightmap.cpp; sourceTree = "<group>"; };
-		B9AC7A8E0D06DB44005506F8 /* lightmap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lightmap.h; sourceTree = "<group>"; };
+		B9AC7A8D0D06DB44005506F8 /* light.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = light.cpp; sourceTree = "<group>"; };
+		B9AC7A8E0D06DB44005506F8 /* light.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = light.h; sourceTree = "<group>"; };
 		B9AC7A8F0D06DB44005506F8 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		B9AC7A900D06DB44005506F8 /* material.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = material.cpp; sourceTree = "<group>"; };
 		B9AC7A910D06DB44005506F8 /* md2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = md2.h; sourceTree = "<group>"; };
@@ -374,7 +374,7 @@
 				B91D40200D525FE0004EF78A /* decal.cpp */,
 				D16BD00C0D7000EA0053CECE /* dynlight.cpp */,
 				B9AC7A8C0D06DB44005506F8 /* grass.cpp */,
-				B9AC7A8D0D06DB44005506F8 /* lightmap.cpp */,
+				B9AC7A8D0D06DB44005506F8 /* light.cpp */,
 				B9AC7A8F0D06DB44005506F8 /* main.cpp */,
 				B9AC7A900D06DB44005506F8 /* material.cpp */,
 				B9AC7A930D06DB44005506F8 /* menus.cpp */,
@@ -405,7 +405,7 @@
 				D19E775D11977E82003753EF /* iqm.h */,
 				D18B8FBF0DB0AF8200171439 /* lensflare.h */,
 				D18B8FC00DB0AF8200171439 /* lightning.h */,
-				B9AC7A8E0D06DB44005506F8 /* lightmap.h */,
+				B9AC7A8E0D06DB44005506F8 /* light.h */,
 				B9AC7A910D06DB44005506F8 /* md2.h */,
 				B9AC7A920D06DB44005506F8 /* md3.h */,
 				B91D40220D525FE9004EF78A /* md5.h */,
@@ -592,7 +592,7 @@
 				B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */,
 				B9AC7AD40D06DB44005506F8 /* console.cpp in Sources */,
 				B9AC7AD70D06DB44005506F8 /* grass.cpp in Sources */,
-				B9AC7AD80D06DB44005506F8 /* lightmap.cpp in Sources */,
+				B9AC7AD80D06DB44005506F8 /* light.cpp in Sources */,
 				B9AC7ADA0D06DB44005506F8 /* main.cpp in Sources */,
 				B9AC7ADB0D06DB44005506F8 /* material.cpp in Sources */,
 				B9AC7ADE0D06DB44005506F8 /* menus.cpp in Sources */,

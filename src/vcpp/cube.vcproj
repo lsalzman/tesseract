@@ -427,7 +427,7 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath="..\engine\lightmap.cpp"
+					RelativePath="..\engine\light.cpp"
 					>
 					<FileConfiguration
 						Name="Release|Win32"
@@ -458,7 +458,7 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath="..\engine\lightmap.h"
+					RelativePath="..\engine\light.h"
 					>
 				</File>
 				<File

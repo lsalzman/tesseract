@@ -210,11 +210,11 @@
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
-		<Unit filename="..\engine\lightmap.cpp">
+		<Unit filename="..\engine\light.cpp">
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
-		<Unit filename="..\engine\lightmap.h">
+		<Unit filename="..\engine\light.h">
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>

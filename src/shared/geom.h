@@ -973,7 +973,7 @@ struct triangle
 
 /**
 
-Sauerbraten uses 3 different linear coordinate systems
+The engine uses 3 different linear coordinate systems
 which are oriented around each of the axis dimensions.
 
 So any point within the game can be defined by four coordinates: (d, x, y, z)
