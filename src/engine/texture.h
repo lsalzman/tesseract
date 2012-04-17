@@ -121,7 +121,11 @@ enum { SHPARAM_LOOKUP = 0, SHPARAM_VERTEX, SHPARAM_PIXEL, SHPARAM_UNIFORM };
 struct GlobalShaderParamState
 {
     const char *name;
-    float val[32];
+    union
+    {
+        float val[32];
+        uchar buf[32*sizeof(float)];
+    };
     int version;
 
     static int nextversion;
@@ -373,12 +377,10 @@ struct GlobalShaderParam
     void set(const glmatrixf &m) { memcpy(resolve()->val, m.v, sizeof(m.v)); }
     
     template<class T>
-    T *reserve(int n = 1) { return (T *)resolve()->val; }
+    void set(const T *v, int n = 1) { memcpy(resolve()->val, v, n*sizeof(T)); }
 
-    void set(const vec *v, int n = 1) { memcpy(reserve<vec>(n), v, n*sizeof(vec)); }
-    void set(const vec2 *v, int n = 1) { memcpy(reserve<vec2>(n), v, n*sizeof(vec2)); }
-    void set(const vec4 *v, int n = 1) { memcpy(reserve<vec4>(n), v, n*sizeof(vec4)); }
-    void set(const plane *p, int n = 1) { memcpy(reserve<plane>(n), p, n*sizeof(plane)); }
+    template<class T>
+    T *reserve(int n = 1) { return (T *)resolve()->buf; }
 };
 
 struct LocalShaderParam
