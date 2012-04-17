@@ -1181,10 +1181,6 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath="..\engine\rendertarget.h"
-					>
-				</File>
-				<File
 					RelativePath="..\engine\rendertext.cpp"
 					>
 					<FileConfiguration
@@ -1252,37 +1248,6 @@
 				</File>
 				<File
 					RelativePath="..\engine\shader.cpp"
-					>
-					<FileConfiguration
-						Name="Release|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Release/engine.pch"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Debug/engine.pch"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Profile|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							PrecompiledHeaderThrough="engine.h"
-							PrecompiledHeaderFile=".\Profile/engine.pch"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
-					RelativePath="..\engine\shadowmap.cpp"
 					>
 					<FileConfiguration
 						Name="Release|Win32"

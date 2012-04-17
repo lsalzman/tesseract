@@ -62,7 +62,6 @@ CLIENT_OBJS= \
 	engine/server.o	\
 	engine/serverbrowser.o \
 	engine/shader.o \
-	engine/shadowmap.o \
 	engine/sound.o \
 	engine/texture.o \
 	engine/water.o \
@@ -312,8 +311,8 @@ engine/renderparticles.o: shared/geom.h shared/ents.h shared/command.h
 engine/renderparticles.o: shared/iengine.h shared/igame.h engine/world.h
 engine/renderparticles.o: engine/octa.h engine/lightmap.h engine/bih.h
 engine/renderparticles.o: engine/texture.h engine/model.h engine/varray.h
-engine/renderparticles.o: engine/rendertarget.h engine/explosion.h
-engine/renderparticles.o: engine/lensflare.h engine/lightning.h
+engine/renderparticles.o: engine/explosion.h engine/lensflare.h
+engine/renderparticles.o: engine/lightning.h
 engine/rendersky.o: engine/engine.h shared/cube.h shared/tools.h
 engine/rendersky.o: shared/geom.h shared/ents.h shared/command.h
 engine/rendersky.o: shared/iengine.h shared/igame.h engine/world.h
@@ -344,11 +343,6 @@ engine/shader.o: shared/ents.h shared/command.h shared/iengine.h
 engine/shader.o: shared/igame.h engine/world.h engine/octa.h
 engine/shader.o: engine/lightmap.h engine/bih.h engine/texture.h
 engine/shader.o: engine/model.h engine/varray.h
-engine/shadowmap.o: engine/engine.h shared/cube.h shared/tools.h
-engine/shadowmap.o: shared/geom.h shared/ents.h shared/command.h
-engine/shadowmap.o: shared/iengine.h shared/igame.h engine/world.h
-engine/shadowmap.o: engine/octa.h engine/lightmap.h engine/bih.h
-engine/shadowmap.o: engine/texture.h engine/model.h engine/varray.h
 engine/sound.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/sound.o: shared/ents.h shared/command.h shared/iengine.h
 engine/sound.o: shared/igame.h engine/world.h engine/octa.h engine/lightmap.h

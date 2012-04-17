@@ -313,10 +313,6 @@
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
-		<Unit filename="..\engine\rendertarget.h">
-			<Option target="default" />
-			<Option target="debug" />
-		</Unit>
 		<Unit filename="..\engine\rendertext.cpp">
 			<Option target="default" />
 			<Option target="debug" />
@@ -339,10 +335,6 @@
 			<Option target="debug" />
 		</Unit>
 		<Unit filename="..\engine\shader.cpp">
-			<Option target="default" />
-			<Option target="debug" />
-		</Unit>
-		<Unit filename="..\engine\shadowmap.cpp">
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>

@@ -42,7 +42,6 @@
 		B9AC7AEC0D06DB44005506F8 /* server.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AA10D06DB44005506F8 /* server.cpp */; };
 		B9AC7AED0D06DB44005506F8 /* serverbrowser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AA20D06DB44005506F8 /* serverbrowser.cpp */; };
 		B9AC7AEE0D06DB44005506F8 /* shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AA30D06DB44005506F8 /* shader.cpp */; };
-		B9AC7AEF0D06DB44005506F8 /* shadowmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AA40D06DB44005506F8 /* shadowmap.cpp */; };
 		B9AC7AF00D06DB44005506F8 /* sound.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AA50D06DB44005506F8 /* sound.cpp */; };
 		B9AC7AF10D06DB44005506F8 /* texture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AA60D06DB44005506F8 /* texture.cpp */; };
 		B9AC7AF40D06DB44005506F8 /* water.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AA90D06DB44005506F8 /* water.cpp */; };
@@ -163,7 +162,6 @@
 		B9AC7AA10D06DB44005506F8 /* server.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = server.cpp; sourceTree = "<group>"; };
 		B9AC7AA20D06DB44005506F8 /* serverbrowser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = serverbrowser.cpp; sourceTree = "<group>"; };
 		B9AC7AA30D06DB44005506F8 /* shader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = shader.cpp; sourceTree = "<group>"; };
-		B9AC7AA40D06DB44005506F8 /* shadowmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = shadowmap.cpp; sourceTree = "<group>"; };
 		B9AC7AA50D06DB44005506F8 /* sound.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sound.cpp; sourceTree = "<group>"; };
 		B9AC7AA60D06DB44005506F8 /* texture.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = texture.cpp; sourceTree = "<group>"; };
 		B9AC7AA70D06DB44005506F8 /* texture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = texture.h; sourceTree = "<group>"; };
@@ -186,7 +184,6 @@
 		B9AC7ACD0D06DB44005506F8 /* tools.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tools.cpp; sourceTree = "<group>"; };
 		B9AC7ACE0D06DB44005506F8 /* tools.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tools.h; sourceTree = "<group>"; };
 		B9CACA12092099DF00A13F04 /* sauerbraten.plist */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.plist.xml; path = sauerbraten.plist; sourceTree = "<group>"; };
-		D116C0AA0D9F7DB500E8B945 /* rendertarget.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rendertarget.h; sourceTree = "<group>"; };
 		D11B024A0F830BA400334D69 /* ai.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ai.cpp; sourceTree = "<group>"; };
 		D11B024B0F830BA400334D69 /* ai.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ai.h; sourceTree = "<group>"; };
 		D11B024C0F830BA400334D69 /* aiman.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aiman.h; sourceTree = "<group>"; };
@@ -396,7 +393,6 @@
 				B9AC7AA10D06DB44005506F8 /* server.cpp */,
 				B9AC7AA20D06DB44005506F8 /* serverbrowser.cpp */,
 				B9AC7AA30D06DB44005506F8 /* shader.cpp */,
-				B9AC7AA40D06DB44005506F8 /* shadowmap.cpp */,
 				B9AC7AA50D06DB44005506F8 /* sound.cpp */,
 				B9AC7AA60D06DB44005506F8 /* texture.cpp */,
 				B9AC7AA90D06DB44005506F8 /* water.cpp */,
@@ -418,7 +414,6 @@
 				D16C16900E04812500A522EB /* obj.h */,
 				B9AC7A970D06DB44005506F8 /* octa.h */,
 				D1BAE4260F1F1B170077022C /* ragdoll.h */,
-				D116C0AA0D9F7DB500E8B945 /* rendertarget.h */,
 				D1ECC14A0EB6969300ACE078 /* scale.h */,
 				B91D40240D52600A004EF78A /* skelmodel.h */,
 				D19E776011977E82003753EF /* smd.h */,
@@ -615,7 +610,6 @@
 				B9AC7AEC0D06DB44005506F8 /* server.cpp in Sources */,
 				B9AC7AED0D06DB44005506F8 /* serverbrowser.cpp in Sources */,
 				B9AC7AEE0D06DB44005506F8 /* shader.cpp in Sources */,
-				B9AC7AEF0D06DB44005506F8 /* shadowmap.cpp in Sources */,
 				B9AC7AF00D06DB44005506F8 /* sound.cpp in Sources */,
 				B9AC7AF10D06DB44005506F8 /* texture.cpp in Sources */,
 				B9AC7AF40D06DB44005506F8 /* water.cpp in Sources */,
