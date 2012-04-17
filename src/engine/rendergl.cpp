@@ -2461,6 +2461,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     Shader *s = minimapping ? deferredminimapshader : deferredlightshader;
     if(!s || s == (Shader *)(void *)-1) return;
 
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
     glEnable(GL_SCISSOR_TEST);
 
     if(!depthtestlights) glDisable(GL_DEPTH_TEST);
@@ -2605,6 +2607,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         }
     }
 
+    glDisable(GL_BLEND);
     glDisable(GL_SCISSOR_TEST);
 
     if(!depthtestlights) glEnable(GL_DEPTH_TEST);
@@ -3304,12 +3307,7 @@ void renderalphageom()
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
 
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
         renderlights(sx1, sy1, sx2, sy2, tiles);
-
-        glDisable(GL_BLEND);
     }
 
     if((gdepthstencil && hasDS) || gstencil) glDisable(GL_STENCIL_TEST);
@@ -3431,14 +3429,9 @@ void shadegbuffer()
         drawskybox(farplane);
     }
 
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_BLEND);
-
     if(minimapping) renderlights(2.0f/vieww - 1, 2.0f/viewh - 1, 1 - 2.0f/vieww, 1 - 2.0f/viewh);
     else renderlights();
     GLERROR;
-
-    glDisable(GL_BLEND);
 
     timer_end(TIMER_SHADING);
     timer_end(TIMER_CPU_SHADING);
