@@ -1,0 +1,55 @@
+Tesseract is a fork of the Cube 2: Sauerbraten engine. The goal of Tesseract
+is to make mapping more fun by using modern dynamic rendering techniques, so
+that you can get instant feedback on lighting changes, not just geometry.
+
+No more long calclight pauses... just plop down the light, move it, adjust its
+color. It all happens in real-time now.
+
+Tesseract removes the static lightmapping system of Sauerbraten and replaces
+it with completely dynamic lighting system based on deferred shading and
+shadowmapping.
+
+It provides a bunch of new rendering features such as:
+
+* deferred shading
+* omnidirectional point lights using cubemap or tetrahedral shadowmaps
+* orthographic projection sunlight using cascaded shadowmaps
+* HDR rendering with tonemapping and bloom
+* screen-space ambient occlusion
+* screen-space reflections and refractions for water and glass (use as many water planes as you want now!)
+* screen-space refractive alpha cubes
+
+Install:
+
+Currently, to use Tesseract you must have a copy of the "packages" directory
+from a recent checkout of Sauerbraten SVN. To get a copy of Sauerbraten SVN,
+please see the following page: http://sourceforge.net/scm/?type=svn&group_id=102911
+
+If you are on Linux or other unixoid, just make a symlink to the Sauerbraten
+packages directory inside your Tesseract directory. You can also edit the
+tesseract_unix file to point to an existing Sauerbraten SVN checkout.
+
+On Windows, do a checkout of the Sauerbraten SVN inside the Tesseract directory,
+or edit the tesseract.bat file to point to an existing Sauerbraten SVN checkout
+you might have.
+
+Editing:
+
+To make shadowmapped point lights, just make light entities as normal.
+
+To make cascaded shadowmapped sunlight, just use the normal sunlight commands:
+sunlightcolor
+sunlightyaw
+sunlightpitch
+You can also set sunlightyaw and sunlightpitch from your current direction with the following command:
+getsundir
+
+To make refractive alpha cubes:
+First mark the cubes with the alpha material. Use valpha or texalpha to set the transparency level as normal.
+Then use either of the following commands:
+vrefract K [R G B]
+K is the strength of the refraction, on a scale of 0 to 1, 1 meaning distortion spanning the entire screen, 0.5 spanning half the screen, etc.
+The direction of the distortion is taken from the normal-map of the texture.
+R G B are optional and specify a color for the refraction, with each component being on a scale of 0 to 1 as well.
+
+
