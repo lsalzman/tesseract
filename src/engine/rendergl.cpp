@@ -162,6 +162,7 @@ VAR(blurtile, 0, 1, 1);
 VAR(rtsharefb, 0, 1, 1);
 VAR(usetexgather, 1, 0, 0);
 
+#if 0
 static bool checkseries(const char *s, int low, int high)
 {
     while(*s && !isdigit(*s)) ++s;
@@ -170,6 +171,7 @@ static bool checkseries(const char *s, int low, int high)
     while(isdigit(*s)) n = n*10 + (*s++ - '0');    
     return n >= low && n < high;
 }
+#endif
 
 VAR(dbgexts, 0, 0, 1);
 
@@ -722,7 +724,7 @@ static void timer_setup()
     memset(timer_prints, 0, sizeof(timer_prints));
     if(hasTQ) loopi(timer_query_n) glGenQueries_(TIMER_CPU, timers[i]);
 }
-static void cleanuptimer() 
+void cleanuptimer() 
 { 
     if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_CPU, timers[i]); 
 }

@@ -188,7 +188,12 @@ done:
 #endif
 
 string homedir = "";
-vector<char *> packagedirs;
+struct packagedir
+{
+    char *dir, *filter;
+    int dirlen, filterlen;
+};
+vector<packagedir> packagedirs;
 
 char *makerelpath(const char *dir, const char *file, const char *prefix, const char *cmd)
 {
@@ -348,7 +353,21 @@ const char *addpackagedir(const char *dir)
     string pdir;
     copystring(pdir, dir);
     if(!subhomedir(pdir, sizeof(pdir), dir) || !fixpackagedir(pdir)) return NULL;
-    return packagedirs.add(newstring(pdir));
+    char *filter = pdir;
+    for(;;)
+    {
+        static int len = strlen("packages");
+        filter = strstr(filter, "packages");
+        if(!filter) break;
+        if(filter > pdir && filter[-1] == PATHDIV && filter[len] == PATHDIV) break;
+        filter += len;
+    }    
+    packagedir &pf = packagedirs.add();
+    pf.dir = filter ? newstring(pdir, filter-pdir) : newstring(pdir);
+    pf.dirlen = filter ? filter-pdir : strlen(pdir);
+    pf.filter = filter ? newstring(filter) : NULL;
+    pf.filterlen = filter ? strlen(filter) : 0;
+    return pf.dir;
 }
 
 const char *findfile(const char *filename, const char *mode)
@@ -376,7 +395,9 @@ const char *findfile(const char *filename, const char *mode)
     if(mode[0]=='w' || mode[0]=='a') return filename;
     loopv(packagedirs)
     {
-        formatstring(s)("%s%s", packagedirs[i], filename);
+        packagedir &pf = packagedirs[i];
+        if(pf.filter && strncmp(filename, pf.filter, pf.filterlen)) continue;
+        formatstring(s)("%s%s", pf.dir, filename);
         if(fileexists(s, mode)) return s;
     }
     return filename;
@@ -435,7 +456,14 @@ int listfiles(const char *dir, const char *ext, vector<char *> &files)
     }
     loopv(packagedirs)
     {
-        formatstring(s)("%s%s", packagedirs[i], dir);
+        packagedir &pf = packagedirs[i];
+        if(pf.filter)
+        {
+            int dirlen = strlen(dir);
+            if(strncmp(dir, pf.filter, dirlen == pf.filterlen-1 ? dirlen : pf.filterlen))
+                continue;
+        }
+        formatstring(s)("%s%s", pf.dir, dir);
         if(listdir(s, false, ext, files)) dirs++;
     }
 #ifndef STANDALONE
