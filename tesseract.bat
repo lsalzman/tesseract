@@ -1,1 +1,1 @@
-start bin\sauerbraten.exe "-q$HOME\My Games\Tesseract" -ktesseract -glog.txt %*
+start bin\tesseract.exe "-q$HOME\My Games\Tesseract" -k..\Sauerbraten\packages -ktesseract -glog.txt %*
