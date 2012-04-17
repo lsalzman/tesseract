@@ -2,8 +2,8 @@ Tesseract is a fork of the Cube 2: Sauerbraten engine. The goal of Tesseract
 is to make mapping more fun by using modern dynamic rendering techniques, so
 that you can get instant feedback on lighting changes, not just geometry.
 
-No more long calclight pauses... just plop down the light, move it, adjust its
-color. It all happens in real-time now.
+No more long calclight pauses... just plop down the light, move it, change its
+color, or do whatever else with it. It all happens in real-time now.
 
 Tesseract removes the static lightmapping system of Sauerbraten and replaces
 it with completely dynamic lighting system based on deferred shading and
@@ -55,4 +55,9 @@ vrefract K [R G B]
 K is the strength of the refraction, on a scale of 0 to 1, 1 meaning distortion spanning the entire screen, 0.5 spanning half the screen, etc.
 The direction of the distortion is taken from the normal-map of the texture.
 R G B are optional and specify a color for the refraction, with each component being on a scale of 0 to 1 as well.
+
+After editing operations your map may be full of small cubes and triangles, and you will notice that your map looks faceted.
+To fix this you still need to use the calclight command, however, it no longer generates lightmaps anymore.
+It just does a remip optimization pass as well as calculates smoothed normals to make things look better.
+Eventually this may be done differently using some sort of background optimization while editing.
 
