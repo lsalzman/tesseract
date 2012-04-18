@@ -49,13 +49,13 @@
 		<string>10.4.0</string>
 	</dict>
 	<key>CFBundleExecutable</key>
-	<string>sauerbraten</string>
+	<string>tesseract</string>
 	<key>CFBundleHelpBookFolder</key>
 	<string>help</string>
 	<key>CFBundleHelpBookName</key>
-	<string>Sauerbraten help</string>
+	<string>Tesseract help</string>
 	<key>CFBundleIconFile</key>
-	<string>sauerbraten</string>
+	<string>tesseract</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.dot3labs.sauerbraten</string>
 	<key>CFBundleInfoDictionaryVersion</key>
