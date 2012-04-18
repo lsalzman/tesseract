@@ -80,7 +80,7 @@
 		D1D07F030F645590007098A8 /* scoreboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EFB0F645590007098A8 /* scoreboard.cpp */; };
 		D1D07F040F645590007098A8 /* server.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EFC0F645590007098A8 /* server.cpp */; };
 		D1D07F050F645590007098A8 /* weapon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EFD0F645590007098A8 /* weapon.cpp */; };
-		D1E605B90E2416150045244E /* sauerbraten.icns in Resources */ = {isa = PBXBuildFile; fileRef = B97E99CE085F4B3E002F9BC6 /* sauerbraten.icns */; };
+		D1E605B90E2416150045244E /* tesseract.icns in Resources */ = {isa = PBXBuildFile; fileRef = B97E99CE085F4B3E002F9BC6 /* tesseract.icns */; };
 		D1ECACF71129213900F58615 /* SDL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1ECACF41129213900F58615 /* SDL.framework */; };
 		D1ECACF81129213900F58615 /* SDL_mixer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1ECACF51129213900F58615 /* SDL_mixer.framework */; };
 		D1ECACF91129213900F58615 /* SDL_image.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1ECACF61129213900F58615 /* SDL_image.framework */; };
@@ -125,12 +125,12 @@
 		B930D0900A3D9BC700BDFB85 /* ConsoleView.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = ConsoleView.h; sourceTree = "<group>"; };
 		B930D0910A3D9BC700BDFB85 /* ConsoleView.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = ConsoleView.m; sourceTree = "<group>"; };
 		B930D0D10A3DA92300BDFB85 /* Maps.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Maps.icns; sourceTree = "<group>"; };
-		B94198CB09207E810029DAD1 /* sauerbraten.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = sauerbraten.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B94198CB09207E810029DAD1 /* tesseract.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tesseract.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B96D0D570920970C00B6C936 /* Launcher.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = Launcher.h; sourceTree = "<group>"; };
 		B96D0D580920970C00B6C936 /* Launcher.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = Launcher.m; sourceTree = "<group>"; };
 		B96D0D5B0920971300B6C936 /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/MainMenu.nib; sourceTree = "<group>"; };
 		B96D0D6C0920976E00B6C936 /* main.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		B97E99CE085F4B3E002F9BC6 /* sauerbraten.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = sauerbraten.icns; sourceTree = "<group>"; };
+		B97E99CE085F4B3E002F9BC6 /* tesseract.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = tesseract.icns; sourceTree = "<group>"; };
 		B9AC7A840D06DB44005506F8 /* 3dgui.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = 3dgui.cpp; sourceTree = "<group>"; };
 		B9AC7A850D06DB44005506F8 /* bih.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bih.cpp; sourceTree = "<group>"; };
 		B9AC7A860D06DB44005506F8 /* bih.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bih.h; sourceTree = "<group>"; };
@@ -183,7 +183,7 @@
 		B9AC7AC90D06DB44005506F8 /* pch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = pch.cpp; sourceTree = "<group>"; };
 		B9AC7ACD0D06DB44005506F8 /* tools.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = tools.cpp; sourceTree = "<group>"; };
 		B9AC7ACE0D06DB44005506F8 /* tools.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tools.h; sourceTree = "<group>"; };
-		B9CACA12092099DF00A13F04 /* sauerbraten.plist */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.plist.xml; path = sauerbraten.plist; sourceTree = "<group>"; };
+		B9CACA12092099DF00A13F04 /* tesseract.plist */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.plist.xml; path = tesseract.plist; sourceTree = "<group>"; };
 		D11B024A0F830BA400334D69 /* ai.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ai.cpp; sourceTree = "<group>"; };
 		D11B024B0F830BA400334D69 /* ai.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ai.h; sourceTree = "<group>"; };
 		D11B024C0F830BA400334D69 /* aiman.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aiman.h; sourceTree = "<group>"; };
@@ -291,12 +291,12 @@
 		19C28FACFE9D520D11CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				B94198CB09207E810029DAD1 /* sauerbraten.app */,
+				B94198CB09207E810029DAD1 /* tesseract.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		29B97314FDCFA39411CA2CEA /* sauerbraten */ = {
+		29B97314FDCFA39411CA2CEA /* tesseract */ = {
 			isa = PBXGroup;
 			children = (
 				080E96DDFE201D6D7F000001 /* Classes */,
@@ -305,7 +305,7 @@
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
 			);
-			name = sauerbraten;
+			name = tesseract;
 			sourceTree = "<group>";
 		};
 		29B97315FDCFA39411CA2CEA /* Other Sources */ = {
@@ -328,8 +328,8 @@
 				D177C5A30F5D3AA600ABBD38 /* Server.png */,
 				D17E0F300BAF2031008BB696 /* Help.tiff */,
 				B930D0D10A3DA92300BDFB85 /* Maps.icns */,
-				B9CACA12092099DF00A13F04 /* sauerbraten.plist */,
-				B97E99CE085F4B3E002F9BC6 /* sauerbraten.icns */,
+				B9CACA12092099DF00A13F04 /* tesseract.plist */,
+				B97E99CE085F4B3E002F9BC6 /* tesseract.icns */,
 				B96D0D5A0920971300B6C936 /* MainMenu.nib */,
 				089C165CFE840E0CC02AAC07 /* InfoPlist.strings */,
 				D1DB53E70D70F1CD003AE25C /* Localizable.strings */,
@@ -491,9 +491,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B941988A09207E810029DAD1 /* sauerbraten */ = {
+		B941988A09207E810029DAD1 /* tesseract */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B94198C609207E810029DAD1 /* Build configuration list for PBXNativeTarget "sauerbraten" */;
+			buildConfigurationList = B94198C609207E810029DAD1 /* Build configuration list for PBXNativeTarget "tesseract" */;
 			buildPhases = (
 				B94198A409207E810029DAD1 /* Resources */,
 				B94198A709207E810029DAD1 /* Sources */,
@@ -505,10 +505,10 @@
 			);
 			dependencies = (
 			);
-			name = sauerbraten;
+			name = tesseract;
 			productInstallPath = "$(HOME)/Applications";
-			productName = sauerbraten;
-			productReference = B94198CB09207E810029DAD1 /* sauerbraten.app */;
+			productName = tesseract;
+			productReference = B94198CB09207E810029DAD1 /* tesseract.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -519,7 +519,7 @@
 			attributes = {
 				LastUpgradeCheck = 0420;
 			};
-			buildConfigurationList = B960CF35085F3CC7004FB142 /* Build configuration list for PBXProject "sauerbraten" */;
+			buildConfigurationList = B960CF35085F3CC7004FB142 /* Build configuration list for PBXProject "tesseract" */;
 			compatibilityVersion = "Xcode 2.4";
 			developmentRegion = English;
 			hasScannedForEncodings = 1;
@@ -529,11 +529,11 @@
 				French,
 				German,
 			);
-			mainGroup = 29B97314FDCFA39411CA2CEA /* sauerbraten */;
+			mainGroup = 29B97314FDCFA39411CA2CEA /* tesseract */;
 			projectDirPath = "";
 			projectRoot = ../..;
 			targets = (
-				B941988A09207E810029DAD1 /* sauerbraten */,
+				B941988A09207E810029DAD1 /* tesseract */,
 			);
 		};
 /* End PBXProject section */
@@ -544,7 +544,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D10F2F72111E240F0004BCB9 /* MainMenu.nib in Resources */,
-				D1E605B90E2416150045244E /* sauerbraten.icns in Resources */,
+				D1E605B90E2416150045244E /* tesseract.icns in Resources */,
 				D10F2F73111E240F0004BCB9 /* InfoPlist.strings in Resources */,
 				D10F2F74111E240F0004BCB9 /* Maps.icns in Resources */,
 				D10F2F75111E240F0004BCB9 /* Keys.gif in Resources */,
@@ -569,7 +569,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "echo build dir = $TARGET_BUILD_DIR\ncd \"$TARGET_BUILD_DIR\"\n\n#ensure old package is gone\nrm -f sauerbraten.dmg\n\n#make the directory which our disk image will be made of\n#use /tmp as a destination because copying ourself (xcode folder) whilst compiling causes the dog to chase its tail\nSAUERPKG=`mktemp -d /tmp/sauerpkg.XXXXXX` || exit 1\n\n#leave indicator of where temp directory is in case things break\nln -sf \"$SAUERPKG\" \"$TARGET_BUILD_DIR/sauerpkg\"\n\n#copy executable\n/Developer/Tools/CpMac -r \"$TARGET_BUILD_DIR/sauerbraten.app\" \"$SAUERPKG/Sauerbraten.app\"\nstrip -u -r \"$SAUERPKG/Sauerbraten.app/Contents/MacOS/sauerbraten\"\n\nHELPDIR=\"$SAUERPKG/Sauerbraten.app/Contents/Resources/help/\"\nGAMEDIR=\"$SAUERPKG/Sauerbraten.app/Contents/gamedata\"\nmkdir \"$GAMEDIR\"\n\n#copy readme and data and remove unneccesary stuff\n/Developer/Tools/CpMac -r \"$SRCROOT/../../README.html\" \"$HELPDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../docs\" \"$HELPDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../data\" \"$GAMEDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../packages\" \"$GAMEDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../src\" \"$SAUERPKG/sourcecode\"\nfind -d \"$SAUERPKG\" -name \".svn\" -exec rm -rf {} \\;\nfind \"$SAUERPKG\" -name \".DS_Store\" -exec rm -f {} \\;\nrm -rf \"$SAUERPKG/sourcecode/xcode/build\"\n\n#add alias to readme\n/usr/bin/osascript <<EOT\ntell application \"Finder\"\nset macSrcPath to POSIX file \"$HELPDIR/README.html\" as text\nset macDestPath to POSIX file \"$SAUERPKG\" as text\nmake new alias file to file macSrcPath at folder macDestPath\nend tell\nEOT\n\n#finally make a disk image out of the stuff\necho creating dmg\nhdiutil create -srcfolder \"$SAUERPKG\" -volname sauerbraten sauerbraten.dmg\nhdiutil internet-enable -yes sauerbraten.dmg\n\n#cleanup\nrm -rf \"$SAUERPKG\"\n";
+			shellScript = "echo build dir = $TARGET_BUILD_DIR\ncd \"$TARGET_BUILD_DIR\"\n\n#ensure old package is gone\nrm -f tesseract.dmg\n\n#make the directory which our disk image will be made of\n#use /tmp as a destination because copying ourself (xcode folder) whilst compiling causes the dog to chase its tail\nSAUERPKG=`mktemp -d /tmp/sauerpkg.XXXXXX` || exit 1\n\n#leave indicator of where temp directory is in case things break\nln -sf \"$SAUERPKG\" \"$TARGET_BUILD_DIR/sauerpkg\"\n\n#copy executable\n/Developer/Tools/CpMac -r \"$TARGET_BUILD_DIR/tesseract.app\" \"$SAUERPKG/Tesseract.app\"\nstrip -u -r \"$SAUERPKG/Tesseract.app/Contents/MacOS/tesseract\"\n\nHELPDIR=\"$SAUERPKG/Tesseract.app/Contents/Resources/help/\"\nGAMEDIR=\"$SAUERPKG/Tesseract.app/Contents/gamedata\"\nmkdir \"$GAMEDIR\"\n\n#copy readme and data and remove unneccesary stuff\n/Developer/Tools/CpMac -r \"$SRCROOT/../../README.html\" \"$HELPDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../docs\" \"$HELPDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../data\" \"$GAMEDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../packages\" \"$GAMEDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../src\" \"$SAUERPKG/sourcecode\"\nfind -d \"$SAUERPKG\" -name \".svn\" -exec rm -rf {} \\;\nfind \"$SAUERPKG\" -name \".DS_Store\" -exec rm -f {} \\;\nrm -rf \"$SAUERPKG/sourcecode/xcode/build\"\n\n#add alias to readme\n/usr/bin/osascript <<EOT\ntell application \"Finder\"\nset macSrcPath to POSIX file \"$HELPDIR/README.html\" as text\nset macDestPath to POSIX file \"$SAUERPKG\" as text\nmake new alias file to file macSrcPath at folder macDestPath\nend tell\nEOT\n\n#finally make a disk image out of the stuff\necho creating dmg\nhdiutil create -srcfolder \"$SAUERPKG\" -volname tesseract tesseract.dmg\nhdiutil internet-enable -yes tesseract.dmg\n\n#cleanup\nrm -rf \"$SAUERPKG\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -694,11 +694,11 @@
 					../enet/include,
 					../include/,
 				);
-				INFOPLIST_FILE = sauerbraten.plist;
+				INFOPLIST_FILE = tesseract.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				OTHER_LDFLAGS = "-lz";
-				PRODUCT_NAME = sauerbraten;
+				PRODUCT_NAME = tesseract;
 				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 			};
 			name = Debug;
@@ -723,7 +723,7 @@
 					../enet/include,
 					../include/,
 				);
-				INFOPLIST_FILE = sauerbraten.plist;
+				INFOPLIST_FILE = tesseract.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				OTHER_CPLUSPLUSFLAGS = (
@@ -731,7 +731,7 @@
 					"-fomit-frame-pointer",
 				);
 				OTHER_LDFLAGS = "-lz";
-				PRODUCT_NAME = sauerbraten;
+				PRODUCT_NAME = tesseract;
 				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 			};
 			name = Release;
@@ -756,7 +756,7 @@
 					../enet/include,
 					../include/,
 				);
-				INFOPLIST_FILE = sauerbraten.plist;
+				INFOPLIST_FILE = tesseract.plist;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				OTHER_CPLUSPLUSFLAGS = (
@@ -764,7 +764,7 @@
 					"-fomit-frame-pointer",
 				);
 				OTHER_LDFLAGS = "-lz";
-				PRODUCT_NAME = sauerbraten;
+				PRODUCT_NAME = tesseract;
 				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 			};
 			name = "Release-Deployment";
@@ -831,7 +831,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		B94198C609207E810029DAD1 /* Build configuration list for PBXNativeTarget "sauerbraten" */ = {
+		B94198C609207E810029DAD1 /* Build configuration list for PBXNativeTarget "tesseract" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B94198C709207E810029DAD1 /* Debug */,
@@ -841,7 +841,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		B960CF35085F3CC7004FB142 /* Build configuration list for PBXProject "sauerbraten" */ = {
+		B960CF35085F3CC7004FB142 /* Build configuration list for PBXProject "tesseract" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B960CF36085F3CC7004FB142 /* Debug */,

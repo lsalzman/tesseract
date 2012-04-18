@@ -21,7 +21,7 @@
 #define dkMAXCLIENTS @"server_maxclients"
 
 // If you make a MOD then please change this, the bundle indentifier, the file extensions (.ogz, .dmo), and the url registration.
-#define kSAUERBRATEN @"sauerbraten"
+#define kSAUERBRATEN @"tesseract"
 
 // tab names, i.e. image names (text is localised)
 #define tkMAIN @"Main"
