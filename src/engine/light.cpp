@@ -18,8 +18,8 @@ HVARFR(sunlight, 0, 0, 0xFFFFFF,
 FVARFR(sunlightscale, 0, 1, 16, setupsunlight());
 vec sunlightdir(0, 0, 1);
 extern void setsunlightdir();
-VARFR(sunlightyaw, 0, 0, 360, setsunlightdir());
-VARFR(sunlightpitch, -90, 90, 90, setsunlightdir());
+FVARFR(sunlightyaw, 0, 0, 360, setsunlightdir());
+FVARFR(sunlightpitch, -90, 90, 90, setsunlightdir());
 
 void setsunlightdir() 
 { 

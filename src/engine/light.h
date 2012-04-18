@@ -33,7 +33,8 @@ struct PackNode
 };
 
 extern bvec ambientcolor, sunlightcolor;
-extern int sunlight, sunlightyaw, sunlightpitch;
+extern int sunlight;
+extern float sunlightyaw, sunlightpitch;
 extern vec sunlightdir;
 extern int fullbright, fullbrightlevel;
 
