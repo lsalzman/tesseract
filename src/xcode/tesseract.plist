@@ -57,7 +57,7 @@
 	<key>CFBundleIconFile</key>
 	<string>tesseract</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.dot3labs.sauerbraten</string>
+	<string>com.dot3labs.tesseract</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundlePackageType</key>
