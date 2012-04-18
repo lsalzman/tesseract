@@ -3738,11 +3738,11 @@ void gl_drawframe(int w, int h)
     }
     else
     {
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixf(csm.model.v);
         glMatrixMode(GL_PROJECTION);
         const int splitid = ::min(debugcsm-1, csmsplitn-1);
         glLoadMatrixf(csm.splits[splitid].proj.v);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadMatrixf(csm.model.v);
     }
 
     readmatrices();
