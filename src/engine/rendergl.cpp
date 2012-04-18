@@ -2496,7 +2496,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     GLOBALPARAM(shadowatlasscale, (1.0f/SHADOWATLAS_SIZE, 1.0f/SHADOWATLAS_SIZE));
     if(ao) 
     {
-        if(envmapping)
+        if((editmode && fullbright) || envmapping)
         {
             GLOBALPARAM(aoscale, (0.0f, 0.0f));
             GLOBALPARAM(aoparams, (1.0f, 0.0f, 1.0f, 0.0f));
@@ -2508,13 +2508,24 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         }
     }
     float lightscale = 2.0f*(hdr ? 0.5f : 1)/255.0f;
-    GLOBALPARAM(lightscale, (ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale));
+    if(editmode && fullbright)
+        GLOBALPARAM(lightscale, (fullbrightlevel*lightscale, fullbrightlevel*lightscale, fullbrightlevel*lightscale, 255*lightscale));
+    else
+        GLOBALPARAM(lightscale, (ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale));
 
     if(sunlight && csmdeferredshading) 
     {
-        extern float sunlightscale;
-        GLOBALPARAM(sunlightdir, (sunlightdir));
-        GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
+        if(editmode && fullbright)
+        {
+            GLOBALPARAM(sunlightdir, (0, 0, 0));
+            GLOBALPARAM(sunlightcolor, (0, 0, 0));
+        }
+        else
+        {
+            extern float sunlightscale;
+            GLOBALPARAM(sunlightdir, (sunlightdir));
+            GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
+        }
         csm.bindparams();
     }
 
@@ -2626,7 +2637,7 @@ void collectlights()
 {
     // point lights processed here
     const vector<extentity *> &ents = entities::getents();
-    loopv(ents)
+    if(!editmode || !fullbright) loopv(ents)
     {
         extentity *e = ents[i];
         if(e->type != ET_LIGHT) continue;
