@@ -199,6 +199,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         glEnd();
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
+#if 0
         settexture("data/background_detail.png", 0);
         float du = w*0.8f/512.0f + detailu, dv = h*0.8f/512.0f + detailv;
         glBegin(GL_TRIANGLE_STRIP);
@@ -218,6 +219,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
             glTexCoord2f(side,   1); glVertex2f(hx-hsz, hy+hsz);
         }
         glEnd();
+#endif
         float lh = 0.5f*min(w, h), lw = lh*2,
               lx = 0.5f*(w - lw), ly = 0.5f*(h*0.5f - lh);
         settexture(/*(maxtexsize ? min(maxtexsize, hwtexsize) : hwtexsize) >= 1024 && (screen->w > 1280 || screen->h > 800) ? "data/logo_1024.png" :*/ "data/logo.png", 3);
@@ -229,7 +231,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         glEnd();
 
         float bh = 0.1f*min(w, h), bw = bh*2,
-              bx = w - 1.25f*bw, by = 0.25f*bh;
+              bx = w - 1.1f*bw, by = h - 1.1f*bh;
         settexture("data/cube2badge.png", 3);
         glBegin(GL_TRIANGLE_STRIP);
         glTexCoord2f(0, 0); glVertex2f(bx,    by);

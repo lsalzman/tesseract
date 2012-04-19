@@ -2955,7 +2955,21 @@ void normalizenormalmap(char *destfile, char *normalfile) // jpg/png/tga-> tga
     saveimage(destfile, guessimageformat(destfile, IMG_TGA), d);
 }
 
+void removealphachannel(char *destfile, char *rgbafile)
+{
+    ImageData ns;
+    if(!loadimage(rgbafile, ns)) return;
+    ImageData d(ns.w, ns.h, 3);
+    readwritetex(d, ns,
+        dst[0] = src[0];
+        dst[1] = src[1];
+        dst[2] = src[2];
+    );
+    saveimage(destfile, guessimageformat(destfile, IMG_TGA), d);
+}
+
 COMMAND(flipnormalmapy, "ss");
 COMMAND(mergenormalmaps, "ss");
 COMMAND(normalizenormalmap, "ss");
+COMMAND(removealphachannel, "ss");
 
