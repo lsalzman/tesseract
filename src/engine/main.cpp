@@ -162,9 +162,12 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
     glEnable(GL_TEXTURE_2D);
 
     static int lastupdate = -1, lastw = -1, lasth = -1;
-    static float backgroundu = 0, backgroundv = 0, detailu = 0, detailv = 0;
+    static float backgroundu = 0, backgroundv = 0;
+#if 0
+    static float detailu = 0, detailv = 0;
     static int numdecals = 0;
     static struct decal { float x, y, size; int side; } decals[12];
+#endif
     if((renderedframe && !mainmenu && lastupdate != lastmillis) || lastw != w || lasth != h)
     {
         lastupdate = lastmillis;
@@ -173,6 +176,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
 
         backgroundu = rndscale(1);
         backgroundv = rndscale(1);
+#if 0
         detailu = rndscale(1);
         detailv = rndscale(1);
         numdecals = sizeof(decals)/sizeof(decals[0]);
@@ -183,6 +187,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
             decal d = { rndscale(w), rndscale(h), maxsize/2 + rndscale(maxsize/2), rnd(2) };
             decals[i] = d;
         }
+#endif
     }
     else if(lastupdate != lastmillis) lastupdate = lastmillis;
 
