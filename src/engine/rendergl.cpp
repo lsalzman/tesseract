@@ -1927,10 +1927,10 @@ FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 
-FVARR(hdrbright, 1e-3f, 0.25f, 1e3f);
-FVAR(hdrtonemin, 1e-3f, 0.5f, 1e3f);
+FVARR(hdrbright, 1e-3f, 0.18f, 1e3f);
+FVAR(hdrtonemin, 1e-3f, 0.75f, 1e3f);
 FVAR(hdrtonemax, 1e-3f, 2.0f, 1e3f);
-FVARR(bloombright, 1e-3f, 2.0f, 1e3f);
+FVARR(bloombright, 1e-3f, 1.5f, 1e3f);
 FVAR(bloomlummin, 1e-3f, 0.125f, 1e3f);
 FVAR(bloomlummax, 1e-3f, 8.0f, 1e3f);
 
