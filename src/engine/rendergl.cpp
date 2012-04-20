@@ -1571,7 +1571,81 @@ void cleanupbloom()
     lasthdraccum = 0;
 }
 
-extern int ao, aoreduce, aoreducedepth, aonoise, aobilateral, aopackdepth;
+extern int ao, aotaps, aoreduce, aoreducedepth, aonoise, aobilateral, aopackdepth;
+
+static Shader *bilateralshader[2] = { NULL, NULL };
+
+Shader *loadbilateralshader(int pass)
+{
+    if(!aobilateral) return (Shader *)(void *)-1;
+
+    string opts;
+    int optslen = 0;
+
+    if(aoreduce) opts[optslen++] = 'r';
+    bool linear = hasTRG && hasTF && (aopackdepth || (aoreducedepth && (aoreduce || aoreducedepth > 1)));
+    if(linear)
+    {
+        opts[optslen++] = 'l';
+        if(aopackdepth) opts[optslen++] = 'p';
+    }
+    opts[optslen] = '\0';
+
+    defformatstring(name)("bilateral%c%s%d", 'x' + pass, opts, aobilateral);
+    Shader *s = lookupshaderbyname(name);
+    if(!s)
+    {
+        defformatstring(cmd)("bilateralshader \"%s\" %d", opts, aobilateral);
+        execute(cmd);
+        s = lookupshaderbyname(name);
+        if(!s) s = (Shader *)(void *)-1;
+    }
+    return s;
+}
+
+void loadbilateralshaders()
+{
+    loopk(2) bilateralshader[k] = loadbilateralshader(k);
+}
+
+void clearbilateralshaders()
+{
+    loopk(2) bilateralshader[k] = NULL;
+}
+
+static Shader *ambientobscuranceshader = NULL;
+
+Shader *loadambientobscuranceshader()
+{
+    string opts;
+    int optslen = 0;
+
+    if(aoreduce) opts[optslen++] = 'r';
+    bool linear = hasTRG && hasTF && (aoreducedepth && (aoreduce || aoreducedepth > 1));
+    if(linear) opts[optslen++] = 'l';
+    opts[optslen] = '\0';
+
+    defformatstring(name)("ambientobscurance%s%d", opts, aotaps);
+    Shader *s = lookupshaderbyname(name);
+    if(!s)
+    {
+        defformatstring(cmd)("ambientobscuranceshader \"%s\" %d", opts, aotaps);
+        execute(cmd);
+        s = lookupshaderbyname(name);
+        if(!s) s = (Shader *)(void *)-1;
+    }
+    return s;
+}
+
+void loadaoshaders()
+{
+    ambientobscuranceshader = loadambientobscuranceshader();
+}
+
+void clearaoshaders()
+{
+    ambientobscuranceshader = NULL;
+}
 
 void setupao(int w, int h)
 {
@@ -1612,6 +1686,9 @@ void setupao(int w, int h)
     }
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    loadaoshaders();
+    loadbilateralshaders();
 }
 
 void cleanupao()
@@ -1620,6 +1697,9 @@ void cleanupao()
     loopi(3) if(aotex[i]) { glDeleteTextures(1, &aotex[i]); aotex[i] = 0; }
     if(aonoisetex) { glDeleteTextures(1, &aonoisetex); aonoisetex = 0; }
     aow = bloomh = -1;
+    
+    clearaoshaders();
+    clearbilateralshaders();
 }
 
 void viewao()
@@ -2370,11 +2450,11 @@ VAR(aoiter, 0, 0, 4);
 VARF(aoreduce, 0, 1, 2, cleanupao());
 VARF(aoreducedepth, 0, 1, 2, cleanupao());
 VARF(aonoise, 0, 5, 8, cleanupao());
-VARF(aobilateral, 0, 7, 10, { if(aopackdepth) cleanupao(); });
+VARF(aobilateral, 0, 7, 10, cleanupao());
 FVAR(aobilateralsigma, 0, 0.5f, 1e3);
 FVAR(aobilateraldepth, 0, 4, 1e3);
-VARF(aopackdepth, 0, 1, 1, { if(aobilateral) cleanupao(); });
-VAR(aotaps, 1, 5, 12);
+VARF(aopackdepth, 0, 1, 1, cleanupao());
+VARF(aotaps, 1, 5, 12, cleanupao());
 VAR(debugao, 0, 0, 1);
 
 void cascaded_shadow_map::bindparams()
@@ -2409,8 +2489,6 @@ void cleardeferredlightshaders()
     deferredminimapshader = NULL;
 }
 
-SVARF(deferredlightsuffix, "", cleardeferredlightshaders());
-
 Shader *loaddeferredlightshader(const char *prefix = NULL)
 {
     string common, shadow, sun;
@@ -2433,7 +2511,7 @@ Shader *loaddeferredlightshader(const char *prefix = NULL)
     }
     sun[sunlen] = '\0';
 
-    defformatstring(name)("deferredlight%s%s%s%s", common, shadow, sun, deferredlightsuffix);
+    defformatstring(name)("deferredlight%s%s%s", common, shadow, sun);
     Shader *s = lookupshaderbyname(name);
     if(!s)
     {
@@ -2995,17 +3073,10 @@ void rendershadowatlas()
     timer_end(TIMER_CPU_SM);
 }
 
-void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear, bool packed, float stepx, float stepy)
+void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear, bool packed)
 {
-    static Shader *bilateralshader[10][2] = { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } };
-    Shader *&s = bilateralshader[radius-1][pass];
-    if(!s)
-    {
-        defformatstring(name)("bilateral%c%d", 'x'+pass, radius);
-        s = lookupshaderbyname(name);
-    }
-    if(linear) s->setvariant(0, packed ? 1 : 0);
-    else s->set();
+    float stepx = linear ? 1 : float(vieww)/aow, stepy = linear ? 1 : float(viewh)/aoh;
+    bilateralshader[pass]->set();
     sigma *= 2*radius;
     LOCALPARAM(bilateralparams, (1.0f/(2*sigma*sigma), 1.0f/(depth*depth), pass==0 ? stepx : 0, pass==1 ? stepy : 0));
 }
@@ -3015,9 +3086,6 @@ void renderao()
     timer_begin(TIMER_AO);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-
-    static Shader *ambientobscuranceshader = NULL;
-    if(!ambientobscuranceshader) ambientobscuranceshader = lookupshaderbyname("ambientobscurance");
 
     bool linear = hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1);
     float xscale = eyematrix.v[0], yscale = eyematrix.v[5];
@@ -3032,10 +3100,9 @@ void renderao()
         yscale *= float(viewh)/aoh;
 
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2]);
-        ambientobscuranceshader->setvariant(aotaps-1, 1);
     }
-    else if(aotaps > 1) ambientobscuranceshader->setvariant(aotaps-2, 0);
-    else ambientobscuranceshader->set();
+
+    ambientobscuranceshader->set();
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[0]);
     glViewport(0, 0, aow, aoh);
@@ -3054,7 +3121,7 @@ void renderao()
         if(!linear && aopackdepth && hasTRG && hasTF) linear = true;
         loopi(2 + 2*aoiter)
         {
-            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear, linear && aopackdepth, linear ? 1 : float(vieww)/aow, linear ? 1 : float(viewh)/aoh);
+            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear, linear && aopackdepth);
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[(i+1)%2]);
             glViewport(0, 0, aow, aoh);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i%2]);
