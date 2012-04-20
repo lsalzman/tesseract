@@ -202,10 +202,10 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         glTexCoord2f(0,  bv); glVertex2f(0, h);
         glTexCoord2f(bu, bv); glVertex2f(w, h);
         glEnd();
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
 #if 0
-        settexture("data/background_detail.png", 0);
+        settexture("<premul>data/background_detail.png", 0);
         float du = w*0.8f/512.0f + detailu, dv = h*0.8f/512.0f + detailv;
         glBegin(GL_TRIANGLE_STRIP);
         glTexCoord2f(0,  0);  glVertex2f(0, 0);
@@ -213,7 +213,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         glTexCoord2f(0,  dv); glVertex2f(0, h);
         glTexCoord2f(du, dv); glVertex2f(w, h);
         glEnd();
-        settexture("data/background_decal.png", 3);
+        settexture("<premul>data/background_decal.png", 3);
         glBegin(GL_QUADS);
         loopj(numdecals)
         {
@@ -227,7 +227,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
 #endif
         float lh = 0.5f*min(w, h), lw = lh*2,
               lx = 0.5f*(w - lw), ly = 0.5f*(h*0.5f - lh);
-        settexture(/*(maxtexsize ? min(maxtexsize, hwtexsize) : hwtexsize) >= 1024 && (screen->w > 1280 || screen->h > 800) ? "data/logo_1024.png" :*/ "data/logo.png", 3);
+        settexture(/*(maxtexsize ? min(maxtexsize, hwtexsize) : hwtexsize) >= 1024 && (screen->w > 1280 || screen->h > 800) ? "<premul>data/logo_1024.png" :*/ "<premul>data/logo.png", 3);
         glBegin(GL_TRIANGLE_STRIP);
         glTexCoord2f(0, 0); glVertex2f(lx,    ly);
         glTexCoord2f(1, 0); glVertex2f(lx+lw, ly);
@@ -237,7 +237,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
 
         float bh = 0.1f*min(w, h), bw = bh*2,
               bx = w - 1.1f*bw, by = h - 1.1f*bh;
-        settexture("data/cube2badge.png", 3);
+        settexture("<premul>data/cube2badge.png", 3);
         glBegin(GL_TRIANGLE_STRIP);
         glTexCoord2f(0, 0); glVertex2f(bx,    by);
         glTexCoord2f(1, 0); glVertex2f(bx+bw, by);
@@ -245,6 +245,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         glTexCoord2f(1, 1); glVertex2f(bx+bw, by+bh);
         glEnd();
 
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         if(caption)
         {
             int tw = text_width(caption);
@@ -699,12 +700,14 @@ void resetgl()
     extern void reloadshaders();
     inbetweenframes = false;
     if(!reloadtexture(*notexture) ||
-       !reloadtexture("data/logo.png") ||
-       !reloadtexture("data/logo_1024.png") || 
-       !reloadtexture("data/cube2badge.png") ||
+       !reloadtexture("<premul>data/logo.png") ||
+       !reloadtexture("<premul>data/logo_1024.png") || 
+       !reloadtexture("<premul>data/cube2badge.png") ||
        !reloadtexture("data/background.png") ||
-       !reloadtexture("data/background_detail.png") ||
-       !reloadtexture("data/background_decal.png") ||
+#if 0
+       !reloadtexture("<premul>data/background_detail.png") ||
+       !reloadtexture("<premul>data/background_decal.png") ||
+#endif
        !reloadtexture("data/mapshot_frame.png") ||
        !reloadtexture("data/loading_frame.png") ||
        !reloadtexture("data/loading_bar.png"))
