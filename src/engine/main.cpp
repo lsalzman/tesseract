@@ -701,6 +701,7 @@ void resetgl()
     if(!reloadtexture(*notexture) ||
        !reloadtexture("data/logo.png") ||
        !reloadtexture("data/logo_1024.png") || 
+       !reloadtexture("data/cube2badge.png") ||
        !reloadtexture("data/background.png") ||
        !reloadtexture("data/background_detail.png") ||
        !reloadtexture("data/background_decal.png") ||
