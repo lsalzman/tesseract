@@ -8,6 +8,7 @@ bool mesa = false, intel = false, ati = false, nvidia = false;
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
+VAR(glslversion, 1, 0, 0);
 
 // GL_ARB_vertex_buffer_object, GL_ARB_pixel_buffer_object
 PFNGLGENBUFFERSARBPROC       glGenBuffers_       = NULL;
@@ -451,12 +452,15 @@ void gl_checkextensions()
         extern bool checkglslsupport();
         if(checkglslsupport()) hasGLSL = true;
         
-        const char *glslversion = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
-        conoutf(CON_INIT, "GLSL: %s", glslversion);
-        // @TODO disable smtetra if < 1.30
+        const char *str = (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION_ARB);
+        conoutf(CON_INIT, "GLSL: %s", str ? str : "unknown");
+
+        uint majorversion, minorversion;
+        if(!str || sscanf(str, " %u.%u", &majorversion, &minorversion) != 2) glslversion = 100;
+        else glslversion = majorversion*100 + minorversion; 
         
     }
-    if(!hasGLSL) fatal("GLSL support is required!");
+    if(!hasGLSL || glslversion < 100) fatal("GLSL support is required!");
  
     if(hasext(exts, "GL_ARB_uniform_buffer_object"))
     {
@@ -2417,7 +2421,7 @@ Shader *loaddeferredlightshader(const char *prefix = NULL)
     common[commonlen] = '\0';
  
     shadow[shadowlen++] = 'p';
-    if(smtetra) shadow[shadowlen++] = 't';
+    if(smtetra && glslversion >= 130) shadow[shadowlen++] = 't';
     shadow[shadowlen] = '\0';
 
     if(ao) sun[sunlen++] = 'a';
@@ -2734,13 +2738,14 @@ void packlights()
     lighttilesused = 0;
     smused = 0;
 
+    bool tetra = smtetra && glslversion >= 130;
     loopv(lightorder)
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
         float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
-        int smsize = clamp(int(ceil(smlod * (smtetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (smtetra ? 2 : 3)),
-            smw = smtetra ? smsize*2 : smsize*3, smh = smtetra ? smsize : smsize*2;
+        int smsize = clamp(int(ceil(smlod * (tetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (tetra ? 2 : 3)),
+            smw = tetra ? smsize*2 : smsize*3, smh = tetra ? smsize : smsize*2;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
@@ -2749,7 +2754,7 @@ void packlights()
             sm = addshadowmap(smx, smy, smsize, smidx);
             sm->light = idx;
             l.shadowmap = smidx;
-            smused += smsize*smsize*(smtetra ? 2 : 6);
+            smused += smsize*smsize*(tetra ? 2 : 6);
         }
 
         int tx1 = max(int(floor((l.sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((l.sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
@@ -2778,16 +2783,16 @@ void packlights()
 
 void rendercsmshadowmaps()
 {
+    shadowmapping = SM_CASCADE;
+    shadoworigin = vec(0, 0, 0);
+    shadowradius = 0;
+    shadowbias = 0;
+
     if(csmpolyfactor || csmpolyoffset)
     {
         glPolygonOffset(csmpolyfactor, csmpolyoffset);
         glEnable(GL_POLYGON_OFFSET_FILL);
     }
-
-    shadowmapping = SM_CASCADE;
-    shadoworigin = vec(0, 0, 0);
-    shadowradius = 0;
-    shadowbias = 0;
 
     findcsmshadowvas(); // no culling here
     findcsmshadowmms(); // no culling here
@@ -2817,24 +2822,21 @@ void rendercsmshadowmaps()
 
     clearbatchedmapmodels();
 
-    shadowmapping = 0;
-
     if(csmpolyfactor || csmpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
+
+    shadowmapping = 0;
 }
 
 void rendershadowmaps()
 {
+    shadowmapping = smtetra && glslversion >= 130 ? SM_TETRA : SM_CUBEMAP;
+
     if(smpolyfactor || smpolyoffset)
     {
         glPolygonOffset(smpolyfactor, smpolyoffset);
         glEnable(GL_POLYGON_OFFSET_FILL);
     }
-    if(smtetra && smtetraclip)
-    {
-        shadowmapping = SM_TETRA;
-        glEnable(GL_CLIP_PLANE0);
-    }
-    else shadowmapping = SM_CUBEMAP;
+    if(shadowmapping == SM_TETRA && smtetraclip) glEnable(GL_CLIP_PLANE0);
 
     loopv(shadowmaps)
     {
@@ -2844,7 +2846,7 @@ void rendershadowmaps()
         lightinfo &l = lights[sm.light];
 
         int sidemask;
-        if(smtetra) sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
+        if(shadowmapping == SM_TETRA) sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
         else sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
 
         float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
@@ -2879,7 +2881,7 @@ void rendershadowmaps()
 
         glmatrixf smviewmatrix;
 
-        if(smtetra)
+        if(shadowmapping == SM_TETRA)
         {
             int smw = sm.size*2, smh = sm.size;
             glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, smw + (sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size), smh);
@@ -2942,10 +2944,10 @@ void rendershadowmaps()
         clearbatchedmapmodels();
     }
 
-    if(smtetra && smtetraclip) glDisable(GL_CLIP_PLANE0);
-    shadowmapping = 0;
-
+    if(shadowmapping == SM_TETRA && smtetraclip) glDisable(GL_CLIP_PLANE0);
     if(smpolyfactor || smpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
+
+    shadowmapping = 0;
 }
 
 void rendershadowatlas()

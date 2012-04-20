@@ -228,6 +228,7 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 // rendergl
 extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasAFBO, hasDS, hasTF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT;
 extern int hasstencil;
+extern int glslversion;
 
 extern int vieww, viewh;
 extern float curfov, fovy, aspect;
