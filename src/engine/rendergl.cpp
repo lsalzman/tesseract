@@ -1916,7 +1916,7 @@ VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
 VAR(hdr, 0, 1, 1);
 VARF(hdrprec, 0, 2, 3, cleanupgbuffer());
-FVAR(bloomthreshold, 0, 1.5f, 10.0f);
+FVAR(bloomthreshold, 0, 2.0f, 10.0f);
 FVAR(bloomscale, 0, 1.0f, 10.0f);
 VAR(bloomblur, 0, 7, 7);
 VAR(bloomiter, 0, 0, 4);
@@ -1927,8 +1927,8 @@ FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 
-FVARR(hdrbright, 1e-3f, 0.18f, 1e3f);
-FVAR(hdrtonemin, 1e-3f, 0.75f, 1e3f);
+FVARR(hdrbright, 1e-3f, 0.25f, 1e3f);
+FVAR(hdrtonemin, 1e-3f, 0.5f, 1e3f);
 FVAR(hdrtonemax, 1e-3f, 2.0f, 1e3f);
 FVARR(bloombright, 1e-3f, 2.0f, 1e3f);
 FVAR(bloomlummin, 1e-3f, 0.1f, 1e3f);
