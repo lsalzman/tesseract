@@ -1931,8 +1931,8 @@ FVARR(hdrbright, 1e-3f, 0.25f, 1e3f);
 FVAR(hdrtonemin, 1e-3f, 0.5f, 1e3f);
 FVAR(hdrtonemax, 1e-3f, 2.0f, 1e3f);
 FVARR(bloombright, 1e-3f, 2.0f, 1e3f);
-FVAR(bloomlummin, 1e-3f, 0.1f, 1e3f);
-FVAR(bloomlummax, 1e-3f, 10.0f, 1e3f);
+FVAR(bloomlummin, 1e-3f, 0.125f, 1e3f);
+FVAR(bloomlummax, 1e-3f, 8.0f, 1e3f);
 
 #define SHADOWATLAS_SIZE 4096
 
