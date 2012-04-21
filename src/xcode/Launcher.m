@@ -539,6 +539,8 @@ static int numberForKey(CFDictionaryRef desc, CFStringRef key)
         [args addObject:[NSString stringWithFormat:@"-x%@", script]];
     }
     
+    [args addObject:@"-ktesseract"];
+    
     NSEnumerator *e = [[[defs nonNullStringForKey:dkADVANCEDOPTS] componentsSeparatedByString:@" "] objectEnumerator];
     NSString *opt;
     while ((opt = [e nextObject])) if ([opt length] != 0) [args addObject:opt]; // skip empty ones

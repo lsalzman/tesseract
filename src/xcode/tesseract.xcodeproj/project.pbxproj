@@ -569,7 +569,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "echo build dir = $TARGET_BUILD_DIR\ncd \"$TARGET_BUILD_DIR\"\n\n#ensure old package is gone\nrm -f tesseract.dmg\n\n#make the directory which our disk image will be made of\n#use /tmp as a destination because copying ourself (xcode folder) whilst compiling causes the dog to chase its tail\nSAUERPKG=`mktemp -d /tmp/sauerpkg.XXXXXX` || exit 1\n\n#leave indicator of where temp directory is in case things break\nln -sf \"$SAUERPKG\" \"$TARGET_BUILD_DIR/sauerpkg\"\n\n#copy executable\n/Developer/Tools/CpMac -r \"$TARGET_BUILD_DIR/tesseract.app\" \"$SAUERPKG/Tesseract.app\"\nstrip -u -r \"$SAUERPKG/Tesseract.app/Contents/MacOS/tesseract\"\n\nHELPDIR=\"$SAUERPKG/Tesseract.app/Contents/Resources/help/\"\nGAMEDIR=\"$SAUERPKG/Tesseract.app/Contents/gamedata\"\nmkdir \"$GAMEDIR\"\n\n#copy readme and data and remove unneccesary stuff\n/Developer/Tools/CpMac -r \"$SRCROOT/../../README.html\" \"$HELPDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../docs\" \"$HELPDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../data\" \"$GAMEDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../packages\" \"$GAMEDIR/\"\n/Developer/Tools/CpMac -r \"$SRCROOT/../../src\" \"$SAUERPKG/sourcecode\"\nfind -d \"$SAUERPKG\" -name \".svn\" -exec rm -rf {} \\;\nfind \"$SAUERPKG\" -name \".DS_Store\" -exec rm -f {} \\;\nrm -rf \"$SAUERPKG/sourcecode/xcode/build\"\n\n#add alias to readme\n/usr/bin/osascript <<EOT\ntell application \"Finder\"\nset macSrcPath to POSIX file \"$HELPDIR/README.html\" as text\nset macDestPath to POSIX file \"$SAUERPKG\" as text\nmake new alias file to file macSrcPath at folder macDestPath\nend tell\nEOT\n\n#finally make a disk image out of the stuff\necho creating dmg\nhdiutil create -srcfolder \"$SAUERPKG\" -volname tesseract tesseract.dmg\nhdiutil internet-enable -yes tesseract.dmg\n\n#cleanup\nrm -rf \"$SAUERPKG\"\n";
+			shellScript = "echo build dir = $TARGET_BUILD_DIR\ncd \"$TARGET_BUILD_DIR\"\n\n#ensure old package is gone\nrm -f tesseract.dmg\n\n#make the directory which our disk image will be made of\n#use /tmp as a destination because copying ourself (xcode folder) whilst compiling causes the dog to chase its tail\nSAUERPKG=`mktemp -d /tmp/sauerpkg.XXXXXX` || exit 1\n\n#copy executable\nCpMac -r \"$TARGET_BUILD_DIR/tesseract.app\" \"$SAUERPKG/Tesseract.app\"\nstrip -u -r \"$SAUERPKG/Tesseract.app/Contents/MacOS/tesseract\"\n\nHELPDIR=\"$SAUERPKG/Tesseract.app/Contents/Resources/help/\"\nGAMEDIR=\"$SAUERPKG/Tesseract.app/Contents/gamedata\"\nmkdir \"$GAMEDIR\"\n\n#copy readme and data and remove unneccesary stuff\nCpMac -r \"$SRCROOT/../../README\" \"$HELPDIR/README.txt\"\nCpMac -r \"$SRCROOT/../../README\" \"$SAUERPKG/README.txt\"\nCpMac -r \"$SRCROOT/../../docs\" \"$HELPDIR/\"\nCpMac -r \"$SRCROOT/../../data\" \"$GAMEDIR/\"\nCpMac -r \"$SRCROOT/../../packages\" \"$GAMEDIR/\"\nCpMac -r \"$SRCROOT/../../src\" \"$SAUERPKG/sourcecode\"\nfind \"$SAUERPKG\" -name \".DS_Store\" -exec rm -f {} \\;\nrm -rf \"$SAUERPKG/sourcecode/xcode/build\"\n\n#finally make a disk image out of the stuff\necho creating dmg\nhdiutil create -srcfolder \"$SAUERPKG\" -volname tesseract tesseract.dmg\nhdiutil internet-enable -yes tesseract.dmg\n\n#cleanup\nrm -rf \"$SAUERPKG\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -781,11 +781,12 @@
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_i386 = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_ppc = 10.3;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 				STRIP_INSTALLED_PRODUCT = NO;
+				VALID_ARCHS = "i386 x86_64";
 			};
 			name = "Release-Deployment";
 		};
@@ -799,12 +800,12 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_i386 = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_ppc = 10.3;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 				STRIP_INSTALLED_PRODUCT = NO;
-				VALID_ARCHS = "i386 ppc ppc64 ppc7400 ppc970 x86_64";
+				VALID_ARCHS = "i386 x86_64";
 			};
 			name = Debug;
 		};
@@ -819,12 +820,12 @@
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
+				MACOSX_DEPLOYMENT_TARGET_i386 = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_ppc = 10.3;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 				STRIP_INSTALLED_PRODUCT = NO;
-				VALID_ARCHS = "i386 ppc ppc64 ppc7400 ppc970 x86_64";
+				VALID_ARCHS = "i386 x86_64";
 			};
 			name = Release;
 		};
