@@ -553,7 +553,7 @@ template<class MDL> struct vertcommands : modelcommands<MDL, struct MDL::vertmes
     {
         if(MDL::multiparted()) this->modelcommand(loadpart, "load", "sf"); 
         this->modelcommand(setpitch, "pitch", "ffff");
-        if(MDL::animated()) this->modelcommand(setanim, "anim", "siiff");
+        if(MDL::cananimate()) this->modelcommand(setanim, "anim", "siiff");
     }
 };
 

@@ -1938,38 +1938,102 @@ FVAR(bloomlummax, 1e-3f, 8.0f, 1e3f);
 
 PackNode shadowatlaspacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
 
-GLuint shadowatlastex = 0, shadowatlasfbo = 0;
+struct lightinfo
+{
+    float sx1, sy1, sx2, sy2, sz1, sz2;
+    int shadowmap;
+    vec o, color;
+    int radius;
+    float dist;
+    occludequery *query;
+};
+
+struct shadowcachekey
+{
+    vec o;
+    float radius;
+
+    shadowcachekey() {}
+    shadowcachekey(const lightinfo &l) : o(l.o), radius(l.radius) {}
+};
+
+static inline uint hthash(const shadowcachekey &k)
+{
+    return hthash(k.o);
+}
+
+static inline bool htcmp(const shadowcachekey &x, const shadowcachekey &y)
+{
+    return x.o == y.o && x.radius == y.radius;
+}
+
+struct shadowcacheval
+{
+    ushort x, y, size, sidemask;
+};
+
+struct shadowcache : hashtable<shadowcachekey, shadowcacheval>
+{
+    bool valid;
+
+    shadowcache() : hashtable(256), valid(false) {}
+
+    void reset()
+    {
+        clear();
+        valid = true;
+    } 
+
+    void invalidate() { valid = false; }
+};
+
+struct shadowmapinfo
+{
+    ushort x, y, size, sidemask;
+    int light;
+    shadowcacheval *cached;
+};
+
+int curshadowatlas = 0;
+GLuint shadowatlastex[2] = { 0, 0 }, shadowatlasfbo[2] = { 0, 0 };
+shadowcache shadowcache[2];
 
 void setupshadowatlas()
 {
-    if(!shadowatlastex) glGenTextures(1, &shadowatlastex);
+    loopi(2)
+    {
+        if(!shadowatlastex[i]) glGenTextures(1, &shadowatlastex[i]);
 
-    createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT16, GL_TEXTURE_2D);
-    //createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT32, GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
-    glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE_ARB, GL_LUMINANCE);
+        createtexture(shadowatlastex[i], SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT16, GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
+        glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE_ARB, GL_LUMINANCE);
 
-    if(!shadowatlasfbo) glGenFramebuffers_(1, &shadowatlasfbo);
+        if(!shadowatlasfbo[i]) glGenFramebuffers_(1, &shadowatlasfbo[i]);
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo[i]);
 
-    glDrawBuffer(GL_NONE);
-    glReadBuffer(GL_NONE);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, shadowatlastex[i], 0);
 
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, shadowatlastex, 0);
-
-    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
-        fatal("failed allocating shadow atlas!");
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating shadow atlas!");
+    }
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
     
 }
 
+void clearshadowcache()
+{
+    loopi(2) shadowcache[i].invalidate();
+}
+
 void cleanupshadowatlas()
 {
-    if(shadowatlastex) { glDeleteTextures(1, &shadowatlastex); shadowatlastex = 0; }
-    if(shadowatlasfbo) { glDeleteFramebuffers_(1, &shadowatlasfbo); shadowatlasfbo = 0; }
+    loopi(2) if(shadowatlastex[i]) { glDeleteTextures(1, &shadowatlastex[i]); shadowatlastex[i] = 0; }
+    loopi(2) if(shadowatlasfbo[i]) { glDeleteFramebuffers_(1, &shadowatlasfbo[i]); shadowatlasfbo[i] = 0; }
+    curshadowatlas = 0;
+    clearshadowcache();
 }
 
 const float cubeshadowviewmatrix[6][16] =
@@ -2041,22 +2105,6 @@ const float tetrashadowviewmatrix[4][16] =
     }
 };
 
-struct lightinfo
-{
-    float sx1, sy1, sx2, sy2, sz1, sz2;
-    int shadowmap;
-    vec o, color;
-    int radius;
-    float dist;
-    occludequery *query;
-};
-
-struct shadowmapinfo
-{
-    ushort x, y, size;
-    int light;
-};
-
 FVAR(smpolyfactor, -1e3f, 1, 1e3f);
 FVAR(smpolyoffset, -1e3f, 0, 1e3f);
 FVAR(smbias, -1e3f, 0.01f, 1e3f);
@@ -2073,10 +2121,11 @@ VAR(smmaxsize, 1, 384, 1024);
 //VAR(smmaxsize, 1, 4096, 4096);
 VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
-VARF(smtetra, 0, 0, 1, cleardeferredlightshaders());
+VARF(smtetra, 0, 0, 1, { cleardeferredlightshaders(); clearshadowcache(); });
 VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
+VAR(smcache, 0, 1, 2);
 VARF(smgather, 0, 0, 1, cleardeferredlightshaders());
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
@@ -2106,7 +2155,7 @@ void viewshadowatlas()
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
     defaultshader->set();
     glColor3f(1, 1, 1);
-    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex[curshadowatlas]);
     if(!usegatherforsm()) setsmnoncomparemode(); // "normal" mode
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0, 0); glVertex2i(screen->w-w, screen->h-h);
@@ -2131,6 +2180,9 @@ static shadowmapinfo *addshadowmap(ushort x, ushort y, int size, int &idx)
     sm->x = x;
     sm->y = y;
     sm->size = size;
+    sm->light = -1;
+    sm->sidemask = 0;
+    sm->cached = NULL;
     return sm;
 }
 
@@ -2172,8 +2224,7 @@ void cascaded_shadow_map::setup()
             //fatal("cascaded shadow maps MUST be packed");
             return;
         }
-        shadowmapinfo *sm = addshadowmap(smx, smy, csmmaxsize, splits[i].idx);
-        sm->light = -1;
+        addshadowmap(smx, smy, csmmaxsize, splits[i].idx);
     }
     getmodelmatrix();
     getprojmatrix();
@@ -2561,7 +2612,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glActiveTexture_(GL_TEXTURE3_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE4_ARB);
-    glBindTexture(GL_TEXTURE_2D, shadowatlastex);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex[curshadowatlas]);
     if(usegatherforsm()) setsmnoncomparemode(); else setsmcomparemode();
     if(ao)
     {
@@ -2905,6 +2956,46 @@ void rendercsmshadowmaps()
     shadowmapping = 0;
 }
 
+void copyshadowmaps()
+{
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas^1]);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex[curshadowatlas]);
+    loopv(shadowmaps)
+    {
+        shadowmapinfo &sm = shadowmaps[i];
+        if(!sm.cached) continue;
+        shadowcacheval *cached = sm.cached;
+        if(shadowmapping == SM_TETRA)
+        {
+            if(cached->sidemask&0x03) glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x, sm.y, cached->x, cached->y, sm.size, sm.size);
+            if(cached->sidemask&0x0C) glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x + sm.size, sm.y, cached->x + sm.size, cached->y, sm.size, sm.size);
+        }
+        else loop(side, 6) if(cached->sidemask&(1<<side))
+        {
+            int sidex = (side>>1)*sm.size, sidey = (side&1)*sm.size;
+            glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x + sidex, sm.y + sidey, cached->x + sidex, cached->y + sidey, sm.size, sm.size);
+        }
+#if 0
+        int sidemask = cached->sidemask, x, y, w, h;
+        if(shadowmapping == SM_TETRA)
+        {
+            x = sidemask & 0x03 ? 0 : sm.size;
+            y = 0;
+            w = sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size;
+            h = sm.size; 
+        }
+        else
+        {
+            x = sidemask & 0x03 ? 0 : (sidemask & 0xC ? sm.size : 2 * sm.size);
+            y = sidemask & 0x15 ? 0 : sm.size;
+            w = (sidemask & 0x30 ? 3 * sm.size : (sidemask & 0xC ? 2 * sm.size : sm.size)) - x;
+            h = (sidemask & 0x2A ? 2 * sm.size : sm.size) - y;
+        }
+        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x + x, sm.y + y, cached->x + x, cached->y + y, w, h);
+#endif
+    }    
+}
+
 void rendershadowmaps()
 {
     shadowmapping = smtetra && glslversion >= 130 ? SM_TETRA : SM_CUBEMAP;
@@ -2916,6 +3007,7 @@ void rendershadowmaps()
     }
     if(shadowmapping == SM_TETRA && smtetraclip) glEnable(GL_CLIP_PLANE0);
 
+    int numcached = 0;
     loopv(shadowmaps)
     {
         shadowmapinfo &sm = shadowmaps[i];
@@ -2926,6 +3018,55 @@ void rendershadowmaps()
         int sidemask;
         if(shadowmapping == SM_TETRA) sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
         else sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
+
+        sm.sidemask = sidemask;
+
+        shadoworigin = l.o;
+        shadowradius = l.radius;
+        shadowbias = smborder / float(sm.size - smborder);
+
+        findshadowvas();
+        findshadowmms();
+
+        shadowmaskbatchedmodels();
+        batchshadowmapmodels();
+
+        shadowcacheval *cached = NULL;
+        int cachemask = 0;
+        if(smcache)
+        {
+            int dynmask = smcache <= 1 ? batcheddynamicmodels() : 0;
+            if(shadowmapping == SM_TETRA)
+            {
+                if(dynmask&0x3) dynmask |= 0x3;
+                if(dynmask&0xC) dynmask |= 0xC;
+            }
+            cached = shadowcache[curshadowatlas^1].access(l);
+            if(cached && sm.size == cached->size)
+            {
+                cachemask = cached->sidemask & ~dynmask;
+                cached->sidemask = cachemask;
+                if(cachemask)
+                {
+                    numcached++;
+                    sm.cached = cached;
+                }
+            }
+
+            shadowcacheval *dst = &shadowcache[curshadowatlas][l];
+            dst->x = sm.x;
+            dst->y = sm.y;
+            dst->size = sm.size;
+            dst->sidemask = (cachemask | sidemask) & ~dynmask;
+
+            if((cachemask&sidemask) == sidemask)
+            {
+                clearbatchedmapmodels();
+                continue;
+            }
+           
+            sidemask &= ~cachemask;
+        }
 
         float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
         GLfloat smprojmatrix[16] =
@@ -2943,16 +3084,6 @@ void rendershadowmaps()
             -l.o.x/l.radius, -l.o.y/l.radius, -l.o.z/l.radius, 1
         };
 
-        shadoworigin = l.o;
-        shadowradius = l.radius;
-        shadowbias = smborder / float(sm.size - smborder);
-
-        findshadowvas();
-        findshadowmms();
-
-        shadowmaskbatchedmodels();
-        batchshadowmapmodels();
-
         glMatrixMode(GL_PROJECTION);
         glLoadMatrixf(smprojmatrix);
         glMatrixMode(GL_MODELVIEW);
@@ -2961,8 +3092,7 @@ void rendershadowmaps()
 
         if(shadowmapping == SM_TETRA)
         {
-            int smw = sm.size*2, smh = sm.size;
-            glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, smw + (sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size), smh);
+            glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size, sm.size);
             glClear(GL_DEPTH_BUFFER_BIT);
 
             loop(side, 4) if(sidemask&(1<<side))
@@ -3025,6 +3155,8 @@ void rendershadowmaps()
     if(shadowmapping == SM_TETRA && smtetraclip) glDisable(GL_CLIP_PLANE0);
     if(smpolyfactor || smpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
 
+    if(numcached > 0) copyshadowmaps();
+    
     shadowmapping = 0;
 }
 
@@ -3033,7 +3165,7 @@ void rendershadowatlas()
     timer_begin(TIMER_CPU_SM);
     timer_begin(TIMER_SM);
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas]);
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     if(debugshadowatlas)
@@ -3762,7 +3894,9 @@ void gl_setupframe(int w, int h)
     setupgbuffer(w, h);
     if(bloomw < 0 || bloomh < 0) setupbloom(w, h);
     if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
-    if(!shadowatlasfbo) setupshadowatlas();
+    curshadowatlas = (curshadowatlas+1)%2;
+    if(!shadowatlasfbo[curshadowatlas]) setupshadowatlas();
+    shadowcache[curshadowatlas].reset();
     if(!deferredlightshader) loaddeferredlightshaders();
 }
 

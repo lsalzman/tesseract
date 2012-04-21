@@ -5,7 +5,7 @@ struct obj : vertmodel, vertloader<obj>
     obj(const char *name) : vertmodel(name) {}
 
     static const char *formatname() { return "obj"; }
-    static bool animated() { return false; }
+    static bool cananimate() { return false; }
     int type() const { return MDL_OBJ; }
 
     struct objmeshgroup : vertmeshgroup

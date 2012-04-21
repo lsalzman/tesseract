@@ -517,6 +517,7 @@ void commitchanges(bool force)
     inbetweenframes = true;
     setupmaterials(oldlen);
     invalidatepostfx();
+    clearshadowcache();
     updatevabbs();
 }
 

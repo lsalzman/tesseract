@@ -1467,6 +1467,7 @@ void allchanged(bool load)
     if(load) precachetextures();
     setupmaterials();
     invalidatepostfx();
+    clearshadowcache();
     updatevabbs(true);
     if(load) 
     {

@@ -597,6 +597,29 @@ void shadowmaskbatchedmodels()
     }
 }
 
+int batcheddynamicmodels()
+{
+    int visible = 0;
+    loopv(batchedmodels)
+    {
+        batchedmodel &b = batchedmodels[i];
+        if(b.flags&MDL_MAPMODEL) break;
+        visible |= b.visible;
+    }
+    loopv(batches)
+    {
+        modelbatch &b = batches[i];
+        if(!(b.flags&MDL_MAPMODEL) || b.batched < 0 || !b.m->animated()) continue;
+        for(int j = b.batched; j >= 0;)
+        {
+            batchedmodel &bm = batchedmodels[j];
+            j = bm.next;
+            visible |= bm.visible;
+        }
+    }
+    return visible;
+}
+
 void rendermodelbatches()
 {
     loopv(batches)

@@ -2018,7 +2018,7 @@ template<class MDL> struct skelcommands : modelcommands<MDL, struct MDL::skelmes
         this->modelcommand(setpitch, "pitch", "sffff");
         this->modelcommand(setpitchtarget, "pitchtarget", "ssiff");
         this->modelcommand(setpitchcorrect, "pitchcorrect", "ssfff");
-        if(MDL::animated())
+        if(MDL::cananimate())
         {
             this->modelcommand(setanim, "anim", "ssfiii");
             this->modelcommand(setanimpart, "animpart", "s");

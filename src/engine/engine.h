@@ -377,6 +377,8 @@ extern int calcspherecsmsplits(const vec &center, float radius);
 extern void loaddeferredlightshaders();
 extern void cleardeferredlightshaders();
 
+extern void clearshadowcache();
+
 // ents
 extern char *entname(entity &e);
 extern bool haveselent();
@@ -611,6 +613,7 @@ extern void rendermapmodel(int idx, int anim, const vec &o, float yaw = 0, float
 extern void clearbatchedmapmodels();
 extern void preloadmodelshaders();
 extern void preloadusedmapmodels(bool msg = false, bool bih = false);
+extern int batcheddynamicmodels();
 
 // renderparticles
 extern void particleinit();

@@ -21,6 +21,7 @@ struct model
     virtual BIH *setBIH() { return 0; }
     virtual bool envmapped() { return false; }
     virtual bool skeletal() const { return false; }
+    virtual bool animated() const { return false; }
 
     virtual void setshader(Shader *shader) {}
     virtual void setenvmap(float envmapmin, float envmapmax, Texture *envmap) {}

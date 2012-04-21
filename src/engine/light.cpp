@@ -559,12 +559,14 @@ VARF(fullbrightlevel, 0, 128, 255, initlights());
 void clearlights()
 {
     clearlightcache();
+    clearshadowcache();
     cleardeferredlightshaders();
 }
 
 void initlights()
 {
     clearlightcache();
+    clearshadowcache();
     loaddeferredlightshaders();
 }
 

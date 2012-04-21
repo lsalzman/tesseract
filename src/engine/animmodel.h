@@ -884,6 +884,12 @@ struct animmodel : model
             spec.speed = speed;
             spec.priority = priority;
         }
+
+        bool animated() const
+        {
+            loopi(MAXANIMPARTS) if(anims[i]) return true;
+            return false;
+        }
     };
 
     enum
@@ -1095,6 +1101,12 @@ struct animmodel : model
         return false;
     }
 
+    bool animated() const
+    {
+        loopv(parts) if(parts[i]->animated()) return true;
+        return false;
+    }
+ 
     virtual bool loaddefaultparts()
     {
         return true;
@@ -1282,7 +1294,7 @@ template<class MDL> struct modelloader
     static MDL *loading;
     static string dir;
 
-    static bool animated() { return true; }
+    static bool cananimate() { return true; }
     static bool multiparted() { return true; }
     static bool multimeshed() { return true; } 
 };
