@@ -2013,6 +2013,9 @@ void setupshadowatlas()
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo[i]);
 
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D, shadowatlastex[i], 0);
 
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
