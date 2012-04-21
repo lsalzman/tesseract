@@ -728,8 +728,6 @@ void rendereditmaterials()
     glDisable(GL_BLEND);
     glFogfv(GL_FOG_COLOR, oldfogc);
 
-    foggedlineshader->set();
-
     rendermatgrid();
     
     varray::disable();

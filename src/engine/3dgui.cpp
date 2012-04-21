@@ -390,7 +390,7 @@ struct gui : g3d_gui
             
             e->draw(curx+FONTW/2, cury, color, hit && editing);
             
-            lineshader->set();
+            notextureshader->set();
             glDisable(GL_TEXTURE_2D);
             glDisable(GL_BLEND);
             if(editing) glColor3f(1, 0, 0);

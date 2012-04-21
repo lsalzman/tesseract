@@ -507,14 +507,15 @@ VAR(dtoutline, 0, 1, 1);
 
 void renderoutline()
 {
-    lineshader->set();
+    notextureshader->set();
 
     glDisable(GL_TEXTURE_2D);
     glEnableClientState(GL_VERTEX_ARRAY);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    float colorscale = (hdr ? 0.5f : 1)/255;
-    glColor3f(colorscale*((outlinecolour>>16)&0xFF), colorscale*((outlinecolour>>8)&0xFF), colorscale*(outlinecolour&0xFF));
+    bvec color((outlinecolour>>16)&0xFF, (outlinecolour>>8)&0xFF, outlinecolour&0xFF);
+    if(hdr) color.shr(1);
+    glColor3ub(color.x, color.y, color.z);
 
     enablepolygonoffset(GL_POLYGON_OFFSET_LINE);
 
@@ -584,7 +585,9 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
 
     glEnable(GL_TEXTURE_2D); 
     glBindTexture(GL_TEXTURE_2D, tex);
-    glColor4ub((blendbrushcolor>>16)&0xFF, (blendbrushcolor>>8)&0xFF, blendbrushcolor&0xFF, 0x40);
+    bvec color((blendbrushcolor>>16)&0xFF, (blendbrushcolor>>8)&0xFF, blendbrushcolor&0xFF);
+    if(hdr) color.shr(1);
+    glColor4ub(color.x, color.y, color.z, 0x40);
 
     LOCALPARAM(texgenS, (1.0f/w, 0, 0, -x/w));
     LOCALPARAM(texgenT, (0, 1.0f/h, 0, -y/h));
@@ -1931,7 +1934,7 @@ bool renderexplicitsky(bool outline)
                 glEnableClientState(GL_VERTEX_ARRAY);
                 if(outline)
                 {
-                    lineshader->set();
+                    notextureshader->set();
                     bvec color((explicitskycolour>>16)&0xFF, (explicitskycolour>>8)&0xFF, explicitskycolour&0xFF);
                     if(hdr) color.shr(1);
                     glColor3ub(color.x, color.y, color.z);
