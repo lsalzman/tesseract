@@ -3112,7 +3112,7 @@ void renderao()
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    LOCALPARAM(aoparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, (2.0f*M_PI*aodark)/aotaps, aosharp));
+    LOCALPARAM(tapparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, (2.0f*M_PI*aodark)/aotaps, aosharp));
     LOCALPARAM(offsetscale, (xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]));
     screenquad(vieww, viewh, aow/float(1<<aonoise), aoh/float(1<<aonoise));
 
@@ -3522,6 +3522,8 @@ void drawminimap()
     if(!game::needminimap()) { clearminimap(); return; }
 
     renderprogress(0, "generating mini-map...", 0, !renderedframe);
+
+    gl_setupframe(screen->w, screen->h);
 
     if(!deferredminimapshader) deferredminimapshader = loaddeferredlightshader("m");
 

@@ -2305,6 +2305,7 @@ void genenvmaps()
     if(envmaps.empty()) return;
     renderprogress(0, "generating environment maps...");
     int lastprogress = SDL_GetTicks();
+    gl_setupframe(screen->w, screen->h);
     loopv(envmaps)
     {
         envmap &em = envmaps[i];
