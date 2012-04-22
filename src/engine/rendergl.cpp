@@ -2247,6 +2247,7 @@ VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
 VAR(smcache, 0, 1, 2);
+VAR(smcacheblit, 0, 0, 1);
 VARF(smgather, 0, 0, 1, cleardeferredlightshaders());
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
@@ -3079,8 +3080,22 @@ void rendercsmshadowmaps()
 
 void copyshadowmaps()
 {
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas^1]);
-    glBindTexture(GL_TEXTURE_2D, shadowatlastex[curshadowatlas]);
+    if(hasFBB && smcacheblit) 
+    {
+        glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas]);
+        glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas^1]);
+    }
+    else
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas^1]);
+        glBindTexture(GL_TEXTURE_2D, shadowatlastex[curshadowatlas]);
+    }
+    #define COPYSHADOWMAP(xoff, yoff, xsz, ysz) do { \
+        if(hasFBB && smcacheblit) \
+            glBlitFramebuffer_(cached->x + xoff, cached->y + yoff, cached->x + xoff + xsz, cached->y + yoff + ysz, \
+                               sm.x + xoff, sm.y + yoff, sm.x + xoff + xsz, sm.y + yoff + ysz, GL_DEPTH_BUFFER_BIT, GL_NEAREST); \
+        else glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x + xoff, sm.y + yoff, cached->x + xoff, cached->y + yoff, xsz, ysz); \
+    } while(0)
     loopv(shadowmaps)
     {
         shadowmapinfo &sm = shadowmaps[i];
@@ -3088,13 +3103,13 @@ void copyshadowmaps()
         shadowcacheval *cached = sm.cached;
         if(shadowmapping == SM_TETRA)
         {
-            if(cached->sidemask&0x03) glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x, sm.y, cached->x, cached->y, sm.size, sm.size);
-            if(cached->sidemask&0x0C) glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x + sm.size, sm.y, cached->x + sm.size, cached->y, sm.size, sm.size);
+            if(cached->sidemask&0x03) COPYSHADOWMAP(0, 0, sm.size, sm.size);
+            if(cached->sidemask&0x0C) COPYSHADOWMAP(sm.size, 0, sm.size, sm.size);
         }
         else loop(side, 6) if(cached->sidemask&(1<<side))
         {
             int sidex = (side>>1)*sm.size, sidey = (side&1)*sm.size;
-            glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x + sidex, sm.y + sidey, cached->x + sidex, cached->y + sidey, sm.size, sm.size);
+            COPYSHADOWMAP(sidex, sidey, sm.size, sm.size);
         }
 #if 0
         int sidemask = cached->sidemask, x, y, w, h;
@@ -3112,7 +3127,7 @@ void copyshadowmaps()
             w = (sidemask & 0x30 ? 3 * sm.size : (sidemask & 0xC ? 2 * sm.size : sm.size)) - x;
             h = (sidemask & 0x2A ? 2 * sm.size : sm.size) - y;
         }
-        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, sm.x + x, sm.y + y, cached->x + x, cached->y + y, w, h);
+        COPYSHADOWMAP(x, y, w, h);
 #endif
     }    
 }
