@@ -294,7 +294,7 @@ engine/rendergl.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/rendergl.o: shared/ents.h shared/command.h shared/iengine.h
 engine/rendergl.o: shared/igame.h engine/world.h engine/octa.h engine/light.h
 engine/rendergl.o: engine/bih.h engine/texture.h engine/model.h
-engine/rendergl.o: engine/varray.h
+engine/rendergl.o: engine/varray.h engine/AreaTex.h engine/SearchTex.h
 engine/rendermodel.o: engine/engine.h shared/cube.h shared/tools.h
 engine/rendermodel.o: shared/geom.h shared/ents.h shared/command.h
 engine/rendermodel.o: shared/iengine.h shared/igame.h engine/world.h

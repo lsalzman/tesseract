@@ -537,13 +537,12 @@ void gl_checkextensions()
     }
     else conoutf(CON_WARN, "WARNING: No cube map texture support. (no reflective glass)");
 
-    extern int usenp2;
     if(hasext(exts, "GL_ARB_texture_non_power_of_two"))
     {
         hasNP2 = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_non_power_of_two extension.");
     }
-    else if(usenp2) conoutf(CON_WARN, "WARNING: Non-power-of-two textures not supported!");
+    else fatal("Non-power-of-two texture support is required!");
 
     if(hasext(exts, "GL_ARB_texture_compression") && hasext(exts, "GL_EXT_texture_compression_s3tc"))
     {
@@ -624,7 +623,7 @@ void glext(char *ext)
 COMMAND(glext, "s");
 
 // GPU-side timing information will use OGL timers
-enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
+enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
 #define TIMER_CPU TIMER_CPU_SM
 static const char *timer_string[] = {
     "shadow map",
@@ -633,6 +632,7 @@ static const char *timer_string[] = {
     "hdr processing",
     "ambient obscurance",
     "alpha geometry",
+    "smaa",
     "buffer splitting",
     "buffer merging",
 
@@ -817,6 +817,9 @@ void cleanupgl()
 
     extern void cleanupao();
     cleanupao();
+
+    extern void cleanupsmaa();
+    cleanupsmaa();
 
     extern void cleanupshadowatlas();
     cleanupshadowatlas();
@@ -1517,6 +1520,7 @@ void screenquad(float sw, float sh, float sw2, float sh2)
 
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0;
+GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[3] = { 0, 0, 0 };
 GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 };
 int hdrclear = 0;
 GLuint refractfbo = 0, refracttex = 0;
@@ -1577,7 +1581,7 @@ static Shader *bilateralshader[2] = { NULL, NULL };
 
 Shader *loadbilateralshader(int pass)
 {
-    if(!aobilateral) return (Shader *)(void *)-1;
+    if(!aobilateral) return nullshader;
 
     string opts;
     int optslen = 0;
@@ -1598,7 +1602,7 @@ Shader *loadbilateralshader(int pass)
         defformatstring(cmd)("bilateralshader \"%s\" %d", opts, aobilateral);
         execute(cmd);
         s = lookupshaderbyname(name);
-        if(!s) s = (Shader *)(void *)-1;
+        if(!s) s = nullshader;
     }
     return s;
 }
@@ -1632,7 +1636,7 @@ Shader *loadambientobscuranceshader()
         defformatstring(cmd)("ambientobscuranceshader \"%s\" %d", opts, aotaps);
         execute(cmd);
         s = lookupshaderbyname(name);
-        if(!s) s = (Shader *)(void *)-1;
+        if(!s) s = nullshader;
     }
     return s;
 }
@@ -1718,6 +1722,121 @@ void viewao()
     notextureshader->set();
 }
 
+#include "AreaTex.h"
+#include "SearchTex.h"
+
+extern int smaaquality, hdrprec, gdepthformat, gstencil, gdepthstencil, glineardepth;
+
+static Shader *smaalumaedgeshader = NULL, *smaacoloredgeshader = NULL, *smaablendweightshader = NULL, *smaaneighborhoodshader = NULL;
+
+void loadsmaashaders()
+{
+    defformatstring(lumaedgename)("SMAALumaEdgeDetection%d", smaaquality);
+    defformatstring(coloredgename)("SMAAColorEdgeDetection%d", smaaquality);
+    defformatstring(blendweightname)("SMAABlendingWeightCalculation%d", smaaquality);
+    defformatstring(neighborhoodname)("SMAANeighborhoodBlending%d", smaaquality);
+    smaalumaedgeshader = lookupshaderbyname(lumaedgename);
+    smaacoloredgeshader = lookupshaderbyname(coloredgename);
+    smaablendweightshader = lookupshaderbyname(blendweightname);
+    smaaneighborhoodshader = lookupshaderbyname(neighborhoodname);
+    if(smaalumaedgeshader && smaacoloredgeshader && smaablendweightshader && smaaneighborhoodshader) return;
+    defformatstring(cmd)("smaashaders %d\n", smaaquality);
+    execute(cmd);
+    smaalumaedgeshader = lookupshaderbyname(lumaedgename);
+    if(!smaalumaedgeshader) smaalumaedgeshader = nullshader;
+    smaacoloredgeshader = lookupshaderbyname(coloredgename);
+    if(!smaacoloredgeshader) smaacoloredgeshader = nullshader;
+    smaablendweightshader = lookupshaderbyname(blendweightname);
+    if(!smaablendweightshader) smaablendweightshader = nullshader;
+    smaaneighborhoodshader = lookupshaderbyname(neighborhoodname);
+    if(!smaaneighborhoodshader) smaaneighborhoodshader = nullshader;
+}
+
+void clearsmaashaders()
+{
+    smaalumaedgeshader = NULL;
+    smaacoloredgeshader = NULL;
+    smaablendweightshader = NULL;
+    smaaneighborhoodshader = NULL;
+}
+
+void setupsmaa()
+{
+    if(!smaaareatex) glGenTextures(1, &smaaareatex);
+    if(!smaasearchtex) glGenTextures(1, &smaasearchtex);
+    createtexture(smaaareatex, AREATEX_WIDTH, AREATEX_HEIGHT, areaTexBytes, 3, 1, GL_LUMINANCE_ALPHA, GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, false);
+    createtexture(smaasearchtex, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, searchTexBytes, 3, 0, GL_LUMINANCE, GL_TEXTURE_2D, 0, 0, 0, false);
+    loopi(3) 
+    {
+        if(!smaafbo[i]) glGenFramebuffers_(1, &smaafbo[i]);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[i]);
+        GLuint tex = 0;
+        switch(i)
+        {
+            case 0: tex = gcolortex; break;
+            case 1: tex = gnormaltex; break;
+            case 2: tex = gglowtex; break;
+        }
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, tex, 0);
+        if(i > 0)
+        {
+            if(gdepthformat)
+            {
+                glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+                if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+            }
+            else
+            {
+                glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+                if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+                else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+            }
+        }
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating SMAA buffer!");
+    }
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    loadsmaashaders();
+}
+
+void cleanupsmaa()
+{
+    if(smaaareatex) { glDeleteTextures(1, &smaaareatex); smaaareatex = 0; }
+    if(smaasearchtex) { glDeleteTextures(1, &smaasearchtex); smaasearchtex = 0; }
+    loopi(3) if(smaafbo[i]) { glDeleteFramebuffers_(1, &smaafbo[i]); smaafbo[i] = 0; }
+
+    clearsmaashaders();
+}
+
+VARF(smaa, 0, 0, 1, cleanupsmaa());
+VARF(smaaquality, 0, 2, 3, cleanupsmaa());
+VAR(smaacoloredge, 0, 1, 1);
+VAR(smaastencil, 0, 1, 1);
+VAR(debugsmaa, 0, 0, 5);
+
+void viewsmaa()
+{
+    int w = min(screen->w, screen->h)*1.0f, h = (w*screen->h)/screen->w, tw = gw, th = gh;
+    glColor3f(1, 1, 1);
+    switch(debugsmaa)
+    {
+        case 1: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex); break;
+        case 2: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex); break;
+        case 3: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex); break;
+        case 4: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex); tw = AREATEX_WIDTH; th = AREATEX_HEIGHT; break;
+        case 5: defaultshader->set(); glBindTexture(GL_TEXTURE_2D, smaasearchtex); tw = 1; th = 1; break;
+        
+    }
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, th); glVertex2i(0, 0);
+    glTexCoord2f(tw, th); glVertex2i(w, 0);
+    glTexCoord2f(0, 0); glVertex2i(0, h);
+    glTexCoord2f(tw, 0); glVertex2i(w, h);
+    glEnd();
+    notextureshader->set();
+}
+
 VAR(gdepthformat, 1, 0, 0);
 
 void maskgbuffer(const char *mask)
@@ -1733,8 +1852,6 @@ void maskgbuffer(const char *mask)
     }
     glDrawBuffers_(numbufs, drawbufs);
 }
-
-extern int hdrprec, gstencil, gdepthstencil, glineardepth;
 
 void initgbuffer()
 {
@@ -1859,6 +1976,7 @@ void setupgbuffer(int w, int h)
 
     cleanupbloom();
     cleanupao();
+    cleanupsmaa();
 }
 
 void cleanupgbuffer()
@@ -1976,7 +2094,7 @@ struct shadowcache : hashtable<shadowcachekey, shadowcacheval>
 {
     bool valid;
 
-    shadowcache() : hashtable(256), valid(false) {}
+    shadowcache() : hashtable<shadowcachekey, shadowcacheval>(256), valid(false) {}
 
     void reset()
     {
@@ -2572,7 +2690,7 @@ Shader *loaddeferredlightshader(const char *prefix = NULL)
         defformatstring(cmd)("deferredlightshader \"%s\" \"%s\" \"%s\" %d", common, shadow, sun, csmsplitn);
         execute(cmd);
         s = lookupshaderbyname(name);
-        if(!s) s = (Shader *)(void *)-1;
+        if(!s) s = nullshader;
     }
     return s;
 }
@@ -2594,7 +2712,7 @@ VAR(culllighttiles, 0, 1, 1);
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
     Shader *s = minimapping ? deferredminimapshader : deferredlightshader;
-    if(!s || s == (Shader *)(void *)-1) return;
+    if(!s || s == nullshader) return;
 
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
@@ -3397,7 +3515,7 @@ void processhdr()
         }
     }
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaa ? smaafbo[0] : 0);
     glViewport(0, 0, vieww, viewh);
     SETSHADER(hdrtonemap);
     LOCALPARAM(bloomsize, (b0w, b0h));
@@ -3408,6 +3526,70 @@ void processhdr()
     glActiveTexture_(GL_TEXTURE0_ARB);
     screenquad(vieww, viewh);
     timer_end(TIMER_HDR);
+
+    if(smaa)
+    {
+        timer_begin(TIMER_SMAA);
+
+        if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) 
+        {
+            glEnable(GL_STENCIL_TEST);
+            glStencilFunc(GL_ALWAYS, 4, 4);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+        }
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1]);
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        if(smaacoloredge) smaacoloredgeshader->set();
+        else smaalumaedgeshader->set();
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+        screenquad(vieww, viewh);
+
+        if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
+        {
+            glStencilFunc(GL_EQUAL, 4, 4);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        }
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2]);
+        glClear(GL_COLOR_BUFFER_BIT);
+        smaablendweightshader->set();
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glActiveTexture_(GL_TEXTURE1_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
+        glActiveTexture_(GL_TEXTURE2_ARB);
+        glBindTexture(GL_TEXTURE_2D, smaasearchtex);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+        screenquad(vieww, viewh);
+
+        if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+        smaaneighborhoodshader->set();
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glActiveTexture_(GL_TEXTURE1_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+        screenquad(vieww, viewh);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+        timer_end(TIMER_SMAA);
+    }
 }
 
 FVAR(refractmargin, 0, 0.1f, 1);
@@ -3897,6 +4079,7 @@ void gl_setupframe(int w, int h)
     setupgbuffer(w, h);
     if(bloomw < 0 || bloomh < 0) setupbloom(w, h);
     if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
+    if(smaa && !smaafbo[0]) setupsmaa();
     curshadowatlas = (curshadowatlas+1)%2;
     if(!shadowatlasfbo[curshadowatlas]) setupshadowatlas();
     shadowcache[curshadowatlas].reset();
@@ -4282,6 +4465,7 @@ void gl_drawhud(int w, int h)
     else if(debugao) viewao(); 
     else if(debugdepth) viewdepth();
     else if(debugrefract) viewrefract();
+    else if(debugsmaa) viewsmaa();
 
     glEnable(GL_BLEND);
     

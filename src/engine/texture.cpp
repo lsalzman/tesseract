@@ -470,7 +470,7 @@ void resizetexture(int w, int h, bool mipmap, bool canreduce, GLenum target, int
     }
 }
 
-void uploadtexture(GLenum target, GLenum internal, int tw, int th, GLenum format, GLenum type, void *pixels, int pw, int ph, int pitch, bool mipmap)
+void uploadtexture(GLenum target, GLenum internal, int tw, int th, GLenum format, GLenum type, const void *pixels, int pw, int ph, int pitch, bool mipmap)
 {
     int bpp = formatsize(format), row = 0, rowalign = 0;
     if(!pitch) pitch = pw*bpp; 
@@ -565,7 +565,7 @@ GLenum uncompressedformat(GLenum format)
     return GL_FALSE;
 }
     
-void setuptexparameters(int tnum, void *pixels, int clamp, int filter, GLenum format, GLenum target)
+void setuptexparameters(int tnum, const void *pixels, int clamp, int filter, GLenum format, GLenum target)
 {
     glBindTexture(target, tnum);
     glTexParameteri(target, GL_TEXTURE_WRAP_S, clamp&1 ? GL_CLAMP_TO_EDGE : GL_REPEAT);
@@ -582,7 +582,7 @@ void setuptexparameters(int tnum, void *pixels, int clamp, int filter, GLenum fo
         glTexParameteri(target, GL_GENERATE_MIPMAP_SGIS, GL_TRUE);
 }
 
-void createtexture(int tnum, int w, int h, void *pixels, int clamp, int filter, GLenum component, GLenum subtarget, int pw, int ph, int pitch, bool resize, GLenum format)
+void createtexture(int tnum, int w, int h, const void *pixels, int clamp, int filter, GLenum component, GLenum subtarget, int pw, int ph, int pitch, bool resize, GLenum format)
 {
     GLenum target = textarget(subtarget), type = GL_UNSIGNED_BYTE;
     switch(component)
@@ -687,7 +687,7 @@ static bool alphaformat(GLenum format)
     }
 }
 
-int texalign(void *data, int w, int bpp)
+int texalign(const void *data, int w, int bpp)
 {
     size_t address = size_t(data) | (w*bpp);
     if(address&1) return 1;

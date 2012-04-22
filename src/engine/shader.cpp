@@ -4,7 +4,7 @@
 
 Shader *Shader::lastshader = NULL;
 
-Shader *defaultshader = NULL, *rectshader = NULL, *cubemapshader = NULL, *notextureshader = NULL, *nocolorshader = NULL, *foggedshader = NULL, *foggednotextureshader = NULL, *stdworldshader = NULL;
+Shader *nullshader = NULL, *defaultshader = NULL, *rectshader = NULL, *cubemapshader = NULL, *notextureshader = NULL, *nocolorshader = NULL, *foggedshader = NULL, *foggednotextureshader = NULL, *stdworldshader = NULL;
 
 static hashtable<const char *, GlobalShaderParamState> globalparams(256);
 static hashtable<const char *, int> localparams(256);
@@ -38,9 +38,10 @@ void loadshaders()
     execfile("data/glsl.cfg");
     standardshader = false;
     initshaders = false;
+    nullshader = lookupshaderbyname("null");
     defaultshader = lookupshaderbyname("default");
     stdworldshader = lookupshaderbyname("stdworld");
-    if(!defaultshader || !stdworldshader) fatal("cannot find shader definitions");
+    if(!nullshader || !defaultshader || !stdworldshader) fatal("cannot find shader definitions");
 
     extern Slot dummyslot;
     dummyslot.shader = stdworldshader;
