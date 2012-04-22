@@ -1166,7 +1166,7 @@ bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1,
             sy2 = max(sy2, y);
         }
     }
-    if(sx1 >= sx2 || sy1 >= sy2) return false;
+    if(sx1 > sx2 || sy1 > sy2) return false;
     loopi(8)
     {
         const vec4 &p = v[i];
