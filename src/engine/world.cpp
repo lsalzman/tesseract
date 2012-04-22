@@ -397,6 +397,7 @@ void attachentities()
     if(oldtype!=e.type) detachentity(e); \
     if(e.type!=ET_EMPTY) { addentity(n); if(oldtype!=e.type) attachentity(e); } \
     entities::editent(n, true)); \
+    clearshadowcache(); \
 }
 #define addgroup(exp)   { loopv(entities::getents()) entfocus(i, if(exp) entadd(n)); }
 #define setgroup(exp)   { entcancel(); addgroup(exp); }

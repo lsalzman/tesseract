@@ -3162,15 +3162,18 @@ void rendershadowmaps()
                 if(dynmask&0x3) dynmask |= 0x3;
                 if(dynmask&0xC) dynmask |= 0xC;
             }
-            cached = shadowcache[curshadowatlas^1].access(l);
-            if(cached && sm.size == cached->size)
+            if(shadowcache[curshadowatlas^1].valid)
             {
-                cachemask = cached->sidemask & ~dynmask;
-                cached->sidemask = cachemask;
-                if(cachemask)
+                cached = shadowcache[curshadowatlas^1].access(l);
+                if(cached && sm.size == cached->size)
                 {
-                    numcached++;
-                    sm.cached = cached;
+                    cachemask = cached->sidemask & ~dynmask;
+                    cached->sidemask = cachemask;
+                    if(cachemask)
+                    {
+                        numcached++;
+                        sm.cached = cached;
+                    }
                 }
             }
 
