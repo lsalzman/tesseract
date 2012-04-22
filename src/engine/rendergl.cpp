@@ -2300,6 +2300,8 @@ vector<shadowmapinfo> shadowmaps;
 
 static shadowmapinfo *addshadowmap(ushort x, ushort y, int size, int &idx)
 {
+    if(smcache && hasFBB && smcacheblit > 1 && curshadowatlas) x += SHADOWATLAS_SIZE;
+
     idx = shadowmaps.length();
     shadowmapinfo *sm = &shadowmaps.add();
     sm->x = x;
@@ -2349,7 +2351,6 @@ void cascaded_shadow_map::setup()
             //fatal("cascaded shadow maps MUST be packed");
             return;
         }
-        if(smcache && hasFBB && smcacheblit > 1 && curshadowatlas) smx += SHADOWATLAS_SIZE;
         addshadowmap(smx, smy, csmmaxsize, splits[i].idx);
     }
     getmodelmatrix();
@@ -2982,7 +2983,7 @@ void collectlights()
         }
     }
 }
-   
+  
 void packlights()
 { 
     plane cullx[LIGHTTILE_W+1], cully[LIGHTTILE_H+1];
@@ -3004,13 +3005,16 @@ void packlights()
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
-        if(smnoshadow <= 1 && l.radius > smminradius && (!l.query || l.query->owner != &l || !checkquery(l.query)) && shadowatlaspacker.insert(smx, smy, smw, smh))
+        if(smnoshadow <= 1 && l.radius > smminradius)
         {
-            if(smcache && hasFBB && smcacheblit > 1 && curshadowatlas) smx += SHADOWATLAS_SIZE;
-            sm = addshadowmap(smx, smy, smsize, smidx);
-            sm->light = idx;
-            l.shadowmap = smidx;
-            smused += smsize*smsize*(tetra ? 2 : 6);
+            if(l.query && l.query->owner && checkquery(l.query)) continue;
+            if(shadowatlaspacker.insert(smx, smy, smw, smh))
+            {
+                sm = addshadowmap(smx, smy, smsize, smidx);
+                sm->light = idx;
+                l.shadowmap = smidx;
+                smused += smsize*smsize*(tetra ? 2 : 6);
+            }
         }
 
         int tx1 = max(int(floor((l.sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((l.sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
@@ -3041,7 +3045,7 @@ void rendercsmshadowmaps()
 {
     shadowmapping = SM_CASCADE;
     shadoworigin = vec(0, 0, 0);
-    shadowradius = 0;
+    shadowradius = 2*worldsize;
     shadowbias = 0;
 
     if(csmpolyfactor || csmpolyoffset)

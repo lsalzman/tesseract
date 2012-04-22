@@ -971,11 +971,11 @@ int shadowside = 0;
 
 vtxarray *shadowva = NULL;
 
-void addshadowva(vtxarray *va, float dist)
+static inline void addshadowva(vtxarray *va, float dist)
 {
     va->rdistance = int(dist);
 
-    int hash = clamp(int(dist*VASORTSIZE/worldsize), 0, VASORTSIZE-1);
+    int hash = clamp(int(dist*VASORTSIZE/shadowradius), 0, VASORTSIZE-1);
     vtxarray **prev = &vasort[hash], *cur = vasort[hash];
 
     while(cur && va->rdistance > cur->rdistance)
@@ -1001,6 +1001,23 @@ void sortshadowvas()
     }
 }
 
+void findtetrashadowvas(vector<vtxarray *> &vas)
+{
+    loopv(vas)
+    {
+        vtxarray &v = *vas[i];
+        float dist = vadist(&v, shadoworigin);
+        if(dist < shadowradius || !smdistcull)
+        {
+            v.shadowmask = !smbbcull ? 0x3F : (v.children.length() || v.mapmodels.length() ? 
+                                calcbbtetramask(v.bbmin, v.bbmax, shadoworigin, shadowradius, shadowbias) :
+                                calcbbtetramask(v.geommin, v.geommax, shadoworigin, shadowradius, shadowbias));
+            addshadowva(&v, dist);
+            if(v.children.length()) findtetrashadowvas(v.children);
+        }
+    }
+}
+
 void findshadowvas(vector<vtxarray *> &vas)
 {
     loopv(vas)
@@ -1009,20 +1026,9 @@ void findshadowvas(vector<vtxarray *> &vas)
         float dist = vadist(&v, shadoworigin);
         if(dist < shadowradius || !smdistcull)
         {
-            ivec bbmin, bbmax;
-            if(v.children.length() || v.mapmodels.length()) { bbmin = v.bbmin; bbmax = v.bbmax; }
-            else { bbmin = v.geommin; bbmax = v.geommax; }
-            switch(shadowmapping)
-            {
-                case SM_TETRA:
-                    v.shadowmask = smbbcull ? calcbbtetramask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias) : 0xF;
-                    break;
-                case SM_CUBEMAP:
-                    v.shadowmask = smbbcull ? calcbbsidemask(bbmin, bbmax, shadoworigin, shadowradius, shadowbias) : 0x3F;
-                    break;
-                default:
-                    continue;
-            }
+            v.shadowmask = !smbbcull ? 0x3F : (v.children.length() || v.mapmodels.length() ?
+                                calcbbsidemask(v.bbmin, v.bbmax, shadoworigin, shadowradius, shadowbias) :
+                                calcbbsidemask(v.geommin, v.geommax, shadoworigin, shadowradius, shadowbias));
             addshadowva(&v, dist);
             if(v.children.length()) findshadowvas(v.children);
         }
@@ -1032,7 +1038,8 @@ void findshadowvas(vector<vtxarray *> &vas)
 void findshadowvas()
 {
     memset(vasort, 0, sizeof(vasort));
-    findshadowvas(varoot);
+    if(shadowmapping == SM_TETRA) findtetrashadowvas(varoot);
+    else findshadowvas(varoot);
     sortshadowvas();
 }
 
