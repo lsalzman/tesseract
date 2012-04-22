@@ -18,6 +18,7 @@ It provides a bunch of new rendering features such as:
 * screen-space ambient occlusion
 * screen-space reflections and refractions for water and glass (use as many water planes as you want now!)
 * screen-space refractive alpha cubes
+* morphological anti-aliasing
 
 Install:
 
