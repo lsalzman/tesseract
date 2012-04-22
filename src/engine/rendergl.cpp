@@ -2247,7 +2247,7 @@ VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
 VAR(smcache, 0, 1, 2);
-VAR(smcacheblit, 0, 0, 2);
+VAR(smcacheblit, 0, 1, 1);
 VARF(smgather, 0, 0, 1, cleardeferredlightshaders());
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
@@ -3145,12 +3145,6 @@ void rendershadowmaps()
     }
     if(shadowmapping == SM_TETRA && smtetraclip) glEnable(GL_CLIP_PLANE0);
 
-    if(hasFBB && smcacheblit > 1)
-    {
-        glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas]);
-        glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, shadowatlasfbo[curshadowatlas^1]);
-    }
-
     int numcached = 0;
     loopv(shadowmaps)
     {
@@ -3207,28 +3201,20 @@ void rendershadowmaps()
             dst->sidemask = (cachemask | sidemask) & ~dynmask;
 
             sidemask &= ~cachemask;
-            if(hasFBB && smcacheblit > 1) cachemask &= ~sidemask;
-            else
-            {
-                if(!sidemask) { clearbatchedmapmodels(); continue; }
-                cachemask = 0;
-            }
+            if(!sidemask) { clearbatchedmapmodels(); continue; }
         }
 
-        if(sidemask)
+        float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
+        GLfloat smprojmatrix[16] =
         {
-            float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
-            GLfloat smprojmatrix[16] =
-            {
-                float(sm.size - smborder) / sm.size, 0, 0, 0,
-                0, float(sm.size - smborder) / sm.size, 0, 0,
-                0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -1,
-                0, 0, -2*smnearclip*smfarclip / (smfarclip - smnearclip), 0
-            };
-            glMatrixMode(GL_PROJECTION);
-            glLoadMatrixf(smprojmatrix);
-            glMatrixMode(GL_MODELVIEW);
-        }
+            float(sm.size - smborder) / sm.size, 0, 0, 0,
+            0, float(sm.size - smborder) / sm.size, 0, 0,
+            0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -1,
+            0, 0, -2*smnearclip*smfarclip / (smfarclip - smnearclip), 0
+        };
+        glMatrixMode(GL_PROJECTION);
+        glLoadMatrixf(smprojmatrix);
+        glMatrixMode(GL_MODELVIEW);
 
         GLfloat lightmatrix[16] =
         {
@@ -3242,11 +3228,8 @@ void rendershadowmaps()
 
         if(shadowmapping == SM_TETRA)
         {
-            if(sidemask)
-            { 
-                glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size, sm.size);
-                glClear(GL_DEPTH_BUFFER_BIT);
-            }
+            glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size, sm.size);
+            glClear(GL_DEPTH_BUFFER_BIT);
             loop(side, 4) if(sidemask&(1<<side))
             {
                 int sidex = (side>>1)*sm.size;
@@ -3273,20 +3256,15 @@ void rendershadowmaps()
                 rendershadowmapworld();
                 rendermodelbatches();
             }
-            if(cachemask&0x03) BLITSHADOWMAP(0, 0, sm.size, sm.size);
-            if(cachemask&0x0C) BLITSHADOWMAP(sm.size, 0, sm.size, sm.size);
         }
         else
         {
-            if(sidemask)
-            {
-                int cx1 = sidemask & 0x03 ? 0 : (sidemask & 0xC ? sm.size : 2 * sm.size),
-                    cx2 = sidemask & 0x30 ? 3 * sm.size : (sidemask & 0xC ? 2 * sm.size : sm.size),
-                    cy1 = sidemask & 0x15 ? 0 : sm.size,
-                    cy2 = sidemask & 0x2A ? 2 * sm.size : sm.size;
-                glScissor(sm.x + cx1, sm.y + cy1, cx2 - cx1, cy2 - cy1);
-                glClear(GL_DEPTH_BUFFER_BIT);
-            }
+            int cx1 = sidemask & 0x03 ? 0 : (sidemask & 0xC ? sm.size : 2 * sm.size),
+                cx2 = sidemask & 0x30 ? 3 * sm.size : (sidemask & 0xC ? 2 * sm.size : sm.size),
+                cy1 = sidemask & 0x15 ? 0 : sm.size,
+                cy2 = sidemask & 0x2A ? 2 * sm.size : sm.size;
+            glScissor(sm.x + cx1, sm.y + cy1, cx2 - cx1, cy2 - cy1);
+            glClear(GL_DEPTH_BUFFER_BIT);
             loop(side, 6) if(sidemask&(1<<side))
             {
                 int sidex = (side>>1)*sm.size, sidey = (side&1)*sm.size;
@@ -3303,11 +3281,6 @@ void rendershadowmaps()
                 rendershadowmapworld();
                 rendermodelbatches();
             }
-            loop(side, 6) if(cachemask&(1<<side))
-            {
-                int sidex = (side>>1)*sm.size, sidey = (side&1)*sm.size;
-                BLITSHADOWMAP(sidex, sidey, sm.size, sm.size);
-            }
         }
 
         clearbatchedmapmodels();
@@ -3316,7 +3289,7 @@ void rendershadowmaps()
     if(shadowmapping == SM_TETRA && smtetraclip) glDisable(GL_CLIP_PLANE0);
     if(smpolyfactor || smpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
 
-    if(numcached > 0 && (!hasFBB || smcacheblit <= 1)) copyshadowmaps();
+    if(numcached > 0) copyshadowmaps();
     
     shadowmapping = 0;
 }
