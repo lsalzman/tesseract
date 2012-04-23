@@ -2280,7 +2280,7 @@ void viewshadowatlas()
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
     defaultshader->set();
     glColor3f(1, 1, 1);
-    glBindTexture(GL_TEXTURE_2D, shadowatlastex[curshadowatlas]);
+    glBindTexture(GL_TEXTURE_2D, shadowatlastex[(hasFBB && smcacheblit > 1)?0:curshadowatlas]);
     if(!usegatherforsm()) setsmnoncomparemode(); // "normal" mode
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0, 0); glVertex2i(screen->w-w, screen->h-h);
@@ -3089,6 +3089,8 @@ void rendercsmshadowmaps()
 
 void copyshadowmaps()
 {
+    glDisable(GL_SCISSOR_TEST);
+    
     if(hasFBB && smcacheblit) 
     {
         if(smcacheblit <= 1)
