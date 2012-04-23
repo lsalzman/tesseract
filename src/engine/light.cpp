@@ -175,6 +175,72 @@ bool PackNode::insert(ushort &tx, ushort &ty, ushort tw, ushort th)
     return inserted;
 }
 
+void PackNode::reserve(ushort tx, ushort ty, ushort tw, ushort th)
+{
+    if(tx + tw <= x || tx >= x + w || ty + th <= y || ty >= y + h) return;
+    if(child1)
+    {
+        child1->reserve(tx, ty, tw, th);
+        child2->reserve(tx, ty, tw, th);
+        available = max(child1->available, child2->available);
+        return;
+    }
+    int dx1 = tx - x, dx2 = x + w - tx - tw, dx = max(dx1, dx2),
+        dy1 = ty - y, dy2 = y + h - ty - th, dy = max(dy1, dy2),
+        split;
+    if(dx > dy)
+    {
+        if(dx1 > dx2) split = min(dx1, int(w));
+        else split = w - max(dx2, 0);
+        if(w - split <= 0)
+        {
+            w = split; 
+            available = min(w, h);
+            if(dy > 0) reserve(tx, ty, tw, th);
+            else if(tx <= x && tx + tw >= x + w) available = 0;
+            return;
+        }
+        if(split <= 0)
+        {
+            x += split;
+            w -= split;
+            available = min(w, h);
+            if(dy > 0) reserve(tx, ty, tw, th);
+            else if(tx <= x && tx + tw >= x + w) available = 0;
+            return;
+        }
+        child1 = new PackNode(x, y, split, h);
+        child2 = new PackNode(x + split, y, w - split, h);
+    }
+    else
+    {
+        if(dy1 > dy2) split = min(dy1, int(h));
+        else split = h - max(dy2, 0);
+        if(h - split <= 0)
+        {
+            h = split;
+            available = min(w, h);
+            if(dx > 0) reserve(tx, ty, tw, th);
+            else if(ty <= y && ty + th >= y + h) available = 0;
+            return;
+        }
+        if(split <= 0)
+        {
+            y += split;
+            h -= split;
+            available = min(w, h);
+            if(dx > 0) reserve(tx, ty, tw, th);
+            else if(ty <= y && ty + th >= y + h) available = 0;
+            return;
+        }
+        child1 = new PackNode(x, y, w, split);
+        child2 = new PackNode(x, y + split, w, h - split);
+    }
+    child1->reserve(tx, ty, tw, th);
+    child2->reserve(tx, ty, tw, th);
+    available = max(child1->available, child2->available);
+}
+
 static void clearsurfaces(cube *c)
 {
     loopi(8)

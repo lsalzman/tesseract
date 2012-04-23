@@ -30,6 +30,7 @@ struct PackNode
     }
 
     bool insert(ushort &tx, ushort &ty, ushort tw, ushort th);
+    void reserve(ushort tx, ushort ty, ushort tw, ushort th);
 };
 
 extern bvec ambientcolor, sunlightcolor;
