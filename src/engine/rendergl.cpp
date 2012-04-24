@@ -3580,28 +3580,26 @@ void processhdr()
     {
         timer_begin(TIMER_SMAA);
 
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1]);
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
         if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) 
         {
             glEnable(GL_STENCIL_TEST);
             glStencilFunc(GL_ALWAYS, 4, 4);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         }
-
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1]);
-        glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
         if(smaacoloredge) smaacoloredgeshader->set();
         else smaalumaedgeshader->set();
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
         screenquad(vieww, viewh);
 
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2]);
         if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
         {
             glStencilFunc(GL_EQUAL, 4, 4);
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
-
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2]);
         glClear(GL_COLOR_BUFFER_BIT);
         smaablendweightshader->set();
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
@@ -3615,7 +3613,6 @@ void processhdr()
         screenquad(vieww, viewh);
         glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
         if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
