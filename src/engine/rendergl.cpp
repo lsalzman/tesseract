@@ -1811,7 +1811,7 @@ void cleanupsmaa()
 
 VARF(smaa, 0, 0, 1, cleanupsmaa());
 VARF(smaaquality, 0, 2, 3, cleanupsmaa());
-VAR(smaacoloredge, 0, 1, 1);
+VAR(smaacoloredge, 0, 0, 1);
 VAR(smaastencil, 0, 1, 1);
 VAR(debugsmaa, 0, 0, 5);
 
