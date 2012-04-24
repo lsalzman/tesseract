@@ -729,10 +729,6 @@ extern void linkvslotshader(VSlot &s, bool load = true);
 extern void linkslotshaders();
 extern const char *getshaderparamname(const char *name);
 
-#define MAXDYNLIGHTS 5
-#define DYNLIGHTBITS 6
-#define DYNLIGHTMASK ((1<<DYNLIGHTBITS)-1)
-
 #define MAXBLURRADIUS 7
 
 extern void setupblurkernel(int radius, float sigma, float *weights, float *offsets);
