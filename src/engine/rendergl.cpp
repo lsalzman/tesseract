@@ -1812,6 +1812,7 @@ void cleanupsmaa()
 VARF(smaa, 0, 0, 1, cleanupsmaa());
 VARF(smaaquality, 0, 2, 3, cleanupsmaa());
 VAR(smaacoloredge, 0, 0, 1);
+VAR(smaadepthmask, 0, 1, 1);
 VAR(smaastencil, 0, 1, 1);
 VAR(debugsmaa, 0, 0, 5);
 
@@ -3583,7 +3584,13 @@ void processhdr()
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1]);
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) 
+        if(smaadepthmask) 
+        {
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_ALWAYS);
+            glDepthRange(1, 1);
+        }
+        else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) 
         {
             glEnable(GL_STENCIL_TEST);
             glStencilFunc(GL_ALWAYS, 4, 4);
@@ -3595,7 +3602,12 @@ void processhdr()
         screenquad(vieww, viewh);
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2]);
-        if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
+        if(smaadepthmask)
+        {
+            glDepthFunc(GL_EQUAL);
+            glDepthMask(GL_FALSE);
+        }
+        else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
         {
             glStencilFunc(GL_EQUAL, 4, 4);
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -3613,7 +3625,14 @@ void processhdr()
         screenquad(vieww, viewh);
         glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
+        if(smaadepthmask) 
+        {
+            glDisable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glDepthFunc(GL_LESS);
+            glDepthRange(0, 1);
+        }
+        else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
         smaaneighborhoodshader->set();
