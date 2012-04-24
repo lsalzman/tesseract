@@ -1765,7 +1765,7 @@ void setupsmaa()
     if(!smaaareatex) glGenTextures(1, &smaaareatex);
     if(!smaasearchtex) glGenTextures(1, &smaasearchtex);
     createtexture(smaaareatex, AREATEX_WIDTH, AREATEX_HEIGHT, areaTexBytes, 3, 1, GL_LUMINANCE_ALPHA, GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, false);
-    createtexture(smaasearchtex, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, searchTexBytes, 3, 0, GL_LUMINANCE, GL_TEXTURE_2D, 0, 0, 0, false);
+    createtexture(smaasearchtex, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, searchTexBytes, 3, 0, GL_LUMINANCE, GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, false);
     loopi(3) 
     {
         if(!smaafbo[i]) glGenFramebuffers_(1, &smaafbo[i]);
@@ -1818,14 +1818,15 @@ VAR(debugsmaa, 0, 0, 5);
 void viewsmaa()
 {
     int w = min(screen->w, screen->h)*1.0f, h = (w*screen->h)/screen->w, tw = gw, th = gh;
+    rectshader->set();
     glColor3f(1, 1, 1);
     switch(debugsmaa)
     {
-        case 1: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex); break;
-        case 2: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex); break;
-        case 3: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex); break;
-        case 4: rectshader->set(); glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex); tw = AREATEX_WIDTH; th = AREATEX_HEIGHT; break;
-        case 5: defaultshader->set(); glBindTexture(GL_TEXTURE_2D, smaasearchtex); tw = 1; th = 1; break;
+        case 1: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex); break;
+        case 2: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex); break;
+        case 3: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex); break;
+        case 4: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex); tw = AREATEX_WIDTH; th = AREATEX_HEIGHT; break;
+        case 5: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex); tw = SEARCHTEX_WIDTH; th = SEARCHTEX_HEIGHT; break;
         
     }
     glBegin(GL_TRIANGLE_STRIP);
@@ -3609,7 +3610,7 @@ void processhdr()
         glActiveTexture_(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
         glActiveTexture_(GL_TEXTURE2_ARB);
-        glBindTexture(GL_TEXTURE_2D, smaasearchtex);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex);
         glActiveTexture_(GL_TEXTURE0_ARB);
         screenquad(vieww, viewh);
 
