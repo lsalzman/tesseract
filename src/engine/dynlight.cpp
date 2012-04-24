@@ -1,6 +1,6 @@
 #include "engine.h"
 
-VARP(maxdynlights, 0, min(3, MAXDYNLIGHTS), MAXDYNLIGHTS);
+VARNP(dynlights, usedynlights, 0, 1, 1);
 VARP(dynlightdist, 0, 1024, 10000);
 
 struct dynlight
@@ -54,7 +54,7 @@ vector<dynlight *> closedynlights;
 
 void adddynlight(const vec &o, float radius, const vec &color, int fade, int peak, int flags, float initradius, const vec &initcolor, physent *owner)
 {
-    if(!maxdynlights) return;
+    if(!usedynlights) return;
     if(o.dist(camera1->o) > dynlightdist || radius <= 0) return;
 
     int insert = 0, expire = fade + peak + lastmillis;
@@ -103,7 +103,7 @@ void updatedynlights()
 int finddynlights()
 {
     closedynlights.setsize(0);
-    if(!maxdynlights) return 0;
+    if(!usedynlights) return 0;
     physent e;
     e.type = ENT_CAMERA;
     e.collidetype = COLLIDE_AABB;
