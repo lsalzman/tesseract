@@ -563,10 +563,19 @@ bool findmaterials()
             loopi(va->matsurfs) editsurfs.add(va->matbuf[i]);
             continue;
         }
-        loopi(va->matsurfs)
+        int i = 0;
+        for(; i < va->matsurfs; i++)
         {
             materialsurface &m = va->matbuf[i];
-            if(m.flags&materialsurface::F_EDIT) continue;
+            if(m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
+            break;
+        }    
+        float sx1, sy1, sx2, sy2;
+        if(i >= va->matsurfs || !calcbbscissor(va->matmin, va->matmax, sx1, sy1, sx2, sy2)) continue;
+        for(; i < va->matsurfs; i++)
+        {
+            materialsurface &m = va->matbuf[i];
+            if(m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
             switch(m.material)
             {
                 case MAT_GLASS: glasssurfs.add(m); break;
@@ -574,8 +583,6 @@ bool findmaterials()
                 case MAT_WATER: if(m.orient == O_TOP) watersurfs.add(m); else waterfallsurfs.add(m); break;
             }
         }
-        float sx1, sy1, sx2, sy2;
-        if(!calcbbscissor(va->matmin, va->matmax, sx1, sy1, sx2, sy2)) continue;
         matsx1 = min(matsx1, sx1);
         matsy1 = min(matsy1, sy1);
         matsx2 = max(matsx2, sx2);

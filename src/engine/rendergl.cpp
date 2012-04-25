@@ -3694,17 +3694,12 @@ void renderalphageom()
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(linearworldmatrix.v);
-    glActiveTexture_(GL_TEXTURE1_ARB);
     glmatrixf raymatrix = mvmatrix.v;
     loopk(4)
     {
         raymatrix.v[0 + k*4] = 0.5f*vieww*(raymatrix.v[2 + k*4] - raymatrix.v[0 + k*4]*projmatrix.v[0]);
         raymatrix.v[1 + k*4] = 0.5f*viewh*(raymatrix.v[2 + k*4] - raymatrix.v[1 + k*4]*projmatrix.v[5]);
     }
-    glLoadMatrixf(raymatrix.v);
-    glActiveTexture_(GL_TEXTURE0_ARB);
 
     loop(side, 2) if(hasalphavas&(1<<side) || (side && hasmats))
     {
@@ -3749,6 +3744,12 @@ void renderalphageom()
         }
 
         if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+        glMatrixMode(GL_TEXTURE);
+        glLoadMatrixf(linearworldmatrix.v);
+        glActiveTexture_(GL_TEXTURE1_ARB);
+        glLoadMatrixf(raymatrix.v);
+        glActiveTexture_(GL_TEXTURE0_ARB);
 
         if(hasalphavas&(1<<side)) renderalphageom(1<<side);
         if(side && hasmats) rendermaterials();
