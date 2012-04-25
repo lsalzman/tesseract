@@ -2750,6 +2750,7 @@ void resetlights()
 
 VAR(depthtestlights, 0, 1, 2);
 VAR(culllighttiles, 0, 1, 1);
+VAR(lighttilebatch, 0, 8, 8);
 
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
@@ -2838,7 +2839,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
         for(int i = 0;;)
         {
-            int n = min(tile.length() - i, 8);
+            int n = min(tile.length() - i, lighttilebatch);
 
             bool shadowmap = n > 0 && lights[tile[i]].shadowmap >= 0;
             loopj(n)
