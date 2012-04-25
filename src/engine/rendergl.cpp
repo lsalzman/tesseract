@@ -2930,6 +2930,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glMatrixMode(GL_MODELVIEW);
 }
 
+VAR(oqlights, 0, 1, 1);
+
 void collectlights()
 {
     // point lights processed here
@@ -2999,7 +3001,7 @@ void collectlights()
 
     lightorder.sort(sortlights);
 
-    if(!envmapping && smquery && hasOQ && oqfrags) loopv(lightorder)
+    if(!envmapping && smquery && hasOQ && oqfrags && oqlights) loopv(lightorder)
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
@@ -3047,13 +3049,17 @@ static inline void addlighttiles(const lightinfo &l, int idx)
         pydist = ydist;
     }
 }
-  
+ 
+VAR(lightsvisible, 1, 0, 0);
+VAR(lightsoccluded, 1, 0, 0);
+ 
 void packlights()
 { 
     vec4 px = mvpmatrix.getrow(0), py = mvpmatrix.getrow(1), pw = mvpmatrix.getrow(3);
     loopi(LIGHTTILE_W+1) tilecullx[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_W-1).sub(px)).normalize();
     loopi(LIGHTTILE_H+1) tilecully[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_H-1).sub(py)).normalize();
 
+    lightsvisible = lightsoccluded = 0;
     lighttilesused = 0;
     smused = 0;
 
@@ -3063,7 +3069,7 @@ void packlights()
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
         if(l.radius <= smminradius) continue;
-        if(l.query && l.query->owner && checkquery(l.query)) continue;
+        if(l.query && l.query->owner == &l && checkquery(l.query)) continue; 
 
         float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
         int smsize = clamp(int(ceil(smlod * (tetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (tetra ? 2 : 3)),
@@ -3092,7 +3098,7 @@ void packlights()
 
         if(smnoshadow <= 1 && l.radius > smminradius)
         {
-            if(l.query && l.query->owner && checkquery(l.query)) continue;
+            if(l.query && l.query->owner == &l && checkquery(l.query)) { lightsoccluded++; continue; }
             float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
             int smsize = clamp(int(ceil(smlod * (tetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (tetra ? 2 : 3)),
                 smw = tetra ? smsize*2 : smsize*3, smh = tetra ? smsize : smsize*2;
@@ -3129,6 +3135,8 @@ void packlights()
    
         addlighttiles(l, idx); 
     }
+
+    lightsvisible = lightorder.length() - lightsoccluded;
 }
 
 void rendercsmshadowmaps()
