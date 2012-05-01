@@ -653,35 +653,40 @@ static void timer_sync()
 {
     if(timer_curr - timer_query_n < 0) return;
     if(!timer) return;
-    const int curr = timer_curr % timer_query_n;
+    const int next = (timer_curr+1) % timer_query_n;
     if(hasTQ) loopi(TIMER_CPU)
     {
-        GLint available = 0;
-        if(timer_used[curr]&(1<<i))
+        if(timer_used[next]&(1<<i))
+        {
+            GLint available = 0;
             while(!available)
-                glGetQueryObjectiv_(timers[curr][i], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
+                glGetQueryObjectiv_(timers[next][i], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
+             glGetQueryObjectui64v_(timers[next][i], GL_QUERY_RESULT_ARB, &timer_results[i]);
+        }
     }
 }
 static inline void timer_begin(int whichone)
 {
     if(!timer || inbetweenframes) return;
+    const int curr = timer_curr % timer_query_n;
     if(whichone < TIMER_CPU)
     {
         if(!hasTQ) return;
-        glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[timer_curr % timer_query_n][whichone]);
+        glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[curr][whichone]);
     }
     else timer_results[whichone] = getclockmillis();
 }
 static inline void timer_end(int whichone)
 {
     if(!timer || inbetweenframes) return;
+    const int curr = timer_curr % timer_query_n;
     if(whichone < TIMER_CPU)
     {
         if(!hasTQ) return; 
         glEndQuery_(GL_TIME_ELAPSED_EXT);
     }
     else timer_results[whichone] = getclockmillis() - timer_results[whichone];
-    timer_used[timer_curr % timer_query_n] |= 1<<whichone;
+    timer_used[curr] |= 1<<whichone;
 }
 static inline void timer_nextframe()
 {
@@ -696,26 +701,17 @@ static void timer_print(int conw, int conh)
 {
     if(!timer) return;
     if(timer_curr - timer_query_n < 0) return;
-    const int curr = timer_curr % timer_query_n;
-    if(!timer_used[curr]) return;
+    const int next = (timer_curr+1) % timer_query_n;
+    if(!timer_used[next]) return;
     if(totalmillis - timer_last_print >= 200) // keep the timer read-outs from looking spastic on the hud
     {
-        loopi(TIMER_N)
-        {
-            if(!(timer_used[curr]&(1<<i))) continue;
-            if(i < TIMER_CPU)
-            {
-                glGetQueryObjectui64v_(timers[curr][i], GL_QUERY_RESULT_ARB, &timer_results[i]);
-                timer_prints[i] = timer_results[i];
-            }
-            else timer_prints[i] = timer_results[i]; 
-        }
+        memcpy(timer_prints, timer_results, sizeof(timer_prints));
         timer_last_print = totalmillis;
     }        
     int offset = 0;
     loopi(TIMER_N)
     {
-        if(!(timer_used[curr]&(1<<i))) continue;
+        if(!(timer_used[next]&(1<<i))) continue;
         if(i < TIMER_CPU) draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, timer_string[i], float(timer_prints[i]) * 1e-6f);
         else draw_textf("%s (cpu) %d ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, timer_string[i], (int)timer_prints[i]);
         offset++;
