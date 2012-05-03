@@ -624,7 +624,7 @@ COMMAND(glext, "s");
 
 // GPU-side timing information will use OGL timers
 enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
-#define TIMER_CPU TIMER_CPU_SM
+#define TIMER_GPU_N TIMER_CPU_SM
 static const char *timer_string[] = {
     "shadow map",
     "g-buffer",
@@ -640,69 +640,74 @@ static const char *timer_string[] = {
     "g-buffer",
     "deferred shading"
 };
+// gpu
 static const int timer_query_n = 4;
-static GLuint timers[timer_query_n][TIMER_CPU];
-static uint timer_used[timer_query_n];
-static GLuint64EXT timer_results[TIMER_N];
-static GLuint64EXT timer_prints[TIMER_N];
 static int timer_curr = 0;
+static GLuint timers[timer_query_n][TIMER_GPU_N];
+static uint timer_used[timer_query_n];
+// cpu
+static int timer_began[TIMER_N];
+
+static uint timer_available = 0;
+static float timer_results[TIMER_N];
+static float timer_prints[TIMER_N];
 static int timer_last_print = 0;
 VAR(timer, 0, 0, 1);
 
 static void timer_sync()
 {
-    if(timer_curr - timer_query_n < 0) return;
     if(!timer) return;
-    const int next = (timer_curr+1) % timer_query_n;
-    if(hasTQ) loopi(TIMER_CPU)
+    if(hasTQ) 
     {
-        if(timer_used[next]&(1<<i))
+        timer_curr = (timer_curr+1) % timer_query_n;
+        loopi(TIMER_GPU_N)
         {
-            GLint available = 0;
-            while(!available)
-                glGetQueryObjectiv_(timers[next][i], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
-             glGetQueryObjectui64v_(timers[next][i], GL_QUERY_RESULT_ARB, &timer_results[i]);
+            if(timer_used[timer_curr]&(1<<i))
+            {
+                GLint available = 0;
+                while(!available)
+                    glGetQueryObjectiv_(timers[timer_curr][i], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
+                GLuint64EXT result = 0;
+                glGetQueryObjectui64v_(timers[timer_curr][i], GL_QUERY_RESULT_ARB, &result);
+                timer_results[i] = float(result) * 1e-6f;
+                timer_available |= 1<<i;
+            }
         }
+        timer_used[timer_curr] = 0;
     }
 }
 static inline void timer_begin(int whichone)
 {
     if(!timer || inbetweenframes) return;
-    const int curr = timer_curr % timer_query_n;
-    if(whichone < TIMER_CPU)
+    if(whichone < TIMER_GPU_N)
     {
         if(!hasTQ) return;
-        glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[curr][whichone]);
+        glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[timer_curr][whichone]);
     }
-    else timer_results[whichone] = getclockmillis();
+    else timer_began[whichone] = getclockmillis();
 }
 static inline void timer_end(int whichone)
 {
     if(!timer || inbetweenframes) return;
-    const int curr = timer_curr % timer_query_n;
-    if(whichone < TIMER_CPU)
+    if(whichone < TIMER_GPU_N)
     {
         if(!hasTQ) return; 
         glEndQuery_(GL_TIME_ELAPSED_EXT);
+        timer_used[timer_curr] |= 1<<whichone;
     }
-    else timer_results[whichone] = getclockmillis() - timer_results[whichone];
-    timer_used[curr] |= 1<<whichone;
+    else 
+    {
+        timer_results[whichone] = float(getclockmillis() - timer_began[whichone]);
+        timer_available |= 1<<whichone;
+    }
 }
 static inline void timer_nextframe()
 {
-    if(timer && hasTQ) 
-    {
-        timer_curr++;
-        const int curr = timer_curr % timer_query_n;
-        timer_used[curr] = 0;
-    }
+    timer_available = 0;
 }
 static void timer_print(int conw, int conh)
 {
-    if(!timer) return;
-    if(timer_curr - timer_query_n < 0) return;
-    const int next = (timer_curr+1) % timer_query_n;
-    if(!timer_used[next]) return;
+    if(!timer || !timer_available) return;
     if(totalmillis - timer_last_print >= 200) // keep the timer read-outs from looking spastic on the hud
     {
         memcpy(timer_prints, timer_results, sizeof(timer_prints));
@@ -711,9 +716,8 @@ static void timer_print(int conw, int conh)
     int offset = 0;
     loopi(TIMER_N)
     {
-        if(!(timer_used[next]&(1<<i))) continue;
-        if(i < TIMER_CPU) draw_textf("%s %3.2f ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, timer_string[i], float(timer_prints[i]) * 1e-6f);
-        else draw_textf("%s (cpu) %d ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, timer_string[i], (int)timer_prints[i]);
+        if(!(timer_available&(1<<i))) continue;
+        draw_textf("%s%s %5.2f ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, timer_string[i], (i < TIMER_GPU_N)?"":" (cpu)", timer_prints[i]);
         offset++;
     }
 }
@@ -722,11 +726,11 @@ static void timer_setup()
     memset(timer_used, 0, sizeof(timer_used));
     memset(timer_results, 0, sizeof(timer_results));
     memset(timer_prints, 0, sizeof(timer_prints));
-    if(hasTQ) loopi(timer_query_n) glGenQueries_(TIMER_CPU, timers[i]);
+    if(hasTQ) loopi(timer_query_n) glGenQueries_(TIMER_GPU_N, timers[i]);
 }
 void cleanuptimer() 
 { 
-    if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_CPU, timers[i]); 
+    if(hasTQ) loopi(timer_query_n) glDeleteQueries_(TIMER_GPU_N, timers[i]); 
 }
 static void frametimer_print(int conw, int conh)
 {
