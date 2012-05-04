@@ -528,7 +528,7 @@ struct fpsent : dynent, fpsstate
     vec lastcollect;
     int frags, flags, deaths, totaldamage, totalshots;
     editinfo *edit;
-    float deltayaw, deltapitch, newyaw, newpitch;
+    float deltayaw, deltapitch, deltaroll, newyaw, newpitch, newroll;
     int smoothmillis;
 
     string name, team, info;

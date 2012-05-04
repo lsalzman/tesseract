@@ -946,7 +946,7 @@ namespace game
                 int seqcolor = (physstate>>3)&1;
                 fpsent *d = getclient(cn);
                 if(!d || d->lifesequence < 0 || seqcolor!=(d->lifesequence&1) || d->state==CS_DEAD) continue;
-                float oldyaw = d->yaw, oldpitch = d->pitch;
+                float oldyaw = d->yaw, oldpitch = d->pitch, oldroll = d->roll;
                 d->yaw = yaw;
                 d->pitch = pitch;
                 d->roll = roll;
@@ -968,14 +968,17 @@ namespace game
                     d->newpos = d->o;
                     d->newyaw = d->yaw;
                     d->newpitch = d->pitch;
+                    d->newroll = d->roll;
                     d->o = oldpos;
                     d->yaw = oldyaw;
                     d->pitch = oldpitch;
+                    d->roll = oldroll;
                     (d->deltapos = oldpos).sub(d->newpos);
                     d->deltayaw = oldyaw - d->newyaw;
                     if(d->deltayaw > 180) d->deltayaw -= 360;
                     else if(d->deltayaw < -180) d->deltayaw += 360;
                     d->deltapitch = oldpitch - d->newpitch;
+                    d->deltaroll = oldroll - d->newroll;
                     d->smoothmillis = lastmillis;
                 }
                 else d->smoothmillis = 0;

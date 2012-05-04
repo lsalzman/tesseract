@@ -172,6 +172,7 @@ namespace game
         d->o = d->newpos;
         d->yaw = d->newyaw;
         d->pitch = d->newpitch;
+        d->roll = d->newroll;
         if(move)
         {
             moveplayer(d, 1, false);
@@ -185,6 +186,7 @@ namespace game
             if(d->yaw<0) d->yaw += 360;
             else if(d->yaw>=360) d->yaw -= 360;
             d->pitch += d->deltapitch*k;
+            d->roll += d->deltaroll*k;
         }
     }
 
