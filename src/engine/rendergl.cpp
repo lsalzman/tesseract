@@ -1809,9 +1809,9 @@ void cleanupsmaa()
     clearsmaashaders();
 }
 
-VARF(smaa, 0, 0, 1, cleanupsmaa());
-VARF(smaaquality, 0, 2, 3, cleanupsmaa());
-VAR(smaacoloredge, 0, 0, 1);
+VARFP(smaa, 0, 0, 1, cleanupsmaa());
+VARFP(smaaquality, 0, 2, 3, cleanupsmaa());
+VARP(smaacoloredge, 0, 0, 1);
 VAR(smaadepthmask, 0, 1, 1);
 VAR(smaastencil, 0, 1, 1);
 VAR(debugsmaa, 0, 0, 5);
@@ -2035,14 +2035,14 @@ VARF(gstencil, 0, 0, 1, cleanupgbuffer());
 VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
 VAR(hdr, 0, 1, 1);
-VARF(hdrprec, 0, 2, 3, cleanupgbuffer());
+VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVAR(bloomthreshold, 0, 1.5f, 10.0f);
-FVAR(bloomscale, 0, 1.0f, 10.0f);
-VAR(bloomblur, 0, 7, 7);
-VAR(bloomiter, 0, 0, 4);
-FVAR(bloomsigma, 0.005f, 0.5f, 2.0f);
-VARF(bloomsize, 6, 8, 10, cleanupbloom());
-VARF(bloomprec, 0, 2, 3, cleanupbloom());
+FVARP(bloomscale, 0, 1.0f, 10.0f);
+VARP(bloomblur, 0, 7, 7);
+VARP(bloomiter, 0, 0, 4);
+FVARP(bloomsigma, 0.005f, 0.5f, 2.0f);
+VARFP(bloomsize, 6, 8, 10, cleanupbloom());
+VARFP(bloomprec, 0, 2, 3, cleanupbloom());
 FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
@@ -2242,12 +2242,12 @@ VAR(smmaxsize, 1, 384, 1024);
 //VAR(smmaxsize, 1, 4096, 4096);
 VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
-VARF(smtetra, 0, 0, 1, { cleardeferredlightshaders(); clearshadowcache(); });
+VARFP(smtetra, 0, 0, 1, { cleardeferredlightshaders(); clearshadowcache(); });
 VAR(smtetraclip, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
 VARF(smcache, 0, 1, 2, cleanupshadowatlas());
-VARF(smgather, 0, 0, 1, cleardeferredlightshaders());
+VARFP(smgather, 0, 0, 1, cleardeferredlightshaders());
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
 
@@ -2610,24 +2610,24 @@ void viewbuffersplitmerge()
 }
 VAR(debugbuffersplit, 0, 0, 1);
 
-VARF(ao, 0, 1, 1, { cleanupao(); cleardeferredlightshaders(); });
-FVAR(aoradius, 0, 3, 256);
-FVAR(aodark, 1e-3f, 3, 1e3f);
-FVAR(aosharp, 1e-3f, 1, 1e3f);
-FVAR(aomin, 0, 0.25f, 1);
-VARF(aosun, 0, 1, 1, cleardeferredlightshaders());
-FVAR(aosunmin, 0, 0.5f, 1);
-VAR(aoblur, 0, 4, 7);
-FVAR(aosigma, 0.005f, 0.5f, 2.0f);
-VAR(aoiter, 0, 0, 4);
-VARF(aoreduce, 0, 1, 2, cleanupao());
+VARFP(ao, 0, 1, 1, { cleanupao(); cleardeferredlightshaders(); });
+FVARR(aoradius, 0, 3, 256);
+FVARR(aodark, 1e-3f, 3, 1e3f);
+FVARR(aosharp, 1e-3f, 1, 1e3f);
+FVARR(aomin, 0, 0.25f, 1);
+VARFR(aosun, 0, 1, 1, cleardeferredlightshaders());
+FVARR(aosunmin, 0, 0.5f, 1);
+VARP(aoblur, 0, 4, 7);
+FVARP(aosigma, 0.005f, 0.5f, 2.0f);
+VARP(aoiter, 0, 0, 4);
+VARFP(aoreduce, 0, 1, 2, cleanupao());
 VARF(aoreducedepth, 0, 1, 2, cleanupao());
 VARF(aonoise, 0, 5, 8, cleanupao());
-VARF(aobilateral, 0, 7, 10, cleanupao());
-FVAR(aobilateralsigma, 0, 0.5f, 1e3);
-FVAR(aobilateraldepth, 0, 4, 1e3);
+VARFP(aobilateral, 0, 7, 10, cleanupao());
+FVARP(aobilateralsigma, 0, 0.5f, 1e3);
+FVARP(aobilateraldepth, 0, 4, 1e3);
 VARF(aopackdepth, 0, 1, 1, cleanupao());
-VARF(aotaps, 1, 5, 12, cleanupao());
+VARFP(aotaps, 1, 5, 12, cleanupao());
 VAR(debugao, 0, 0, 1);
 
 void cascaded_shadow_map::bindparams()
