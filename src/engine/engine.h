@@ -607,7 +607,7 @@ extern void resetmodelbatches();
 extern void startmodelquery(occludequery *query);
 extern void endmodelquery();
 extern void rendermodelbatches();
-extern void shadowmaskbatchedmodels();
+extern void shadowmaskbatchedmodels(bool dynshadow = true);
 extern void rendermodelbatches();
 extern void rendermapmodel(int idx, int anim, const vec &o, float yaw = 0, float pitch = 0, int flags = MDL_CULL_VFC | MDL_CULL_DIST, int basetime = 0, float size = 1);
 extern void clearbatchedmapmodels();

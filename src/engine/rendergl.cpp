@@ -2059,10 +2059,12 @@ FVAR(bloomlummax, 1e-3f, 8.0f, 1e3f);
 PackNode shadowatlaspacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE),
          shadowcachepacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
 
+enum { L_NOSHADOW = 1<<0, L_NODYNSHADOW = 1<<1 };
+
 struct lightinfo
 {
     float sx1, sy1, sx2, sy2, sz1, sz2;
-    int shadowmap;
+    int shadowmap, flags;
     vec o, color;
     int radius;
     float dist;
@@ -2963,6 +2965,7 @@ void collectlights()
         l.sz1 = sz1;
         l.sz2 = sz2;
         l.shadowmap = -1;
+        l.flags = e->attr5;
         l.query = NULL;
         l.o = e->o;
         l.color = vec(e->attr2, e->attr3, e->attr4);
@@ -2992,6 +2995,7 @@ void collectlights()
         l.sz1 = sz1;
         l.sz2 = sz2;
         l.shadowmap = -1;
+        l.flags = 0;
         l.query = NULL;
         l.o = o;
         l.color = vec(color).mul(255);
@@ -3005,7 +3009,7 @@ void collectlights()
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
-        if(l.radius > smminradius && l.radius < worldsize &&
+        if(!(l.flags&L_NOSHADOW) && l.radius > smminradius && l.radius < worldsize &&
            (camera1->o.x < l.o.x - l.radius - 2 || camera1->o.x > l.o.x + l.radius + 2 ||
             camera1->o.y < l.o.y - l.radius - 2 || camera1->o.y > l.o.y + l.radius + 2 ||
             camera1->o.z < l.o.z - l.radius - 2 || camera1->o.z > l.o.z + l.radius + 2))
@@ -3068,7 +3072,7 @@ void packlights()
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
-        if(l.radius <= smminradius) continue;
+        if(l.flags&L_NOSHADOW || l.radius <= smminradius) continue;
         if(l.query && l.query->owner == &l && checkquery(l.query)) continue; 
 
         float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
@@ -3096,7 +3100,7 @@ void packlights()
         lightinfo &l = lights[idx];
         if(l.shadowmap >= 0) continue;
 
-        if(smnoshadow <= 1 && l.radius > smminradius)
+        if(!(l.flags&L_NOSHADOW) && smnoshadow <= 1 && l.radius > smminradius)
         {
             if(l.query && l.query->owner == &l && checkquery(l.query)) { lightsoccluded++; continue; }
             float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
@@ -3216,7 +3220,7 @@ void rendershadowmaps()
         findshadowvas();
         findshadowmms();
 
-        shadowmaskbatchedmodels();
+        shadowmaskbatchedmodels(!(l.flags&L_NODYNSHADOW));
         batchshadowmapmodels();
 
         shadowcacheval *cached = NULL;
