@@ -1,5 +1,6 @@
 VARP(gpuskel, 0, 1, 1);
 VARP(matskel, 0, 0, 1);
+VAR(maxanimdata, 1, 192, 0);
 
 #define BONEMASK_NOT  0x8000
 #define BONEMASK_END  0xFFFF
@@ -857,8 +858,7 @@ struct skelmodel : animmodel
             }
         }
 
-        int maxgpuparams() const { return maxvsuniforms; }
-        int availgpubones() const { return (min(maxgpuparams() - reservevpparams, 256) - 10) / (matskel ? 3 : 2); }
+        int availgpubones() const { return min(maxvsuniforms, maxanimdata) / (matskel ? 3 : 2); }
         bool gpuaccelerate() const { return numframes && gpuskel && numgpubones<=availgpubones(); }
 
         float calcdeviation(const vec &axis, const vec &forward, const dualquat &pose1, const dualquat &pose2)

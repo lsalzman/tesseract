@@ -154,13 +154,9 @@ VAR(ati_minmax_bug, 0, 0, 1);
 VAR(ati_cubemap_bug, 0, 0, 1);
 VAR(ati_ubo_bug, 0, 0, 1);
 VAR(sdl_backingstore_bug, -1, 0, 1);
-VAR(minimizetcusage, 1, 0, 0);
 VAR(usetexrect, 1, 0, 0);
 VAR(useubo, 1, 0, 0);
 VAR(usebue, 1, 0, 0);
-VAR(rtscissor, 0, 1, 1);
-VAR(blurtile, 0, 1, 1);
-VAR(rtsharefb, 0, 1, 1);
 VAR(usetexgather, 1, 0, 0);
 
 #if 0
@@ -394,12 +390,9 @@ void gl_checkextensions()
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
         if(!hasext(exts, "GL_ARB_gpu_shader5")) gdepthstencil = 0; // some older ATI GPUs do not support reading from depth-stencil textures, so only use depth-stencil renderbuffer for now
-        minimizetcusage = 1;
     }
     else if(nvidia)
     {
-        reservevpparams = 10;
-        rtsharefb = 0; // work-around for strange driver stalls involving when using many FBOs
     }
     else
     {
@@ -414,8 +407,6 @@ void gl_checkextensions()
                 maxtexsize = hwtexsize >= 2048 ? 512 : 256;
             }
         }
-
-        reservevpparams = 20;
     }
 
     if(hasext(exts, "GL_ARB_shading_language_100") && hasext(exts, "GL_ARB_shader_objects") && hasext(exts, "GL_ARB_vertex_shader") && hasext(exts, "GL_ARB_fragment_shader"))

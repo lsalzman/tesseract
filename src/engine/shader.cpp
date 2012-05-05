@@ -13,7 +13,6 @@ static Shader *slotshader = NULL;
 static vector<SlotShaderParam> slotparams;
 static bool standardshader = false, initshaders = false, forceshaders = true;
 
-VAR(reservevpparams, 1, 16, 0);
 VAR(maxtexcoords, 1, 0, 0);
 VAR(maxvsuniforms, 1, 0, 0);
 VAR(maxfsuniforms, 1, 0, 0);
