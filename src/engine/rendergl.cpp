@@ -3858,12 +3858,12 @@ void rendergbuffer()
     }
     else if(!envmapping)
     {
-        maskgbuffer("c");
-        renderdecals(true);
-        GLERROR;
-        maskgbuffer("cngd");
         game::rendergame();
         rendermodelbatches();
+        GLERROR;
+        maskgbuffer("c");
+        renderdecals(true);
+        maskgbuffer("cngd");
         GLERROR;
         if(!isthirdperson())
         {
