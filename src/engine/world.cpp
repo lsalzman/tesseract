@@ -1302,6 +1302,7 @@ void mpeditent(int i, const vec &o, int type, int attr1, int attr2, int attr3, i
         if(oldtype!=type) attachentity(e);
     }
     entities::editent(i, local);
+    clearshadowcache();
 }
 
 int getworldsize() { return worldsize; }
