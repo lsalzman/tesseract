@@ -484,8 +484,9 @@ void renderwater()
     float colorscale = (hdr ? 0.5f : 1)/255.0f;
     GLOBALPARAM(watercolor, (watercolor.x*colorscale, watercolor.y*colorscale, watercolor.z*colorscale));
     GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*colorscale, waterdeepcolor.y*colorscale, waterdeepcolor.z*colorscale));
-    GLOBALPARAM(waterfog, (1.0f/waterfog));
-    GLOBALPARAM(waterdeepfade, (255.0f/(waterdeep*waterdeepfadecolor.x), 255.0f/(waterdeep*waterdeepfadecolor.y), 255.0f/(waterdeep*waterdeepfadecolor.z)));
+    GLOBALPARAM(waterfog, (waterfog ? 1.0f/waterfog : 1e4f));
+    ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
+    GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f));
     GLOBALPARAM(waterspec, (0.5f*waterspec/100.0f));
     GLOBALPARAM(waterreflectstep, (waterreflectstep));
     GLOBALPARAM(waterrefract, (waterrefract*viewh));
