@@ -2742,7 +2742,6 @@ void resetlights()
 }
 
 VAR(depthtestlights, 0, 1, 2);
-VAR(culllighttiles, 0, 1, 1);
 VAR(lighttilebatch, 1, 8, 8);
 
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
@@ -3017,31 +3016,11 @@ void collectlights()
     }
 }
 
-static plane tilecullx[LIGHTTILE_W+1], tilecully[LIGHTTILE_H+1];
-
 static inline void addlighttiles(const lightinfo &l, int idx)
 {
     int tx1 = max(int(floor((l.sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((l.sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         tx2 = min(int(ceil((l.sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((l.sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
-    if(!culllighttiles)
-    {
-        for(int y = ty1; y < ty2; y++) for(int x = tx1; x < tx2; x++) { lighttiles[y][x].add(idx); lighttilesused++; }
-        return;
-    }
-    float pydist = tilecully[ty1].dist(l.o);
-    for(int y = ty1; y < ty2; y++)
-    {
-        float ydist = tilecully[y+1].dist(l.o), mydist = max(max(pydist, -ydist), 0.0f), pxdist = tilecullx[tx1].dist(l.o);
-        for(int x = tx1; x < tx2; x++)
-        {
-            float xdist = tilecullx[x+1].dist(l.o), mxdist = max(max(pxdist, -xdist), 0.0f);
-            if(mxdist*mxdist + mydist*mydist > l.radius*l.radius) continue;
-            lighttiles[y][x].add(idx);
-            lighttilesused++;
-            pxdist = xdist;
-        }
-        pydist = ydist;
-    }
+    for(int y = ty1; y < ty2; y++) for(int x = tx1; x < tx2; x++) { lighttiles[y][x].add(idx); lighttilesused++; }
 }
  
 VAR(lightsvisible, 1, 0, 0);
@@ -3049,10 +3028,6 @@ VAR(lightsoccluded, 1, 0, 0);
  
 void packlights()
 { 
-    vec4 px = mvpmatrix.getrow(0), py = mvpmatrix.getrow(1), pw = mvpmatrix.getrow(3);
-    loopi(LIGHTTILE_W+1) tilecullx[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_W-1).sub(px)).normalize();
-    loopi(LIGHTTILE_H+1) tilecully[i] = plane(vec4(pw).mul((2.0f*i)/LIGHTTILE_H-1).sub(py)).normalize();
-
     lightsvisible = lightsoccluded = 0;
     lighttilesused = 0;
     smused = 0;
