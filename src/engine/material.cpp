@@ -170,36 +170,42 @@ void genmatsurfs(cube &c, int cx, int cy, int cz, int size, vector<materialsurfa
     }
 }
 
+static inline void addmatbb(ivec &matmin, ivec &matmax, const materialsurface &m)
+{
+    int dim = dimension(m.orient);
+    ivec mmax(m.o);
+    mmax[R[dim]] += m.rsize;
+    mmax[C[dim]] += m.csize;
+    matmin.min(m.o);
+    matmax.max(mmax);
+}
+
 void calcmatbb(vtxarray *va, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs)
 {
-    va->matmax = ivec(cx, cy, cz);
-    va->matmin = ivec(va->matmax).add(size);
+    va->lavamax = va->watermax = va->glassmax = ivec(cx, cy, cz);
+    va->lavamin = va->watermin = va->glassmin = ivec(cx, cy, cz).add(size);
     loopv(matsurfs)
     {
         materialsurface &m = matsurfs[i];
         switch(m.material)
         {
-            case MAT_WATER:
-            case MAT_GLASS:
             case MAT_LAVA:
                 if(m.flags&materialsurface::F_EDIT) continue;
+                addmatbb(va->lavamin, va->lavamax, m);
+                break;
+
+            case MAT_WATER:
+                if(m.flags&materialsurface::F_EDIT) continue;
+                addmatbb(va->watermin, va->watermax, m); 
+                break;
+
+            case MAT_GLASS:
+                addmatbb(va->glassmin, va->glassmax, m);
                 break;
 
             default:
                 continue;
         }
-
-        int dim = dimension(m.orient),
-            r = R[dim],
-            c = C[dim];
-        va->matmin[dim] = min(va->matmin[dim], m.o[dim]);
-        va->matmax[dim] = max(va->matmax[dim], m.o[dim]);
-
-        va->matmin[r] = min(va->matmin[r], m.o[r]);
-        va->matmax[r] = max(va->matmax[r], m.o[r] + m.rsize);
-
-        va->matmin[c] = min(va->matmin[c], m.o[c]);
-        va->matmax[c] = max(va->matmax[c], m.o[c] + m.csize);
     }
 }
 
@@ -539,12 +545,14 @@ static void drawglass(const materialsurface &m, float offset, const vec *normal 
 
 vector<materialsurface> editsurfs, glasssurfs, watersurfs, waterfallsurfs, lavasurfs, lavafallsurfs;
 
-float matsx1 = -1, matsy1 = -1, matsx2 = 1, matsy2 = 1, matrefractsx1 = -1, matrefractsy1 = -1, matrefractsx2 = 1, matrefractsy2 = 1;
-uint mattiles[LIGHTTILE_H];
+float matliquidsx1 = -1, matliquidsy1 = -1, matliquidsx2 = 1, matliquidsy2 = 1; 
+float matsolidsx1 = -1, matsolidsy1 = -1, matsolidsx2 = 1, matsolidsy2 = 1;
+float matrefractsx1 = -1, matrefractsy1 = -1, matrefractsx2 = 1, matrefractsy2 = 1;
+uint matliquidtiles[LIGHTTILE_H], matsolidtiles[LIGHTTILE_H];
 
 extern vtxarray *visibleva;
 
-bool findmaterials()
+int findmaterials()
 {
     editsurfs.setsize(0);
     glasssurfs.setsize(0);
@@ -552,9 +560,10 @@ bool findmaterials()
     waterfallsurfs.setsize(0);
     lavasurfs.setsize(0);
     lavafallsurfs.setsize(0);
-    matsx1 = matsy1 = matrefractsx1 = matrefractsy1 = 1;
-    matsx2 = matsy2 = matrefractsx2 = matrefractsy2 = -1;
-    memset(mattiles, 0, sizeof(mattiles));
+    matliquidsx1 = matliquidsy1 = matsolidsx1 = matsolidsy1 = matrefractsx1 = matrefractsy1 = 1;
+    matliquidsx2 = matliquidsy2 = matsolidsx2 = matsolidsy2 = matrefractsx2 = matrefractsy2 = -1;
+    memset(matliquidtiles, 0, sizeof(matsolidtiles));
+    memset(matsolidtiles, 0, sizeof(matsolidtiles));
     for(vtxarray *va = visibleva; va; va = va->next)
     {
         if(!va->matsurfs || va->occluded >= OCCLUDE_BB || va->curvfc >= VFC_FOGGED) continue;
@@ -563,40 +572,59 @@ bool findmaterials()
             loopi(va->matsurfs) editsurfs.add(va->matbuf[i]);
             continue;
         }
-        int i = 0;
-        for(; i < va->matsurfs; i++)
-        {
-            materialsurface &m = va->matbuf[i];
-            if(m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
-            break;
-        }    
         float sx1, sy1, sx2, sy2;
-        if(i >= va->matsurfs || !calcbbscissor(va->matmin, va->matmax, sx1, sy1, sx2, sy2)) continue;
-        for(; i < va->matsurfs; i++)
+        if(va->lavamin.x <= va->lavamax.x && calcbbscissor(va->lavamin, va->lavamax, sx1, sy1, sx2, sy2))
         {
-            materialsurface &m = va->matbuf[i];
-            if(m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
-            switch(m.material)
+            matliquidsx1 = min(matliquidsx1, sx1);
+            matliquidsy1 = min(matliquidsy1, sy1);
+            matliquidsx2 = max(matliquidsx2, sx2);
+            matliquidsy2 = max(matliquidsy2, sy2);
+            masktiles(matliquidtiles, sx1, sy1, sx2, sy2);
+            loopi(va->matsurfs)
             {
-                case MAT_GLASS: glasssurfs.add(m); break;
-                case MAT_LAVA: if(m.orient == O_TOP) lavasurfs.add(m); else lavafallsurfs.add(m); break;
-                case MAT_WATER: if(m.orient == O_TOP) watersurfs.add(m); else waterfallsurfs.add(m); break;
+                materialsurface &m = va->matbuf[i];
+                if(m.material != MAT_LAVA || m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
+                if(m.orient == O_TOP) lavasurfs.add(m); else lavafallsurfs.add(m);
             }
-        }
-        matsx1 = min(matsx1, sx1);
-        matsy1 = min(matsy1, sy1);
-        matsx2 = max(matsx2, sx2);
-        matsy2 = max(matsy2, sy2);
-        if(va->matmask&((1<<MAT_GLASS)|(1<<MAT_WATER)))
+        } 
+        if(va->watermin.x <= va->watermax.x && calcbbscissor(va->watermin, va->watermax, sx1, sy1, sx2, sy2))
         {
+            matliquidsx1 = min(matliquidsx1, sx1);
+            matliquidsy1 = min(matliquidsy1, sy1);
+            matliquidsx2 = max(matliquidsx2, sx2);
+            matliquidsy2 = max(matliquidsy2, sy2);
+            masktiles(matliquidtiles, sx1, sy1, sx2, sy2);
             matrefractsx1 = min(matrefractsx1, sx1);
             matrefractsy1 = min(matrefractsy1, sy1);
             matrefractsx2 = max(matrefractsx2, sx2);
             matrefractsy2 = max(matrefractsy2, sy2);
+            loopi(va->matsurfs) 
+            {
+                materialsurface &m = va->matbuf[i];
+                if(m.material != MAT_WATER || m.flags&materialsurface::F_EDIT) { i += m.skip; continue; }
+                if(m.orient == O_TOP) watersurfs.add(m); else waterfallsurfs.add(m);
+            }
         }
-        masktiles(mattiles, sx1, sy1, sx2, sy2);
+        if(va->glassmin.x <= va->glassmax.x && calcbbscissor(va->glassmin, va->glassmax, sx1, sy1, sx2, sy2))
+        {
+            matsolidsx1 = min(matsolidsx1, sx1);
+            matsolidsy1 = min(matsolidsy1, sy1);
+            matsolidsx2 = max(matsolidsx2, sx2);
+            matsolidsy2 = max(matsolidsy2, sy2);
+            masktiles(matsolidtiles, sx1, sy1, sx2, sy2);
+            matrefractsx1 = min(matrefractsx1, sx1);
+            matrefractsy1 = min(matrefractsy1, sy1);
+            matrefractsx2 = max(matrefractsx2, sx2);
+            matrefractsy2 = max(matrefractsy2, sy2);
+            loopi(va->matsurfs)
+            {
+                materialsurface &m = va->matbuf[i];
+                if(m.material != MAT_GLASS) { i += m.skip; continue; }
+                glasssurfs.add(m);
+            }
+        }
     }
-    return glasssurfs.length() || watersurfs.length() || waterfallsurfs.length() || lavasurfs.length() || lavafallsurfs.length();
+    return (glasssurfs.length() ? 4|2 : 0) | (watersurfs.length() || waterfallsurfs.length() ? 4|1 : 0) | (lavasurfs.length() || lavafallsurfs.length() ? 1 : 0);
 }
 
 void rendermaterialmask()
@@ -669,17 +697,24 @@ void renderglass()
     xtraverts += varray::end();
 }
 
-void rendermaterials()
+void renderliquidmaterials()
 {
     glDisable(GL_CULL_FACE);
     varray::enable();
 
-    GLOBALPARAM(camera, (camera1->o));
-    GLOBALPARAM(millis, (lastmillis/1000.0f));
-
     renderlava();
     renderwater();
     renderwaterfalls();
+
+    varray::disable();
+    glEnable(GL_CULL_FACE);
+}
+
+void rendersolidmaterials()
+{
+    glDisable(GL_CULL_FACE);
+    varray::enable();
+
     renderglass();
 
     varray::disable();
@@ -745,9 +780,6 @@ void renderminimapmaterials()
 {
     glDisable(GL_CULL_FACE);
     varray::enable();
-
-    GLOBALPARAM(camera, (camera1->o));
-    GLOBALPARAM(millis, (lastmillis/1000.0f));
 
     renderlava();
     renderwater();

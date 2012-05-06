@@ -138,7 +138,9 @@ struct vtxarray
     ivec geommin, geommax;   // BB of geom
     ivec alphamin, alphamax; // BB of alpha geom
     ivec refractmin, refractmax; // BB of refract geom
-    ivec matmin, matmax;     // BB of any materials
+    ivec lavamin, lavamax;   // BB of any lava
+    ivec watermin, watermax; // BB of any water
+    ivec glassmin, glassmax; // BB of any glass
     ivec bbmin, bbmax;       // BB of everything including children
     uchar curvfc, occluded;
     occludequery *query;

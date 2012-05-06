@@ -614,7 +614,7 @@ void glext(char *ext)
 COMMAND(glext, "s");
 
 // GPU-side timing information will use OGL timers
-enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_ALPHAGEOM, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
+enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_TRANSPARENT, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
 #define TIMER_GPU_N TIMER_CPU_SM
 static const char *timer_string[] = {
     "shadow map",
@@ -622,7 +622,7 @@ static const char *timer_string[] = {
     "deferred shading",
     "hdr processing",
     "ambient obscurance",
-    "alpha geometry",
+    "transparent",
     "smaa",
     "buffer splitting",
     "buffer merging",
@@ -2782,7 +2782,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    GLOBALPARAM(camera, (camera1->o));
     GLOBALPARAM(shadowatlasscale, (1.0f/(smcache ? 2*SHADOWATLAS_SIZE : SHADOWATLAS_SIZE), 1.0f/SHADOWATLAS_SIZE));
     if(ao) 
     {
@@ -3597,7 +3596,7 @@ void processhdr()
         else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) 
         {
             glEnable(GL_STENCIL_TEST);
-            glStencilFunc(GL_ALWAYS, 4, 4);
+            glStencilFunc(GL_ALWAYS, 8, 8);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         }
         if(smaacoloredge) smaacoloredgeshader->set();
@@ -3613,7 +3612,7 @@ void processhdr()
         }
         else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
         {
-            glStencilFunc(GL_EQUAL, 4, 4);
+            glStencilFunc(GL_EQUAL, 8, 8);
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
         glClear(GL_COLOR_BUFFER_BIT);
@@ -3656,15 +3655,15 @@ void processhdr()
 
 FVAR(refractmargin, 0, 0.1f, 1);
 
-void renderalphageom()
+void rendertransparent()
 {
     int hasalphavas = findalphavas();
-    bool hasmats = findmaterials();
+    int hasmats = findmaterials();
     if(!hasalphavas && !hasmats) return;
         
-    timer_begin(TIMER_ALPHAGEOM);
+    timer_begin(TIMER_TRANSPARENT);
 
-    if(hasalphavas&4 || (hasmats && matrefractsx1 < matrefractsx2 && matrefractsy1 < matrefractsy2))
+    if(hasalphavas&4 || hasmats&4)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
         glDepthMask(GL_FALSE);
@@ -3684,7 +3683,7 @@ void renderalphageom()
         if(scissor) glDisable(GL_SCISSOR_TEST);
         SETSHADER(refractmask);
         if(hasalphavas&4) renderrefractmask();
-        if(hasmats && matrefractsx1 < matrefractsx2 && matrefractsy1 < matrefractsy2) rendermaterialmask();
+        if(hasmats&4) rendermaterialmask();
         glDepthMask(GL_TRUE);
     }
 
@@ -3705,29 +3704,44 @@ void renderalphageom()
         raymatrix.v[1 + k*4] = 0.5f*viewh*(raymatrix.v[2 + k*4] - raymatrix.v[1 + k*4]*projmatrix.v[5]);
     }
 
+    loop(layer, 3)
     loop(side, 2) if(hasalphavas&(1<<side) || (side && hasmats))
     {
         uint tiles[LIGHTTILE_H];
         float sx1, sy1, sx2, sy2;
-        memcpy(tiles, alphatiles, sizeof(tiles));
-        if(!side) { sx1 = alphabacksx1; sy1 = alphabacksy1; sx2 = alphabacksx2; sy2 = alphabacksy2; }
-        else
+        switch(layer)
         {
+        case 0:
+            if(!(hasmats&1)) continue;
+            sx1 = matliquidsx1; sy1 = matliquidsy1; sx2 = matliquidsx2; sy2 = matliquidsy2;
+            memcpy(tiles, matliquidtiles, sizeof(tiles));
+            break;
+        case 1:
+            if(!(hasalphavas&1)) continue;
+            sx1 = alphabacksx1; sy1 = alphabacksy1; sx2 = alphabacksx2; sy2 = alphabacksy2;
+            memcpy(tiles, alphatiles, sizeof(tiles));
+            break;
+        case 2:
+            if(!(hasalphavas&2) && !(hasmats&2)) continue;
             sx1 = alphafrontsx1; sy1 = alphafrontsy1; sx2 = alphafrontsx2; sy2 = alphafrontsy2;
-            if(hasmats)
+            memcpy(tiles, alphatiles, sizeof(tiles));
+            if(hasmats&2)
             {
-                sx1 = min(sx1, matsx1);
-                sy1 = min(sy1, matsy1);
-                sx2 = max(sx2, matsx2);
-                sy2 = max(sy2, matsy2);
-                loopj(LIGHTTILE_H) tiles[j] |= mattiles[j];
+                sx1 = min(sx1, matsolidsx1);
+                sy1 = min(sy1, matsolidsy1);
+                sx2 = max(sx2, matsolidsx2);
+                sy2 = max(sy2, matsolidsy2);
+                loopj(LIGHTTILE_H) tiles[j] |= matsolidtiles[j];
             }
+            break;
+        default:
+            continue;
         }
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
         if((gdepthstencil && hasDS) || gstencil)
         {
-            glStencilFunc(GL_ALWAYS, 1<<side, 1<<side);
+            glStencilFunc(GL_ALWAYS, 1<<layer, 1<<layer);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         }
         else
@@ -3755,15 +3769,26 @@ void renderalphageom()
         glLoadMatrixf(raymatrix.v);
         glActiveTexture_(GL_TEXTURE0_ARB);
 
-        if(hasalphavas&(1<<side)) renderalphageom(1<<side);
-        if(side && hasmats) rendermaterials();
+        switch(layer)
+        {
+        case 0:
+            if(hasmats&1) renderliquidmaterials();
+            break;
+        case 1:
+            if(hasalphavas&1) renderalphageom(1);
+            break;
+        case 2:
+            if(hasalphavas&2) renderalphageom(2);
+            if(hasmats&2) rendersolidmaterials();
+            break;
+        }
 
         if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
         if((gdepthstencil && hasDS) || gstencil)
         {
-            glStencilFunc(GL_EQUAL, 1<<side, 1<<side);
+            glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
 
@@ -3772,7 +3797,7 @@ void renderalphageom()
 
     if((gdepthstencil && hasDS) || gstencil) glDisable(GL_STENCIL_TEST);
 
-    timer_end(TIMER_ALPHAGEOM);
+    timer_end(TIMER_TRANSPARENT);
 }
 
 VAR(gdepthclear, 0, 1, 1);
@@ -3971,6 +3996,9 @@ void drawminimap()
 
     xtravertsva = xtraverts = glde = gbatches = 0;
 
+    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
+    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
+
     visiblecubes(false);
     collectlights();
     rendershadowatlas();
@@ -4076,6 +4104,9 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 
     xtravertsva = xtraverts = glde = gbatches = 0;
 
+    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
+    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
+
     visiblecubes();
 
     GLERROR;
@@ -4089,7 +4120,7 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     shadegbuffer();
     GLERROR;
 
-    renderalphageom();
+    rendertransparent();
     GLERROR;
 
     glDisable(GL_DEPTH_TEST);
@@ -4186,6 +4217,9 @@ void gl_drawframe(int w, int h)
 
     xtravertsva = xtraverts = glde = gbatches = 0;
 
+    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
+    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
+
     visiblecubes();
   
     if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -4214,7 +4248,7 @@ void gl_drawframe(int w, int h)
     shadegbuffer();
     GLERROR;
 
-    renderalphageom();
+    rendertransparent();
     GLERROR;
 
     defaultshader->set();

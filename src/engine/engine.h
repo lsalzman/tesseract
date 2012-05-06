@@ -452,8 +452,10 @@ extern bool getdynlight(int n, vec &o, float &radius, vec &color);
 
 // material
 
-extern float matsx1, matsy1, matsx2, matsy2, matrefractsx1, matrefractsy1, matrefractsx2, matrefractsy2;
-extern uint mattiles[LIGHTTILE_H];
+extern float matliquidsx1, matliquidsy1, matliquidsx2, matliquidsy2;
+extern float matsolidsx1, matsolidsy1, matsolidsx2, matsolidsy2;
+extern float matrefractsx1, matrefractsy1, matrefractsx2, matrefractsy2;
+extern uint matliquidtiles[LIGHTTILE_H], matsolidtiles[LIGHTTILE_H];
 extern vector<materialsurface> editsurfs, glasssurfs, watersurfs, waterfallsurfs, lavasurfs, lavafallsurfs;
 extern const vec matnormals[6];
 
@@ -464,9 +466,10 @@ extern void genmatsurfs(cube &c, int cx, int cy, int cz, int size, vector<materi
 extern void calcmatbb(vtxarray *va, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
 extern int optimizematsurfs(materialsurface *matbuf, int matsurfs);
 extern void setupmaterials(int start = 0, int len = 0);
-extern bool findmaterials();
+extern int findmaterials();
 extern void rendermaterialmask();
-extern void rendermaterials();
+extern void renderliquidmaterials();
+extern void rendersolidmaterials();
 extern void rendereditmaterials();
 extern void renderminimapmaterials();
 extern int visiblematerial(cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);

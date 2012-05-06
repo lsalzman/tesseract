@@ -1050,8 +1050,12 @@ void updatevabb(vtxarray *va, bool force)
 
     va->bbmin = va->geommin;
     va->bbmax = va->geommax;
-    va->bbmin.min(va->matmin);
-    va->bbmax.max(va->matmax);
+    va->bbmin.min(va->lavamin);
+    va->bbmax.max(va->lavamax);
+    va->bbmin.min(va->watermin);
+    va->bbmax.max(va->watermax);
+    va->bbmin.min(va->glassmin);
+    va->bbmax.max(va->glassmax);
     loopv(va->children)
     {
         vtxarray *child = va->children[i];

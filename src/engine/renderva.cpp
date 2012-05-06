@@ -1638,9 +1638,7 @@ void setupTMUs(renderstate &cur)
     glEnableClientState(GL_NORMAL_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
     GLOBALPARAM(colorparams, (1, 1, 1, 1));
-    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
     GLOBALPARAM(ambient, (ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f));
-    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
     glColor4fv(cur.color);
 }
 

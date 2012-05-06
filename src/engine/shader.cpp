@@ -1088,8 +1088,6 @@ void renderpostfx()
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, postfxfb);
     }
 
-    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
-
     loopv(postfxpasses)
     {
         postfxpass &p = postfxpasses[i];

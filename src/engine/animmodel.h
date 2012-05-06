@@ -824,7 +824,7 @@ struct animmodel : model
                     vec ocampos;
                     matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
                     ocampos.div(resize).sub(translate);
-                    GLOBALPARAM(camera, (ocampos.x, ocampos.y, ocampos.z, 1));
+                    GLOBALPARAM(ocamera, (ocampos.x, ocampos.y, ocampos.z, 1));
                 }
             }
 
