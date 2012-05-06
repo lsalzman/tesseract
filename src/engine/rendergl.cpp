@@ -3629,6 +3629,7 @@ void processhdr()
 }
 
 FVAR(refractmargin, 0, 0.1f, 1);
+FVAR(refractdepth, 1e-3f, 16, 1e3f);
 
 void rendertransparent()
 {
@@ -3657,6 +3658,7 @@ void rendertransparent()
         glClear(GL_COLOR_BUFFER_BIT);
         if(scissor) glDisable(GL_SCISSOR_TEST);
         SETSHADER(refractmask);
+		LOCALPARAM(refractdepth, (1.0f/refractdepth));
         if(hasalphavas&4) renderrefractmask();
         if(hasmats&4) rendermaterialmask();
         glDepthMask(GL_TRUE);
