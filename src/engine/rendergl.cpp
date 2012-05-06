@@ -2235,6 +2235,7 @@ VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
 VARFP(smtetra, 0, 0, 1, { cleardeferredlightshaders(); clearshadowcache(); });
 VAR(smtetraclip, 0, 1, 1);
+VAR(smtetraclear, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
 VARF(smcache, 0, 1, 2, cleanupshadowatlas());
@@ -3193,7 +3194,7 @@ void rendershadowmaps()
         if(smcache)
         {
             int dynmask = smcache <= 1 ? batcheddynamicmodels() : 0;
-            if(shadowmapping == SM_TETRA)
+            if(shadowmapping == SM_TETRA && !smtetraclear)
             {
                 if(dynmask&0x3) dynmask |= 0x3;
                 if(dynmask&0xC) dynmask |= 0xC;
@@ -3246,7 +3247,31 @@ void rendershadowmaps()
                 {
                     glViewport(sm.x + sidex, sm.y, sm.size, sm.size);
                     glScissor(sm.x + sidex, sm.y, sm.size, sm.size);
-                    if(cachemask) glClear(GL_DEPTH_BUFFER_BIT);
+                    if(cachemask && (!smtetraclear || (sidemask&(3<<(side&~1))) == (3<<(side&~1)))) glClear(GL_DEPTH_BUFFER_BIT);
+                }
+
+                if(cachemask && smtetraclear && (sidemask&(3<<(side&~1))) != (3<<(side&~1)))
+                {
+                    if(smtetraclip) glDisable(GL_CLIP_PLANE0);
+                    if(smpolyfactor || smpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
+                    glDisable(GL_CULL_FACE);
+                    glDepthFunc(GL_ALWAYS);
+
+                    SETSHADER(tetraclear);
+                    glBegin(GL_TRIANGLES);
+                    switch(side)
+                    {
+                    case 0: glVertex3f(1, 1, 1); glVertex3f(-1, 1, 1); glVertex3f(1, -1, 1); break;
+                    case 1: glVertex3f(-1, -1, 1); glVertex3f(-1, 1, 1); glVertex3f(1, -1, 1); break;
+                    case 2: glVertex3f(1, -1, 1); glVertex3f(-1, -1, 1); glVertex3f(1, 1, 1); break;
+                    case 3: glVertex3f(-1, 1, 1); glVertex3f(-1, -1, 1); glVertex3f(1, 1, 1); break;
+                    }
+                    glEnd();
+
+                    glDepthFunc(GL_LESS);
+                    glEnable(GL_CULL_FACE);
+                    if(smpolyfactor || smpolyoffset) glEnable(GL_POLYGON_OFFSET_FILL);
+                    if(smtetraclip) glEnable(GL_CLIP_PLANE0);
                 }
 
                 smviewmatrix.mul(tetrashadowviewmatrix[side], lightmatrix);
