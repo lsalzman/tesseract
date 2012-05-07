@@ -2627,7 +2627,7 @@ void cascaded_shadow_map::bindparams()
         cascaded_shadow_map::splitinfo &split = csm.splits[i];
         if(split.idx < 0) continue;
         const shadowmapinfo &sm = shadowmaps[split.idx];
-        const float bias = csmbias * (1024.0f / sm.size) * (split.farplane - split.nearplane) / (csm.splits[0].farplane - csm.splits[0].nearplane);
+        const float bias = csmbias * (1024.0f / sm.size) * sqrtf((split.farplane - split.nearplane) / (csm.splits[0].farplane - csm.splits[0].nearplane));
         splitcenterv[i] = vec(split.bbmin).add(split.bbmax).mul(0.5f);
         splitboundsv[i] = vec(split.bbmax).sub(split.bbmin).mul(0.5f*(sm.size - 2*smborder)/sm.size);
         splitscalev[i] = vec(0.5f*sm.size*split.proj.v[0], 0.5f*sm.size*split.proj.v[5], 0.5f*split.proj.v[10]);
@@ -4107,9 +4107,9 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
         float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
-        if(camera1->o.z < z - clamp(camdir.z*2.0f - 1.0f, -1.0f, 1.0f))
+        if(camera1->o.z < z + 1)
         {
-            fogbelow = z - clamp(camdir.z*2.0f - 1.0f, -1.0f, 1.0f) - camera1->o.z;
+            fogbelow = z + 1 - camera1->o.z;
             fogblend = min(fogbelow, 1.0f);
         }
         else fogmat = abovemat;
@@ -4217,9 +4217,9 @@ void gl_drawframe(int w, int h)
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
         float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
-        if(camera1->o.z < z - clamp(camdir.z*2.0f - 1.0f, -1.0f, 1.0f)) 
+        if(camera1->o.z < z + 1)
         {
-            fogbelow = z - clamp(camdir.z*2.0f - 1.0f, -1.0f, 1.0f) - camera1->o.z;
+            fogbelow = z + 1 - camera1->o.z;
             fogblend = min(fogbelow, 1.0f);
         }
         else fogmat = abovemat;
