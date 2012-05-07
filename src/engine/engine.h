@@ -476,8 +476,8 @@ extern void renderminimapmaterials();
 extern int visiblematerial(cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
 
 // water
-extern int vertwater, waterreflect, caustics, waterfog, lavafog;
-extern bvec watercolor, waterfallcolor, lavacolor;
+extern int vertwater, waterreflect, caustics, waterfog, waterdeep, lavafog;
+extern bvec watercolor, waterdeepcolor, waterdeepfadecolor, waterfallcolor, lavacolor;
 extern float watersx1, watersy1, watersx2, watersy2;
 
 extern void renderwater();
@@ -486,6 +486,7 @@ extern void renderlava();
 extern void renderlava(const materialsurface &m, Texture *tex, float scale);
 extern void loadcaustics(bool force = false);
 extern void rendercaustics(float blend, float mx1 = 1, float my1 = 1, float mx2 = 1, float my2 = 1);
+extern void renderwaterfog(float blend, float mx1 = 1, float my1 = 1, float mx2 = 1, float my2 = 1);
 extern void preloadwatershaders(bool force = false);
 
 // depthfx

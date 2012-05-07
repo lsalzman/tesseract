@@ -1267,14 +1267,19 @@ static float findsurface(int fogmat, const vec &v, int &abovemat)
     return worldsize;
 }
 
-static void blendfog(int fogmat, float blend, float logblend, float &start, float &end, float *fogc)
+static void blendfog(int fogmat, float below, float blend, float logblend, float &start, float &end, float *fogc)
 {
     switch(fogmat)
     {
         case MAT_WATER:
-            loopk(3) fogc[k] += blend*watercolor[k]/255.0f;
+        {
+            float deepfade = clamp(below/max(waterdeep, waterfog), 0.0f, 1.0f);
+            vec color;
+            loopk(3) color[k] = watercolor[k]*(1-deepfade) + waterdeepcolor[k]*deepfade;
+            loopk(3) fogc[k] += blend*color[k]/255.0f;
             end += logblend*min(fog, max(waterfog*4, 32));
             break;
+        }
 
         case MAT_LAVA:
             loopk(3) fogc[k] += blend*lavacolor[k]/255.0f;
@@ -1289,14 +1294,14 @@ static void blendfog(int fogmat, float blend, float logblend, float &start, floa
     }
 }
 
-static void setfog(int fogmat, float below = 1, int abovemat = MAT_AIR)
+static void setfog(int fogmat, float below = 0, float blend = 1, int abovemat = MAT_AIR)
 {
     float fogc[4] = { 0, 0, 0, 1 };
     float start = 0, end = 0;
-    float logscale = 256, logblend = log(1 + (logscale - 1)*below) / log(logscale);
+    float logscale = 256, logblend = log(1 + (logscale - 1)*blend) / log(logscale);
 
-    blendfog(fogmat, below, logblend, start, end, fogc);
-    if(below < 1) blendfog(abovemat, 1-below, 1-logblend, start, end, fogc);
+    blendfog(fogmat, below, blend, logblend, start, end, fogc);
+    if(blend < 1) blendfog(abovemat, 0, 1-blend, 1-logblend, start, end, fogc);
 
     if(hdr) loopk(3) fogc[k] *= 0.5f;
 
@@ -1306,15 +1311,20 @@ static void setfog(int fogmat, float below = 1, int abovemat = MAT_AIR)
     //glClearColor(fogc[0], fogc[1], fogc[2], 1.0f);
 }
 
-static void blendfogoverlay(int fogmat, float blend, float *overlay)
+static void blendfogoverlay(int fogmat, float below, float blend, float *overlay)
 {
     float maxc;
     switch(fogmat)
     {
         case MAT_WATER:
-            maxc = max(watercolor[0], max(watercolor[1], watercolor[2]));
-            loopk(3) overlay[k] += blend*max(0.4f, watercolor[k]/min(32.0f + maxc*7.0f/8.0f, 255.0f));
+        {
+            float deepfade = clamp(below/max(waterdeep, waterfog), 0.0f, 1.0f);
+            vec color;
+            loopk(3) color[k] = watercolor[k]*(1-deepfade) + waterdeepcolor[k]*deepfade;
+            maxc = max(color[0], max(color[1], color[2]));
+            loopk(3) overlay[k] += blend*max(0.4f, color[k]/min(32.0f + maxc*7.0f/8.0f, 255.0f));
             break;
+        }
 
         case MAT_LAVA:
             maxc = max(lavacolor[0], max(lavacolor[1], lavacolor[2]));
@@ -1327,7 +1337,7 @@ static void blendfogoverlay(int fogmat, float blend, float *overlay)
     }
 }
 
-void drawfogoverlay(int fogmat, float fogblend, int abovemat)
+void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
 {
     notextureshader->set();
     glDisable(GL_TEXTURE_2D);
@@ -1335,8 +1345,8 @@ void drawfogoverlay(int fogmat, float fogblend, int abovemat)
     glEnable(GL_BLEND);
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
     float overlay[3] = { 0, 0, 0 };
-    blendfogoverlay(fogmat, fogblend, overlay);
-    blendfogoverlay(abovemat, 1-fogblend, overlay);
+    blendfogoverlay(fogmat, fogbelow, fogblend, overlay);
+    blendfogoverlay(abovemat, 0, 1-fogblend, overlay);
 
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -3639,21 +3649,22 @@ void processhdr()
 FVAR(refractmargin, 0, 0.1f, 1);
 FVAR(refractdepth, 1e-3f, 16, 1e3f);
 
-void rendertransparent(float causticspass = 0)
+void rendertransparent(float causticspass = 0, float fogpass = 0)
 {
     int hasalphavas = findalphavas();
     int hasmats = findmaterials();
     if(!hasalphavas && !hasmats)
     {
-        if(causticspass > 0)
+        if(causticspass > 0 || fogpass > 0)
         {
             glActiveTexture_(GL_TEXTURE9_ARB);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
             glActiveTexture_(GL_TEXTURE0_ARB);
 
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
-            rendercaustics(causticspass);
         }
+        if(causticspass > 0) rendercaustics(causticspass);
+        if(fogpass > 0) renderwaterfog(fogpass);
         return;
     }
         
@@ -3702,11 +3713,9 @@ void rendertransparent(float causticspass = 0)
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    if(causticspass > 0)
-    {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
-        rendercaustics(causticspass, mx1, my1, mx2, my2);
-    }
+    if(causticspass > 0 || fogpass > 0) glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
+    if(causticspass > 0) rendercaustics(causticspass, mx1, my1, mx2, my2);
+    if(fogpass > 0) renderwaterfog(fogpass, mx1, my1, mx2, my2);
 
     if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
 
@@ -4093,10 +4102,21 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     camera1 = &cmcamera;
     setviewcell(camera1->o);
 
-    int fogmat = lookupmaterial(o)&MATF_VOLUME;
-    if(fogmat!=MAT_WATER && fogmat!=MAT_LAVA) fogmat = MAT_AIR;
+    int fogmat = lookupmaterial(o)&MATF_VOLUME, abovemat = MAT_AIR;
+    float fogbelow = 0, fogblend = 1.0f;
+    if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
+    {
+        float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
+        if(camera1->o.z < z + 1)
+        {
+            fogbelow = z + 1 - camera1->o.z;
+            fogblend = min(fogbelow, 1.0f);
+        }
+        else fogmat = abovemat;
+    }
+    else fogmat = MAT_AIR;
 
-    setfog(fogmat);
+    setfog(MAT_AIR);
     
     float oldaspect = aspect, oldfovy = fovy, oldfov = curfov;
     int oldfarplane = farplane, oldvieww = vieww, oldviewh = viewh;
@@ -4132,6 +4152,8 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 
     shadegbuffer();
     GLERROR;
+
+    setfog(fogmat, fogbelow, fogblend, abovemat);
 
     rendertransparent();
     GLERROR;
@@ -4191,17 +4213,22 @@ void gl_drawframe(int w, int h)
     fovy = 2*atan2(tan(curfov/2*RAD), aspect)/RAD;
     
     int fogmat = lookupmaterial(camera1->o)&MATF_VOLUME, abovemat = MAT_AIR;
-    float fogblend = 1.0f, causticspass = 0.0f;
+    float fogbelow = 0, fogblend = 1.0f, causticspass = 0.0f;
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
         float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
-        if(camera1->o.z < z + 1) fogblend = min(z + 1 - camera1->o.z, 1.0f);
+        if(camera1->o.z < z + 1) 
+        {
+            fogbelow = z + 1 - camera1->o.z;
+            fogblend = min(fogbelow, 1.0f);
+        }
         else fogmat = abovemat;
         if(caustics && fogmat==MAT_WATER && camera1->o.z < z)
             causticspass = min(z - camera1->o.z, 1.0f);
     }
     else fogmat = MAT_AIR;    
-    setfog(fogmat, fogblend, abovemat);
+    setfog(MAT_AIR);
+    //setfog(fogmat, fogbelow, fogblend, abovemat);
 
     farplane = worldsize*2;
 
@@ -4260,7 +4287,9 @@ void gl_drawframe(int w, int h)
     shadegbuffer();
     GLERROR;
 
-    rendertransparent(causticspass);
+    setfog(fogmat, fogbelow, fogblend, abovemat);
+
+    rendertransparent(causticspass, fogmat == MAT_WATER || fogmat == MAT_LAVA ? fogblend : 0);
     GLERROR;
 
     defaultshader->set();
@@ -4295,7 +4324,7 @@ void gl_drawframe(int w, int h)
     if(hdr) processhdr();
 
     addmotionblur();
-    if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogblend, abovemat);
+    if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogbelow, fogblend, abovemat);
     renderpostfx();
 
     defaultshader->set();

@@ -100,6 +100,36 @@ void rendercaustics(float blend, float mx1, float my1, float mx2, float my2)
     glEnable(GL_DEPTH_TEST);
 }
 
+void renderwaterfog(float blend, float mx1, float my1, float mx2, float my2)
+{
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    loopi(5)
+    {
+        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
+        switch(i)
+        {
+        case 0: sy2 = my1; break;
+        case 1: sx2 = mx1; sy1 = my1; sy2 = my2; break;
+        case 2: sx1 = mx1; sx2 = mx2; sy1 = my1; sy2 = my2; break;
+        case 3: sx1 = mx2; sy1 = my1; sy2 = my2; break;
+        case 4: sy1 = my2; break;
+        }
+        if(sx1 >= sx2 || sy1 >= sy2) continue;
+        if(i==2) SETSHADER(waterfogmask);
+        else SETSHADER(waterfog);
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex2f(sx2, sy1);
+        glVertex2f(sx1, sy1);
+        glVertex2f(sx2, sy2);
+        glVertex2f(sx1, sy2);
+        glEnd();
+    }
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+}
+
 VARFP(waterreflect, 0, 1, 1, { preloadwatershaders(); });
 VARR(waterreflectstep, 1, 32, 10000);
 FVARR(waterrefract, 0, 0.1f, 1e3f);
@@ -376,6 +406,9 @@ void preloadwatershaders(bool force)
 
     if(waterfallenv && hasCM) useshaderbyname("waterfallenv");
     useshaderbyname("waterfall");
+
+    useshaderbyname("waterfog");
+    useshaderbyname("waterfogmask");
 
     useshaderbyname("waterminimap");
 }
