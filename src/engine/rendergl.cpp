@@ -4107,9 +4107,9 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
         float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
-        if(camera1->o.z < z + 1)
+        if(camera1->o.z < z - clamp(camdir.z*2.0f - 0.5f, -1.0f, 1.0f))
         {
-            fogbelow = z + 1 - camera1->o.z;
+            fogbelow = z - clamp(camdir.z*2.0f - 0.5f, -1.0f, 1.0f) - camera1->o.z;
             fogblend = min(fogbelow, 1.0f);
         }
         else fogmat = abovemat;
@@ -4217,9 +4217,9 @@ void gl_drawframe(int w, int h)
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
         float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
-        if(camera1->o.z < z + 1) 
+        if(camera1->o.z < z - clamp(camdir.z*2.0f - 0.5f, -1.0f, 1.0f)) 
         {
-            fogbelow = z + 1 - camera1->o.z;
+            fogbelow = z - clamp(camdir.z*2.0f - 0.5f, -1.0f, 1.0f) - camera1->o.z;
             fogblend = min(fogbelow, 1.0f);
         }
         else fogmat = abovemat;
