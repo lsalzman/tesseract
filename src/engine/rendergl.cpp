@@ -2385,7 +2385,7 @@ static void calcfrustumpoints(vec *frustum, float nearplane, float farplane, con
     frustum[7] = fc - up*far_height + right*far_width;
 }
 
-VAR(csmfarplane, 64, 768, 16384);
+VAR(csmfarplane, 64, 1024, 16384);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
 FVAR(csmdepthmargin, 0, 0.1f, 1e3f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
