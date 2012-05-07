@@ -3649,51 +3649,30 @@ void processhdr()
 FVAR(refractmargin, 0, 0.1f, 1);
 FVAR(refractdepth, 1e-3f, 16, 1e3f);
 
-void rendertransparent(float causticspass = 0, float fogpass = 0)
+void rendertransparent()
 {
     int hasalphavas = findalphavas();
     int hasmats = findmaterials();
-    if(!hasalphavas && !hasmats)
-    {
-        if(causticspass > 0 || fogpass > 0)
-        {
-            glActiveTexture_(GL_TEXTURE9_ARB);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-            glActiveTexture_(GL_TEXTURE0_ARB);
-
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
-        }
-        if(causticspass > 0) rendercaustics(causticspass);
-        if(fogpass > 0) renderwaterfog(fogpass);
-        return;
-    }
+    if(!hasalphavas && !hasmats) return;
         
     timer_begin(TIMER_TRANSPARENT);
 
-    float mx1 = 1, my1 = 1, mx2 = 1, my2 = 1;
     if(hasalphavas&4 || hasmats&4)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
         glDepthMask(GL_FALSE);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-        mx1 = min(alpharefractsx1, matrefractsx1);
-        my1 = min(alpharefractsy1, matrefractsy1);
-        mx2 = max(alpharefractsx2, matrefractsx2);
-        my2 = max(alpharefractsy2, matrefractsy2);
-        bool scissor = mx1 > -1 || my1 > -1 || mx2 < 1 || my2 < 1;
+        float sx1 = min(alpharefractsx1, matrefractsx1), sy1 = min(alpharefractsy1, matrefractsy1),
+              sx2 = max(alpharefractsx2, matrefractsx2), sy2 = max(alpharefractsy2, matrefractsy2);
+        bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
         if(scissor)
         {
-            int x1 = int(floor(max(mx1*0.5f+0.5f-refractmargin*viewh/vieww, 0.0f)*vieww)),
-                y1 = int(floor(max(my1*0.5f+0.5f-refractmargin, 0.0f)*viewh)),
-                x2 = int(ceil(min(mx2*0.5f+0.5f+refractmargin*viewh/vieww, 1.0f)*vieww)),
-                y2 = int(ceil(min(my2*0.5f+0.5f+refractmargin, 1.0f)*viewh));
+            int x1 = int(floor(max(sx1*0.5f+0.5f-refractmargin*viewh/vieww, 0.0f)*vieww)),
+                y1 = int(floor(max(sy1*0.5f+0.5f-refractmargin, 0.0f)*viewh)),
+                x2 = int(ceil(min(sx2*0.5f+0.5f+refractmargin*viewh/vieww, 1.0f)*vieww)),
+                y2 = int(ceil(min(sy2*0.5f+0.5f+refractmargin, 1.0f)*viewh));
             glEnable(GL_SCISSOR_TEST);
             glScissor(x1, y1, x2 - x1, y2 - y1);
-        }
-        else
-        {
-            mx1 = my1 = -1;
-            mx2 = my2 = 1;
         }
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -3712,10 +3691,6 @@ void rendertransparent(float causticspass = 0, float fogpass = 0)
     glActiveTexture_(GL_TEXTURE9_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
-
-    if(causticspass > 0 || fogpass > 0) glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
-    if(causticspass > 0) rendercaustics(causticspass, mx1, my1, mx2, my2);
-    if(fogpass > 0) renderwaterfog(fogpass, mx1, my1, mx2, my2);
 
     if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
 
@@ -4104,19 +4079,18 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 
     float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
     int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&MATF_VOLUME, abovemat = MAT_AIR;
-    float fogbelow = 0, fogblend = 1.0f;
+    float fogbelow = 0;
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
         float z = findsurface(fogmat, vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin), abovemat) - WATER_OFFSET;
         if(camera1->o.z < z + fogmargin)
         {
-            fogbelow = z + fogmargin - camera1->o.z;
-            fogblend = min(fogbelow, 1.0f);
+            fogbelow = z - camera1->o.z;
         }
         else fogmat = abovemat;
     }
     else fogmat = MAT_AIR;
-    setfog(MAT_AIR);
+    setfog(abovemat);
     
     float oldaspect = aspect, oldfovy = fovy, oldfov = curfov;
     int oldfarplane = farplane, oldvieww = vieww, oldviewh = viewh;
@@ -4153,7 +4127,19 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     shadegbuffer();
     GLERROR;
 
-    setfog(fogmat, fogbelow, fogblend, abovemat);
+    if(fogmat)
+    {
+        setfog(fogmat, fogbelow, 1, abovemat);
+
+        glActiveTexture_(GL_TEXTURE9_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
+        renderwaterfog(fogmat, fogbelow);
+    
+        setfog(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
+    }
 
     rendertransparent();
     GLERROR;
@@ -4214,23 +4200,19 @@ void gl_drawframe(int w, int h)
     
     float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
     int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&MATF_VOLUME, abovemat = MAT_AIR;
-    float fogbelow = 0, fogblend = 1.0f, fogoverlay = 0.0f, causticspass = 0.0f;
+    float fogbelow = 0;
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
         float z = findsurface(fogmat, vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin), abovemat) - WATER_OFFSET;
         if(camera1->o.z < z + fogmargin)
         {
-            fogbelow = z + fogmargin - camera1->o.z;
-            fogblend = min(fogbelow, 1.0f);
-            fogoverlay = clamp(fogbelow - 1.0f, 0.0f, 1.0f);
+            fogbelow = z - camera1->o.z;
         }
         else fogmat = abovemat;
-        if(caustics && fogmat==MAT_WATER && camera1->o.z < z)
-            causticspass = min(z - camera1->o.z, 1.0f);
     }
     else fogmat = MAT_AIR;    
-    setfog(MAT_AIR);
-    //setfog(fogmat, fogbelow, fogblend, abovemat);
+    setfog(abovemat);
+    //setfog(fogmat, fogbelow, 1, abovemat);
 
     farplane = worldsize*2;
 
@@ -4289,10 +4271,24 @@ void gl_drawframe(int w, int h)
     shadegbuffer();
     GLERROR;
 
-    setfog(fogmat, fogbelow, fogblend, abovemat);
+    if(fogmat)
+    {
+        setfog(fogmat, fogbelow, 1, abovemat);
 
-    rendertransparent(causticspass, fogmat == MAT_WATER || fogmat == MAT_LAVA ? fogbelow : 0);
+        glActiveTexture_(GL_TEXTURE9_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
+        renderwaterfog(fogmat, fogbelow);
+
+        setfog(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
+    }
+
+    rendertransparent();
     GLERROR;
+
+    if(fogmat) setfog(fogmat, fogbelow, 1, abovemat);
 
     defaultshader->set();
     GLERROR;
@@ -4326,7 +4322,7 @@ void gl_drawframe(int w, int h)
     if(hdr) processhdr();
 
     addmotionblur();
-    if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogbelow, fogoverlay, abovemat);
+    if(fogmat != MAT_AIR) drawfogoverlay(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
     renderpostfx();
 
     defaultshader->set();

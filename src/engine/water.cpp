@@ -10,7 +10,6 @@ void loadcaustics(bool force)
     if(force) needcaustics = true;
     if(!caustics || !needcaustics) return;
     useshaderbyname("caustics");
-    useshaderbyname("causticsmask");
     if(caustictex[0]) return;
     loopi(NUMCAUSTICS)
     {
@@ -30,7 +29,7 @@ FVARR(causticcontrast, 0, 0.6f, 2);
 FVARR(causticoffset, 0, 0.7f, 1);
 VARFP(caustics, 0, 1, 1, { loadcaustics(); preloadwatershaders(); });
 
-void setupcaustics(int tmu, float blend = 1, bool post = false)
+void setupcaustics(int tmu, float surface = -1e16f)
 {
     if(!caustictex[0]) loadcaustics(true);
 
@@ -43,101 +42,97 @@ void setupcaustics(int tmu, float blend = 1, bool post = false)
         glBindTexture(GL_TEXTURE_2D, caustictex[(tex+i)%NUMCAUSTICS]->id);
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
-    if(post)
+    float blendscale = causticcontrast, blendoffset = 1;
+    if(surface > -1e15f)
     {
-        vec4 d = mvmatrix.getrow(2);
+        float bz = surface + camera1->o.z + (vertwater ? WATER_AMPLITUDE : 0);
         GLfloat m[16] =
         {
-            s.x, t.x, d.x, 0,
-            s.y, t.y, d.y, 0,
-            s.z, t.z, d.z, 0,
-              0,   0, d.w, 1
+            s.x, t.x,  0, 0,
+            s.y, t.y,  0, 0,
+            s.z, t.z, -1, 0,
+              0,   0, bz, 1
         };
         glMatrixMode(GL_TEXTURE);
         glLoadMatrixf(m);
         glMultMatrixf(worldmatrix.v);
         glMatrixMode(GL_MODELVIEW);
-        blend *= 0.5f;
+        blendscale *= 0.5f;
+        blendoffset = 0;
     }
     else
     {
         GLOBALPARAM(causticsS, (s));
         GLOBALPARAM(causticsT, (t));
     }
-    blend *= causticcontrast;
-    GLOBALPARAM(causticsblend, (blend*(1-frac), blend*frac, (post ? 0 : 1) - causticoffset*blend));
+    GLOBALPARAM(causticsblend, (blendscale*(1-frac), blendscale*frac, blendoffset - causticoffset*blendscale));
 }
 
-void rendercaustics(float blend, float mx1, float my1, float mx2, float my2)
+void rendercaustics(float surface, float syl, float syr)
 {
     if(!caustics || !causticscale || !causticmillis) return;
-    glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
-    glEnable(GL_BLEND);
-    setupcaustics(0, blend, true);
-    loopi(5)
-    {
-        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
-        switch(i)
-        {
-        case 0: sy2 = my1; break;
-        case 1: sx2 = mx1; sy1 = my1; sy2 = my2; break;
-        case 2: sx1 = mx1; sx2 = mx2; sy1 = my1; sy2 = my2; break;
-        case 3: sx1 = mx2; sy1 = my1; sy2 = my2; break;
-        case 4: sy1 = my2; break;
-        }
-        if(sx1 >= sx2 || sy1 >= sy2) continue;
-        if(i==2) SETSHADER(causticsmask);
-        else SETSHADER(caustics);
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex2f(sx2, sy1);
-        glVertex2f(sx1, sy1);
-        glVertex2f(sx2, sy2);
-        glVertex2f(sx1, sy2);
-        glEnd();
-    }
-    glDisable(GL_BLEND);
-    glEnable(GL_DEPTH_TEST);
+    setupcaustics(0, surface);
+    SETSHADER(caustics);
+    glBegin(GL_TRIANGLE_STRIP);
+    glVertex2f(1, -1);
+    glVertex2f(-1, -1);
+    glVertex2f(1, syr);
+    glVertex2f(-1, syl);
+    glEnd();
 }
 
-void renderwaterfog(float blend, float mx1, float my1, float mx2, float my2)
+void renderwaterfog(int mat, float surface)
 {
     glDisable(GL_DEPTH_TEST);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
-    glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(worldmatrix.v);
-    glMatrixMode(GL_MODELVIEW);
-    if(blend < 8) GLOBALPARAM(fogsurface, (blend + camera1->o.z));
-    loopi(5)
+
+    vec p[5] = 
     {
-        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
-        switch(i)
-        {
-        case 0: sy2 = my1; break;
-        case 1: sx2 = mx1; sy1 = my1; sy2 = my2; break;
-        case 2: sx1 = mx1; sx2 = mx2; sy1 = my1; sy2 = my2; break;
-        case 3: sx1 = mx2; sy1 = my1; sy2 = my2; break;
-        case 4: sy1 = my2; break;
-        }
-        if(sx1 >= sx2 || sy1 >= sy2) continue;
-        if(blend < 8)
-        {
-            if(i==2) SETSHADER(watersurfacefogmask);
-            else SETSHADER(watersurfacefog);
-        }
-        else
-        {
-            if(i==2) SETSHADER(waterfogmask);
-            else SETSHADER(waterfog);
-        }
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex2f(sx2, sy1);
-        glVertex2f(sx1, sy1);
-        glVertex2f(sx2, sy2);
-        glVertex2f(sx1, sy2);
-        glEnd();
+        invmvpmatrix.perspectivetransform(vec(-1, -1, -1)),
+        invmvpmatrix.perspectivetransform(vec(-1, 1, -1)),
+        invmvpmatrix.perspectivetransform(vec(1, -1, -1)),
+        invmvpmatrix.perspectivetransform(vec(1, 1, -1)),
+        invmvpmatrix.perspectivetransform(vec(0, 0, -1))
+    }; 
+    float bz = surface + camera1->o.z + (vertwater ? WATER_AMPLITUDE : 0),
+          syl = p[1].z > p[0].z ? 2*(bz - p[0].z)/(p[1].z - p[0].z) - 1 : 1,
+          syr = p[3].z > p[2].z ? 2*(bz - p[2].z)/(p[3].z - p[2].z) - 1 : 1;
+
+    if(mat == MAT_WATER) rendercaustics(surface, syl, syr);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    vec4 d = mvmatrix.getrow(2);
+    GLfloat m[16] =
+    {
+        d.x, 0,  0, 0,
+        d.y, 1,  0, 0,
+        d.z, 0, -1, 0,
+        d.w, 0, bz, 1
+    };
+    glMatrixMode(GL_TEXTURE);
+    glLoadMatrixf(m);
+    glMultMatrixf(worldmatrix.v);
+    glMatrixMode(GL_MODELVIEW);
+    if(mat == MAT_WATER)
+    {
+        float colorscale = (hdr ? 0.5f : 1)/255.0f;
+        GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*colorscale, waterdeepcolor.y*colorscale, waterdeepcolor.z*colorscale));
+        ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
+        GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f));
     }
+    else
+    {
+        GLOBALPARAM(waterdeepcolor, (0, 0, 0));
+        GLOBALPARAM(waterdeepfade, (0, 0, 0));
+    }
+    SETSHADER(waterfog);
+    glBegin(GL_TRIANGLE_STRIP);
+    glVertex2f(1, -1);
+    glVertex2f(-1, -1);
+    glVertex2f(1, syr);
+    glVertex2f(-1, syl);
+    glEnd();
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }
@@ -420,9 +415,6 @@ void preloadwatershaders(bool force)
     useshaderbyname("waterfall");
 
     useshaderbyname("waterfog");
-    useshaderbyname("waterfogmask");
-    useshaderbyname("watersurfacefog");
-    useshaderbyname("watersurfacefogmask");
 
     useshaderbyname("waterminimap");
 }

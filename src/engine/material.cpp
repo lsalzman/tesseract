@@ -173,10 +173,11 @@ void genmatsurfs(cube &c, int cx, int cy, int cz, int size, vector<materialsurfa
 static inline void addmatbb(ivec &matmin, ivec &matmax, const materialsurface &m)
 {
     int dim = dimension(m.orient);
-    ivec mmax(m.o);
+    ivec mmin(m.o), mmax(m.o);
+    if(dimcoord(m.orient)) mmin[dim] -= 2; else mmax[dim] += 2;
     mmax[R[dim]] += m.rsize;
     mmax[C[dim]] += m.csize;
-    matmin.min(m.o);
+    matmin.min(mmin);
     matmax.max(mmax);
 }
 
