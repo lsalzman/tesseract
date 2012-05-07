@@ -87,13 +87,12 @@ void renderwaterfog(int mat, float surface)
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
 
-    vec p[5] = 
+    vec p[4] = 
     {
         invmvpmatrix.perspectivetransform(vec(-1, -1, -1)),
         invmvpmatrix.perspectivetransform(vec(-1, 1, -1)),
         invmvpmatrix.perspectivetransform(vec(1, -1, -1)),
-        invmvpmatrix.perspectivetransform(vec(1, 1, -1)),
-        invmvpmatrix.perspectivetransform(vec(0, 0, -1))
+        invmvpmatrix.perspectivetransform(vec(1, 1, -1))
     }; 
     float bz = surface + camera1->o.z + (vertwater ? WATER_AMPLITUDE : 0),
           syl = p[1].z > p[0].z ? 2*(bz - p[0].z)/(p[1].z - p[0].z) - 1 : 1,
@@ -133,6 +132,7 @@ void renderwaterfog(int mat, float surface)
     glVertex2f(1, syr);
     glVertex2f(-1, syl);
     glEnd();
+
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 }
