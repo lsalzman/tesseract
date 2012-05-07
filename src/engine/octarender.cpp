@@ -1044,6 +1044,8 @@ void clearvas(cube *c)
     }
 }
 
+ivec worldmin(0, 0, 0), worldmax(0, 0, 0);
+
 void updatevabb(vtxarray *va, bool force)
 {
     if(!force && va->bbmin.x >= 0) return;
@@ -1069,11 +1071,24 @@ void updatevabb(vtxarray *va, bool force)
         va->bbmin.min(oe->bbmin);
         va->bbmax.max(oe->bbmax);
     }
+    worldmin.min(va->bbmin);
+    worldmax.max(va->bbmax);
 }
 
 void updatevabbs(bool force)
 {
-    loopv(varoot) updatevabb(varoot[i], force);
+    if(force)
+    {
+        worldmin = ivec(worldsize, worldsize, worldsize);
+        worldmax = ivec(0, 0, 0);
+        loopv(varoot) updatevabb(varoot[i], true);
+        if(worldmin.x >= worldmax.x) 
+        {
+            worldmin = ivec(0, 0, 0);
+            worldmax = ivec(worldsize, worldsize, worldsize);
+        }
+    }
+    else loopv(varoot) updatevabb(varoot[i]);
 }
 
 struct mergedface

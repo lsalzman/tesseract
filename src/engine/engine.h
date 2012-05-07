@@ -394,6 +394,7 @@ extern void rendereditcursor();
 extern void tryedit();
 
 // octarender
+extern ivec worldmin, worldmax;
 extern vector<tjoint> tjoints;
 
 extern ushort encodenormal(const vec &n);

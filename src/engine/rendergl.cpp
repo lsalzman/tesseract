@@ -2219,7 +2219,7 @@ const float tetrashadowviewmatrix[4][16] =
 
 FVAR(smpolyfactor, -1e3f, 1, 1e3f);
 FVAR(smpolyoffset, -1e3f, 0, 1e3f);
-FVAR(smbias, -1e3f, 0.01f, 1e3f);
+FVAR(smbias, -1e6f, 0.01f, 1e6f);
 FVAR(smprec, 1e-3f, 1, 1e3f);
 FVAR(smtetraprec, 1e-3f, SQRT3, 1e3f);
 FVAR(smcubeprec, 1e-3f, 1, 1e3f);
@@ -2417,10 +2417,11 @@ FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
 VAR(csmfarplane, 64, 768, 16384);
 VAR(csmfarsmoothdistance, 0, 8, 64);
 FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
+FVAR(csmdepthmargin, 0, 0.1f, 1e3f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
 FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
 FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
-FVAR(csmbias, -1e3f, 1e-4f, 1e3f);
+FVAR(csmbias, -1e6f, 2.5e-3f, 1e6f);
 VAR(csmcull, 0, 1, 1);
 
 void cascaded_shadow_map::getprojmatrix()
@@ -2437,15 +2438,17 @@ void cascaded_shadow_map::getprojmatrix()
     updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
 
     loopi(csmsplitn) updatefrustumpoints(f[i], camera1->o, camdir, camup, camright);
+    
+    // find z extent
+    float minz = lightview.project_bb(worldmin, worldmax), maxz = lightview.project_bb(worldmax, worldmin), zmargin = (maxz - minz)*csmdepthmargin;
+    minz -= zmargin;
+    maxz += zmargin;
 
     // compute each split projection matrix
     loopi(csmsplitn)
     {
         splitinfo &split = this->splits[i];
         if(split.idx < 0) continue;
-
-        // find z extent
-        float minz = -worldsize, maxz = worldsize; // improve that
 
         float radius = 0.f;
         int a = 0, b = 0;
@@ -2477,7 +2480,7 @@ void cascaded_shadow_map::getprojmatrix()
 
         // modify mvp with a scale and offset
         // now compute the update model view matrix for this split
-        split.proj.ortho(minv.x, maxv.x, minv.y, maxv.y, -maxz, -minz);
+        split.proj.ortho(minv.x, maxv.x, minv.y, maxv.y, minz, maxz);
     }
 }
 
