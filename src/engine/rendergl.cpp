@@ -2315,6 +2315,8 @@ struct cascaded_shadow_map
 {
     struct splitinfo
     {
+        float nearplane;  // split distance to near plane
+        float farplane;   // split distance to farplane
         glmatrixf proj;   // one projection per split
         int idx;          // shadowmapinfo indices
         vec bbmin, bbmax; // max extents of shadowmap in sunlight model space
@@ -2324,6 +2326,7 @@ struct cascaded_shadow_map
     splitinfo splits[csmmaxsplitn]; // per-split parameters
     vec lightview;                  // view vector for light
     void setup();                   // insert shadowmaps for each split frustum if there is sunlight
+    void updatesplitdist();         // compute split frustum distances
     void getmodelmatrix();          // compute the shared model matrix
     void getprojmatrix();           // compute each cropped projection matrix
     void gencullplanes();           // generate culling planes for the mvp matrix
@@ -2344,13 +2347,7 @@ void cascaded_shadow_map::setup()
     gencullplanes();
 }
 
-struct splitfrustum
-{
-    vec point[8];
-    float nearplane, farplane;
-};
-
-static void updatefrustumpoints(splitfrustum &f, const vec &pos, const vec &view, const vec &up, const vec &right)
+static void calcfrustumpoints(vec *frustum, float nearplane, float farplane, const vec &pos, const vec &view, const vec &up, const vec &right)
 {
     if(minimapping)
     {
@@ -2360,50 +2357,44 @@ static void updatefrustumpoints(splitfrustum &f, const vec &pos, const vec &view
             p.x += i&1 ? minimapradius.x : -minimapradius.x;
             p.y += i&2 ? minimapradius.y : -minimapradius.y;
             p.z += i&4 ? minimapradius.z : -minimapradius.z;
-            f.point[i] = p;
+            frustum[i] = p;
         }
         return;
     }
-    const vec fc = pos + view*f.farplane;
-    const vec nc = pos + view*f.nearplane;
-    float near_height = tanf(curfov/2.0f*RAD) * f.nearplane;
-    float far_height = tanf(curfov/2.0f*RAD) * f.farplane;
-    float near_width = near_height * aspect;
-    float far_width = far_height * aspect;
-#if 1
-    f.point[0] = nc - up*near_height - right*near_width;
-    f.point[1] = nc + up*near_height - right*near_width;
-    f.point[2] = nc + up*near_height + right*near_width;
-    f.point[3] = nc - up*near_height + right*near_width;
-    f.point[4] = fc - up*far_height - right*far_width;
-    f.point[5] = fc + up*far_height - right*far_width;
-    f.point[6] = fc + up*far_height + right*far_width;
-    f.point[7] = fc - up*far_height + right*far_width;
-#else
-    const float x = worldsize;
-    f.point[0] = vec(x,x,x);
-    f.point[1] = vec(-x,x,x);
-    f.point[2] = vec(x,-x,x);
-    f.point[3] = vec(-x,-x,x);
-    f.point[4] = vec(x,x,-x);
-    f.point[5] = vec(-x,x,-x);
-    f.point[6] = vec(x,-x,-x);
-    f.point[7] = vec(-x,-x,-x);
-#endif
+    const vec fc = pos + view*farplane, nc = pos + view*nearplane;
+    float height = tan(fovy/2.0f*RAD);
+    float near_height = height * nearplane, far_height = height * farplane;
+    float near_width = near_height * aspect, far_width = far_height * aspect;
+    frustum[0] = nc - up*near_height - right*near_width;
+    frustum[1] = nc + up*near_height - right*near_width;
+    frustum[2] = nc + up*near_height + right*near_width;
+    frustum[3] = nc - up*near_height + right*near_width;
+    frustum[4] = fc - up*far_height - right*far_width;
+    frustum[5] = fc + up*far_height - right*far_width;
+    frustum[6] = fc + up*far_height + right*far_width;
+    frustum[7] = fc - up*far_height + right*far_width;
 }
 
-static void updatesplitdist(splitfrustum *f, float nd, float fd)
+VAR(csmfarplane, 64, 768, 16384);
+FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
+FVAR(csmdepthmargin, 0, 0.1f, 1e3f);
+VAR(debugcsm, 0, 0, csmmaxsplitn);
+FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
+FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
+FVAR(csmbias, -1e6f, 4e-4f, 1e6f);
+VAR(csmcull, 0, 1, 1);
+
+void cascaded_shadow_map::updatesplitdist()
 {
-    float lambda = csmsplitweight;
-    float ratio = fd/nd;
-    f[0].nearplane = nd;
+    float lambda = csmsplitweight, nd = nearplane, fd = csmfarplane, ratio = fd/nd;
+    splits[0].nearplane = nd;
     for(int i = 1; i < csmsplitn; ++i)
     {
-        float si = i / (float)csmsplitn;
-        f[i].nearplane = lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
-        f[i-1].farplane = f[i].nearplane * 1.005f;
+        float si = i / float(csmsplitn);
+        splits[i].nearplane = lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
+        splits[i-1].farplane = splits[i].nearplane * 1.005f;
     }
-    f[csmsplitn-1].farplane = fd;
+    splits[csmsplitn-1].farplane = fd;
 }
 
 void cascaded_shadow_map::getmodelmatrix()
@@ -2413,20 +2404,8 @@ void cascaded_shadow_map::getmodelmatrix()
     model.rotate_around_z((180-sunlightyaw)*RAD);
 }
 
-FVAR(csmminmaxz, 0.f, 2048.f, 4096.f);
-VAR(csmfarplane, 64, 768, 16384);
-VAR(csmfarsmoothdistance, 0, 8, 64);
-FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
-FVAR(csmdepthmargin, 0, 0.1f, 1e3f);
-VAR(debugcsm, 0, 0, csmmaxsplitn);
-FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
-FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
-FVAR(csmbias, -1e6f, 2.5e-3f, 1e6f);
-VAR(csmcull, 0, 1, 1);
-
 void cascaded_shadow_map::getprojmatrix()
 {
-    splitfrustum f[csmmaxsplitn];
     vec lightup, lightright;
     lightview = vec(sunlightdir).neg();
     lightup.orthogonal(lightview);
@@ -2435,10 +2414,8 @@ void cascaded_shadow_map::getprojmatrix()
     lightup.cross(lightright, lightview);
 
     // compute the split frustums
-    updatesplitdist(f, nearplane, csmfarplane ? float(csmfarplane) : float(farplane));
+    updatesplitdist();
 
-    loopi(csmsplitn) updatefrustumpoints(f[i], camera1->o, camdir, camup, camright);
-    
     // find z extent
     float minz = lightview.project_bb(worldmin, worldmax), maxz = lightview.project_bb(worldmax, worldmin), zmargin = (maxz - minz)*csmdepthmargin;
     minz -= zmargin;
@@ -2450,11 +2427,14 @@ void cascaded_shadow_map::getprojmatrix()
         splitinfo &split = this->splits[i];
         if(split.idx < 0) continue;
 
+        vec frustum[8];
+        calcfrustumpoints(frustum, split.nearplane, split.farplane, camera1->o, camdir, camup, camright);
+
         float radius = 0.f;
         int a = 0, b = 0;
         loopj(7) for(int k = j+1; k < 8; ++k)
         {
-            const float d = f[i].point[j].dist(f[i].point[k]) / 2.f;
+            const float d = frustum[j].dist(frustum[k]) / 2.f;
             if(d > radius)
             {
                 radius = d;
@@ -2462,7 +2442,7 @@ void cascaded_shadow_map::getprojmatrix()
                 b = k;
             }
         }
-        vec c = (f[i].point[a] + f[i].point[b]) * 0.5f;
+        vec c = (frustum[a] + frustum[b]) * 0.5f;
 
         // compute the projected bounding box of the sphere
         const vec p = c + radius * lightright;
@@ -2637,7 +2617,7 @@ void cascaded_shadow_map::bindparams()
         cascaded_shadow_map::splitinfo &split = csm.splits[i];
         if(split.idx < 0) continue;
         const shadowmapinfo &sm = shadowmaps[split.idx];
-        const float bias = csmbias * (1024.0f / sm.size);
+        const float bias = csmbias * (1024.0f / sm.size) * (split.farplane - split.nearplane) / (csm.splits[0].farplane - csm.splits[0].nearplane);
         splitcenterv[i] = vec(split.bbmin).add(split.bbmax).mul(0.5f);
         splitboundsv[i] = vec(split.bbmax).sub(split.bbmin).mul(0.5f*(sm.size - 2*smborder)/sm.size);
         splitscalev[i] = vec(0.5f*sm.size*split.proj.v[0], 0.5f*sm.size*split.proj.v[5], 0.5f*split.proj.v[10]);
