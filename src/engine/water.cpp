@@ -14,7 +14,7 @@ void loadcaustics(bool force)
     if(caustictex[0]) return;
     loopi(NUMCAUSTICS)
     {
-        defformatstring(name)("<grey><mad:-0.6,0.6>packages/caustics/caust%.2d.png", i);
+        defformatstring(name)("<grey>packages/caustics/caust%.2d.png", i);
         caustictex[i] = textureload(name);
     }
 }
@@ -26,9 +26,11 @@ void cleanupcaustics()
 
 VARFR(causticscale, 0, 50, 10000, preloadwatershaders());
 VARFR(causticmillis, 0, 75, 1000, preloadwatershaders());
+FVARR(causticcontrast, 0, 0.6f, 2);
+FVARR(causticoffset, 0, 0.7f, 1);
 VARFP(caustics, 0, 1, 1, { loadcaustics(); preloadwatershaders(); });
 
-void setupcaustics(int tmu, float blend = 1)
+void setupcaustics(int tmu, float blend = 1, bool post = false)
 {
     if(!caustictex[0]) loadcaustics(true);
 
@@ -41,21 +43,38 @@ void setupcaustics(int tmu, float blend = 1)
         glBindTexture(GL_TEXTURE_2D, caustictex[(tex+i)%NUMCAUSTICS]->id);
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
-    GLOBALPARAM(causticsS, (s));
-    GLOBALPARAM(causticsT, (t));
-    GLOBALPARAM(causticsblend, (blend*(1-frac), blend*frac, blend));
+    if(post)
+    {
+        vec4 d = mvmatrix.getrow(2);
+        GLfloat m[16] =
+        {
+            s.x, t.x, d.x, 0,
+            s.y, t.y, d.y, 0,
+            s.z, t.z, d.z, 0,
+              0,   0, d.w, 1
+        };
+        glMatrixMode(GL_TEXTURE);
+        glLoadMatrixf(m);
+        glMultMatrixf(worldmatrix.v);
+        glMatrixMode(GL_MODELVIEW);
+        blend *= 0.5f;
+    }
+    else
+    {
+        GLOBALPARAM(causticsS, (s));
+        GLOBALPARAM(causticsT, (t));
+    }
+    blend *= causticcontrast;
+    GLOBALPARAM(causticsblend, (blend*(1-frac), blend*frac, (post ? 0 : 1) - causticoffset*blend));
 }
 
 void rendercaustics(float blend, float mx1, float my1, float mx2, float my2)
 {
     if(!caustics || !causticscale || !causticmillis) return;
     glDisable(GL_DEPTH_TEST);
-    glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+    glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
     glEnable(GL_BLEND);
-    setupcaustics(0, blend);
-    glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(worldmatrix.v);
-    glMatrixMode(GL_MODELVIEW);
+    setupcaustics(0, blend, true);
     loopi(5)
     {
         float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
