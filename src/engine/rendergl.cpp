@@ -4102,20 +4102,20 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     camera1 = &cmcamera;
     setviewcell(camera1->o);
 
-    int fogmat = lookupmaterial(o)&MATF_VOLUME, abovemat = MAT_AIR;
+    float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
+    int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&MATF_VOLUME, abovemat = MAT_AIR;
     float fogbelow = 0, fogblend = 1.0f;
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
-        float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
-        if(camera1->o.z < z + 1)
+        float z = findsurface(fogmat, vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin), abovemat) - WATER_OFFSET;
+        if(camera1->o.z < z + fogmargin)
         {
-            fogbelow = z + 1 - camera1->o.z;
+            fogbelow = z + fogmargin - camera1->o.z;
             fogblend = min(fogbelow, 1.0f);
         }
         else fogmat = abovemat;
     }
     else fogmat = MAT_AIR;
-
     setfog(MAT_AIR);
     
     float oldaspect = aspect, oldfovy = fovy, oldfov = curfov;
@@ -4212,15 +4212,17 @@ void gl_drawframe(int w, int h)
     aspect = w/float(h);
     fovy = 2*atan2(tan(curfov/2*RAD), aspect)/RAD;
     
-    int fogmat = lookupmaterial(camera1->o)&MATF_VOLUME, abovemat = MAT_AIR;
-    float fogbelow = 0, fogblend = 1.0f, causticspass = 0.0f;
+    float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
+    int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&MATF_VOLUME, abovemat = MAT_AIR;
+    float fogbelow = 0, fogblend = 1.0f, fogoverlay = 0.0f, causticspass = 0.0f;
     if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
     {
-        float z = findsurface(fogmat, camera1->o, abovemat) - WATER_OFFSET;
-        if(camera1->o.z < z + 1)
+        float z = findsurface(fogmat, vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin), abovemat) - WATER_OFFSET;
+        if(camera1->o.z < z + fogmargin)
         {
-            fogbelow = z + 1 - camera1->o.z;
+            fogbelow = z + fogmargin - camera1->o.z;
             fogblend = min(fogbelow, 1.0f);
+            fogoverlay = clamp(fogbelow - 1.0f, 0.0f, 1.0f);
         }
         else fogmat = abovemat;
         if(caustics && fogmat==MAT_WATER && camera1->o.z < z)
@@ -4289,7 +4291,7 @@ void gl_drawframe(int w, int h)
 
     setfog(fogmat, fogbelow, fogblend, abovemat);
 
-    rendertransparent(causticspass, fogmat == MAT_WATER || fogmat == MAT_LAVA ? fogblend : 0);
+    rendertransparent(causticspass, fogmat == MAT_WATER || fogmat == MAT_LAVA ? fogbelow : 0);
     GLERROR;
 
     defaultshader->set();
@@ -4324,7 +4326,7 @@ void gl_drawframe(int w, int h)
     if(hdr) processhdr();
 
     addmotionblur();
-    if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogbelow, fogblend, abovemat);
+    if(fogmat==MAT_WATER || fogmat==MAT_LAVA) drawfogoverlay(fogmat, fogbelow, fogoverlay, abovemat);
     renderpostfx();
 
     defaultshader->set();

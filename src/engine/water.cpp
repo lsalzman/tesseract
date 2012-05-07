@@ -105,6 +105,10 @@ void renderwaterfog(float blend, float mx1, float my1, float mx2, float my2)
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
+    glMatrixMode(GL_TEXTURE);
+    glLoadMatrixf(worldmatrix.v);
+    glMatrixMode(GL_MODELVIEW);
+    if(blend < 8) GLOBALPARAM(fogsurface, (blend + camera1->o.z));
     loopi(5)
     {
         float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
@@ -117,8 +121,16 @@ void renderwaterfog(float blend, float mx1, float my1, float mx2, float my2)
         case 4: sy1 = my2; break;
         }
         if(sx1 >= sx2 || sy1 >= sy2) continue;
-        if(i==2) SETSHADER(waterfogmask);
-        else SETSHADER(waterfog);
+        if(blend < 8)
+        {
+            if(i==2) SETSHADER(watersurfacefogmask);
+            else SETSHADER(watersurfacefog);
+        }
+        else
+        {
+            if(i==2) SETSHADER(waterfogmask);
+            else SETSHADER(waterfog);
+        }
         glBegin(GL_TRIANGLE_STRIP);
         glVertex2f(sx2, sy1);
         glVertex2f(sx1, sy1);
@@ -409,6 +421,8 @@ void preloadwatershaders(bool force)
 
     useshaderbyname("waterfog");
     useshaderbyname("waterfogmask");
+    useshaderbyname("watersurfacefog");
+    useshaderbyname("watersurfacefogmask");
 
     useshaderbyname("waterminimap");
 }
