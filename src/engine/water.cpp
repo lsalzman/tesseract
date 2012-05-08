@@ -9,6 +9,8 @@ void loadcaustics(bool force)
     static bool needcaustics = false;
     if(force) needcaustics = true;
     if(!caustics || !needcaustics) return;
+    useshaderbyname("caustics");
+    useshaderbyname("causticsmask");
     if(caustictex[0]) return;
     loopi(NUMCAUSTICS)
     {
@@ -22,9 +24,9 @@ void cleanupcaustics()
     loopi(NUMCAUSTICS) caustictex[i] = NULL;
 }
 
-VARR(causticscale, 0, 50, 10000);
-VARR(causticmillis, 0, 75, 1000);
-VARFP(caustics, 0, 1, 1, loadcaustics());
+VARFR(causticscale, 0, 50, 10000, preloadwatershaders());
+VARFR(causticmillis, 0, 75, 1000, preloadwatershaders());
+VARFP(caustics, 0, 1, 1, { loadcaustics(); preloadwatershaders(); });
 
 void setupcaustics(int tmu, float blend = 1)
 {
@@ -41,7 +43,42 @@ void setupcaustics(int tmu, float blend = 1)
     glActiveTexture_(GL_TEXTURE0_ARB);
     GLOBALPARAM(causticsS, (s));
     GLOBALPARAM(causticsT, (t));
-    GLOBALPARAM(causticsblend, (blend*(1-frac), blend*frac));
+    GLOBALPARAM(causticsblend, (blend*(1-frac), blend*frac, blend));
+}
+
+void rendercaustics(float blend, float mx1, float my1, float mx2, float my2)
+{
+    if(!caustics || !causticscale || !causticmillis) return;
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+    glEnable(GL_BLEND);
+    setupcaustics(0, blend);
+    glMatrixMode(GL_TEXTURE);
+    glLoadMatrixf(worldmatrix.v);
+    glMatrixMode(GL_MODELVIEW);
+    loopi(5)
+    {
+        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1;
+        switch(i)
+        {
+        case 0: sy2 = my1; break;
+        case 1: sx2 = mx1; sy1 = my1; sy2 = my2; break;
+        case 2: sx1 = mx1; sx2 = mx2; sy1 = my1; sy2 = my2; break;
+        case 3: sx1 = mx2; sy1 = my1; sy2 = my2; break;
+        case 4: sy1 = my2; break;
+        }
+        if(sx1 >= sx2 || sy1 >= sy2) continue;
+        if(i==2) SETSHADER(causticsmask);
+        else SETSHADER(caustics);
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex2f(sx2, sy1);
+        glVertex2f(sx1, sy1);
+        glVertex2f(sx2, sy2);
+        glVertex2f(sx1, sy2);
+        glEnd();
+    }
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
 }
 
 VARFP(waterreflect, 0, 1, 1, { preloadwatershaders(); });
@@ -303,9 +340,18 @@ void preloadwatershaders(bool force)
     if(force) needwater = true;
     if(!needwater) return;
 
-    if(waterreflect) useshaderbyname("waterreflect");
-    else if(waterenvmap && hasCM) useshaderbyname("waterenv");
-    else useshaderbyname("water");
+    if(caustics && causticscale && causticmillis)
+    {
+        if(waterreflect) useshaderbyname("waterreflectcaustics");
+        else if(waterenvmap && hasCM) useshaderbyname("waterenvcaustics");
+        else useshaderbyname("watercaustics");
+    }
+    else
+    {
+        if(waterreflect) useshaderbyname("waterreflect");
+        else if(waterenvmap && hasCM) useshaderbyname("waterenv");
+        else useshaderbyname("water");
+    }
 
     useshaderbyname("underwater");
 
@@ -476,7 +522,7 @@ void renderwater()
     if(caustics && causticscale && causticmillis) setupcaustics(2);
     if(waterenvmap && !waterreflect && hasCM && !minimapping)
     {
-        glActiveTexture_(GL_TEXTURE3_ARB);
+        glActiveTexture_(GL_TEXTURE4_ARB);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(wslot));
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
@@ -500,9 +546,18 @@ void renderwater()
 
     Shader *aboveshader = NULL;
     if(minimapping) SETWATERSHADER(above, waterminimap);
-    else if(waterreflect) SETWATERSHADER(above, waterreflect);
-    else if(waterenvmap && hasCM) SETWATERSHADER(above, waterenv);
-    else SETWATERSHADER(above, water);
+    else if(caustics && causticscale && causticmillis)
+    {
+        if(waterreflect) SETWATERSHADER(above, waterreflectcaustics);
+        else if(waterenvmap && hasCM) SETWATERSHADER(above, waterenvcaustics);
+        else SETWATERSHADER(above, watercaustics);
+    }
+    else
+    {
+        if(waterreflect) SETWATERSHADER(above, waterreflect);
+        else if(waterenvmap && hasCM) SETWATERSHADER(above, waterenv);
+        else SETWATERSHADER(above, water);
+    }
 
     Shader *belowshader = NULL;
     if(!minimapping) SETWATERSHADER(below, underwater);

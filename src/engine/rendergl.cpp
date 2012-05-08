@@ -3656,28 +3656,50 @@ void processhdr()
 FVAR(refractmargin, 0, 0.1f, 1);
 FVAR(refractdepth, 1e-3f, 16, 1e3f);
 
-void rendertransparent()
+void rendertransparent(float causticspass = 0)
 {
     int hasalphavas = findalphavas();
     int hasmats = findmaterials();
-    if(!hasalphavas && !hasmats) return;
+    if(!hasalphavas && !hasmats)
+    {
+        if(causticspass > 0)
+        {
+            glActiveTexture_(GL_TEXTURE9_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+            glActiveTexture_(GL_TEXTURE0_ARB);
+
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
+            rendercaustics(causticspass);
+        }
+        return;
+    }
         
     timer_begin(TIMER_TRANSPARENT);
 
+    float mx1 = 1, my1 = 1, mx2 = 1, my2 = 1;
     if(hasalphavas&4 || hasmats&4)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
         glDepthMask(GL_FALSE);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-        float sx1 = min(alpharefractsx1, matrefractsx1), sy1 = min(alpharefractsy1, matrefractsy1),
-              sx2 = max(alpharefractsx2, matrefractsx2), sy2 = max(alpharefractsy2, matrefractsy2);
-        bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
+        mx1 = min(alpharefractsx1, matrefractsx1);
+        my1 = min(alpharefractsy1, matrefractsy1);
+        mx2 = max(alpharefractsx2, matrefractsx2);
+        my2 = max(alpharefractsy2, matrefractsy2);
+        bool scissor = mx1 > -1 || my1 > -1 || mx2 < 1 || my2 < 1;
         if(scissor)
         {
-            int x1 = int(floor(max(sx1*0.5f+0.5f-refractmargin*viewh/vieww, 0.0f)*vieww)), y1 = int(floor(max(sy1*0.5f+0.5f-refractmargin, 0.0f)*viewh)),
-                x2 = int(ceil(min(sx2*0.5f+0.5f+refractmargin*viewh/vieww, 1.0f)*vieww)), y2 = int(ceil(min(sy2*0.5f+0.5f+refractmargin, 1.0f)*viewh));
+            int x1 = int(floor(max(mx1*0.5f+0.5f-refractmargin*viewh/vieww, 0.0f)*vieww)),
+                y1 = int(floor(max(my1*0.5f+0.5f-refractmargin, 0.0f)*viewh)),
+                x2 = int(ceil(min(mx2*0.5f+0.5f+refractmargin*viewh/vieww, 1.0f)*vieww)),
+                y2 = int(ceil(min(my2*0.5f+0.5f+refractmargin, 1.0f)*viewh));
             glEnable(GL_SCISSOR_TEST);
             glScissor(x1, y1, x2 - x1, y2 - y1);
+        }
+        else
+        {
+            mx1 = my1 = -1;
+            mx2 = my2 = 1;
         }
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -3689,8 +3711,6 @@ void rendertransparent()
         glDepthMask(GL_TRUE);
     }
 
-    if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
-
     glActiveTexture_(GL_TEXTURE7_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
     glActiveTexture_(GL_TEXTURE8_ARB);
@@ -3698,6 +3718,14 @@ void rendertransparent()
     glActiveTexture_(GL_TEXTURE9_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
+
+    if(causticspass > 0)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdr ? hdrfbo : 0);
+        rendercaustics(causticspass, mx1, my1, mx2, my2);
+    }
+
+    if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
 
     glmatrixf raymatrix = mvmatrix.v;
     loopk(4)
@@ -4191,7 +4219,6 @@ void gl_drawframe(int w, int h)
     }
     else fogmat = MAT_AIR;    
     setfog(fogmat, fogblend, abovemat);
-    (void)causticspass;
 
     farplane = worldsize*2;
 
@@ -4250,7 +4277,7 @@ void gl_drawframe(int w, int h)
     shadegbuffer();
     GLERROR;
 
-    rendertransparent();
+    rendertransparent(causticspass);
     GLERROR;
 
     defaultshader->set();

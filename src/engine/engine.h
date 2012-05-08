@@ -484,6 +484,7 @@ extern void renderwaterfalls();
 extern void renderlava();
 extern void renderlava(const materialsurface &m, Texture *tex, float scale);
 extern void loadcaustics(bool force = false);
+extern void rendercaustics(float blend, float mx1 = 1, float my1 = 1, float mx2 = 1, float my2 = 1);
 extern void preloadwatershaders(bool force = false);
 
 // depthfx
