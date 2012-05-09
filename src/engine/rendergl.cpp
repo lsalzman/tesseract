@@ -2357,36 +2357,30 @@ void cascaded_shadow_map::setup()
     gencullplanes();
 }
 
-static void calcfrustumpoints(vec *frustum, float nearplane, float farplane, const vec &pos, const vec &view, const vec &up, const vec &right)
+static float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, const vec &view, vec &center)
 {
     if(minimapping)
     {
-        loopi(8)
-        {
-            vec p = minimapcenter;
-            p.x += i&1 ? minimapradius.x : -minimapradius.x;
-            p.y += i&2 ? minimapradius.y : -minimapradius.y;
-            p.z += i&4 ? minimapradius.z : -minimapradius.z;
-            frustum[i] = p;
-        }
-        return;
+        center = minimapcenter;
+        return minimapradius.magnitude();
     }
-    const vec fc = pos + view*farplane, nc = pos + view*nearplane;
-    float height = tan(fovy/2.0f*RAD);
-    float near_height = height * nearplane, far_height = height * farplane;
-    float near_width = near_height * aspect, far_width = far_height * aspect;
-    frustum[0] = nc - up*near_height - right*near_width;
-    frustum[1] = nc + up*near_height - right*near_width;
-    frustum[2] = nc + up*near_height + right*near_width;
-    frustum[3] = nc - up*near_height + right*near_width;
-    frustum[4] = fc - up*far_height - right*far_width;
-    frustum[5] = fc + up*far_height - right*far_width;
-    frustum[6] = fc + up*far_height + right*far_width;
-    frustum[7] = fc - up*far_height + right*far_width;
+
+    float height = tan(fovy/2.0f*RAD), width = height * aspect,
+          cdist = ((nearplane + farplane)/2)*(1 + width*width + height*height);
+    if(cdist <= farplane)
+    {
+        center = vec(view).mul(cdist).add(pos);
+        return vec(width*nearplane, height*nearplane, cdist-nearplane).magnitude();
+    }
+    else
+    {
+        center = vec(view).mul(farplane).add(pos);
+        return vec(width*farplane, height*farplane, 0).magnitude();
+    }
 }
 
 VAR(csmfarplane, 64, 1024, 16384);
-FVAR(csmpradiustweak, 0.5f, 0.80f, 1.0f);
+FVAR(csmpradiustweak, 1e-3f, 1, 1e3f);
 FVAR(csmdepthmargin, 0, 0.1f, 1e3f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
 FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
@@ -2437,22 +2431,8 @@ void cascaded_shadow_map::getprojmatrix()
         splitinfo &split = this->splits[i];
         if(split.idx < 0) continue;
 
-        vec frustum[8];
-        calcfrustumpoints(frustum, split.nearplane, split.farplane, camera1->o, camdir, camup, camright);
-
-        float radius = 0.f;
-        int a = 0, b = 0;
-        loopj(7) for(int k = j+1; k < 8; ++k)
-        {
-            const float d = frustum[j].dist(frustum[k]) / 2.f;
-            if(d > radius)
-            {
-                radius = d;
-                a = j;
-                b = k;
-            }
-        }
-        vec c = (frustum[a] + frustum[b]) * 0.5f;
+        vec c;
+        float radius = calcfrustumboundsphere(split.nearplane, split.farplane, camera1->o, camdir, c);
 
         // compute the projected bounding box of the sphere
         const vec p = c + radius * lightright;
