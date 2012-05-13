@@ -3682,7 +3682,6 @@ void rendertransparent()
     }
 
     loop(layer, 3)
-    loop(side, 2) if(hasalphavas&(1<<side) || (side && hasmats))
     {
         uint tiles[LIGHTTILE_H];
         float sx1, sy1, sx2, sy2;
