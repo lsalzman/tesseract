@@ -54,6 +54,8 @@ Texture *loadskyoverlay(const char *basename)
 
 SVARFR(skybox, "", { if(skybox[0]) loadsky(skybox, sky); }); 
 HVARR(skyboxcolour, 0, 0xFFFFFF, 0xFFFFFF);
+FVARR(skyboxoverbright, 1, 2, 16);
+FVARR(skyboxoverbrightthreshold, 0, 0.7f, 1);
 FVARR(spinsky, -720, 0, 720);
 VARR(yawsky, 0, 0, 360);
 SVARFR(cloudbox, "", { if(cloudbox[0]) loadsky(cloudbox, clouds); });
@@ -412,7 +414,12 @@ void drawskybox(int farplane)
         glDepthMask(GL_FALSE);
     }
     
-    defaultshader->set();
+    if(skyboxoverbright > 1 && skyboxoverbrightthreshold < 1)
+    {
+        SETSHADER(skyboxoverbright);
+        LOCALPARAM(overbrightparams, (skyboxoverbright-1, skyboxoverbrightthreshold));
+    }
+    else defaultshader->set();
 
     if(clampsky) glDepthRange(1, 1);
 
@@ -427,11 +434,12 @@ void drawskybox(int farplane)
     draw_envbox(farplane/2, skyclip, topclip, 0x3F, sky);
     glPopMatrix();
 
-    if(fogdomemax && !fogdomeclouds)
+    if(fogdomemax && !fogdomeclouds) 
     {
         drawfogdome(farplane);
-        defaultshader->set();
     }
+    
+    defaultshader->set();
 
     if(cloudbox[0])
     {
