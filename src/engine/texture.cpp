@@ -695,7 +695,28 @@ int texalign(const void *data, int w, int bpp)
     if(address&4) return 4;
     return 8;
 }
-    
+   
+bool floatformat(GLenum format)
+{
+    switch(format)
+    {
+        case GL_R16F:
+        case GL_R32F:
+        case GL_RG16F:
+        case GL_RG32F:
+        case GL_FLOAT_RG16_NV:
+        case GL_FLOAT_R32_NV:
+        case GL_RGB16F_ARB:
+        case GL_RGB32F_ARB:
+        case GL_R11F_G11F_B10F_EXT:
+        case GL_RGBA16F_ARB:
+        case GL_RGBA32F_ARB:
+            return true;
+        default:
+            return false;
+    }
+}
+ 
 static Texture *newtexture(Texture *t, const char *rname, ImageData &s, int clamp = 0, bool mipit = true, bool canreduce = false, bool transient = false, int compress = 0)
 {
     if(!t)
@@ -2241,6 +2262,7 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
     float yaw = 0, pitch = 0;
     uchar *pixels = new uchar[3*rendersize*rendersize*2];
     glPixelStorei(GL_PACK_ALIGNMENT, texalign(pixels, rendersize, 3));
+    if(hasCBF && hdrfloat) glClampColor_(GL_CLAMP_READ_COLOR_ARB, GL_TRUE);
     loopi(6)
     {
         const cubemapside &side = cubemapsides[i];
@@ -2277,6 +2299,7 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
     }
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, vieww, viewh);
+    if(hasCBF && hdrfloat) glClampColor_(GL_CLAMP_READ_COLOR_ARB, GL_FIXED_ONLY_ARB);
     delete[] pixels;
     clientkeepalive();
     forcecubemapload(tex);

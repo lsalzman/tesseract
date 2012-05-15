@@ -129,6 +129,9 @@ extern PFNGLGETCOMPRESSEDTEXIMAGEARBPROC   glGetCompressedTexImage_;
 // GL_EXT_depth_bounds_test
 extern PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_;
 
+// GL_ARB_color_buffer_float
+extern PFNGLCLAMPCOLORARBPROC glClampColor_;
+
 extern void glerror(const char *file, int line, GLenum error);
 
 #define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
@@ -184,6 +187,7 @@ extern int hwtexsize, hwcubetexsize, hwmaxaniso, maxtexsize;
 
 extern Texture *textureload(const char *name, int clamp = 0, bool mipit = true, bool msg = true);
 extern int texalign(const void *data, int w, int bpp);
+extern bool floatformat(GLenum format);
 extern void cleanuptexture(Texture *t);
 extern void loadalphamask(Texture *t);
 extern Texture *cubemapload(const char *name, bool mipit = true, bool msg = true, bool transient = false);
@@ -226,7 +230,7 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 }
 
 // rendergl
-extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasAFBO, hasDS, hasTF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT;
+extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasAFBO, hasDS, hasTF, hasCBF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT;
 extern int hasstencil;
 extern int glslversion;
 
@@ -235,6 +239,7 @@ extern float curfov, fovy, aspect;
 extern float nearplane;
 extern int farplane;
 extern int hdr;
+extern bool hdrfloat;
 extern float ldrscale, ldrscaleb;
 extern bool envmapping;
 extern int minimapping;

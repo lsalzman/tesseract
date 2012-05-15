@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false;
 bool mesa = false, intel = false, ati = false, nvidia = false;
 
 int hasstencil = 0;
@@ -127,6 +127,9 @@ PFNGLGETUNIFORMOFFSETEXTPROC     glGetUniformOffset_     = NULL;
 
 // GL_EXT_depth_bounds_test
 PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_ = NULL;
+
+// GL_ARB_color_buffer_float
+PFNGLCLAMPCOLORARBPROC glClampColor_ = NULL;
 
 void *getprocaddress(const char *name)
 {
@@ -336,6 +339,13 @@ void gl_checkextensions()
         if(maxbufs < 3) fatal("Hardware does not support at least 3 draw buffers.");
     }
     else fatal("Draw buffers support is required!");
+
+    if(hasext(exts, "GL_ARB_color_buffer_float"))
+    {
+        glClampColor_ = (PFNGLCLAMPCOLORARBPROC)getprocaddress("glClampColorARB");
+        hasCBF = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_color_buffer_float extension.");
+    }
 
 #ifdef __APPLE__
     // Intel HD3000 broke occlusion queries - either causing software fallback, or returning wrong results
@@ -1526,6 +1536,7 @@ GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 
 int hdrclear = 0;
 GLuint refractfbo = 0, refracttex = 0;
 GLenum bloomformat = 0, hdrformat = 0;
+bool hdrfloat = false;
 
 int aow = -1, aoh = -1;
 GLuint aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
@@ -1911,6 +1922,7 @@ void setupgbuffer(int w, int h)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
     hdrformat = hdr ? (hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB))) : GL_RGB;
+    hdrfloat = floatformat(hdrformat);
     createtexture(hdrtex, gw, gh, NULL, 3, 1, hdrformat, GL_TEXTURE_RECTANGLE_ARB);
 
     if(gdepthformat)
@@ -4007,11 +4019,21 @@ void drawminimap()
     envmapping = false;
     minimapping = 0;
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+    if(hasCBF || !hdrfloat) glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+    else
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+        SETSHADER(hdrnop);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+        screenquad(size, size);
+    }
+
     glViewport(0, 0, vieww, viewh);
 
     glBindTexture(GL_TEXTURE_2D, minimaptex);
+    if(hasCBF && hdrfloat) glClampColor_(GL_CLAMP_READ_COLOR_ARB, GL_TRUE);
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB5, 0, 0, size, size, 0);
+    if(hasCBF && hdrfloat) glClampColor_(GL_CLAMP_READ_COLOR_ARB, GL_FIXED_ONLY_ARB);
     setuptexparameters(minimaptex, NULL, 3, 1, GL_RGB5, GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -4121,7 +4143,14 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     camera1 = oldcamera;
     envmapping = false;
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+    if(hasCBF) glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+    else
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+        SETSHADER(hdrnop);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+        screenquad(size, size);
+    }
 
     hdrclear = 3;
 }
