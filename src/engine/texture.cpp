@@ -2264,15 +2264,20 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
                 yaw = 270; pitch = 90; break;
         }
         drawcubemap(rendersize, o, yaw, pitch, side);
-        glReadPixels(0, 0, rendersize, rendersize, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-        uchar *outpixels = &pixels[3*rendersize*rendersize];
-        reorienttexture(pixels, rendersize, rendersize, 3, 3*rendersize, outpixels, !side.flipx, !side.flipy, side.swapxy);
+        uchar *src = pixels, *dst = &pixels[3*rendersize*rendersize];
+        glReadPixels(0, 0, rendersize, rendersize, GL_RGB, GL_UNSIGNED_BYTE, src);
+        if(rendersize > texsize)
+        {
+            scaletexture(src, rendersize, rendersize, 3, 3*rendersize, dst, texsize, texsize);
+            swap(src, dst);
+        }      
+        reorienttexture(src, texsize, texsize, 3, 3*texsize, dst, !side.flipx, !side.flipy, side.swapxy);
         if(blur > 0)
         {
-            blurtexture(blur, 3, rendersize, rendersize, pixels, outpixels);
-            outpixels = pixels;
+            swap(src, dst);
+            blurtexture(blur, 3, texsize, texsize, src, dst);
         }
-        createtexture(tex, texsize, texsize, outpixels, 3, 2, GL_RGB5, side.target, rendersize, rendersize);
+        createtexture(tex, texsize, texsize, dst, 3, 2, GL_RGB5, side.target);
     }
     delete[] pixels;
     clientkeepalive();
