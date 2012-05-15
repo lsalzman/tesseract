@@ -1910,7 +1910,7 @@ void setupgbuffer(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
-    hdrformat = hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB));
+    hdrformat = hdr ? (hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB))) : GL_RGB;
     createtexture(hdrtex, gw, gh, NULL, 3, 1, hdrformat, GL_TEXTURE_RECTANGLE_ARB);
 
     if(gdepthformat)
@@ -2018,7 +2018,7 @@ void viewrefract()
 VARF(gstencil, 0, 0, 1, cleanupgbuffer());
 VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
-VAR(hdr, 0, 1, 1);
+VARFP(hdr, 0, 1, 1, cleanupgbuffer());
 VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVAR(bloomthreshold, 0, 1.5f, 10.0f);
 FVARP(bloomscale, 0, 1.0f, 10.0f);
@@ -4129,7 +4129,7 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 void gl_setupframe(int w, int h)
 {
     setupgbuffer(w, h);
-    if(bloomw < 0 || bloomh < 0) setupbloom(w, h);
+    if(hdr && (bloomw < 0 || bloomh < 0)) setupbloom(w, h);
     if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
     if(smaa && !smaafbo[0]) setupsmaa();
     if(!shadowatlasfbo) setupshadowatlas();
