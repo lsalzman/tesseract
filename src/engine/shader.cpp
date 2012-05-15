@@ -61,6 +61,21 @@ Shader *lookupshaderbyname(const char *name)
     return s && s->detailshader ? s : NULL;
 }
 
+Shader *generateshader(const char *name, const char *fmt, ...)
+{
+    Shader *s = name ? lookupshaderbyname(name) : NULL;
+    if(!s)
+    {
+        defvformatstring(cmd, fmt, fmt);
+        standardshader = true;
+        execute(cmd);
+        standardshader = false;
+        s = name ? lookupshaderbyname(name) : NULL;
+        if(!s) s = nullshader;
+    }
+    return s;
+}
+
 static void showglslinfo(GLhandleARB obj, const char *tname, const char *name, const char *source)
 {
     GLint length = 0;

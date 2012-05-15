@@ -1597,15 +1597,7 @@ Shader *loadbilateralshader(int pass)
     opts[optslen] = '\0';
 
     defformatstring(name)("bilateral%c%s%d", 'x' + pass, opts, aobilateral);
-    Shader *s = lookupshaderbyname(name);
-    if(!s)
-    {
-        defformatstring(cmd)("bilateralshader \"%s\" %d", opts, aobilateral);
-        execute(cmd);
-        s = lookupshaderbyname(name);
-        if(!s) s = nullshader;
-    }
-    return s;
+    return generateshader(name, "bilateralshader \"%s\" %d", opts, aobilateral);
 }
 
 void loadbilateralshaders()
@@ -1631,15 +1623,7 @@ Shader *loadambientobscuranceshader()
     opts[optslen] = '\0';
 
     defformatstring(name)("ambientobscurance%s%d", opts, aotaps);
-    Shader *s = lookupshaderbyname(name);
-    if(!s)
-    {
-        defformatstring(cmd)("ambientobscuranceshader \"%s\" %d", opts, aotaps);
-        execute(cmd);
-        s = lookupshaderbyname(name);
-        if(!s) s = nullshader;
-    }
-    return s;
+    return generateshader(name, "ambientobscuranceshader \"%s\" %d", opts, aotaps);
 }
 
 void loadaoshaders()
@@ -1741,8 +1725,7 @@ void loadsmaashaders()
     smaablendweightshader = lookupshaderbyname(blendweightname);
     smaaneighborhoodshader = lookupshaderbyname(neighborhoodname);
     if(smaalumaedgeshader && smaacoloredgeshader && smaablendweightshader && smaaneighborhoodshader) return;
-    defformatstring(cmd)("smaashaders %d\n", smaaquality);
-    execute(cmd);
+    generateshader(NULL, "smaashaders %d", smaaquality);
     smaalumaedgeshader = lookupshaderbyname(lumaedgename);
     if(!smaalumaedgeshader) smaalumaedgeshader = nullshader;
     smaacoloredgeshader = lookupshaderbyname(coloredgename);
@@ -2316,7 +2299,7 @@ static shadowmapinfo *addshadowmap(ushort x, ushort y, int size, int &idx)
 
 static const uint csmmaxsplitn = 8, csmminsplitn = 1;
 VAR(csmmaxsize, 256, 768, 2048);
-VAR(csmsplitn, csmminsplitn, 3, csmmaxsplitn);
+VARF(csmsplitn, csmminsplitn, 3, csmmaxsplitn, cleardeferredlightshaders());
 FVAR(csmsplitweight, 0.20f, 0.75f, 0.95f);
 VARF(csmshadowmap, 0, 1, 1, cleardeferredlightshaders());
 
@@ -2651,15 +2634,7 @@ Shader *loaddeferredlightshader(const char *prefix = NULL)
     sun[sunlen] = '\0';
 
     defformatstring(name)("deferredlight%s%s%s", common, shadow, sun);
-    Shader *s = lookupshaderbyname(name);
-    if(!s)
-    {
-        defformatstring(cmd)("deferredlightshader \"%s\" \"%s\" \"%s\" %d", common, shadow, sun, csmsplitn);
-        execute(cmd);
-        s = lookupshaderbyname(name);
-        if(!s) s = nullshader;
-    }
-    return s;
+    return generateshader(name, "deferredlightshader \"%s\" \"%s\" \"%s\" %d", common, shadow, sun, csmsplitn);
 }
 
 void loaddeferredlightshaders()
