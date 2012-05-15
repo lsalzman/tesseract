@@ -403,12 +403,15 @@ namespace game
         particle_splash(PART_SPARK, 200, 300, v, 0xB49B4B, 0.24f);
         playsound(S_RLHIT, &v);
         particle_fireball(v, RL_DAMRAD, gun!=GUN_GL ? PART_EXPLOSION : PART_EXPLOSION_BLUE, -1, gun!=GUN_GL ? 0xFF8080 : 0x80FFFF, 4.0f);
-        if(gun==GUN_RL) adddynlight(v, 1.15f*RL_DAMRAD, vec(4, 3.0f, 2.0), 900, 100, 0, RL_DAMRAD/2, vec(2.0, 1.5f, 1.0f));
-        else if(gun==GUN_GL) adddynlight(v, 1.15f*RL_DAMRAD, vec(1.0f, 3.0f, 4.0), 900, 100, 0, 8, vec(0.5f, 2, 2));
-        else adddynlight(v, 1.15f*RL_DAMRAD, vec(2, 1.5f, 1), 900, 100);
         int numdebris = gun==GUN_BARREL ? rnd(max(maxbarreldebris-5, 1))+5 : rnd(maxdebris-5)+5;
         vec debrisvel = owner->o==v ? vec(0, 0, 0) : vec(owner->o).sub(v).normalize(), debrisorigin(v);
-        if(gun==GUN_RL) debrisorigin.add(vec(debrisvel).mul(8));
+        if(gun==GUN_RL) 
+        {
+            debrisorigin.add(vec(debrisvel).mul(8));
+            adddynlight(safe ? v : debrisorigin, 1.15f*RL_DAMRAD, vec(4, 3.0f, 2.0), 900, 100, 0, RL_DAMRAD/2, vec(2.0, 1.5f, 1.0f));
+        }
+        else if(gun==GUN_GL) adddynlight(v, 1.15f*RL_DAMRAD, vec(1.0f, 3.0f, 4.0), 900, 100, 0, 8, vec(0.5f, 2, 2));
+        else adddynlight(v, 1.15f*RL_DAMRAD, vec(2, 1.5f, 1), 900, 100);
         if(numdebris)
         {
             loopi(numdebris)
