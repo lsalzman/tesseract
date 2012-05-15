@@ -319,7 +319,6 @@ static void drawdome()
 {
     float capsize = fogdomecap && fogdomeheight < 1 ? (1 + fogdomeheight) / (1 - fogdomeheight) : -1;
     bvec color = fogdomecolour ? fogdomecolor : fogcolor;
-    if(hdr) color.shr(1);
     if(!domenumverts || domecolor != color || domeminalpha != fogdomemin || domemaxalpha != fogdomemax || domecapsize != capsize || domeclipz != fogdomeclip) 
     {
         initdome(color, min(fogdomemin, fogdomemax), fogdomemax, capsize, fogdomeclip);
@@ -368,7 +367,7 @@ VARR(fogdomeclouds, 0, 1, 1);
 
 static void drawfogdome(int farplane)
 {
-    notextureshader->set();
+    ldrnotextureshader->set();
     glDisable(GL_TEXTURE_2D);
 
     glEnable(GL_BLEND);
@@ -413,7 +412,7 @@ void drawskybox(int farplane)
         glDepthMask(GL_FALSE);
     }
     
-    if(hdr && skyboxoverbright > 1 && skyboxoverbrightthreshold < 1)
+    if(ldrscale < 1 && skyboxoverbright > 1 && skyboxoverbrightthreshold < 1)
     {
         SETSHADER(skyboxoverbright);
         LOCALPARAM(overbrightparams, (skyboxoverbright-1, skyboxoverbrightthreshold));
