@@ -140,8 +140,7 @@ void draw_env_overlay(int w, Texture *overlay = NULL, float tx = 0, float ty = 0
 {
     float z = w*cloudheight, tsz = 0.5f*(1-cloudfade)/cloudscale, psz = w*(1-cloudfade);
     glBindTexture(GL_TEXTURE_2D, overlay ? overlay->id : notexture->id);
-    float colorscale = (hdr ? 0.5f : 1.0f)/255.0f,
-          r = (cloudcolour>>16)*colorscale, g = ((cloudcolour>>8)&255)*colorscale, b = (cloudcolour&255)*colorscale;
+    float r = (cloudcolour>>16)*ldrscaleb, g = ((cloudcolour>>8)&255)*ldrscaleb, b = (cloudcolour&255)*ldrscaleb;
     glColor4f(r, g, b, cloudalpha);
     glBegin(GL_TRIANGLE_FAN);
     loopi(cloudsubdiv+1)
@@ -423,8 +422,7 @@ void drawskybox(int farplane)
 
     if(clampsky) glDepthRange(1, 1);
 
-    float colorscale = (hdr ? 0.5f : 1.0f)/255.0f;
-    glColor3f((skyboxcolour>>16)*colorscale, ((skyboxcolour>>8)&255)*colorscale, (skyboxcolour&255)*colorscale);
+    glColor3f((skyboxcolour>>16)*ldrscaleb, ((skyboxcolour>>8)&255)*ldrscaleb, (skyboxcolour&255)*ldrscaleb);
 
     glPushMatrix();
     glLoadMatrixf(viewmatrix.v);
@@ -446,7 +444,7 @@ void drawskybox(int farplane)
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glColor4f((cloudboxcolour>>16)*colorscale, ((cloudboxcolour>>8)&255)*colorscale, (cloudboxcolour&255)*colorscale, cloudboxalpha);
+        glColor4f((cloudboxcolour>>16)*ldrscaleb, ((cloudboxcolour>>8)&255)*ldrscaleb, (cloudboxcolour&255)*ldrscaleb, cloudboxalpha);
 
         glPushMatrix();
         glLoadMatrixf(viewmatrix.v);

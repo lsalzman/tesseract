@@ -78,7 +78,7 @@ static void renderlightning(Texture *tex, const vec &o, const vec &d, float sz)
 struct lightningrenderer : listrenderer
 {
     lightningrenderer()
-        : listrenderer("packages/particles/lightning.jpg", 2, PT_LIGHTNING|PT_TRACK)
+        : listrenderer("packages/particles/lightning.jpg", 2, PT_LIGHTNING|PT_BRIGHT|PT_TRACK)
     {}
 
     void startrender()
@@ -106,11 +106,10 @@ struct lightningrenderer : listrenderer
     void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
     {
         blend = min(blend<<2, 255);
-        float colorscale = (hdr ? 0.5f : 1)/255.0f, r = color[0]*colorscale, g = color[1]*colorscale, b = color[2]*colorscale, a = blend/255.0f;
         if(type&PT_MOD) //multiply alpha into color
-            glColor3f(r*a, g*a, b*a);
+            glColor3ub((color[0]*blend)>>8, (color[1]*blend)>>8, (color[2]*blend)>>8);
         else
-            glColor4f(r, g, b, a);
+            glColor4ub(color[0], color[1], color[2], blend);
         renderlightning(tex, o, d, p->size);
     }
 };

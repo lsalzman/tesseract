@@ -2044,10 +2044,8 @@ void forcecubemapload(GLuint tex)
     glLoadIdentity();
 
     cubemapshader->set();
-    GLenum tex2d = glIsEnabled(GL_TEXTURE_2D), depthtest = glIsEnabled(GL_DEPTH_TEST), blend = glIsEnabled(GL_BLEND);
-    if(tex2d) glDisable(GL_TEXTURE_2D);
+    GLenum depthtest = glIsEnabled(GL_DEPTH_TEST), blend = glIsEnabled(GL_BLEND);
     if(depthtest) glDisable(GL_DEPTH_TEST);
-    glEnable(GL_TEXTURE_CUBE_MAP_ARB);
     glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, tex);
     if(!blend) glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -2057,9 +2055,7 @@ void forcecubemapload(GLuint tex)
     glVertex2f(0, 0);
     glEnd();
     if(!blend) glDisable(GL_BLEND);
-    glDisable(GL_TEXTURE_CUBE_MAP_ARB);
     if(depthtest) glEnable(GL_DEPTH_TEST);
-    if(tex2d) glEnable(GL_TEXTURE_2D);
 
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -2279,6 +2275,8 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
         }
         createtexture(tex, texsize, texsize, dst, 3, 2, GL_RGB5, side.target);
     }
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+    glViewport(0, 0, vieww, viewh);
     delete[] pixels;
     clientkeepalive();
     forcecubemapload(tex);

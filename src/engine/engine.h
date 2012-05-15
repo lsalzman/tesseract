@@ -235,6 +235,7 @@ extern float curfov, fovy, aspect;
 extern float nearplane;
 extern int farplane;
 extern int hdr;
+extern float ldrscale, ldrscaleb;
 extern bool envmapping;
 extern int minimapping;
 extern const glmatrixf viewmatrix;

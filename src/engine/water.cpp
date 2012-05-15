@@ -115,8 +115,7 @@ void renderwaterfog(int mat, float surface)
     glMatrixMode(GL_MODELVIEW);
     if(mat == MAT_WATER)
     {
-        float colorscale = (hdr ? 0.5f : 1)/255.0f;
-        GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*colorscale, waterdeepcolor.y*colorscale, waterdeepcolor.z*colorscale));
+        GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*ldrscaleb, waterdeepcolor.y*ldrscaleb, waterdeepcolor.z*ldrscaleb));
         ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
         GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f));
     }
@@ -539,9 +538,8 @@ void renderwaterfalls()
     wfxscale = TEX_SCALE/(tex->xs*wslot.scale);
     wfyscale = TEX_SCALE/(tex->ys*wslot.scale);
   
-    float colorscale = (hdr ? 0.5f : 1)/255.0f;
     bvec color = waterfallcolor.iszero() ? watercolor : waterfallcolor;
-    GLOBALPARAM(waterfallcolor, (color.x*colorscale, color.y*colorscale, color.z*colorscale));
+    GLOBALPARAM(waterfallcolor, (color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb));
     GLOBALPARAM(waterfallrefract, (waterfallrefract*viewh));
     GLOBALPARAM(waterfallspec, (0.5f*waterfallspec/100.0f));
  
@@ -585,9 +583,8 @@ void renderwater()
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    float colorscale = (hdr ? 0.5f : 1)/255.0f;
-    GLOBALPARAM(watercolor, (watercolor.x*colorscale, watercolor.y*colorscale, watercolor.z*colorscale));
-    GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*colorscale, waterdeepcolor.y*colorscale, waterdeepcolor.z*colorscale));
+    GLOBALPARAM(watercolor, (watercolor.x*ldrscaleb, watercolor.y*ldrscaleb, watercolor.z*ldrscaleb));
+    GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*ldrscaleb, waterdeepcolor.y*ldrscaleb, waterdeepcolor.z*ldrscaleb));
     GLOBALPARAM(waterfog, (waterfog ? 1.0f/waterfog : 1e4f));
     ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
     GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f));

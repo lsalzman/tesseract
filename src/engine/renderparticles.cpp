@@ -4,6 +4,7 @@
 
 Shader *particleshader = NULL, *particlenotextureshader = NULL;
 
+FVARP(particlebright, 0, 2, 100);
 VARP(particlesize, 20, 100, 500);
 
 VARP(softparticles, 0, 1, 1);
@@ -101,18 +102,19 @@ enum
     PT_LIGHTNING,
     PT_FLARE,
 
-    PT_MOD   = 1<<8,
-    PT_RND4  = 1<<9,
-    PT_LERP  = 1<<10, // use very sparingly - order of blending issues
-    PT_TRACK = 1<<11,
-    PT_SOFT  = 1<<13,
-    PT_HFLIP = 1<<14,
-    PT_VFLIP = 1<<15,
-    PT_ROT   = 1<<16,
-    PT_CULL  = 1<<17,
-    PT_FEW   = 1<<18,
-    PT_ICON  = 1<<19,
-    PT_FLIP  = PT_HFLIP | PT_VFLIP | PT_ROT
+    PT_MOD    = 1<<8,
+    PT_RND4   = 1<<9,
+    PT_LERP   = 1<<10, // use very sparingly - order of blending issues
+    PT_TRACK  = 1<<11,
+    PT_BRIGHT = 1<<12,
+    PT_SOFT   = 1<<13,
+    PT_HFLIP  = 1<<14,
+    PT_VFLIP  = 1<<15,
+    PT_ROT    = 1<<16,
+    PT_CULL   = 1<<17,
+    PT_FEW    = 1<<18,
+    PT_ICON   = 1<<19,
+    PT_FLIP   = PT_HFLIP | PT_VFLIP | PT_ROT
 };
 
 const char *partnames[] = { "part", "tape", "trail", "text", "textup", "meter", "metervs", "fireball", "lightning", "flare" };
@@ -805,20 +807,20 @@ static partrenderer *parts[] =
     new trailrenderer("packages/particles/base.png", PT_TRAIL|PT_LERP),                            // water, entity
     new quadrenderer("<grey>packages/particles/smoke.png", PT_PART|PT_FLIP|PT_LERP),               // smoke
     new quadrenderer("<grey>packages/particles/steam.png", PT_PART|PT_FLIP),                       // steam
-    new quadrenderer("<grey>packages/particles/flames.png", PT_PART|PT_HFLIP|PT_RND4),             // flame on - no flipping please, they have orientation
-    new quadrenderer("packages/particles/ball1.png", PT_PART|PT_FEW),                              // fireball1
-    new quadrenderer("packages/particles/ball2.png", PT_PART|PT_FEW),                              // fireball2
-    new quadrenderer("packages/particles/ball3.png", PT_PART|PT_FEW),                              // fireball3
-    new taperenderer("packages/particles/flare.jpg", PT_TAPE),                                     // streak
+    new quadrenderer("<grey>packages/particles/flames.png", PT_PART|PT_HFLIP|PT_RND4|PT_BRIGHT),   // flame on - no flipping please, they have orientation
+    new quadrenderer("packages/particles/ball1.png", PT_PART|PT_FEW|PT_BRIGHT),                    // fireball1
+    new quadrenderer("packages/particles/ball2.png", PT_PART|PT_FEW|PT_BRIGHT),                    // fireball2
+    new quadrenderer("packages/particles/ball3.png", PT_PART|PT_FEW|PT_BRIGHT),                    // fireball3
+    new taperenderer("packages/particles/flare.jpg", PT_TAPE|PT_BRIGHT),                           // streak
     &lightnings,                                                                                   // lightning
     &fireballs,                                                                                    // explosion fireball
     &bluefireballs,                                                                                // bluish explosion fireball
-    new quadrenderer("packages/particles/spark.png", PT_PART|PT_FLIP),                             // sparks
-    new quadrenderer("packages/particles/base.png",  PT_PART|PT_FLIP),                             // edit mode entities
+    new quadrenderer("packages/particles/spark.png", PT_PART|PT_FLIP|PT_BRIGHT),                   // sparks
+    new quadrenderer("packages/particles/base.png",  PT_PART|PT_FLIP|PT_BRIGHT),                   // edit mode entities
     new quadrenderer("<grey>packages/particles/snow.png", PT_PART|PT_FLIP|PT_RND4, -1),            // colliding snow
-    new quadrenderer("packages/particles/muzzleflash1.jpg", PT_PART|PT_FEW|PT_FLIP|PT_TRACK),      // muzzle flash
-    new quadrenderer("packages/particles/muzzleflash2.jpg", PT_PART|PT_FEW|PT_FLIP|PT_TRACK),      // muzzle flash
-    new quadrenderer("packages/particles/muzzleflash3.jpg", PT_PART|PT_FEW|PT_FLIP|PT_TRACK),      // muzzle flash
+    new quadrenderer("packages/particles/muzzleflash1.jpg", PT_PART|PT_FEW|PT_FLIP|PT_BRIGHT|PT_TRACK), // muzzle flash
+    new quadrenderer("packages/particles/muzzleflash2.jpg", PT_PART|PT_FEW|PT_FLIP|PT_BRIGHT|PT_TRACK), // muzzle flash
+    new quadrenderer("packages/particles/muzzleflash3.jpg", PT_PART|PT_FEW|PT_FLIP|PT_BRIGHT|PT_TRACK), // muzzle flash
     new quadrenderer("packages/hud/items.png", PT_PART|PT_FEW|PT_ICON),                            // hud icon
     new quadrenderer("<colorify:1/1/1>packages/hud/items.png", PT_PART|PT_FEW|PT_ICON),            // grey hud icon
     &texts,                                                                                        // text
@@ -903,7 +905,7 @@ void renderparticles(bool mainpass)
     static float zerofog[4] = { 0, 0, 0, 1 };
     float oldfogc[4];
     bool rendered = false;
-    uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD;
+    uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD|PT_BRIGHT;
    
     if(softparticles) flagmask |= PT_SOFT;
 
@@ -919,10 +921,8 @@ void renderparticles(bool mainpass)
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);             
 
-            float colorscale = hdr ? 0.5f : 1;
-            GLOBALPARAM(colorscale, (colorscale, colorscale, colorscale, 1));
-
             particleshader->set();
+            LOCALPARAM(colorscale, (ldrscale, ldrscale, ldrscale, 1));
             glGetFloatv(GL_FOG_COLOR, oldfogc);
         }
         
@@ -961,6 +961,12 @@ void renderparticles(bool mainpass)
                     LOCALPARAM(softparams, (-1.0f/softparticleblend, 0, 0));
                 }
                 else particleshader->set();
+            }
+            if(changedbits&(PT_BRIGHT|PT_SOFT))
+            {
+                float colorscale = ldrscale;
+                if(flags&PT_BRIGHT) colorscale *= particlebright;
+                LOCALPARAM(colorscale, (colorscale, colorscale, colorscale, 1));
             }
             lastflags = flags;        
         }
