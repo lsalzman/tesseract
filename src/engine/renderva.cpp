@@ -1410,7 +1410,8 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         {
             cur.refractscale = vslot.refractscale;
             cur.refractcolor = vslot.refractcolor;
-            GLOBALPARAM(refractparams, (vslot.refractcolor.x*(1-alpha), vslot.refractcolor.y*(1-alpha), vslot.refractcolor.z*(1-alpha), vslot.refractscale*viewh));
+            float refractscale = 0.5f/ldrscale*(1-alpha);
+            GLOBALPARAM(refractparams, (vslot.refractcolor.x*refractscale, vslot.refractcolor.y*refractscale, vslot.refractcolor.z*refractscale, vslot.refractscale*viewh));
         }
     }
     else if(cur.colorscale != vslot.colorscale)

@@ -353,7 +353,7 @@ void renderlava(const materialsurface &m, Texture *tex, float scale)
     renderwater(m, MAT_LAVA);
 }
 
-bvec watercolor(0x01, 0x21, 0x2C), waterdeepcolor(0x01, 0x0A, 0x10), waterdeepfadecolor(0x60, 0xBF, 0xFF), waterfallcolor(0, 0, 0);
+bvec watercolor(0x01, 0x21, 0x2C), waterdeepcolor(0x01, 0x0A, 0x10), waterdeepfadecolor(0x60, 0xBF, 0xFF), waterrefractcolor(0xFF, 0xFF, 0xFF), waterfallcolor(0, 0, 0), waterfallrefractcolor(0xFF, 0xFF, 0xFF);
 HVARFR(watercolour, 0, 0x01212C, 0xFFFFFF,
 {
     if(!watercolour) watercolour = 0x01212C;
@@ -369,11 +369,20 @@ HVARFR(waterdeepfade, 0, 0x60BFFF, 0xFFFFFF,
     if(!waterdeepfade) waterdeepfade = 0x60BFFF;
     waterdeepfadecolor = bvec((waterdeepfade>>16)&0xFF, (waterdeepfade>>8)&0xFF, waterdeepfade&0xFF);
 });
+HVARFR(waterrefractcolour, 0, 0xFFFFFF, 0xFFFFFF,
+{
+    if(!waterrefractcolour) waterrefractcolour = 0xFFFFFF;
+    waterrefractcolor = bvec((waterrefractcolour>>16)&0xFF, (waterrefractcolour>>8)&0xFF, waterrefractcolour&0xFF);
+});
 VARR(waterfog, 0, 30, 10000);
 VARR(waterdeep, 0, 50, 10000);
 HVARFR(waterfallcolour, 0, 0, 0xFFFFFF,
 {
     waterfallcolor = bvec((waterfallcolour>>16)&0xFF, (waterfallcolour>>8)&0xFF, waterfallcolour&0xFF);
+});
+HVARFR(waterfallrefractcolour, 0, 0, 0xFFFFFF,
+{
+    waterfallrefractcolor = bvec((waterfallrefractcolour>>16)&0xFF, (waterfallrefractcolour>>8)&0xFF, waterfallrefractcolour&0xFF);
 });
 bvec lavacolor(0xFF, 0x40, 0x00);
 HVARFR(lavacolour, 0, 0xFF4000, 0xFFFFFF,
@@ -538,9 +547,10 @@ void renderwaterfalls()
     wfxscale = TEX_SCALE/(tex->xs*wslot.scale);
     wfyscale = TEX_SCALE/(tex->ys*wslot.scale);
   
-    bvec color = waterfallcolor.iszero() ? watercolor : waterfallcolor;
-    GLOBALPARAM(waterfallcolor, (color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb));
-    GLOBALPARAM(waterfallrefract, (waterfallrefract*viewh));
+    bvec color = waterfallcolor.iszero() ? watercolor : waterfallcolor, refractcolor = waterfallrefractcolor.iszero() ? waterrefractcolor : waterfallrefractcolor;
+    float colorscale = (0.5f/255), refractscale = colorscale/ldrscale;
+    GLOBALPARAM(waterfallcolor, (color.x*colorscale, color.y*colorscale, color.z*colorscale));
+    GLOBALPARAM(waterfallrefract, (refractcolor.x*refractscale, refractcolor.y*refractscale, refractcolor.z*refractscale, waterfallrefract*viewh));
     GLOBALPARAM(waterfallspec, (0.5f*waterfallspec/100.0f));
  
     if(hasCM && waterfallenv) SETSHADER(waterfallenv);
@@ -583,14 +593,15 @@ void renderwater()
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    GLOBALPARAM(watercolor, (watercolor.x*ldrscaleb, watercolor.y*ldrscaleb, watercolor.z*ldrscaleb));
-    GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*ldrscaleb, waterdeepcolor.y*ldrscaleb, waterdeepcolor.z*ldrscaleb));
+    float colorscale = 0.5f/255, refractscale = colorscale/ldrscale, reflectscale = 0.5f/ldrscale;
+    GLOBALPARAM(watercolor, (watercolor.x*colorscale, watercolor.y*colorscale, watercolor.z*colorscale));
+    GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*colorscale, waterdeepcolor.y*colorscale, waterdeepcolor.z*colorscale));
     GLOBALPARAM(waterfog, (waterfog ? 1.0f/waterfog : 1e4f));
     ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
     GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f));
     GLOBALPARAM(waterspec, (0.5f*waterspec/100.0f));
-    GLOBALPARAM(waterreflectstep, (waterreflectstep));
-    GLOBALPARAM(waterrefract, (waterrefract*viewh));
+    GLOBALPARAM(waterreflect, (reflectscale, reflectscale, reflectscale, waterreflectstep));
+    GLOBALPARAM(waterrefract, (waterrefractcolor.x*refractscale, waterrefractcolor.y*refractscale, waterrefractcolor.z*refractscale, waterrefract*viewh));
 
     #define SETWATERSHADER(which, name) \
     do { \

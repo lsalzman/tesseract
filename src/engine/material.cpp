@@ -674,9 +674,8 @@ void renderglass()
     glBindTexture(GL_TEXTURE_2D, tex->id);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    float colorscale = 1/255.0f;
-    GLOBALPARAM(glasscolor, (glasscolor.x*colorscale, glasscolor.y*colorscale, glasscolor.z*colorscale));
-    GLOBALPARAM(glassrefract, (glassrefract*viewh));
+    float refractscale = (0.5f/255)/ldrscale;
+    GLOBALPARAM(glassrefract, (glasscolor.x*refractscale, glasscolor.y*refractscale, glasscolor.z*refractscale, glassrefract*viewh));
     GLOBALPARAM(glassspec, (0.5f*glassspec/100.0f));
 
     short envmap = EMID_NONE;
