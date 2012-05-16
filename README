@@ -13,6 +13,7 @@ It provides a bunch of new rendering features such as:
 
 * deferred shading
 * omnidirectional point lights using cubemap or tetrahedral shadowmaps
+* perspective projection spotlight shadowmaps
 * orthographic projection sunlight using cascaded shadowmaps
 * HDR rendering with tonemapping and bloom
 * screen-space ambient occlusion
