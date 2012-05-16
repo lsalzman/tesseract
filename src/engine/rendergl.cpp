@@ -2664,6 +2664,8 @@ void loaddeferredlightshaders()
 static inline bool sortlights(int x, int y)
 {
     const lightinfo &xl = lights[x], &yl = lights[y];
+    if(!xl.spot) { if(yl.spot) return true; }
+    else if(!yl.spot) return false;
     return xl.dist - xl.radius < yl.dist - yl.radius;
 }
 
