@@ -349,24 +349,21 @@ static inline void masktiles(uint *tiles, float sx1, float sy1, float sx2, float
     for(int ty = ty1; ty < ty2; ty++) tiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;
 }
 
-enum { SM_NONE = 0, SM_CUBEMAP, SM_TETRA, SM_CASCADE };
+enum { SM_NONE = 0, SM_CUBEMAP, SM_TETRA, SM_CASCADE, SM_SPOT };
  
 extern int shadowmapping;
 
 extern int smtetra, smtetraclip;
 extern plane smtetraclipplane;
 
-extern vec shadoworigin;
+extern vec shadoworigin, shadowdir;
 extern float shadowradius, shadowbias;
-extern int shadowside;
+extern int shadowside, shadowspot;
 
 extern void collectlights();
 
 extern void findshadowvas();
 extern void findshadowmms();
-
-extern void findcsmshadowvas();
-extern void findcsmshadowmms();
 
 extern void rendershadowmapworld();
 extern void batchshadowmapmodels();
@@ -379,6 +376,18 @@ extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, 
 extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
 extern int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax);
 extern int calcspherecsmsplits(const vec &center, float radius);
+
+static inline bool sphereinsidespot(const vec &dir, int spot, const vec &center, float radius)
+{
+    const vec2 &sc = sincos360[spot];
+    float cdist = dir.dot(center), cradius = radius + sc.y*cdist;
+    return sc.x*sc.x*(center.dot(center) - cdist*cdist) <= cradius*cradius;
+}
+static inline bool bbinsidespot(const vec &origin, const vec &dir, int spot, const ivec &bbmin, const ivec &bbmax)
+{
+    vec radius = ivec(bbmax).sub(bbmin).tovec().mul(0.5f), center = bbmin.tovec().add(radius);
+    return sphereinsidespot(dir, spot, center.sub(origin), radius.magnitude());
+}
 
 extern void loaddeferredlightshaders();
 extern void cleardeferredlightshaders();

@@ -627,7 +627,7 @@ void renderentradius(extentity &e, bool color)
                 float radius = e.attached->attr1;
                 if(!radius) radius = 2*e.o.dist(e.attached->o);
                 vec dir = vec(e.o).sub(e.attached->o).normalize();
-                float angle = max(1, min(90, int(e.attr1)));
+                float angle = clamp(int(e.attr1), 1, 89);
                 renderentattachment(e);
                 renderentcone(*e.attached, dir, radius, angle); 
             }

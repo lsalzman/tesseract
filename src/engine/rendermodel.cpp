@@ -575,14 +575,27 @@ static inline int shadowmaskmodel(const vec &center, float radius)
     switch(shadowmapping)
     {
         case SM_TETRA:
-            if(center.dist(shadoworigin) >= radius + shadowradius) return 0;
-            return calcspheretetramask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
-            break;
+        {
+            vec scenter = vec(center).sub(shadoworigin);
+            float sradius = radius + shadowradius;
+            if(scenter.squaredlen() >= sradius*sradius) return 0;
+            return calcspheretetramask(scenter, radius, shadowbias*shadowradius);
+        }
         case SM_CUBEMAP:
-            if(center.dist(shadoworigin) >= radius + shadowradius) return 0;
-            return calcspheresidemask(vec(center).sub(shadoworigin).div(shadowradius), radius/shadowradius, shadowbias);
+        {
+            vec scenter = vec(center).sub(shadoworigin);
+            float sradius = radius + shadowradius;
+            if(scenter.squaredlen() >= sradius*sradius) return 0;
+            return calcspheresidemask(scenter, radius, shadowbias);
+        }
         case SM_CASCADE:
             return calcspherecsmsplits(center, radius);
+        case SM_SPOT:
+        {
+            vec scenter = vec(center).sub(shadoworigin);
+            float sradius = radius + shadowradius;
+            return scenter.squaredlen() < sradius*sradius && sphereinsidespot(shadowdir, shadowspot, scenter, radius) ? 1 : 0;
+        }
     }
     return 0;
 }

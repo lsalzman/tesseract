@@ -673,10 +673,9 @@ void lightreaching(const vec &target, vec &color, vec &dir, bool fast, extentity
             intensity -= mag / float(e.attr1);
         if(e.attached && e.attached->type==ET_SPOTLIGHT)
         {
-            vec spot(vec(e.attached->o).sub(e.o).normalize());
-            float maxatten = 1-cosf(max(1, min(90, int(e.attached->attr1)))*RAD);
-            float spotatten = 1-(1-ray.dot(spot))/maxatten;
-            if(spotatten<=0) continue;
+            vec spot = vec(e.attached->o).sub(e.o).normalize();
+            float maxatten = sincos360[clamp(int(e.attached->attr1), 1, 89)].x, spotatten = (ray.dot(spot) - maxatten) / (1 - maxatten);
+            if(spotatten <= 0) continue;
             intensity *= spotatten;
         }
 
@@ -728,10 +727,9 @@ entity *brightestlight(const vec &target, const vec &dir)
             intensity -= mag / float(e.attr1);
         if(e.attached && e.attached->type==ET_SPOTLIGHT)
         {
-            vec spot(vec(e.attached->o).sub(e.o).normalize());
-            float maxatten = 1-cosf(max(1, min(90, int(e.attached->attr1)))*RAD);
-            float spotatten = 1-(1-ray.dot(spot))/maxatten;
-            if(spotatten<=0) continue;
+            vec spot = vec(e.attached->o).sub(e.o).normalize();
+            float maxatten = sincos360[clamp(int(e.attached->attr1), 1, 89)].x, spotatten = (ray.dot(spot) - maxatten) / (1 - maxatten);
+            if(spotatten <= 0) continue;
             intensity *= spotatten;
         }
 

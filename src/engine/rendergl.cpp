@@ -2064,7 +2064,9 @@ struct lightinfo
     float sx1, sy1, sx2, sy2, sz1, sz2;
     int shadowmap, flags;
     vec o, color;
-    int radius;
+    float radius;
+    vec dir;
+    int spot;
     float dist;
     occludequery *query;
 };
@@ -2073,9 +2075,11 @@ struct shadowcachekey
 {
     vec o;
     float radius;
+    vec dir;
+    int spot;
 
     shadowcachekey() {}
-    shadowcachekey(const lightinfo &l) : o(l.o), radius(l.radius) {}
+    shadowcachekey(const lightinfo &l) : o(l.o), radius(l.radius), dir(l.dir), spot(l.spot) {}
 };
 
 static inline uint hthash(const shadowcachekey &k)
@@ -2085,7 +2089,7 @@ static inline uint hthash(const shadowcachekey &k)
 
 static inline bool htcmp(const shadowcachekey &x, const shadowcachekey &y)
 {
-    return x.o == y.o && x.radius == y.radius;
+    return x.o == y.o && x.radius == y.radius && x.dir == y.dir && x.spot == y.spot;
 }
 
 struct shadowcacheval;
@@ -2230,6 +2234,7 @@ FVAR(smbias, -1e6f, 0.01f, 1e6f);
 FVAR(smprec, 1e-3f, 1, 1e3f);
 FVAR(smtetraprec, 1e-3f, SQRT3, 1e3f);
 FVAR(smcubeprec, 1e-3f, 1, 1e3f);
+FVAR(smspotprec, 1e-3f, 1, 1e3f);
 
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
@@ -2681,7 +2686,7 @@ void resetlights()
             {
                 if(shadowcachefull)
                 {
-                    int smw = tetra ? sm.size*2 : sm.size*3, smh = tetra ? sm.size : sm.size*2;
+                    int smw = l.spot ? sm.size : (tetra ? sm.size*2 : sm.size*3), smh = l.spot ? sm.size : (tetra ? sm.size : sm.size*2);
                     if(sm.x < evictx2 && sm.x + smw > evictx && sm.y < evicty2 && sm.y + smh > evicty) continue;
                 }
                 shadowcache[1][l] = sm;
@@ -2786,19 +2791,26 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     {
         vector<int> &tile = lighttiles[y][x];
 
-        static LocalShaderParam lightpos("lightpos"), lightcolor("lightcolor"), shadowparams("shadowparams"), shadowoffset("shadowoffset");
-        static vec4 lightposv[8], shadowparamsv[8];
-        static vec lightcolorv[8];
+        static LocalShaderParam lightpos("lightpos"), lightcolor("lightcolor"), spotparams("spotparams"), spotx("spotx"), spoty("spoty"), shadowparams("shadowparams"), shadowoffset("shadowoffset");
+        static vec4 lightposv[8], spotparamsv[8], shadowparamsv[8];
+        static vec lightcolorv[8], spotxv[8], spotyv[8];
         static vec2 shadowoffsetv[8];
 
         for(int i = 0;;)
         {
             int n = min(tile.length() - i, lighttilebatch);
 
-            bool shadowmap = n > 0 && lights[tile[i]].shadowmap >= 0;
+            bool shadowmap = false, spotlight = false;
+            if(n > 0)
+            {
+                lightinfo &l = lights[tile[i]];
+                shadowmap = l.shadowmap >= 0;
+                spotlight = l.spot > 0;
+            }
             loopj(n)
             {
-                if((lights[tile[i+j]].shadowmap >= 0) != shadowmap) { n = j; break; }
+                lightinfo &l = lights[tile[i+j]];
+                if((l.shadowmap >= 0) != shadowmap || (l.spot > 0) != spotlight) { n = j; break; }
             }
 
             float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
@@ -2807,16 +2819,40 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 lightinfo &l = lights[tile[i+j]];
                 lightposv[j] = vec4(l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
                 lightcolorv[j] = vec(l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
+                if(spotlight)
+                {
+                    float maxatten = sincos360[l.spot].x;
+                    spotparamsv[j] = vec4(l.dir, maxatten).div(1 - maxatten);
+                }
                 if(shadowmap)
                 {
                     shadowmapinfo &sm = shadowmaps[l.shadowmap];
                     float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
                           bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
-                    shadowparamsv[j] = vec4(
-                        0.5f * (sm.size - smborder),
-                        -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
-                        sm.size,
-                        0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                    if(spotlight)
+                    {
+                        vec adir(fabs(l.dir.x), fabs(l.dir.y), fabs(l.dir.z)), spotx(1, 0, 0), spoty(0, 1, 0);
+                        if(adir.x > adir.y) { if(adir.x > adir.z) spotx = vec(0, 0, 1); }
+                        else if(adir.y > adir.z) spoty = vec(0, 0, 1);
+                        l.dir.orthonormalize(spotx, spoty);
+                        const vec2 &sc = sincos360[l.spot];
+                        float spotscale = sc.x/sc.y;
+                        spotxv[j] = spotx.rescale(spotscale);
+                        spotyv[j] = spoty.rescale(spotscale);
+                        shadowparamsv[j] = vec4(
+                            0.5f * sm.size / (1 - sc.x),
+                            (-smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias) / (1 - sc.x),
+                            sm.size,
+                            0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                    }
+                    else 
+                    {
+                        shadowparamsv[j] = vec4(
+                            0.5f * (sm.size - smborder),
+                            -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
+                            sm.size,
+                            0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                    }
                     shadowoffsetv[j] = vec2(sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                 }
                 sx1 = min(sx1, l.sx1);
@@ -2831,11 +2867,17 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
             if(n) 
             {
-                s->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0));
+                s->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0) + (spotlight ? 4 : 0));
                 lightpos.set(lightposv, n);
                 lightcolor.set(lightcolorv, n);
+                if(spotlight) spotparams.set(spotparamsv, n);
                 if(shadowmap)   
                 {
+                    if(spotlight) 
+                    { 
+                        spotx.set(spotxv, n);
+                        spoty.set(spotyv, n);
+                    }
                     shadowparams.set(shadowparamsv, n);
                     shadowoffset.set(shadowoffsetv, n);
                 }
@@ -2922,6 +2964,16 @@ void collectlights()
         l.o = e->o;
         l.color = vec(e->attr2, e->attr3, e->attr4);
         l.radius = e->attr1 > 0 ? e->attr1 : 2*worldsize;
+        if(e->attached && e->attached->type == ET_SPOTLIGHT)
+        {
+            l.dir = vec(e->attached->o).sub(e->o).normalize();
+            l.spot = clamp(int(e->attached->attr1), 1, 89);
+        }
+        else
+        {
+            l.dir = vec(0, 0, 0);
+            l.spot = 0;
+        }
         l.dist = camera1->o.dist(e->o);
     }
 
@@ -2952,6 +3004,8 @@ void collectlights()
         l.o = o;
         l.color = vec(color).mul(255);
         l.radius = radius;
+        l.dir = vec(0, 0, 0);
+        l.spot = 0;
         l.dist = camera1->o.dist(o);
     }
 
@@ -3003,9 +3057,15 @@ void packlights()
         if(l.flags&L_NOSHADOW || l.radius <= smminradius) continue;
         if(l.query && l.query->owner == &l && checkquery(l.query)) continue; 
 
-        float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
-        int smsize = clamp(int(ceil(smlod * (tetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (tetra ? 2 : 3)),
-            smw = tetra ? smsize*2 : smsize*3, smh = tetra ? smsize : smsize*2;
+        float prec = smprec, smlod;
+        int smw, smh;
+        if(l.spot) { smw = 1; smh = 1; const vec2 &sc = sincos360[l.spot]; prec = sc.y/sc.x; smlod = smspotprec; }
+        else if(tetra) { smw = 2; smh = 1; smlod = smtetraprec; }
+        else { smw = 3; smh = 2; smlod = smcubeprec; }
+        smlod *= clamp(l.radius * prec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
+        int smsize = clamp(int(ceil(smlod)), 1, SHADOWATLAS_SIZE / smw);
+        smw *= smsize;
+        smh *= smsize;
         ushort smx = USHRT_MAX, smy = USHRT_MAX;
         shadowmapinfo *sm = NULL;
         int smidx = -1;
@@ -3018,7 +3078,7 @@ void packlights()
         sm->light = idx;
         sm->cached = cached;
         l.shadowmap = smidx;
-        smused += smsize*smsize*(tetra ? 2 : 6);
+        smused += smw*smh;
 
         addlighttiles(l, idx);
     }
@@ -3031,9 +3091,15 @@ void packlights()
         if(!(l.flags&L_NOSHADOW) && smnoshadow <= 1 && l.radius > smminradius)
         {
             if(l.query && l.query->owner == &l && checkquery(l.query)) { lightsoccluded++; continue; }
-            float smlod = clamp(l.radius * smprec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
-            int smsize = clamp(int(ceil(smlod * (tetra ? smtetraprec : smcubeprec))), 1, SHADOWATLAS_SIZE / (tetra ? 2 : 3)),
-                smw = tetra ? smsize*2 : smsize*3, smh = tetra ? smsize : smsize*2;
+            float prec = smprec, smlod;
+            int smw, smh;
+            if(l.spot) { smw = 1; smh = 1; const vec2 &sc = sincos360[l.spot]; prec = sc.y/sc.x; smlod = smspotprec; }
+            else if(tetra) { smw = 2; smh = 1; smlod = smtetraprec; }
+            else { smw = 3; smh = 2; smlod = smcubeprec; }
+            smlod *= clamp(l.radius * prec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
+            int smsize = clamp(int(ceil(smlod)), 1, SHADOWATLAS_SIZE / smw);
+            smw *= smsize;
+            smh *= smsize;
             ushort smx = USHRT_MAX, smy = USHRT_MAX;
             shadowmapinfo *sm = NULL;
             int smidx = -1;
@@ -3048,7 +3114,7 @@ void packlights()
                         sm = addshadowmap(smx, smy, smsize, smidx); 
                         sm->light = idx;
                         l.shadowmap = smidx;
-                        smused += smsize*smsize*(tetra ? 2 : 6);
+                        smused += smw*smh;
 
                         addlighttiles(l, idx);
                         continue;
@@ -3061,7 +3127,7 @@ void packlights()
                 sm = addshadowmap(smx, smy, smsize, smidx);
                 sm->light = idx;
                 l.shadowmap = smidx;
-                smused += smsize*smsize*(tetra ? 2 : 6);
+                smused += smw*smh;
             }
         }
    
@@ -3075,8 +3141,9 @@ void rendercsmshadowmaps()
 {
     shadowmapping = SM_CASCADE;
     shadoworigin = vec(0, 0, 0);
-    shadowradius = 2*worldsize;
-    shadowbias = 0;
+    shadowdir = csm.lightview;
+    shadowbias = csm.lightview.project_bb(worldmin, worldmax);
+    shadowradius = fabs(csm.lightview.project_bb(worldmax, worldmin));
 
     if(csmpolyfactor || csmpolyoffset)
     {
@@ -3084,8 +3151,8 @@ void rendercsmshadowmaps()
         glEnable(GL_POLYGON_OFFSET_FILL);
     }
 
-    findcsmshadowvas(); // no culling here
-    findcsmshadowmms(); // no culling here
+    findshadowvas();
+    findshadowmms();
 
     shadowmaskbatchedmodels();
     batchshadowmapmodels();
@@ -3119,14 +3186,12 @@ void rendercsmshadowmaps()
 
 void rendershadowmaps()
 {
-    shadowmapping = smtetra && glslversion >= 130 ? SM_TETRA : SM_CUBEMAP;
-
+    bool tetra = smtetra && glslversion >= 130;
     if(smpolyfactor || smpolyoffset)
     {
         glPolygonOffset(smpolyfactor, smpolyoffset);
         glEnable(GL_POLYGON_OFFSET_FILL);
     }
-    if(shadowmapping == SM_TETRA && smtetraclip) glEnable(GL_CLIP_PLANE0);
 
     loopv(shadowmaps)
     {
@@ -3135,15 +3200,35 @@ void rendershadowmaps()
 
         lightinfo &l = lights[sm.light];
 
-        int sidemask;
-        if(shadowmapping == SM_TETRA) sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
-        else sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
+        int border, sidemask;
+        if(l.spot) 
+        {
+            if(shadowmapping == SM_TETRA && smtetraclip) glDisable(GL_CLIP_PLANE0);
+            shadowmapping = SM_SPOT;
+            border = 0;
+            sidemask = 1;
+        }
+        else if(tetra) 
+        {
+            if(shadowmapping != SM_TETRA && smtetraclip) glEnable(GL_CLIP_PLANE0);
+            shadowmapping = SM_TETRA;
+            border = smborder;
+            sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, smborder) : 0xF;
+        }
+        else 
+        {
+            shadowmapping = SM_CUBEMAP;
+            border = smborder;
+            sidemask = smsidecull ? cullfrustumsides(l.o, l.radius, sm.size, smborder) : 0x3F;
+        }
 
         sm.sidemask = sidemask;
 
         shadoworigin = l.o;
         shadowradius = l.radius;
-        shadowbias = smborder / float(sm.size - smborder);
+        shadowbias = border / float(sm.size - border);
+        shadowdir = l.dir;
+        shadowspot = l.spot;
 
         findshadowvas();
         findshadowmms();
@@ -3176,8 +3261,8 @@ void rendershadowmaps()
         float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
         GLfloat smprojmatrix[16] =
         {
-            float(sm.size - smborder) / sm.size, 0, 0, 0,
-            0, float(sm.size - smborder) / sm.size, 0, 0,
+            float(sm.size - border) / sm.size, 0, 0, 0,
+            0, float(sm.size - border) / sm.size, 0, 0,
             0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -1,
             0, 0, -2*smnearclip*smfarclip / (smfarclip - smnearclip), 0
         };
@@ -3195,7 +3280,44 @@ void rendershadowmaps()
 
         glmatrixf smviewmatrix;
 
-        if(shadowmapping == SM_TETRA)
+        if(shadowmapping == SM_SPOT)
+        {
+            glViewport(sm.x, sm.y, sm.size, sm.size);
+            glScissor(sm.x, sm.y, sm.size, sm.size);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            vec adir(fabs(l.dir.x), fabs(l.dir.y), fabs(l.dir.z)), spotx(1, 0, 0), spoty(0, 1, 0);
+            int dim = 2;
+            if(adir.x > adir.y)
+            {
+                if(adir.x > adir.z) { dim = 0; spotx = vec(0, 0, 1); }
+            }
+            else if(adir.y > adir.z) { dim = 1; spoty = vec(0, 0, 1); }
+            l.dir.orthonormalize(spotx, spoty);
+            const vec2 &sc = sincos360[l.spot];
+            float spotscale = sc.x/sc.y;
+            spotx.rescale(spotscale);
+            spoty.rescale(spotscale);
+
+            GLfloat spotmatrix[16] = 
+            {
+                spotx.x, spoty.x, -l.dir.x, 0, 
+                spotx.y, spoty.y, -l.dir.y, 0,
+                spotx.z, spoty.z, -l.dir.z, 0,
+                0, 0, 0, 1
+            };
+            smviewmatrix.mul(spotmatrix, lightmatrix);
+            glLoadMatrixf(smviewmatrix.v);
+
+            int side = 2*dim + (l.dir[dim] < 0 ? 1 : 0);
+            glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
+
+            shadowside = 0;
+
+            rendershadowmapworld();
+            rendermodelbatches();
+        }
+        else if(shadowmapping == SM_TETRA)
         {
             if(!cachemask)
             {
