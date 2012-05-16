@@ -994,36 +994,49 @@ bool load_world(const char *mname, const char *cname)        // still supports a
         name[min(ilen, MAXSTRLEN-1)] = '\0';
         if(ilen >= MAXSTRLEN) f->seek(ilen - (MAXSTRLEN-1), SEEK_CUR);
         ident *id = getident(name);
-        bool exists = id && id->type == type;
+        tagval val;
+        string str;
         switch(type)
         {
-            case ID_VAR:
-            {
-                int val = f->getlil<int>();
-                if(exists && id->minval <= id->maxval) setvar(name, val);
-                if(dbgvars) conoutf(CON_DEBUG, "read var %s: %d", name, val);
-                break;
-            }
- 
-            case ID_FVAR:
-            {
-                float val = f->getlil<float>();
-                if(exists && id->minvalf <= id->maxvalf) setfvar(name, val);
-                if(dbgvars) conoutf(CON_DEBUG, "read fvar %s: %f", name, val);
-                break;
-            }
-    
+            case ID_VAR: val.setint(f->getlil<int>()); break;
+            case ID_FVAR: val.setfloat(f->getlil<float>()); break;
             case ID_SVAR:
             {
                 int slen = f->getlil<ushort>();
-                string val;
-                f->read(val, min(slen, MAXSTRLEN-1));
-                val[min(slen, MAXSTRLEN-1)] = '\0';
+                f->read(str, min(slen, MAXSTRLEN-1));
+                str[min(slen, MAXSTRLEN-1)] = '\0';
                 if(slen >= MAXSTRLEN) f->seek(slen - (MAXSTRLEN-1), SEEK_CUR);
-                if(exists) setsvar(name, val);
-                if(dbgvars) conoutf(CON_DEBUG, "read svar %s: %s", name, val);
+                val.setstr(str);
                 break;
             }
+            default: continue;
+        }
+        if(id) switch(id->type)
+        {
+            case ID_VAR:
+            {
+                int i = val.getint();
+                if(id->minval <= id->maxval && i >= id->minval && i <= id->maxval) 
+                {
+                    setvar(name, i);
+                    if(dbgvars) conoutf(CON_DEBUG, "read var %s: %d", name, i);
+                }
+                break;
+            }
+            case ID_FVAR:
+            {
+                float f = val.getfloat();
+                if(id->minvalf <= id->maxvalf && f >= id->minvalf && f <= id->maxvalf) 
+                {
+                    setfvar(name, f);
+                    if(dbgvars) conoutf(CON_DEBUG, "read fvar %s: %f", name, f);
+                }
+                break;
+            }
+            case ID_SVAR:
+                setsvar(name, val.getstr());
+                if(dbgvars) conoutf(CON_DEBUG, "read svar %s: %s", name, val.getstr());
+                break;
         }
     }
     if(dbgvars) conoutf(CON_DEBUG, "read %d vars", hdr.numvars);
