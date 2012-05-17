@@ -1111,12 +1111,12 @@ void disablepolygonoffset(GLenum type)
     glMatrixMode(GL_MODELVIEW);
 }
 
-bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2)
+bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2)
 {
     vec e(mvmatrix.transformx(center),
           mvmatrix.transformy(center),
           mvmatrix.transformz(center));
-    if(e.z > 2*size) { sx1 = sy1 = 1; sx2 = sy2 = -1; return false; }
+    if(e.z > 2*size) { sx1 = sy1 = sz1 = 1; sx2 = sy2 = sz2 = -1; return false; }
     float zzrr = e.z*e.z - size*size,
           dx = e.x*e.x + zzrr, dy = e.y*e.y + zzrr,
           focaldist = 1.0f/tan(fovy*0.5f*RAD);
@@ -1146,27 +1146,43 @@ bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, fl
         CHECKPLANE(y, -, focaldist, sy1, sy2);
         CHECKPLANE(y, +, focaldist, sy1, sy2);
     }
-    return sx1 < sx2 && sy1 < sy2;
+    float z1 = min(e.z + size, -1e-3f - nearplane), z2 = min(e.z - size, -1e-3f - nearplane);
+    sz1 = (z1*projmatrix.v[10] + projmatrix.v[14]) / (z1*projmatrix.v[11] + projmatrix.v[15]);
+    sz2 = (z2*projmatrix.v[10] + projmatrix.v[14]) / (z2*projmatrix.v[11] + projmatrix.v[15]);
+    return sx1 < sx2 && sy1 < sy2 && sz1 < sz2;
 }
 
 bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2)
 {
+#define ADDXYSCISSOR(p) do { \
+        if(p.z >= -p.w) \
+        { \
+            float x = p.x / p.w, y = p.y / p.w; \
+            sx1 = min(sx1, x); \
+            sy1 = min(sy1, y); \
+            sx2 = max(sx2, x); \
+            sy2 = max(sy2, y); \
+        } \
+    } while(0)
     vec4 v[8];
     sx1 = sy1 = 1;
     sx2 = sy2 = -1;
-    loopi(8)
-    {
-        vec4 &p = v[i];
-        mvpmatrix.transform(vec(i&1 ? bbmax.x : bbmin.x, i&2 ? bbmax.y : bbmin.y, i&4 ? bbmax.z : bbmin.z), p);
-        if(p.z >= -p.w)
-        {
-            float x = p.x / p.w, y = p.y / p.w;
-            sx1 = min(sx1, x);
-            sy1 = min(sy1, y);
-            sx2 = max(sx2, x);
-            sy2 = max(sy2, y);
-        }
-    }
+    mvpmatrix.transform(vec(bbmin.x, bbmin.y, bbmin.z), v[0]);
+    ADDXYSCISSOR(v[0]);
+    mvpmatrix.transform(vec(bbmax.x, bbmin.y, bbmin.z), v[1]);
+    ADDXYSCISSOR(v[1]);
+    mvpmatrix.transform(vec(bbmin.x, bbmax.y, bbmin.z), v[2]);
+    ADDXYSCISSOR(v[2]);
+    mvpmatrix.transform(vec(bbmax.x, bbmax.y, bbmin.z), v[3]);
+    ADDXYSCISSOR(v[3]);
+    mvpmatrix.transform(vec(bbmin.x, bbmin.y, bbmax.z), v[4]);
+    ADDXYSCISSOR(v[4]);
+    mvpmatrix.transform(vec(bbmax.x, bbmin.y, bbmax.z), v[5]);
+    ADDXYSCISSOR(v[5]);
+    mvpmatrix.transform(vec(bbmin.x, bbmax.y, bbmax.z), v[6]);
+    ADDXYSCISSOR(v[6]);
+    mvpmatrix.transform(vec(bbmax.x, bbmax.y, bbmax.z), v[7]);
+    ADDXYSCISSOR(v[7]);
     if(sx1 > sx2 || sy1 > sy2) return false;
     loopi(8)
     {
@@ -1176,14 +1192,17 @@ bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1,
         {
             const vec4 &o = v[i^(1<<j)];
             if(o.z <= -o.w) continue;
-            float t = (p.z + p.w)/(p.z + p.w - o.z - o.w),
-                  w = p.w + t*(o.w - p.w),
-                  x = (p.x + t*(o.x - p.x))/w,
-                  y = (p.y + t*(o.y - p.y))/w;
-            sx1 = min(sx1, x);
-            sy1 = min(sy1, y);
-            sx2 = max(sx2, x);
-            sy2 = max(sy2, y);
+#define INTERPXYSCISSOR(p, o) do { \
+            float t = (p.z + p.w)/(p.z + p.w - o.z - o.w), \
+                  w = p.w + t*(o.w - p.w), \
+                  x = (p.x + t*(o.x - p.x))/w, \
+                  y = (p.y + t*(o.y - p.y))/w; \
+            sx1 = min(sx1, x); \
+            sy1 = min(sy1, y); \
+            sx2 = max(sx2, x); \
+            sy2 = max(sy2, y); \
+        } while(0)
+            INTERPXYSCISSOR(p, o);
         }
     }
     sx1 = max(sx1, -1.0f);
@@ -1193,12 +1212,73 @@ bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1,
     return true;
 }
 
-void calcspheredepth(const vec &center, float size, float &sz1, float &sz2)
+bool calcspotscissor(const vec &origin, float radius, const vec &dir, int spot, const vec &spotx, const vec &spoty, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2)
 {
-    float z = mvmatrix.transformz(center),
-          z1 = min(z + size, -1e-3f - nearplane), z2 = min(z - size, -1e-3f - nearplane);
-    sz1 = (z1*projmatrix.v[10] + projmatrix.v[14]) / (z1*projmatrix.v[11] + projmatrix.v[15]);
-    sz2 = (z2*projmatrix.v[10] + projmatrix.v[14]) / (z2*projmatrix.v[11] + projmatrix.v[15]);
+    const vec2 &sc = sincos360[spot];
+    float spotscale = radius*sc.y/sc.x;
+    vec up = vec(spotx).rescale(spotscale), right = vec(spoty).rescale(spotscale), center = vec(dir).mul(radius).add(origin);
+#define ADDXYZSCISSOR(p) do { \
+        if(p.z >= -p.w) \
+        { \
+            float x = p.x / p.w, y = p.y / p.w, z = p.z / p.w; \
+            sx1 = min(sx1, x); \
+            sy1 = min(sy1, y); \
+            sz1 = min(sz1, z); \
+            sx2 = max(sx2, x); \
+            sy2 = max(sy2, y); \
+            sz2 = max(sz2, z); \
+        } \
+    } while(0)
+    vec4 v[5];
+    sx1 = sy1 = sz1 = 1;
+    sx2 = sy2 = sz2 = -1;
+    mvpmatrix.transform(vec(center).sub(right).sub(up), v[0]);
+    ADDXYZSCISSOR(v[0]);
+    mvpmatrix.transform(vec(center).add(right).sub(up), v[1]);
+    ADDXYZSCISSOR(v[1]);
+    mvpmatrix.transform(vec(center).sub(right).add(up), v[2]);
+    ADDXYZSCISSOR(v[2]);
+    mvpmatrix.transform(vec(center).add(right).add(up), v[3]);
+    ADDXYZSCISSOR(v[3]);
+    mvpmatrix.transform(origin, v[4]); 
+    ADDXYZSCISSOR(v[4]);
+    if(sx1 > sx2 || sy1 > sy2 || sz1 > sz2) return false;
+    loopi(4)
+    {
+        const vec4 &p = v[i];
+        if(p.z >= -p.w) continue;
+        loopj(2)
+        {
+            const vec4 &o = v[i^(1<<j)];
+            if(o.z <= -o.w) continue;
+#define INTERPXYZSCISSOR(p, o) do { \
+            float t = (p.z + p.w)/(p.z + p.w - o.z - o.w), \
+                  w = p.w + t*(o.w - p.w), \
+                  x = (p.x + t*(o.x - p.x))/w, \
+                  y = (p.y + t*(o.y - p.y))/w; \
+            sx1 = min(sx1, x); \
+            sy1 = min(sy1, y); \
+            sz1 = min(sz1, -1.0f); \
+            sx2 = max(sx2, x); \
+            sy2 = max(sy2, y); \
+        } while(0)
+            INTERPXYZSCISSOR(p, o);
+        }
+        if(v[4].z > -v[4].w) INTERPXYZSCISSOR(p, v[4]);
+    }
+    if(v[4].z < -v[4].w) loopj(4)
+    {
+        const vec4 &o = v[j];
+        if(o.z <= -o.w) continue;
+        INTERPXYZSCISSOR(v[4], o);
+    }
+    sx1 = max(sx1, -1.0f);
+    sy1 = max(sy1, -1.0f);
+    sz1 = max(sz1, -1.0f);
+    sx2 = min(sx2, 1.0f);
+    sy2 = min(sy2, 1.0f);
+    sz2 = min(sz2, 1.0f);
+    return true;
 }
 
 static int scissoring = 0;
@@ -2065,7 +2145,7 @@ struct lightinfo
     int shadowmap, flags;
     vec o, color;
     float radius;
-    vec dir;
+    vec dir, spotx, spoty;
     int spot;
     float dist;
     occludequery *query;
@@ -2833,17 +2913,12 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                           bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
                     if(spotlight)
                     {
-                        vec adir(fabs(l.dir.x), fabs(l.dir.y), fabs(l.dir.z)), spotx(1, 0, 0), spoty(0, 1, 0);
-                        if(adir.x > adir.y) { if(adir.x > adir.z) spotx = vec(0, 0, 1); }
-                        else if(adir.y > adir.z) spoty = vec(0, 0, 1);
-                        l.dir.orthonormalize(spotx, spoty);
-                        const vec2 &sc = sincos360[l.spot];
-                        float spotscale = sc.x/sc.y;
-                        spotxv[j] = spotx.rescale(spotscale);
-                        spotyv[j] = spoty.rescale(spotscale);
+                        spotxv[j] = l.spotx;
+                        spotyv[j] = l.spoty;
+                        float maxatten = sincos360[l.spot].x;
                         shadowparamsv[j] = vec4(
-                            0.5f * sm.size / (1 - sc.x),
-                            (-smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias) / (1 - sc.x),
+                            0.5f * sm.size / (1 - maxatten),
+                            (-smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias) / (1 - maxatten),
                             sm.size,
                             0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
                     }
@@ -2929,6 +3004,51 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 }
 
 VAR(oqlights, 0, 1, 1);
+VAR(debuglightscissor, 0, 0, 1);
+
+void viewlightscissor()
+{
+    vector<extentity *> &ents = entities::getents();
+    loopv(entgroup)
+    {
+        int idx = entgroup[i];
+        if(ents.inrange(idx) && ents[idx]->type == ET_LIGHT) 
+        { 
+            extentity &e = *ents[idx];
+            loopvj(lights) if(lights[j].o == e.o)
+            {
+                lightinfo &l = lights[j];
+                if(l.sx1 >= l.sx2 || l.sy1 >= l.sy2 || l.sz1 >= l.sz2) break;
+                glColor3f(l.color.x/255, l.color.y/255, l.color.z/255);
+                float x1 = (l.sx1+1)/2*screen->w, x2 = (l.sx2+1)/2*screen->w,
+                      y1 = (1-l.sy1)/2*screen->h, y2 = (1-l.sy2)/2*screen->h;
+                glBegin(GL_TRIANGLE_STRIP);
+                glVertex2f(x1, y1);
+                glVertex2f(x2, y1);
+                glVertex2f(x1, y2);
+                glVertex2f(x2, y2);
+                glEnd();
+            }
+        }
+    }
+}
+
+static inline bool calclightscissor(lightinfo &l)
+{
+    float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1, sz1 = -1, sz2 = 1;
+    if(l.radius > 0)
+    {
+        if(l.spot > 0) calcspotscissor(l.o, l.radius, l.dir, l.spot, l.spotx, l.spoty, sx1, sy1, sx2, sy2, sz1, sz2);
+        else calcspherescissor(l.o, l.radius, sx1, sy1, sx2, sy2, sz1, sz2);
+    }
+    l.sx1 = sx1;
+    l.sx2 = sx2;
+    l.sy1 = sy1;
+    l.sy2 = sy2;
+    l.sz1 = sz1;
+    l.sz2 = sz2;
+    return sx1 < sx2 && sy1 < sy2 && sz1 < sz2; 
+}
 
 void collectlights()
 {
@@ -2939,27 +3059,13 @@ void collectlights()
         extentity *e = ents[i];
         if(e->type != ET_LIGHT) continue;
 
-        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1, sz1 = -1, sz2 = 1;
-        if(e->attr1 > 0)
+        if(e->attr1 > 0 && smviscull)
         {
-            if(smviscull)
-            {
-                if(isfoggedsphere(e->attr1, e->o)) continue;
-                if(pvsoccludedsphere(e->o, e->attr1)) continue;
-            }
-            calcspherescissor(e->o, e->attr1, sx1, sy1, sx2, sy2);
-            calcspheredepth(e->o, e->attr1, sz1, sz2);
+            if(isfoggedsphere(e->attr1, e->o)) continue;
+            if(pvsoccludedsphere(e->o, e->attr1)) continue;
         }
-        if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
 
-        lightorder.add(lights.length());
         lightinfo &l = lights.add();
-        l.sx1 = sx1;
-        l.sx2 = sx2;
-        l.sy1 = sy1;
-        l.sy2 = sy2;
-        l.sz1 = sz1;
-        l.sz2 = sz2;
         l.shadowmap = -1;
         l.flags = e->attr5;
         l.query = NULL;
@@ -2970,6 +3076,14 @@ void collectlights()
         {
             l.dir = vec(e->attached->o).sub(e->o).normalize();
             l.spot = clamp(int(e->attached->attr1), 1, 89);
+            vec adir(fabs(l.dir.x), fabs(l.dir.y), fabs(l.dir.z)), spotx(1, 0, 0), spoty(0, 1, 0);
+            if(adir.x > adir.y) { if(adir.x > adir.z) spotx = vec(0, 0, 1); }
+            else if(adir.y > adir.z) spoty = vec(0, 0, 1);
+            l.dir.orthonormalize(spotx, spoty);
+            const vec2 &sc = sincos360[l.spot];
+            float spotscale = sc.x/sc.y;
+            l.spotx = spotx.rescale(spotscale);
+            l.spoty = spoty.rescale(spotscale);
         }
         else
         {
@@ -2977,6 +3091,8 @@ void collectlights()
             l.spot = 0;
         }
         l.dist = camera1->o.dist(e->o);
+
+        if(calclightscissor(l)) lightorder.add(lights.length()-1);
     }
 
     updatedynlights();
@@ -2987,19 +3103,7 @@ void collectlights()
         float radius;
         if(!getdynlight(i, o, radius, color)) continue;
 
-        float sx1 = -1, sy1 = -1, sx2 = 1, sy2 = 1, sz1 = -1, sz2 = 1;
-        calcspherescissor(o, radius, sx1, sy1, sx2, sy2);
-        calcspheredepth(o, radius, sz1, sz2);
-        if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
-
-        lightorder.add(lights.length());
         lightinfo &l = lights.add();
-        l.sx1 = sx1;
-        l.sx2 = sx2;
-        l.sy1 = sy1;
-        l.sy2 = sy2;
-        l.sz1 = sz1;
-        l.sz2 = sz2;
         l.shadowmap = -1;
         l.flags = 0;
         l.query = NULL;
@@ -3009,6 +3113,8 @@ void collectlights()
         l.dir = vec(0, 0, 0);
         l.spot = 0;
         l.dist = camera1->o.dist(o);
+
+        if(calclightscissor(l)) lightorder.add(lights.length()-1);
     }
 
     lightorder.sort(sortlights);
@@ -3288,31 +3394,17 @@ void rendershadowmaps()
             glScissor(sm.x, sm.y, sm.size, sm.size);
             glClear(GL_DEPTH_BUFFER_BIT);
 
-            vec adir(fabs(l.dir.x), fabs(l.dir.y), fabs(l.dir.z)), spotx(1, 0, 0), spoty(0, 1, 0);
-            int dim = 2;
-            if(adir.x > adir.y)
-            {
-                if(adir.x > adir.z) { dim = 0; spotx = vec(0, 0, 1); }
-            }
-            else if(adir.y > adir.z) { dim = 1; spoty = vec(0, 0, 1); }
-            l.dir.orthonormalize(spotx, spoty);
-            const vec2 &sc = sincos360[l.spot];
-            float spotscale = sc.x/sc.y;
-            spotx.rescale(spotscale);
-            spoty.rescale(spotscale);
-
             GLfloat spotmatrix[16] = 
             {
-                spotx.x, spoty.x, -l.dir.x, 0, 
-                spotx.y, spoty.y, -l.dir.y, 0,
-                spotx.z, spoty.z, -l.dir.z, 0,
+                l.spotx.x, l.spoty.x, -l.dir.x, 0, 
+                l.spotx.y, l.spoty.y, -l.dir.y, 0,
+                l.spotx.z, l.spoty.z, -l.dir.z, 0,
                 0, 0, 0, 1
             };
             smviewmatrix.mul(spotmatrix, lightmatrix);
             glLoadMatrixf(smviewmatrix.v);
 
-            int side = 2*dim + (l.dir[dim] < 0 ? 1 : 0);
-            glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
+            glCullFace((l.dir.scalartriple(l.spoty, l.spotx) < 0) == (smcullside != 0) ? GL_BACK : GL_FRONT);
 
             shadowside = 0;
 
@@ -4687,6 +4779,7 @@ void gl_drawhud(int w, int h)
     else if(debugdepth) viewdepth();
     else if(debugrefract) viewrefract();
     else if(debugsmaa) viewsmaa();
+    else if(debuglightscissor) viewlightscissor();
 
     glEnable(GL_BLEND);
     

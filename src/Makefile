@@ -173,8 +173,8 @@ cube2font: shared/cube2font.o
 	$(CXX) $(CXXFLAGS) -o cube2font shared/cube2font.o `freetype-config --libs` -lz
 
 install: all
-	cp tess_client	../bin_unix/$(PLATFORM_PREFIX)_client
-	cp tess_server	../bin_unix/$(PLATFORM_PREFIX)_server
+	cp -f tess_client	../bin_unix/$(PLATFORM_PREFIX)_client
+	cp -f tess_server	../bin_unix/$(PLATFORM_PREFIX)_server
 ifneq (,$(STRIP))
 	$(STRIP) ../bin_unix/$(PLATFORM_PREFIX)_client
 	$(STRIP) ../bin_unix/$(PLATFORM_PREFIX)_server
