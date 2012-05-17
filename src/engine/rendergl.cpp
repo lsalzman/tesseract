@@ -3123,17 +3123,36 @@ void collectlights()
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
-        if(!(l.flags&L_NOSHADOW) && l.radius > smminradius && l.radius < worldsize &&
-           (camera1->o.x < l.o.x - l.radius - 2 || camera1->o.x > l.o.x + l.radius + 2 ||
-            camera1->o.y < l.o.y - l.radius - 2 || camera1->o.y > l.o.y + l.radius + 2 ||
-            camera1->o.z < l.o.z - l.radius - 2 || camera1->o.z > l.o.z + l.radius + 2))
+        if(l.flags&L_NOSHADOW || l.radius <= smminradius || l.radius >= worldsize) continue;
+        vec bbmin, bbmax;
+        if(l.spot > 0)
+        {
+            const vec2 &sc = sincos360[l.spot];
+            float spotscale = l.radius*sc.y/sc.x;
+            vec up = vec(l.spotx).rescale(spotscale), right = vec(l.spoty).rescale(spotscale), center = vec(l.dir).mul(l.radius).add(l.o);
+            up.x = fabs(up.x); up.y = fabs(up.y); up.z = fabs(up.z);
+            right.x = fabs(right.x); right.y = fabs(right.y); right.z = fabs(right.z);
+            bbmin = bbmax = center;
+            bbmin.sub(up).sub(right);
+            bbmax.add(up).add(right);
+            bbmin.min(l.o);
+            bbmax.max(l.o);
+        }
+        else
+        {
+            bbmin = vec(l.o).sub(l.radius);
+            bbmax = vec(l.o).add(l.radius);
+        }        
+        if(camera1->o.x < bbmin.x - 2 || camera1->o.x > bbmax.x + 2 ||
+           camera1->o.y < bbmin.y - 2 || camera1->o.y > bbmax.y + 2 ||
+           camera1->o.z < bbmin.z - 2 || camera1->o.z > bbmax.z + 2)
         {
             l.query = newquery(&l);
             if(l.query)
             {
                 startquery(l.query);
-                ivec bo = vec(l.o).sub(l.radius), br = vec(l.o).add(l.radius+1);
-                br.sub(bo);
+                ivec bo = bbmin, br = bbmax;
+                br.sub(bo).add(1);
                 drawbb(bo, br);
                 endquery(l.query);
             }
