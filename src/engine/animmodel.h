@@ -102,7 +102,7 @@ struct animmodel : model
                 curpulse -= floor(curpulse);
                 curglow += glowdelta*2*fabs(curpulse - 0.5f);
             }
-            GLOBALPARAM(maskscale, (0.5f*spec*lightmodels, 0.5f*curglow*glowmodels));
+            GLOBALPARAM(maskscale, (spec*lightmodels, curglow*glowmodels));
             if(envmaptmu>=0 && envmapmax>0) GLOBALPARAM(envmapscale, (envmapmin-envmapmax, envmapmax));
         }
 
