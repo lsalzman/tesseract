@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-Shader *particleshader = NULL, *particlenotextureshader = NULL;
+Shader *particleshader = NULL, *particlenotextureshader = NULL, *particlesoftshader = NULL;
 
 FVARP(particlebright, 0, 2, 100);
 VARP(particlesize, 20, 100, 500);
@@ -114,6 +114,8 @@ enum
     PT_CULL   = 1<<17,
     PT_FEW    = 1<<18,
     PT_ICON   = 1<<19,
+    PT_NOTEX  = 1<<20,
+    PT_SHADER = 1<<21,
     PT_FLIP   = PT_HFLIP | PT_VFLIP | PT_ROT
 };
 
@@ -369,21 +371,17 @@ listparticle *listrenderer::parempty = NULL;
 struct meterrenderer : listrenderer
 {
     meterrenderer(int type)
-        : listrenderer(type)
+        : listrenderer(type|PT_NOTEX)
     {}
 
     void startrender()
     {
          glDisable(GL_BLEND);
-         glDisable(GL_TEXTURE_2D);
-         particlenotextureshader->set();
     }
 
     void endrender()
     {
          glEnable(GL_BLEND);
-         glEnable(GL_TEXTURE_2D);
-         particleshader->set();
     }
 
     void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
@@ -845,6 +843,7 @@ void particleinit()
 {
     if(!particleshader) particleshader = lookupshaderbyname("particle");
     if(!particlenotextureshader) particlenotextureshader = lookupshaderbyname("particlenotexture");
+    if(!particlesoftshader) particlesoftshader = lookupshaderbyname("particlesoft");
     loopi(sizeof(parts)/sizeof(parts[0])) parts[i]->init(parts[i]->type&PT_FEW ? min(fewparticles, maxparticles) : maxparticles);
 }
 
@@ -914,10 +913,8 @@ void renderparticles(bool mainpass)
     static float zerofog[4] = { 0, 0, 0, 1 };
     float oldfogc[4];
     bool rendered = false;
-    uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD|PT_BRIGHT;
+    uint lastflags = PT_LERP, flagmask = PT_LERP|PT_MOD|PT_BRIGHT|PT_NOTEX|PT_SOFT|PT_SHADER;
    
-    if(softparticles) flagmask |= PT_SOFT;
-
     loopi(sizeof(parts)/sizeof(parts[0]))
     {
         partrenderer *p = parts[i];
@@ -962,20 +959,23 @@ void renderparticles(bool mainpass)
                 else if(flags&PT_MOD) glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
                 else glBlendFunc(GL_SRC_ALPHA, GL_ONE);
             }
-            if(changedbits&PT_SOFT)
+            if(!(flags&PT_SHADER))
             {
-                if(flags&PT_SOFT)
+                if(changedbits&(PT_SOFT|PT_NOTEX|PT_SHADER))
                 {
-                    SETSHADER(particlesoft);
-                    LOCALPARAM(softparams, (-1.0f/softparticleblend, 0, 0));
+                    if(flags&PT_SOFT && softparticles)
+                    {
+                        particlesoftshader->set();
+                        LOCALPARAM(softparams, (-1.0f/softparticleblend, 0, 0));
+                    }
+                    else (flags&PT_NOTEX ? particlenotextureshader : particleshader)->set();
                 }
-                else particleshader->set();
-            }
-            if(changedbits&(PT_BRIGHT|PT_SOFT))
-            {
-                float colorscale = ldrscale;
-                if(flags&PT_BRIGHT) colorscale *= particlebright;
-                LOCALPARAM(colorscale, (colorscale, colorscale, colorscale, 1));
+                if(changedbits&(PT_BRIGHT|PT_SOFT|PT_NOTEX|PT_SHADER))
+                {
+                    float colorscale = ldrscale;
+                    if(flags&PT_BRIGHT) colorscale *= particlebright;
+                    LOCALPARAM(colorscale, (colorscale, colorscale, colorscale, 1));
+                }
             }
             lastflags = flags;        
         }

@@ -39,7 +39,7 @@ struct flarerenderer : partrenderer
     flare *flares;
 
     flarerenderer(const char *texname, int maxflares)
-        : partrenderer(texname, 3, PT_FLARE), maxflares(maxflares), shinetime(0)
+        : partrenderer(texname, 3, PT_FLARE|PT_SHADER), maxflares(maxflares), shinetime(0)
     {
         flares = new flare[maxflares];
     }
@@ -133,7 +133,6 @@ struct flarerenderer : partrenderer
 
     void render()
     {
-        glDisable(GL_FOG);
         defaultshader->set();
         glDisable(GL_DEPTH_TEST);
         if(!tex) tex = textureload(texname);
@@ -173,7 +172,6 @@ struct flarerenderer : partrenderer
         }
         glEnd();
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_FOG);
     }
 
     //square per round hole - use addflare(..) instead
