@@ -2,7 +2,7 @@ VARFP(lightmodels, 0, 1, 1, preloadmodelshaders());
 VARFP(envmapmodels, 0, 1, 1, preloadmodelshaders());
 VARFP(glowmodels, 0, 1, 1, preloadmodelshaders());
 VARFP(bumpmodels, 0, 1, 1, preloadmodelshaders());
-VARP(fullbrightmodels, 0, 0, 200);
+VARP(fullbrightmodels, 0, 25, 200);
 
 struct animmodel : model
 {
@@ -92,6 +92,9 @@ struct animmodel : model
 
             if(!skinned) return;
                 
+            if(fullbright) GLOBALPARAM(fullbright, (0.0f, fullbright));
+            else GLOBALPARAM(fullbright, (1.0f, as->cur.anim&ANIM_FULLBRIGHT ? fullbrightmodels/100.0f : 0.0f));
+
             float curglow = glow;
             if(glowpulse > 0)
             {
