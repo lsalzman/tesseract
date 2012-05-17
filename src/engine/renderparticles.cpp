@@ -391,12 +391,15 @@ struct meterrenderer : listrenderer
         int basetype = type&0xFF;
 
         glPushMatrix();
-        glTranslatef(o.x, o.y, o.z);
-        glRotatef(camera1->yaw, 0, 0, 1);
-        glRotatef(camera1->pitch-90, 1, 0, 0);
-
         float scale = p->size/80.0f;
-        glScalef(-scale, scale, -scale);
+        GLfloat billboardmatrix[16] =
+        {
+            scale*camright.x, scale*camright.y, scale*camright.z, 0,
+            -scale*camup.x, -scale*camup.y, -scale*camup.z, 0,
+            -scale*camdir.x, -scale*camdir.y, -scale*camdir.z, 0,
+            o.x, o.y, o.z, 1
+        };
+        glMultMatrixf(billboardmatrix);
 
         float right = 8*FONTH, left = p->progress/100.0f*right;
         glTranslatef(-right/2.0f, 0, 0);
@@ -407,7 +410,8 @@ struct meterrenderer : listrenderer
             glBegin(GL_TRIANGLE_STRIP);
             loopk(10)
             {
-                float c = (0.5f + 0.1f)*sinf(k/9.0f*M_PI), s = 0.5f - (0.5f + 0.1f)*cosf(k/9.0f*M_PI);
+                const vec2 &sc = sincos360[k*(180/(10-1))];
+                float c = (0.5f + 0.1f)*sc.y, s = 0.5f - (0.5f + 0.1f)*sc.x;
                 glVertex2f(-c*FONTH, s*FONTH);
                 glVertex2f(right + c*FONTH, s*FONTH);
             }
@@ -419,7 +423,8 @@ struct meterrenderer : listrenderer
         glBegin(GL_TRIANGLE_STRIP);
         loopk(10)
         {
-            float c = 0.5f*sinf(k/9.0f*M_PI), s = 0.5f - 0.5f*cosf(k/9.0f*M_PI);
+            const vec2 &sc = sincos360[k*(180/(10-1))];
+            float c = 0.5f*sc.y, s = 0.5f - 0.5f*sc.x;
             glVertex2f(left + c*FONTH, s*FONTH);
             glVertex2f(right + c*FONTH, s*FONTH);
         }
@@ -431,7 +436,8 @@ struct meterrenderer : listrenderer
             glBegin(GL_TRIANGLE_FAN);
             loopk(10)
             {
-                float c = (0.5f + 0.1f)*sinf(k/9.0f*M_PI), s = 0.5f - (0.5f + 0.1f)*cosf(k/9.0f*M_PI);
+                const vec2 &sc = sincos360[k*(180/(10-1))];
+                float c = (0.5f + 0.1f)*sc.y, s = 0.5f - (0.5f + 0.1f)*sc.x;
                 glVertex2f(left + c*FONTH, s*FONTH);
             }
             glEnd();
@@ -441,7 +447,8 @@ struct meterrenderer : listrenderer
         glBegin(GL_TRIANGLE_STRIP);
         loopk(10)
         {
-            float c = 0.5f*sinf(k/9.0f*M_PI), s = 0.5f - 0.5f*cosf(k/9.0f*M_PI);
+            const vec2 &sc = sincos360[k*(180/(10-1))];
+            float c = 0.5f*sc.y, s = 0.5f - 0.5f*sc.x;
             glVertex2f(-c*FONTH, s*FONTH);
             glVertex2f(left + c*FONTH, s*FONTH);
         }
@@ -475,13 +482,15 @@ struct textrenderer : listrenderer
     void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
     {
         glPushMatrix();
-        glTranslatef(o.x, o.y, o.z);
-
-        glRotatef(camera1->yaw, 0, 0, 1);
-        glRotatef(camera1->pitch-90, 1, 0, 0);
-
         float scale = p->size/80.0f;
-        glScalef(-scale, scale, -scale);
+        GLfloat billboardmatrix[16] =
+        {
+            scale*camright.x, scale*camright.y, scale*camright.z, 0,
+            -scale*camup.x, -scale*camup.y, -scale*camup.z, 0,
+            -scale*camdir.x, -scale*camdir.y, -scale*camdir.z, 0,
+            o.x, o.y, o.z, 1
+        };
+        glMultMatrixf(billboardmatrix);
 
         float xoff = -text_width(p->text)/2;
         float yoff = 0;
@@ -1157,9 +1166,9 @@ void regularshape(int type, int radius, int color, int dir, int num, int fade, c
         vec to, from;
         if(dir < 12) 
         { 
-            float a = PI2*float(rnd(1000))/1000.0;
-            to[dir%3] = sinf(a)*radius;
-            to[(dir+1)%3] = cosf(a)*radius;
+            const vec2 &sc = sincos360[rnd(360)];
+            to[dir%3] = sc.y*radius;
+            to[(dir+1)%3] = sc.x*radius;
             to[(dir+2)%3] = 0.0;
             to.add(p);
             if(dir < 3) //circle

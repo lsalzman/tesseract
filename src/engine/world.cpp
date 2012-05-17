@@ -534,11 +534,12 @@ void renderentring(const extentity &e, float radius, int axis)
 {
     if(radius <= 0) return;
     glBegin(GL_LINE_LOOP);
-    loopi(16)
+    loopi(15)
     {
         vec p(e.o);
-        p[axis>=2 ? 1 : 0] += radius*cosf(2*M_PI*i/16.0f);
-        p[axis>=1 ? 2 : 1] += radius*sinf(2*M_PI*i/16.0f);
+        const vec2 &sc = sincos360[i*(360/15)];
+        p[axis>=2 ? 1 : 0] += radius*sc.x;
+        p[axis>=1 ? 2 : 1] += radius*sc.y;
         glVertex3fv(p.v);
     }
     glEnd();
