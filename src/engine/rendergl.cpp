@@ -584,6 +584,7 @@ void gl_checkextensions()
         hasSGIDT = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_SGIX_depth_texture extension.");
     }
+    if(!hasSGIDT && !hasDT) fatal("Depth texture support is required!");
 
     if(hasext(exts, "GL_ARB_shadow"))
     {
@@ -596,6 +597,7 @@ void gl_checkextensions()
         hasSGISH = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_SGIX_shadow extension.");
     }
+    if(!hasSGISH && !hasSH) fatal("Shadow mapping support is required!");
 
     if(hasext(exts, "GL_ARB_texture_gather"))
     {
