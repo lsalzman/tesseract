@@ -2,7 +2,7 @@ VARFP(lightmodels, 0, 1, 1, preloadmodelshaders());
 VARFP(envmapmodels, 0, 1, 1, preloadmodelshaders());
 VARFP(glowmodels, 0, 1, 1, preloadmodelshaders());
 VARFP(bumpmodels, 0, 1, 1, preloadmodelshaders());
-VARP(fullbrightmodels, 0, 25, 200);
+VARP(fullbrightmodels, 0, 0, 200);
 
 struct animmodel : model
 {
