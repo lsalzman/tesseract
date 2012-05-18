@@ -2201,7 +2201,7 @@ struct shadowcache : hashtable<shadowcachekey, shadowcacheval>
     } 
 };
 
-extern int smcache, smfilter;
+extern int smcache, smfilter, smgather;
 
 #define SHADOWCACHE_EVICT 2
 
@@ -2225,7 +2225,7 @@ static inline void setsmcomparemode() // use embedded shadow cmp
     glTexParameteri(shadowatlastarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 }
 
-static inline bool usegatherforsm() { return smfilter > 1 && (hasTG || hasT4); }
+static inline bool usegatherforsm() { return smfilter > 1 && smgather && (hasTG || hasT4); }
 
 void viewshadowatlas()
 {
@@ -2376,7 +2376,8 @@ VAR(smtetraclear, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
 VAR(smcullside, 0, 1, 1);
 VARF(smcache, 0, 1, 2, cleanupshadowatlas());
-VARFP(smfilter, 0, 1, 2, { cleardeferredlightshaders(); cleanupshadowatlas(); });
+VARFP(smfilter, 0, 2, 2, { cleardeferredlightshaders(); cleanupshadowatlas(); });
+VARFP(smgather, 0, 0, 1, { cleardeferredlightshaders(); cleanupshadowatlas(); });
 VAR(smnoshadow, 0, 0, 2);
 VAR(lighttilesused, 1, 0, 0);
 
@@ -2728,7 +2729,7 @@ Shader *loaddeferredlightshader(const char *prefix = NULL)
 
     if(prefix) { commonlen = strlen(prefix); memcpy(common, prefix, commonlen); }
     if(usegatherforsm()) common[commonlen++] = 'g';
-    else if(smfilter) common[commonlen++] = 'f';
+    else if(smfilter) common[commonlen++] = smfilter > 1 ? 'F' : 'f';
     common[commonlen] = '\0';
  
     shadow[shadowlen++] = 'p';
