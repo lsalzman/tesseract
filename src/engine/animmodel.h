@@ -93,7 +93,7 @@ struct animmodel : model
             if(!skinned) return;
                 
             if(fullbright) GLOBALPARAM(fullbright, (0.0f, fullbright));
-            else GLOBALPARAM(fullbright, (1.0f, as->cur.anim&ANIM_FULLBRIGHT ? fullbrightmodels/100.0f : 0.0f));
+            else GLOBALPARAM(fullbright, (1.0f, as->cur.anim&ANIM_FULLBRIGHT ? 0.5f*fullbrightmodels/100.0f : 0.0f));
 
             float curglow = glow;
             if(glowpulse > 0)
