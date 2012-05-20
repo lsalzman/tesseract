@@ -2363,7 +2363,7 @@ FVAR(smspotprec, 1e-3f, 1, 1e3f);
 
 VAR(smsidecull, 0, 1, 1);
 VAR(smviscull, 0, 1, 1);
-VAR(smborder, 0, 2, 16);
+VAR(smborder, 0, 3, 16);
 VAR(smminradius, 0, 16, 10000);
 VAR(smminsize, 1, 96, 1024);
 VAR(smmaxsize, 1, 384, 1024);
