@@ -1646,7 +1646,7 @@ void vectoyawpitch(const vec &v, float &yaw, float &pitch)
 VARP(maxroll, 0, 0, 20);
 FVAR(straferoll, 0, 0.033f, 90);
 FVAR(faderoll, 0, 0.95f, 1);
-VAR(floatspeed, 10, 100, 10000);
+VAR(floatspeed, 1, 100, 10000);
 
 void modifyvelocity(physent *pl, bool local, bool water, bool floating, int curtime)
 {

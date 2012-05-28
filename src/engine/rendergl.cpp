@@ -2412,12 +2412,13 @@ struct cascaded_shadow_map
 {
     struct splitinfo
     {
-        float nearplane;  // split distance to near plane
-        float farplane;   // split distance to farplane
-        glmatrixf proj;   // one projection per split
-        int idx;          // shadowmapinfo indices
-        vec bbmin, bbmax; // max extents of shadowmap in sunlight model space
-        plane cull[4];    // world space culling planes of the split's projected sides
+        float nearplane;     // split distance to near plane
+        float farplane;      // split distance to farplane
+        glmatrixf proj;      // one projection per split
+        vec scale, offset;   // scale and offset of the projection
+        int idx;             // shadowmapinfo indices
+        vec center, bounds;  // max extents of shadowmap in sunlight model space
+        plane cull[4];       // world space culling planes of the split's projected sides
     };
     glmatrixf model;                // model view is shared by all splits
     splitinfo splits[csmmaxsplitn]; // per-split parameters
@@ -2468,6 +2469,7 @@ static float calcfrustumboundsphere(float nearplane, float farplane,  const vec 
 
 VAR(csmfarplane, 64, 1024, 16384);
 FVAR(csmpradiustweak, 1e-3f, 1, 1e3f);
+FVAR(csmdepthrange, 0, 1024, 1e6f);
 FVAR(csmdepthmargin, 0, 0.1f, 1e3f);
 VAR(debugcsm, 0, 0, csmmaxsplitn);
 FVAR(csmpolyfactor, -1e3f, 2, 1e3f);
@@ -2508,7 +2510,8 @@ void cascaded_shadow_map::getprojmatrix()
     updatesplitdist();
 
     // find z extent
-    float minz = lightview.project_bb(worldmin, worldmax), maxz = lightview.project_bb(worldmax, worldmin), zmargin = (maxz - minz)*csmdepthmargin;
+    float minz = lightview.project_bb(worldmin, worldmax), maxz = lightview.project_bb(worldmax, worldmin), 
+          zmargin = max((maxz - minz)*csmdepthmargin, 0.5f*(csmdepthrange - (maxz - minz)));
     minz -= zmargin;
     maxz += zmargin;
 
@@ -2517,6 +2520,7 @@ void cascaded_shadow_map::getprojmatrix()
     {
         splitinfo &split = this->splits[i];
         if(split.idx < 0) continue;
+        const shadowmapinfo &sm = shadowmaps[split.idx];
 
         vec c;
         float radius = calcfrustumboundsphere(split.nearplane, split.farplane, camera1->o, camdir, c);
@@ -2526,18 +2530,24 @@ void cascaded_shadow_map::getprojmatrix()
         vec tp, tc;
         this->model.transform(p, tp);
         this->model.transform(c, tc);
-        const float pradius = tp.dist2(tc) * csmpradiustweak, step = (2.0f*pradius) / shadowmaps[split.idx].size;
-        vec2 minv = vec2(tc).sub(pradius), maxv = vec2(tc).add(pradius);
-        minv.x -= fmod(minv.x, step);
-        minv.y -= fmod(minv.y, step);
-        maxv.x -= fmod(maxv.x, step);
-        maxv.y -= fmod(maxv.y, step);
-        split.bbmin = vec(minv, -maxz);
-        split.bbmax = vec(maxv, -minz);
+        const float pradius = tp.dist2(tc) * csmpradiustweak, step = (2*pradius) / (sm.size - 2*smborder);
+        vec2 offset = vec2(tc).sub(pradius).div(step);
+        offset.x = floor(offset.x);
+        offset.y = floor(offset.y);
+        split.center = vec(vec2(offset).mul(step).add(pradius), -0.5f*(minz + maxz));
+        split.bounds = vec(pradius, pradius, 0.5f*(maxz - minz));
 
         // modify mvp with a scale and offset
         // now compute the update model view matrix for this split
-        split.proj.ortho(minv.x, maxv.x, minv.y, maxv.y, minz, maxz);
+        split.scale = vec(1/step, 1/step, -1/(maxz - minz));
+        split.offset = vec(smborder - offset.x, smborder - offset.y, -minz/(maxz - minz));
+
+        split.proj.identity();
+        split.proj.scale(2*split.scale.x/sm.size, 2*split.scale.y/sm.size, 2*split.scale.z);
+        split.proj.translate(2*split.offset.x/sm.size - 1, 2*split.offset.y/sm.size - 1, 2*split.offset.z - 1);
+
+        const float bias = csmbias * (-512.0f / sm.size) * (split.farplane - split.nearplane) / (splits[0].farplane - splits[0].nearplane);
+        split.offset.add(vec(sm.x, sm.y, bias));
     }
 }
 
@@ -2554,6 +2564,29 @@ void cascaded_shadow_map::gencullplanes()
         split.cull[2] = plane(vec4(pw).add(py)).normalize(); // bottom plane
         split.cull[3] = plane(vec4(pw).sub(py)).normalize(); // top plane
     }        
+}
+
+void cascaded_shadow_map::bindparams()
+{
+    static GlobalShaderParam splitcenter("splitcenter"), splitbounds("splitbounds"), splitscale("splitscale"), splitoffset("splitoffset");
+    vec *splitcenterv = splitcenter.reserve<vec>(csmsplitn),
+        *splitboundsv = splitbounds.reserve<vec>(csmsplitn),
+        *splitscalev = splitscale.reserve<vec>(csmsplitn),
+        *splitoffsetv = splitoffset.reserve<vec>(csmsplitn);
+    loopi(csmsplitn)
+    {
+        cascaded_shadow_map::splitinfo &split = splits[i];
+        if(split.idx < 0) continue;
+        splitcenterv[i] = split.center;
+        splitboundsv[i] = split.bounds;
+        splitscalev[i] = split.scale;
+        splitoffsetv[i] = split.offset;
+    }
+    glMatrixMode(GL_TEXTURE);
+    glActiveTexture_(GL_TEXTURE1_ARB);
+    glLoadMatrixf(model.v);
+    glActiveTexture_(GL_TEXTURE0_ARB);
+    glMatrixMode(GL_MODELVIEW);
 }
 
 cascaded_shadow_map csm;
@@ -2681,31 +2714,6 @@ FVARP(aobilateraldepth, 0, 4, 1e3);
 VARF(aopackdepth, 0, 1, 1, cleanupao());
 VARFP(aotaps, 1, 5, 12, cleanupao());
 VAR(debugao, 0, 0, 1);
-
-void cascaded_shadow_map::bindparams()
-{
-    static GlobalShaderParam splitcenter("splitcenter"), splitbounds("splitbounds"), splitscale("splitscale"), splitoffset("splitoffset");
-    vec *splitcenterv = splitcenter.reserve<vec>(csmsplitn),
-        *splitboundsv = splitbounds.reserve<vec>(csmsplitn),
-        *splitscalev = splitscale.reserve<vec>(csmsplitn),
-        *splitoffsetv = splitoffset.reserve<vec>(csmsplitn);
-    loopi(csmsplitn)
-    {
-        cascaded_shadow_map::splitinfo &split = csm.splits[i];
-        if(split.idx < 0) continue;
-        const shadowmapinfo &sm = shadowmaps[split.idx];
-        const float bias = csmbias * (1024.0f / sm.size) * (split.farplane - split.nearplane) / (csm.splits[0].farplane - csm.splits[0].nearplane);
-        splitcenterv[i] = vec(split.bbmin).add(split.bbmax).mul(0.5f);
-        splitboundsv[i] = vec(split.bbmax).sub(split.bbmin).mul(0.5f*(sm.size - 2*smborder)/sm.size);
-        splitscalev[i] = vec(0.5f*sm.size*split.proj.v[0], 0.5f*sm.size*split.proj.v[5], 0.5f*split.proj.v[10]);
-        splitoffsetv[i] = vec(0.5f*sm.size*(split.proj.v[12] + 1) + sm.x, 0.5f*sm.size*(split.proj.v[13] + 1) + sm.y, 0.5f*(split.proj.v[14] + 1 - bias));
-    }
-    glMatrixMode(GL_TEXTURE);
-    glActiveTexture_(GL_TEXTURE1_ARB);
-    glLoadMatrixf(csm.model.v);
-    glActiveTexture_(GL_TEXTURE0_ARB);
-    glMatrixMode(GL_MODELVIEW);
-}
 
 static Shader *deferredlightshader = NULL, *deferredminimapshader = NULL;
 
