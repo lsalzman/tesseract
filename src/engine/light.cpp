@@ -592,7 +592,7 @@ static Uint32 calclighttimer(Uint32 interval, void *param)
 
 void calclight(int *quality)
 {
-    renderbackground("computing lightmaps... (esc to abort)");
+    renderbackground("computing lighting... (esc to abort)");
     mpremip(true);
     optimizeblendmap();
     clearlightcache();
@@ -613,7 +613,7 @@ void calclight(int *quality)
     if(calclight_canceled)
         conoutf("calclight aborted");
     else
-        conoutf("generated 0 lightmaps using 0%% of 0 textures (%.1f seconds)",
+        conoutf("computed lighting (%.1f seconds)",
             (end - start) / 1000.0f);
 }
 
