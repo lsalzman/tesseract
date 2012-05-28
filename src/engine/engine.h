@@ -503,11 +503,6 @@ extern void loadcaustics(bool force = false);
 extern void renderwaterfog(int mat, float blend);
 extern void preloadwatershaders(bool force = false);
 
-// depthfx
-extern bool depthfxing;
-
-extern void drawdepthfxtex();
-
 // server
 extern vector<const char *> gameargs;
 

@@ -217,6 +217,8 @@ void gl_checkextensions()
     GLint val;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &val);
     hwtexsize = val;
+    if(hwtexsize < 8192)
+        fatal("Large texture support is required!");
 
     if(hasext(exts, "GL_ARB_multitexture"))
     {
@@ -228,8 +230,8 @@ void gl_checkextensions()
         hasMT = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_multitexture extension.");
     }
-    else conoutf(CON_WARN, "WARNING: No multitexture extension!");
-
+    //else conoutf(CON_WARN, "WARNING: No multitexture extension!");
+    else fatal("Multitexture support is required!");
 
     if(hasext(exts, "GL_ARB_vertex_buffer_object")) 
     {
@@ -377,7 +379,6 @@ void gl_checkextensions()
         conoutf(CON_WARN, "WARNING: No occlusion query support! (large maps may be SLOW)");
         extern int vacubesize;
         vacubesize = 64;
-        waterreflect = 0;
     }
 
     if(hasext(exts, "GL_EXT_timer_query"))
@@ -409,14 +410,6 @@ void gl_checkextensions()
         // silence warnings
         (void)intel;
         (void)mesa;
-
-        if(!hasext(exts, "GL_EXT_gpu_shader4"))
-        {
-            if(hwtexsize < 4096) 
-            {
-                maxtexsize = hwtexsize >= 2048 ? 512 : 256;
-            }
-        }
     }
 
     if(hasext(exts, "GL_ARB_shading_language_100") && hasext(exts, "GL_ARB_shader_objects") && hasext(exts, "GL_ARB_vertex_shader") && hasext(exts, "GL_ARB_fragment_shader"))
