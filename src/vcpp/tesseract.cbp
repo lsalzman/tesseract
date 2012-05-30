@@ -31,6 +31,8 @@
 				</ResourceCompiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-static-libgcc" />
+					<Add option="-static-libstdc++" />
 					<Add library="SDL" />
 					<Add library="SDL_image" />
 					<Add library="SDL_mixer" />
@@ -63,6 +65,8 @@
 					<Add directory="..\vcpp" />
 				</ResourceCompiler>
 				<Linker>
+					<Add option="-static-libgcc" />
+					<Add option="-static-libstdc++" />
 					<Add library="SDL" />
 					<Add library="SDL_image" />
 					<Add library="SDL_mixer" />
@@ -101,6 +105,8 @@
 				</ResourceCompiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-static-libgcc" />
+					<Add option="-static-libstdc++" />
 					<Add library="-mwindows" />
 					<Add library="SDL" />
 					<Add library="zdll" />
@@ -137,6 +143,8 @@
 				</ResourceCompiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-static-libgcc" />
+					<Add option="-static-libstdc++" />
 					<Add library="zdll" />
 					<Add library="enet" />
 					<Add library="ws2_32" />
