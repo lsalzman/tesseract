@@ -1,5 +1,4 @@
 CXXFLAGS= -O3 -fomit-frame-pointer
-#CXXFLAGS= -g -fomit-frame-pointer
 override CXXFLAGS+= -Wall -fsigned-char -fno-exceptions -fno-rtti
 
 PLATFORM= $(shell uname -s)
@@ -17,9 +16,16 @@ endif
 MV=mv
 
 ifneq (,$(findstring MINGW,$(PLATFORM)))
+ifneq (,$(findstring 64,$(PLATFORM)))
+WINLIB=lib64
+WINBIN=../bin64
+else
+WINLIB=lib
+WINBIN=../bin
+endif
 WINDRES= windres
 CLIENT_INCLUDES= $(INCLUDES) -Iinclude
-CLIENT_LIBS= -mwindows -static-libgcc -static-libstdc++ -Llib -lSDL -lSDL_image -lSDL_mixer -lzdll -lopengl32 -lenet -lws2_32 -lwinmm
+CLIENT_LIBS= -mwindows -static-libgcc -static-libstdc++ -L$(WINBIN) -L$(WINLIB) -lSDL -lSDL_image -lSDL_mixer -lzlib1 -lopengl32 -lenet -lws2_32 -lwinmm
 else	
 CLIENT_INCLUDES= $(INCLUDES) -I/usr/X11R6/include `sdl-config --cflags`
 CLIENT_LIBS= -Lenet/.libs -lenet -L/usr/X11R6/lib -lX11 `sdl-config --libs` -lSDL_image -lSDL_mixer -lz -lGL
@@ -83,8 +89,8 @@ CLIENT_PCH= shared/cube.h.gch engine/engine.h.gch fpsgame/game.h.gch
 
 ifneq (,$(findstring MINGW,$(PLATFORM)))
 SERVER_INCLUDES= -DSTANDALONE $(INCLUDES) -Iinclude
-SERVER_LIBS= -mwindows -Llib -lzdll -lenet -lws2_32 -lwinmm
-MASTER_LIBS= -Llib -lzdll -lenet -lws2_32 -lwinmm
+SERVER_LIBS= -mwindows -static-libgcc -static-libstdc++ -L$(WINBIN) -L$(WINLIB) -lzlib1 -lenet -lws2_32 -lwinmm
+MASTER_LIBS= -static-libgcc -static-libstdc++ -L$(WINBIN) -L$(WINLIB) -lzlib1 -lenet -lws2_32 -lwinmm
 else
 SERVER_INCLUDES= -DSTANDALONE $(INCLUDES)
 SERVER_LIBS= -Lenet/.libs -lenet -lz
@@ -146,14 +152,14 @@ $(filter-out $(SERVER_OBJS),$(MASTER_OBJS)): CXXFLAGS += $(SERVER_INCLUDES)
 ifneq (,$(findstring MINGW,$(PLATFORM)))
 client: $(CLIENT_OBJS)
 	$(WINDRES) -I vcpp -i vcpp/mingw.rc -J rc -o vcpp/mingw.res -O coff 
-	$(CXX) $(CXXFLAGS) -o ../bin/tesseract.exe vcpp/mingw.res $(CLIENT_OBJS) $(CLIENT_LIBS)
+	$(CXX) $(CXXFLAGS) -o $(WINBIN)/tesseract.exe vcpp/mingw.res $(CLIENT_OBJS) $(CLIENT_LIBS)
 
 server: $(SERVER_OBJS)
 	$(WINDRES) -I vcpp -i vcpp/mingw.rc -J rc -o vcpp/mingw.res -O coff
-	$(CXX) $(CXXFLAGS) -o ../bin/tess_server.exe vcpp/mingw.res $(SERVER_OBJS) $(SERVER_LIBS)
+	$(CXX) $(CXXFLAGS) -o $(WINBIN)/tess_server.exe vcpp/mingw.res $(SERVER_OBJS) $(SERVER_LIBS)
 
 master: $(MASTER_OBJS)
-	$(CXX) $(CXXFLAGS) -o ../bin/tess_master.exe $(MASTER_OBJS) $(MASTER_LIBS)
+	$(CXX) $(CXXFLAGS) -o $(WINBIN)/tess_master.exe $(MASTER_OBJS) $(MASTER_LIBS)
 
 install: all
 else
