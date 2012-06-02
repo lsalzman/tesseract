@@ -2167,7 +2167,7 @@ char *loopconc(ident *id, int n, uint *body, bool space)
 {
     identstack stack;
     vector<char> s;
-    loopi(*n)
+    loopi(n)
     {
         setiter(*id, i, stack);
         tagval v;
