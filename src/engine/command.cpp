@@ -2174,7 +2174,7 @@ char *loopconc(ident *id, int n, uint *body, bool space)
         executeret(body, v);
         const char *vstr = v.getstr();
         int len = strlen(vstr);
-        if(space && !s.empty()) s.add(' ');
+        if(space && i) s.add(' ');
         s.put(vstr, len);
         freearg(v);
     }
