@@ -202,7 +202,7 @@ static float shadowent(octaentities *oc, octaentities *last, const vec &o, const
     vec v(o), invray(ray.x ? 1/ray.x : 1e16f, ray.y ? 1/ray.y : 1e16f, ray.z ? 1/ray.z : 1e16f); \
     cube *levels[20]; \
     levels[worldscale] = worldroot; \
-    int lshift = worldscale; \
+    int lshift = worldscale, elvl = worldscale; \
     ivec lsizemask(invray.x>0 ? 1 : 0, invray.y>0 ? 1 : 0, invray.z>0 ? 1 : 0); \
 
 #define CHECKINSIDEWORLD \
@@ -232,10 +232,11 @@ static float shadowent(octaentities *oc, octaentities *last, const vec &o, const
         { \
             lshift--; \
             lc += octastep(x, y, z, lshift); \
-            if(lc->ext && lc->ext->ents && dent > 1e15f) \
+            if(lc->ext && lc->ext->ents && lshift < elvl) \
             { \
-                dent = disttoent(lc->ext->ents, oclast, o, ray, radius, mode, t); \
+                dent = min(dent, disttoent(lc->ext->ents, oclast, o, ray, radius, mode, t)); \
                 if(dent < 1e15f earlyexit) return min(dent, dist); \
+                elvl = lshift; \
                 oclast = lc->ext->ents; \
             } \
             if(lc->children==NULL) break; \
