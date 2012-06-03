@@ -234,9 +234,13 @@ static float shadowent(octaentities *oc, octaentities *last, const vec &o, const
             lc += octastep(x, y, z, lshift); \
             if(lc->ext && lc->ext->ents && lshift < elvl) \
             { \
-                dent = min(dent, disttoent(lc->ext->ents, oclast, o, ray, radius, mode, t)); \
-                if(dent < 1e15f earlyexit) return min(dent, dist); \
-                elvl = lshift; \
+                float edist = disttoent(lc->ext->ents, oclast, o, ray, radius, mode, t); \
+                if(edist < 1e15f) \
+                { \
+                    if(earlyexit) return min(edist, dist); \
+                    elvl = lshift; \
+                    dent = min(dent, edist); \
+                } \
                 oclast = lc->ext->ents; \
             } \
             if(lc->children==NULL) break; \
@@ -280,7 +284,7 @@ float raycube(const vec &o, const vec &ray, float radius, int mode, int size, ex
     int closest = -1, x = int(v.x), y = int(v.y), z = int(v.z);
     for(;;)
     {
-        DOWNOCTREE(disttoent, && (mode&RAY_SHADOW));
+        DOWNOCTREE(disttoent, mode&RAY_SHADOW);
 
         int lsize = 1<<lshift;
 
@@ -323,7 +327,7 @@ float shadowray(const vec &o, const vec &ray, float radius, int mode, extentity 
     int side = O_BOTTOM, x = int(v.x), y = int(v.y), z = int(v.z);
     for(;;)
     {
-        DOWNOCTREE(shadowent, );
+        DOWNOCTREE(shadowent, false);
 
         cube &c = *lc;
         ivec lo(x&(~0<<lshift), y&(~0<<lshift), z&(~0<<lshift));
@@ -373,7 +377,7 @@ float shadowray(ShadowRayCache *cache, const vec &o, const vec &ray, float radiu
     int side = O_BOTTOM, x = int(v.x), y = int(v.y), z = int(v.z);
     for(;;)
     {
-        DOWNOCTREE(shadowent, );
+        DOWNOCTREE(shadowent, false);
 
         cube &c = *lc;
         ivec lo(x&(~0<<lshift), y&(~0<<lshift), z&(~0<<lshift));
