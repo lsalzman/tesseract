@@ -408,6 +408,9 @@ void gl_checkextensions()
     else if(intel)
     {
         glineardepth = 1;
+#ifdef WIN32
+        gdepthstencil = 0; // workaround for buggy stencil on windows ivy bridge driver
+#endif
     }
     else
     {
