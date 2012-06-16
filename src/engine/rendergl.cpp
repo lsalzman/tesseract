@@ -396,7 +396,7 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
-    extern int gdepthstencil;
+    extern int gdepthstencil, glineardepth;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
@@ -405,10 +405,13 @@ void gl_checkextensions()
     else if(nvidia)
     {
     }
+    else if(intel)
+    {
+        glineardepth = 1;
+    }
     else
     {
         // silence warnings
-        (void)intel;
         (void)mesa;
     }
 
