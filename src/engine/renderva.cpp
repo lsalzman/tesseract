@@ -1115,8 +1115,6 @@ void rendershadowmapworld()
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     }
     glDisableClientState(GL_VERTEX_ARRAY);
-
-    defaultshader->set();
 }
 
 static octaentities *shadowmms = NULL;
