@@ -8,6 +8,7 @@ bool mesa = false, intel = false, ati = false, nvidia = false;
 int hasstencil = 0;
 
 VAR(renderpath, 1, 0, 0);
+VAR(glversion, 1, 0, 0);
 VAR(glslversion, 1, 0, 0);
 
 // GL_ARB_vertex_buffer_object, GL_ARB_pixel_buffer_object
@@ -180,7 +181,7 @@ static bool checkseries(const char *s, int low, int high)
 }
 #endif
 
-VAR(dbgexts, 0, 0, 1);
+VAR(dbgexts, 0, 1, 1);
 
 bool hasext(const char *exts, const char *ext)
 {
@@ -215,6 +216,10 @@ void gl_checkextensions()
         ati = true;
     else if(strstr(vendor, "Intel"))
         intel = true;
+
+    uint glmajorversion, glminorversion;
+    if(sscanf(version, " %u.%u", &glmajorversion, &glminorversion) != 2) glversion = 100;
+    else glversion = glmajorversion*100 + glminorversion*10;
 
     //extern int shaderprecision;
     // default to low precision shaders on certain cards, can be overridden with -f3
@@ -467,7 +472,6 @@ void gl_checkextensions()
         uint majorversion, minorversion;
         if(!str || sscanf(str, " %u.%u", &majorversion, &minorversion) != 2) glslversion = 100;
         else glslversion = majorversion*100 + minorversion; 
-        
     }
     if(!hasGLSL || glslversion < 100) fatal("GLSL support is required!");
  
@@ -507,16 +511,6 @@ void gl_checkextensions()
     //else if(hasMT) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
     else fatal("Texture rectangle support is required!");
 
-#ifdef __APPLE__
-    // extension never supporte on mac, instead part of core since gl1.2
-    {
-        glTexImage3D_ =         (PFNGLTEXIMAGE3DEXTPROC)       getprocaddress("glTexImage3D");
-        glTexSubImage3D_ =      (PFNGLTEXSUBIMAGE3DEXTPROC)    getprocaddress("glTexSubImage3D");
-        glCopyTexSubImage3D_ =  (PFNGLCOPYTEXSUBIMAGE3DEXTPROC)getprocaddress("glCopyTexSubImage3D");
-        hasT3D = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture3D extension.");
-    }
-#else
     if(hasext(exts, "GL_EXT_texture3D"))
     {
         glTexImage3D_ =         (PFNGLTEXIMAGE3DEXTPROC)       getprocaddress("glTexImage3DEXT");
@@ -525,8 +519,15 @@ void gl_checkextensions()
         hasT3D = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture3D extension.");
     }
+    else if(glversion >= 120)
+    {
+        glTexImage3D_ =         (PFNGLTEXIMAGE3DEXTPROC)       getprocaddress("glTexImage3D");
+        glTexSubImage3D_ =      (PFNGLTEXSUBIMAGE3DEXTPROC)    getprocaddress("glTexSubImage3D");
+        glCopyTexSubImage3D_ =  (PFNGLCOPYTEXSUBIMAGE3DEXTPROC)getprocaddress("glCopyTexSubImage3D");
+        hasT3D = true;
+        if(dbgexts) conoutf(CON_INIT, "Using OpenGL 1.2 3D texture support.");
+    }
     else fatal("3D texture support is required!");
-#endif
 
     if(hasext(exts, "GL_EXT_packed_depth_stencil") || hasext(exts, "GL_NV_packed_depth_stencil"))
     {
