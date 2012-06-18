@@ -507,6 +507,16 @@ void gl_checkextensions()
     //else if(hasMT) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
     else fatal("Texture rectangle support is required!");
 
+#ifdef __APPLE__
+    // extension never supporte on mac, instead part of core since gl1.2
+    {
+        glTexImage3D_ =         (PFNGLTEXIMAGE3DEXTPROC)       getprocaddress("glTexImage3D");
+        glTexSubImage3D_ =      (PFNGLTEXSUBIMAGE3DEXTPROC)    getprocaddress("glTexSubImage3D");
+        glCopyTexSubImage3D_ =  (PFNGLCOPYTEXSUBIMAGE3DEXTPROC)getprocaddress("glCopyTexSubImage3D");
+        hasT3D = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture3D extension.");
+    }
+#else
     if(hasext(exts, "GL_EXT_texture3D"))
     {
         glTexImage3D_ =         (PFNGLTEXIMAGE3DEXTPROC)       getprocaddress("glTexImage3DEXT");
@@ -516,6 +526,7 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture3D extension.");
     }
     else fatal("3D texture support is required!");
+#endif
 
     if(hasext(exts, "GL_EXT_packed_depth_stencil") || hasext(exts, "GL_NV_packed_depth_stencil"))
     {
