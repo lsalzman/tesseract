@@ -181,7 +181,7 @@ static bool checkseries(const char *s, int low, int high)
 }
 #endif
 
-VAR(dbgexts, 0, 1, 1);
+VAR(dbgexts, 0, 0, 1);
 
 bool hasext(const char *exts, const char *ext)
 {
