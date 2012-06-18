@@ -121,6 +121,7 @@ struct animmodel : model
                 } while(0)
             #define SETMODELSHADER(m, name) DOMODELSHADER(name, (m)->setshader(name##shader))
             if(shader) return shader;
+            else if(shadowmapping == SM_REFLECT) LOADMODELSHADER(rsmmodel, rsmalphamodel);
             else if(bumpmapped())
             {
                 if(shouldenvmap)
@@ -151,8 +152,8 @@ struct animmodel : model
  
         void preloadshader()
         {
-            bool shouldenvmap = envmapped();
-            loadshader(shouldenvmap, masks!=notexture && (lightmodels || glowmodels || shouldenvmap), alphatested());
+            bool shouldenvmap = envmapped(), shouldalphatest = alphatested();
+            loadshader(shouldenvmap, masks!=notexture && (lightmodels || glowmodels || shouldenvmap), shouldalphatest);
         }
  
         void setshader(mesh *m, const animstate *as, bool masked, bool alphatested = false)

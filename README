@@ -16,6 +16,7 @@ It provides a bunch of new rendering features such as:
 * perspective projection spotlight shadowmaps
 * orthographic projection sunlight using cascaded shadowmaps
 * HDR rendering with tonemapping and bloom
+* real-time diffuse global illumination for sunlight
 * screen-space ambient occlusion
 * screen-space reflections and refractions for water and glass (use as many water planes as you want now!)
 * screen-space refractive alpha cubes
@@ -45,6 +46,10 @@ sunlightyaw
 sunlightpitch
 You can also set sunlightyaw and sunlightpitch from your current direction with the following command:
 getsundir
+
+You can control the diffuse global illumination of sunlight using the following parameters:
+giscale - scales the contribution of indirect light
+gidist - limits the distance which indirect light travels (smaller values are more intense, but higher values allow farther travel)
 
 Screen-space ambient occlusion affects mostly ambient light and to a lesser degree sunlight,
 but it does not affect point lights. If you want to make use of SSAO in your map, just use 

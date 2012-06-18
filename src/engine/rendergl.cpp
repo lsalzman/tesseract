@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false;
 bool mesa = false, intel = false, ati = false, nvidia = false;
 
 int hasstencil = 0;
@@ -49,7 +49,9 @@ PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC  glCheckFramebufferStatus_  = NULL;
 PFNGLBINDFRAMEBUFFEREXTPROC         glBindFramebuffer_         = NULL;
 PFNGLDELETEFRAMEBUFFERSEXTPROC      glDeleteFramebuffers_      = NULL;
 PFNGLGENFRAMEBUFFERSEXTPROC         glGenFramebuffers_         = NULL;
+PFNGLFRAMEBUFFERTEXTURE1DEXTPROC    glFramebufferTexture1D_    = NULL;
 PFNGLFRAMEBUFFERTEXTURE2DEXTPROC    glFramebufferTexture2D_    = NULL;
+PFNGLFRAMEBUFFERTEXTURE3DEXTPROC    glFramebufferTexture3D_    = NULL;
 PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbuffer_ = NULL;
 PFNGLGENERATEMIPMAPEXTPROC          glGenerateMipmap_          = NULL;
 
@@ -130,6 +132,11 @@ PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_ = NULL;
 
 // GL_ARB_color_buffer_float
 PFNGLCLAMPCOLORARBPROC glClampColor_ = NULL;
+
+// GL_EXT_texture3D
+PFNGLTEXIMAGE3DEXTPROC        glTexImage3D_ = NULL;
+PFNGLTEXSUBIMAGE3DEXTPROC     glTexSubImage3D_ = NULL;
+PFNGLCOPYTEXSUBIMAGE3DEXTPROC glCopyTexSubImage3D_ = NULL;
 
 void *getprocaddress(const char *name)
 {
@@ -310,7 +317,9 @@ void gl_checkextensions()
         glBindFramebuffer_         = (PFNGLBINDFRAMEBUFFEREXTPROC)        getprocaddress("glBindFramebufferEXT");
         glDeleteFramebuffers_      = (PFNGLDELETEFRAMEBUFFERSEXTPROC)     getprocaddress("glDeleteFramebuffersEXT");
         glGenFramebuffers_         = (PFNGLGENFRAMEBUFFERSEXTPROC)        getprocaddress("glGenFramebuffersEXT");
+        glFramebufferTexture1D_    = (PFNGLFRAMEBUFFERTEXTURE1DEXTPROC)   getprocaddress("glFramebufferTexture1DEXT");
         glFramebufferTexture2D_    = (PFNGLFRAMEBUFFERTEXTURE2DEXTPROC)   getprocaddress("glFramebufferTexture2DEXT");
+        glFramebufferTexture3D_    = (PFNGLFRAMEBUFFERTEXTURE3DEXTPROC)   getprocaddress("glFramebufferTexture3DEXT");
         glFramebufferRenderbuffer_ = (PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC)getprocaddress("glFramebufferRenderbufferEXT");
         glGenerateMipmap_          = (PFNGLGENERATEMIPMAPEXTPROC)         getprocaddress("glGenerateMipmapEXT");
         hasFBO = true;
@@ -498,6 +507,16 @@ void gl_checkextensions()
     //else if(hasMT) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
     else fatal("Texture rectangle support is required!");
 
+    if(hasext(exts, "GL_EXT_texture3D"))
+    {
+        glTexImage3D_ =         (PFNGLTEXIMAGE3DEXTPROC)       getprocaddress("glTexImage3DEXT");
+        glTexSubImage3D_ =      (PFNGLTEXSUBIMAGE3DEXTPROC)    getprocaddress("glTexSubImage3DEXT");
+        glCopyTexSubImage3D_ =  (PFNGLCOPYTEXSUBIMAGE3DEXTPROC)getprocaddress("glCopyTexSubImage3DEXT");
+        hasT3D = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture3D extension.");
+    }
+    else fatal("3D texture support is required!");
+
     if(hasext(exts, "GL_EXT_packed_depth_stencil") || hasext(exts, "GL_NV_packed_depth_stencil"))
     {
         hasDS = true;
@@ -625,7 +644,7 @@ void glext(char *ext)
 COMMAND(glext, "s");
 
 // GPU-side timing information will use OGL timers
-enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_TRANSPARENT, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
+enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_RH, TIMER_TRANSPARENT, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
 #define TIMER_GPU_N TIMER_CPU_SM
 static const char *timer_string[] = {
     "shadow map",
@@ -633,6 +652,7 @@ static const char *timer_string[] = {
     "deferred shading",
     "hdr processing",
     "ambient obscurance",
+    "radiance hints",
     "transparent",
     "smaa",
     "buffer splitting",
@@ -825,6 +845,9 @@ void cleanupgl()
 
     extern void cleanupshadowatlas();
     cleanupshadowatlas();
+
+    extern void cleanupradiancehints();
+    cleanupradiancehints();
 
     extern void cleanuptimer();
     cleanuptimer();
@@ -1748,7 +1771,7 @@ void setupao(int w, int h)
     {
         if(!aotex[i]) glGenTextures(1, &aotex[i]);
         if(!aofbo[i]) glGenFramebuffers_(1, &aofbo[i]);
-        createtexture(aotex[i], w, h, NULL, 3, 1, aobilateral && aopackdepth && hasTRG && hasTF ? GL_RG16F : GL_RGB , GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(aotex[i], w, h, NULL, 3, 1, aobilateral && aopackdepth && hasTRG && hasTF ? GL_RG16F : GL_RGBA8 , GL_TEXTURE_RECTANGLE_ARB);
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[i]);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[i], 0);
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -2133,6 +2156,128 @@ FVAR(bloomlummax, 1e-3f, 8.0f, 1e3f);
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
+#define RH_MAXSPLITS 4
+
+GLuint rhtex[3] = { 0, 0, 0 }, rhfbo = 0;
+GLuint rsmdepthtex = 0, rsmcolortex = 0, rsmnormaltex = 0, rsmfbo = 0;
+
+extern int rhgrid, rhsplits, rhprec, rsmprec, rsmsize;
+
+void setupradiancehints()
+{
+    loopi(3) if(!rhtex[i]) glGenTextures(1, &rhtex[i]);
+
+    if(!rhfbo) glGenFramebuffers_(1, &rhfbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rhfbo);
+
+    GLenum rhformat = hasTF && rhprec >= 1 ? GL_RGBA16F_ARB : GL_RGBA8;
+
+    loopi(3)
+    {
+        create3dtexture(rhtex[i], rhgrid, rhgrid, rhgrid*rhsplits, NULL, 7, 1, rhformat);
+        glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+        GLfloat border[4] = { 0.5f, 0.5f, 0.5f, 0 };
+        glTexParameterfv(GL_TEXTURE_3D_EXT, GL_TEXTURE_BORDER_COLOR, border);
+        glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_3D_EXT, rhtex[i], 0, 0);
+    }
+
+    static const GLenum drawbufs[3] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_COLOR_ATTACHMENT2_EXT };
+    glDrawBuffers_(3, drawbufs);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating radiance hints buffer!");
+
+    if(!rsmdepthtex) glGenTextures(1, &rsmdepthtex);
+    if(!rsmcolortex) glGenTextures(1, &rsmcolortex);
+    if(!rsmnormaltex) glGenTextures(1, &rsmnormaltex);
+
+    if(!rsmfbo) glGenFramebuffers_(1, &rsmfbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
+
+    GLenum rsmformat = rsmprec >= 3 && hasTF ? GL_RGB16F_ARB : (rsmprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (rsmprec >= 1 ? GL_RGB10 : GL_RGBA8));
+
+    createtexture(rsmdepthtex, rsmsize, rsmsize, NULL, 3, 0, GL_DEPTH_COMPONENT16_ARB, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(rsmcolortex, rsmsize, rsmsize, NULL, 3, 0, rsmformat, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(rsmnormaltex, rsmsize, rsmsize, NULL, 3, 0, rsmformat, GL_TEXTURE_RECTANGLE_ARB);
+
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, rsmdepthtex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, rsmcolortex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, rsmnormaltex, 0);
+
+    glDrawBuffers_(2, drawbufs);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating RSM buffer!");
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+}
+   
+void cleanupradiancehints()
+{
+    loopi(3) if(rhtex[i]) { glDeleteTextures(1, &rhtex[i]); rhtex[i] = 0; }
+    if(rhfbo) { glDeleteFramebuffers_(1, &rhfbo); rhfbo = 0; }
+    if(rsmdepthtex) { glDeleteTextures(1, &rsmdepthtex); rsmdepthtex = 0; }
+    if(rsmcolortex) { glDeleteTextures(1, &rsmcolortex); rsmcolortex = 0; }
+    if(rsmnormaltex) { glDeleteTextures(1, &rsmnormaltex); rsmnormaltex = 0; }
+    if(rsmfbo) { glDeleteFramebuffers_(1, &rsmfbo); rsmfbo = 0; }
+}
+
+VARF(rhsplits, 1, 2, RH_MAXSPLITS, { cleardeferredlightshaders(); cleanupradiancehints(); });
+VARF(rsmsize, 64, 384, 2048, cleanupradiancehints());
+VAR(rhfarplane, 64, 1024, 16384);
+FVAR(rsmpradiustweak, 1e-3f, 1, 1e3f);
+FVAR(rhpradiustweak, 1e-3f, 1, 1e3f);
+FVAR(rsmdepthrange, 0, 1024, 1e6f);
+FVAR(rsmdepthmargin, 0, 0.1f, 1e3f);
+VARF(rhprec, 0, 0, 1, cleanupradiancehints());
+VARF(rsmprec, 0, 0, 3, cleanupradiancehints());
+FVAR(rhnudge, 0, 0.5f, 4);
+FVAR(rhsplitweight, 0.20f, 0.6f, 0.95f);
+VARF(rhgrid, 3, 27, 128, cleanupradiancehints());
+FVAR(rsmspread, 0, 0.25f, 1);
+VAR(rhclipgrid, 0, 1, 1);
+VAR(rsmcull, 0, 1, 1);
+VAR(gidist, 1, 384, 1024);
+FVAR(giscale, 1e-3f, 1.5f, 1e3f);
+VARF(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
+
+VAR(debugrsm, 0, 0, 2);
+void viewrsm()
+{
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    rectshader->set();
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, debugrsm == 2 ? rsmnormaltex : rsmcolortex);
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, 0); glVertex2i(screen->w-w, screen->h-h);
+    glTexCoord2f(rsmsize, 0); glVertex2i(screen->w, screen->h-h);
+    glTexCoord2f(0, rsmsize); glVertex2i(screen->w-w, screen->h);
+    glTexCoord2f(rsmsize, rsmsize); glVertex2i(screen->w, screen->h);
+    glEnd();
+    notextureshader->set();
+}
+
+VAR(debugrh, 0, 0, RH_MAXSPLITS*128);
+void viewrh()
+{
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    SETSHADER(tex3d);
+    glColor3f(1, 1, 1);
+    glBindTexture(GL_TEXTURE_3D, rhtex[1]);
+    float z = (debugrh-1+0.5f)/float(rhgrid*rhsplits);
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord3f(0, 0, z); glVertex2i(screen->w-w, screen->h-h);
+    glTexCoord3f(1, 0, z); glVertex2i(screen->w, screen->h-h);
+    glTexCoord3f(0, 1, z); glVertex2i(screen->w-w, screen->h);
+    glTexCoord3f(1, 1, z); glVertex2i(screen->w, screen->h);
+    glEnd();
+    notextureshader->set();
+}
+ 
 #define SHADOWATLAS_SIZE 4096
 
 PackNode shadowatlaspacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
@@ -2255,7 +2400,7 @@ void setupshadowatlas()
     if(!shadowatlastex) glGenTextures(1, &shadowatlastex);
 
     shadowatlastarget = usegatherforsm() ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB;
-    createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT16, shadowatlastarget);
+    createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT16_ARB, shadowatlastarget);
     glTexParameteri(shadowatlastarget, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
     glTexParameteri(shadowatlastarget, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
     glTexParameteri(shadowatlastarget, GL_DEPTH_TEXTURE_MODE_ARB, GL_LUMINANCE);
@@ -2504,12 +2649,7 @@ void cascaded_shadow_map::getmodelmatrix()
 
 void cascaded_shadow_map::getprojmatrix()
 {
-    vec lightup, lightright;
     lightview = vec(sunlightdir).neg();
-    lightup.orthogonal(lightview);
-    lightup.normalize();
-    lightright.cross(lightview, lightup);
-    lightup.cross(lightright, lightview);
 
     // compute the split frustums
     updatesplitdist();
@@ -2531,11 +2671,9 @@ void cascaded_shadow_map::getprojmatrix()
         float radius = calcfrustumboundsphere(split.nearplane, split.farplane, camera1->o, camdir, c);
 
         // compute the projected bounding box of the sphere
-        const vec p = c + radius * lightright;
-        vec tp, tc;
-        this->model.transform(p, tp);
+        vec tc;
         this->model.transform(c, tc);
-        const float pradius = tp.dist2(tc) * csmpradiustweak, step = (2*pradius) / (sm.size - 2*smborder);
+        const float pradius = radius * csmpradiustweak, step = (2*pradius) / (sm.size - 2*smborder);
         vec2 offset = vec2(tc).sub(pradius).div(step);
         offset.x = floor(offset.x);
         offset.y = floor(offset.y);
@@ -2656,6 +2794,185 @@ int calcspherecsmsplits(const vec &center, float radius)
     return mask;
 }
 
+struct reflectiveshadowmap
+{
+    glmatrixf model, proj;
+    vec lightview;
+    plane cull[4];
+    vec scale, offset;
+    vec center, bounds;
+    void setup();
+    void getmodelmatrix();
+    void getprojmatrix();
+    void gencullplanes();
+    void bindparams();
+} rsm;
+
+void reflectiveshadowmap::setup()
+{
+    getmodelmatrix();
+    getprojmatrix();
+    gencullplanes();
+}
+
+void reflectiveshadowmap::getmodelmatrix()
+{
+    model = viewmatrix;
+    model.rotate_around_x(sunlightpitch*RAD);
+    model.rotate_around_z((180-sunlightyaw)*RAD);
+}
+
+void reflectiveshadowmap::getprojmatrix()
+{
+    lightview = vec(sunlightdir).neg();
+
+    // find z extent
+    float minz = lightview.project_bb(worldmin, worldmax), maxz = lightview.project_bb(worldmax, worldmin),
+          zmargin = max((maxz - minz)*rsmdepthmargin, 0.5f*(rsmdepthrange - (maxz - minz)));
+    minz -= zmargin;
+    maxz += zmargin;
+
+    vec c;
+    float radius = calcfrustumboundsphere(nearplane, rhfarplane, camera1->o, camdir, c);
+
+    // compute the projected bounding box of the sphere
+    vec tc;
+    model.transform(c, tc);
+    const float pradius = (radius + gidist) * rsmpradiustweak, step = (2*pradius) / rsmsize;
+    vec2 tcoff = vec2(tc).sub(pradius).div(step);
+    tcoff.x = floor(tcoff.x);
+    tcoff.y = floor(tcoff.y);
+    center = vec(vec2(tcoff).mul(step).add(pradius), -0.5f*(minz + maxz));
+    bounds = vec(pradius, pradius, 0.5f*(maxz - minz));
+
+    scale = vec(1/step, 1/step, -1/(maxz - minz));
+    offset = vec(-tcoff.x, -tcoff.y, -minz/(maxz - minz));
+
+    proj.identity();
+    proj.scale(2*scale.x/rsmsize, 2*scale.y/rsmsize, 2*scale.z);
+    proj.translate(2*offset.x/rsmsize - 1, 2*offset.y/rsmsize - 1, 2*offset.z - 1);
+}
+
+void reflectiveshadowmap::gencullplanes()
+{
+    glmatrixf mvp;
+    mvp.mul(proj, model);
+    vec4 px = mvp.getrow(0), py = mvp.getrow(1), pw = mvp.getrow(3);
+    cull[0] = plane(vec4(pw).add(px)).normalize(); // left plane
+    cull[1] = plane(vec4(pw).sub(px)).normalize(); // right plane
+    cull[2] = plane(vec4(pw).add(py)).normalize(); // bottom plane
+    cull[3] = plane(vec4(pw).sub(py)).normalize(); // top plane
+}
+
+int calcbbrsmsplits(const ivec &bbmin, const ivec &bbmax)
+{
+    if(!rsmcull) return 1;
+    loopk(4)
+    {
+        const plane &p = rsm.cull[k];
+        ivec omin, omax;
+        if(p.x > 0) { omin.x = bbmin.x; omax.x = bbmax.x; } else { omin.x = bbmax.x; omax.x = bbmin.x; }
+        if(p.y > 0) { omin.y = bbmin.y; omax.y = bbmax.y; } else { omin.y = bbmax.y; omax.y = bbmin.y; }
+        if(p.z > 0) { omin.z = bbmin.z; omax.z = bbmax.z; } else { omin.z = bbmax.z; omax.z = bbmin.z; }
+        if(omax.dist(p) < 0) return 0;
+        if(omin.dist(p) < 0) while(++k < 4)
+        {
+            const plane &p = rsm.cull[k];
+            ivec omax(p.x > 0 ? bbmax.x : bbmin.x, p.y > 0 ? bbmax.y : bbmin.y, p.z > 0 ? bbmax.z : bbmin.z);
+            if(omax.dist(p) < 0) return 0;
+        }
+    }
+    return 1;
+}
+
+int calcspherersmsplits(const vec &center, float radius)
+{
+    if(!rsmcull) return 1;
+    loopk(4)
+    {
+        const plane &p = rsm.cull[k];
+        float dist = p.dist(center);
+        if(dist < -radius) return 0;
+        if(dist < radius) while(++k < 4)
+        {
+            const plane &p = rsm.cull[k];
+            if(p.dist(center) < -radius) return 0;
+        }
+    }
+    return 1;
+}
+
+struct radiancehints
+{
+    struct splitinfo
+    {
+        float nearplane, farplane;
+        vec offset, scale;
+        vec center; float bounds;
+    } splits[RH_MAXSPLITS];
+
+    void setup();
+    void updatesplitdist();
+    void bindparams();
+    void renderslices();
+} rh;
+
+void radiancehints::updatesplitdist()
+{
+    float lambda = rhsplitweight, nd = nearplane, fd = rhfarplane, ratio = fd/nd;
+    splits[0].nearplane = nd;
+    for(int i = 1; i < rhsplits; ++i)
+    {
+        float si = i / float(rhsplits);
+        splits[i].nearplane = lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
+        splits[i-1].farplane = splits[i].nearplane * 1.005f;
+    }
+    splits[rhsplits-1].farplane = fd;
+}
+
+void radiancehints::setup()
+{
+    updatesplitdist();
+
+    loopi(rhsplits)
+    {
+        splitinfo &split = splits[i];
+
+        vec c;
+        float radius = calcfrustumboundsphere(split.nearplane, split.farplane, camera1->o, camdir, c);
+
+        // compute the projected bounding box of the sphere
+        const float pradius = radius * rhpradiustweak, step = (2*pradius) / rhgrid;
+        vec offset = vec(c).sub(pradius).div(step);
+        offset.x = floor(offset.x);
+        offset.y = floor(offset.y);
+        offset.z = floor(offset.z);
+        split.center = vec(offset).mul(step).add(pradius);
+        split.bounds = pradius;
+
+        // modify mvp with a scale and offset
+        // now compute the update model view matrix for this split
+        split.scale = vec(1/(step*rhgrid), 1/(step*rhgrid), 1/(step*rhgrid*rhsplits));
+        split.offset = vec(-offset.x/rhgrid, -offset.y/rhgrid, (i - offset.z/rhgrid)/float(rhsplits));
+    }
+}
+
+void radiancehints::bindparams()
+{
+    static GlobalShaderParam rhbb("rhbb"), rhscale("rhscale"), rhoffset("rhoffset");
+    vec4 *rhbbv = rhbb.reserve<vec4>(rhsplits);
+    vec *rhscalev = rhscale.reserve<vec>(rhsplits),
+        *rhoffsetv = rhoffset.reserve<vec>(rhsplits);
+    loopi(rhsplits)
+    {
+        splitinfo &split = splits[i];
+        rhbbv[i] = vec4(split.center, split.bounds);
+        rhscalev[i] = split.scale;
+        rhoffsetv[i] = split.offset;
+    }
+    GLOBALPARAM(rhnudge, (rhnudge/rhgrid, rhnudge/rhgrid, rhnudge/(rhgrid*rhsplits)));
+}
+
 void viewbuffersplitmerge()
 {
     const int w = screen->w, h = screen->h;
@@ -2728,12 +3045,12 @@ void cleardeferredlightshaders()
     deferredminimapshader = NULL;
 }
 
-Shader *loaddeferredlightshader(const char *prefix = NULL)
+Shader *loaddeferredlightshader(bool minimap = false)
 {
     string common, shadow, sun;
     int commonlen = 0, shadowlen = 0, sunlen = 0;
 
-    if(prefix) { commonlen = strlen(prefix); memcpy(common, prefix, commonlen); }
+    if(minimap) common[commonlen++] = 'm';
     if(usegatherforsm()) common[commonlen++] = 'g';
     else if(smfilter) common[commonlen++] = smfilter > 1 ? 'F' : 'f';
     common[commonlen] = '\0';
@@ -2742,17 +3059,28 @@ Shader *loaddeferredlightshader(const char *prefix = NULL)
     if(smtetra && glslversion >= 130) shadow[shadowlen++] = 't';
     shadow[shadowlen] = '\0';
 
-    if(ao) sun[sunlen++] = 'a';
+    int usecsm = 0, userh = 0;
+    if(!minimap && ao) sun[sunlen++] = 'a';
     if(sunlight && csmshadowmap)
     {
+        usecsm = csmsplitn;
         sun[sunlen++] = 'c';
         sun[sunlen++] = '0' + csmsplitn;
-        if(ao && aosun) sun[sunlen++] = 'A';
+        if(!minimap)
+        {
+            if(ao && aosun) sun[sunlen++] = 'A';
+            if(gi) 
+            {
+                userh = rhsplits;
+                sun[sunlen++] = 'r'; 
+                sun[sunlen++] = '0' + rhsplits;
+            }
+        }
     }
     sun[sunlen] = '\0';
 
     defformatstring(name)("deferredlight%s%s%s", common, shadow, sun);
-    return generateshader(name, "deferredlightshader \"%s\" \"%s\" \"%s\" %d", common, shadow, sun, csmsplitn);
+    return generateshader(name, "deferredlightshader \"%s\" \"%s\" \"%s\" %d %d", common, shadow, sun, usecsm, userh);
 }
 
 void loaddeferredlightshaders()
@@ -2839,6 +3167,11 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         glActiveTexture_(GL_TEXTURE5_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[0]);
     }
+    if(sunlight && csmshadowmap && gi) loopi(3)
+    {
+        glActiveTexture_(GL_TEXTURE6_ARB + i);
+        glBindTexture(GL_TEXTURE_3D_EXT, rhtex[i]);
+    }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
@@ -2867,18 +3200,21 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
     if(sunlight && csmshadowmap)
     {
+        csm.bindparams();
+        rh.bindparams();
         if(editmode && fullbright)
         {
             GLOBALPARAM(sunlightdir, (0, 0, 0));
             GLOBALPARAM(sunlightcolor, (0, 0, 0));
+            GLOBALPARAM(giscale, (0));
         }
         else
         {
             extern float sunlightscale;
             GLOBALPARAM(sunlightdir, (sunlightdir));
             GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
+            GLOBALPARAM(giscale, (2*giscale));
         }
-        csm.bindparams();
     }
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
@@ -3260,6 +3596,144 @@ void packlights()
     lightsvisible = lightorder.length() - lightsoccluded;
 }
 
+void radiancehints::renderslices()
+{
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rhfbo);
+    glViewport(0, 0, rhgrid, rhgrid);
+
+    SETSHADER(radiancehints);
+
+    LOCALPARAM(rhatten, (1.0f/(gidist*gidist)));
+    LOCALPARAM(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
+
+    glMatrixMode(GL_TEXTURE);
+    glLoadIdentity();
+    glTranslatef(rsm.offset.x, rsm.offset.y, rsm.offset.z);
+    glScalef(rsm.scale.x, rsm.scale.y, rsm.scale.z);
+    glMultMatrixf(rsm.model.v);
+    glMatrixMode(GL_MODELVIEW);
+
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmdepthtex);
+    glActiveTexture_(GL_TEXTURE1_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmcolortex);
+    glActiveTexture_(GL_TEXTURE2_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmnormaltex);
+    glActiveTexture_(GL_TEXTURE0_ARB);
+
+    glClearColor(0.5f, 0.5f, 0.5f, 0);
+
+    loopi(rhsplits)
+    {
+        splitinfo &split = splits[i];
+
+        float cellradius = split.bounds/rhgrid, step = 2*cellradius;
+        LOCALPARAM(rhspread, (cellradius));
+
+        vec cmin, cmax;
+        loopk(3)
+        {
+            cmin[k] = floor((worldmin[k] - split.center[k] + split.bounds)/step)*step + split.center[k] - split.bounds;
+            cmax[k] = ceil((worldmax[k] - split.center[k] + split.bounds)/step)*step + split.center[k] - split.bounds;
+        }
+
+        loopj(rhgrid)
+        {
+            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_3D_EXT, rhtex[0], 0, i*rhgrid + j);
+            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_3D_EXT, rhtex[1], 0, i*rhgrid + j);
+            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_3D_EXT, rhtex[2], 0, i*rhgrid + j);
+
+            float x1 = split.center.x - split.bounds, x2 = split.center.x + split.bounds,
+                  y1 = split.center.y - split.bounds, y2 = split.center.y + split.bounds,
+                  z = split.center.z - split.bounds + 2*split.bounds*(j+0.5f)/rhgrid,
+                  vx1 = -1, vx2 = 1, vy1 = -1, vy2 = 1,
+                  tx1 = x1, tx2 = x2, ty1 = y1, ty2 = y2;
+
+            if(rhclipgrid)
+            {
+                if(z < cmin.z || z > cmax.z)
+                {
+                    glClear(GL_COLOR_BUFFER_BIT);
+                    continue;
+                }
+                if(x1 < cmin.x || x2 > cmax.x || y1 < cmin.y || y2 > cmax.y)
+                {
+                    glClear(GL_COLOR_BUFFER_BIT);
+                    tx1 = max(x1, cmin.x);
+                    tx2 = min(x2, cmax.x);
+                    ty1 = max(y1, cmin.y);
+                    ty2 = min(y2, cmax.y);
+                    if(tx1 > tx2 || ty1 > ty2) continue;
+                    vx1 += 2*(tx1 - x1)/(x2 - x1);
+                    vx2 += 2*(tx2 - x2)/(x2 - x1);
+                    vy1 += 2*(ty1 - y1)/(y2 - y1);
+                    vy2 += 2*(ty2 - y2)/(y2 - y1);
+                }
+            }
+
+            glBegin(GL_TRIANGLE_STRIP);
+            glTexCoord3f(tx2, ty1, z); glVertex2f(vx2, vy1);
+            glTexCoord3f(tx1, ty1, z); glVertex2f(vx1, vy1);
+            glTexCoord3f(tx2, ty2, z); glVertex2f(vx2, vy2);
+            glTexCoord3f(tx1, ty2, z); glVertex2f(vx1, vy2);
+            glEnd();
+        }
+    }
+
+    glClearColor(0, 0, 0, 0);
+}
+
+void renderradiancehints()
+{
+    timer_begin(TIMER_RH);
+
+    rsm.setup();
+    rh.setup();
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
+
+    shadowmapping = SM_REFLECT;
+    shadoworigin = vec(0, 0, 0);
+    shadowdir = rsm.lightview;
+    shadowbias = rsm.lightview.project_bb(worldmin, worldmax);
+    shadowradius = fabs(rsm.lightview.project_bb(worldmax, worldmin));
+
+    GLOBALPARAM(rsmdir, (-rsm.lightview.x, -rsm.lightview.y, -rsm.lightview.z));
+
+    findshadowvas();
+    findshadowmms();
+
+    shadowmaskbatchedmodels(false);
+    batchshadowmapmodels();
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadMatrixf(rsm.proj.v);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadMatrixf(rsm.model.v);
+    glViewport(0, 0, rsmsize, rsmsize);
+    glClearColor(0, 0, 0, 0);
+    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
+
+    shadowside = 0;
+
+    renderrsmgeom();
+    rendermodelbatches();
+
+    clearbatchedmapmodels();
+
+    shadowmapping = 0;
+
+    rh.renderslices();
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+
+    timer_end(TIMER_RH);
+}
+
 void rendercsmshadowmaps()
 {
     shadowmapping = SM_CASCADE;
@@ -3283,8 +3757,6 @@ void rendercsmshadowmaps()
     loopi(csmsplitn) if(csm.splits[i].idx >= 0)
     {
         const shadowmapinfo &sm = shadowmaps[csm.splits[i].idx];
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
 
         glMatrixMode(GL_PROJECTION);
         glLoadMatrixf(csm.splits[i].proj.v);
@@ -3530,7 +4002,7 @@ void rendershadowatlas()
     timer_begin(TIMER_SM);
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    //glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     if(debugshadowatlas)
     {
@@ -4135,7 +4607,7 @@ void drawminimap()
 
     gl_setupframe(screen->w, screen->h);
 
-    if(!deferredminimapshader) deferredminimapshader = loaddeferredlightshader("m");
+    if(!deferredminimapshader) deferredminimapshader = loaddeferredlightshader(true);
 
     int size = 1<<minimapsize, sizelimit = min(hwtexsize, min(vieww, viewh));
     while(size > sizelimit) size /= 2;
@@ -4396,6 +4868,7 @@ void gl_setupframe(int w, int h)
     if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
     if(smaa && !smaafbo[0]) setupsmaa();
     if(!shadowatlasfbo) setupshadowatlas();
+    if(sunlight && csmshadowmap && gi && !rhfbo) setupradiancehints();
     if(!deferredlightshader) loaddeferredlightshaders();
 }
 
@@ -4479,6 +4952,12 @@ void gl_drawframe(int w, int h)
     generategrass();
     rendergrass();
     GLERROR;
+
+    if(sunlight && csmshadowmap && gi) 
+    {
+        renderradiancehints();
+        GLERROR;
+    }
 
     rendershadowatlas();
     GLERROR;
@@ -4798,6 +5277,8 @@ void gl_drawhud(int w, int h)
     else if(debugrefract) viewrefract();
     else if(debugsmaa) viewsmaa();
     else if(debuglightscissor) viewlightscissor();
+    else if(debugrsm) viewrsm();
+    else if(debugrh) viewrh();
 
     glEnable(GL_BLEND);
     

@@ -515,7 +515,7 @@ static inline void renderbatchedmodel(model *m, batchedmodel &b)
     if(b.attached>=0) a = &modelattached[b.attached];
 
     int anim = b.anim;
-    if(shadowmapping) anim |= ANIM_NOSKIN;
+    if(shadowmapping > SM_REFLECT) anim |= ANIM_NOSKIN;
     else
     {
         if(b.flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
@@ -574,6 +574,8 @@ static inline int shadowmaskmodel(const vec &center, float radius)
 {
     switch(shadowmapping)
     {
+        case SM_REFLECT:
+            return calcspherersmsplits(center, radius);
         case SM_TETRA:
         {
             vec scenter = vec(center).sub(shadoworigin);

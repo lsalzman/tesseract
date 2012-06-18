@@ -58,7 +58,9 @@ extern PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC  glCheckFramebufferStatus_;
 extern PFNGLBINDFRAMEBUFFEREXTPROC         glBindFramebuffer_;
 extern PFNGLDELETEFRAMEBUFFERSEXTPROC      glDeleteFramebuffers_;
 extern PFNGLGENFRAMEBUFFERSEXTPROC         glGenFramebuffers_;
+extern PFNGLFRAMEBUFFERTEXTURE1DEXTPROC    glFramebufferTexture1D_;
 extern PFNGLFRAMEBUFFERTEXTURE2DEXTPROC    glFramebufferTexture2D_;
+extern PFNGLFRAMEBUFFERTEXTURE3DEXTPROC    glFramebufferTexture3D_;
 extern PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbuffer_;
 extern PFNGLGENERATEMIPMAPEXTPROC          glGenerateMipmap_;
 
@@ -132,6 +134,11 @@ extern PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_;
 // GL_ARB_color_buffer_float
 extern PFNGLCLAMPCOLORARBPROC glClampColor_;
 
+// GL_EXT_texture3D
+extern PFNGLTEXIMAGE3DEXTPROC        glTexImage3D_;
+extern PFNGLTEXSUBIMAGE3DEXTPROC     glTexSubImage3D_;
+extern PFNGLCOPYTEXSUBIMAGE3DEXTPROC glCopyTexSubImage3D_;
+
 extern void glerror(const char *file, int line, GLenum error);
 
 #define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
@@ -195,6 +202,7 @@ extern void drawcubemap(int size, const vec &o, float yaw, float pitch, const cu
 extern void loadshaders();
 extern void setuptexparameters(int tnum, const void *pixels, int clamp, int filter, GLenum format = GL_RGB, GLenum target = GL_TEXTURE_2D);
 extern void createtexture(int tnum, int w, int h, const void *pixels, int clamp, int filter, GLenum component = GL_RGB, GLenum target = GL_TEXTURE_2D, int pw = 0, int ph = 0, int pitch = 0, bool resize = true, GLenum format = GL_FALSE);
+extern void create3dtexture(int tnum, int w, int h, int d, const void *pixels, int clamp, int filter, GLenum component = GL_RGB, GLenum target = GL_TEXTURE_3D_EXT);
 extern void blurtexture(int n, int bpp, int w, int h, uchar *dst, const uchar *src, int margin = 0);
 extern void blurnormals(int n, int w, int h, bvec *dst, const bvec *src, int margin = 0);
 extern void renderpostfx();
@@ -230,7 +238,7 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 }
 
 // rendergl
-extern bool hasVBO, hasDRE, hasOQ, hasTR, hasFBO, hasAFBO, hasDS, hasTF, hasCBF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT;
+extern bool hasVBO, hasDRE, hasOQ, hasTR, hasT3D, hasFBO, hasAFBO, hasDS, hasTF, hasCBF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT;
 extern int hasstencil;
 extern int glslversion;
 
@@ -349,7 +357,7 @@ static inline void masktiles(uint *tiles, float sx1, float sy1, float sx2, float
     for(int ty = ty1; ty < ty2; ty++) tiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;
 }
 
-enum { SM_NONE = 0, SM_CUBEMAP, SM_TETRA, SM_CASCADE, SM_SPOT };
+enum { SM_NONE = 0, SM_REFLECT, SM_CUBEMAP, SM_TETRA, SM_CASCADE, SM_SPOT };
  
 extern int shadowmapping;
 
@@ -365,6 +373,7 @@ extern void collectlights();
 extern void findshadowvas();
 extern void findshadowmms();
 
+extern void renderrsmgeom();
 extern void rendershadowmapworld();
 extern void batchshadowmapmodels();
 
@@ -376,6 +385,8 @@ extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, 
 extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
 extern int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax);
 extern int calcspherecsmsplits(const vec &center, float radius);
+extern int calcbbrsmsplits(const ivec &bbmin, const ivec &bbmax);
+extern int calcspherersmsplits(const vec &center, float radius);
 
 static inline bool sphereinsidespot(const vec &dir, int spot, const vec &center, float radius)
 {
@@ -441,7 +452,6 @@ extern void renderrefractmask();
 extern void renderalphageom(int side);
 extern void rendermapmodels();
 extern void renderoutline();
-extern void rendershadowmapworld();
 
 extern bool isfoggedsphere(float rad, const vec &cv);
 extern int isvisiblesphere(float rad, const vec &cv);

@@ -14,6 +14,7 @@ HVARFR(sunlight, 0, 0, 0xFFFFFF,
     sunlightcolor = bvec((sunlight>>16)&0xFF, (sunlight>>8)&0xFF, sunlight&0xFF);
     setupsunlight();
     cleardeferredlightshaders();
+    clearshadowcache();
 });
 FVARFR(sunlightscale, 0, 1, 16, setupsunlight());
 vec sunlightdir(0, 0, 1);
