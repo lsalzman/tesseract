@@ -1514,9 +1514,14 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
     cur.texgendim = dim;
 }
 
-static inline void changeshader(renderstate &cur, Slot &slot, VSlot &vslot)
+static inline void changeshader(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
 {
-    if(cur.blending) slot.shader->setvariant(0, 0, slot, vslot);
+    if(pass == RENDERPASS_RSM)
+    {
+        if(cur.blending) rsmworldshader->setvariant(0, 0, slot, vslot);
+        else rsmworldshader->set(slot, vslot);
+    }
+    else if(cur.blending) slot.shader->setvariant(0, 0, slot, vslot);
     else if(cur.alphaing > 1 && vslot.refractscale > 0) slot.shader->setvariant(0, 1, slot, vslot);
     else slot.shader->set(slot, vslot);
 }
@@ -1531,7 +1536,7 @@ static void renderbatch(renderstate &cur, int pass, geombatch &b)
         {
             if(rendered < 0)
             {
-                changeshader(cur, *b.vslot.slot, b.vslot);
+                changeshader(cur, pass, *b.vslot.slot, b.vslot);
                 rendered = 0;
                 gbatches++;
             }

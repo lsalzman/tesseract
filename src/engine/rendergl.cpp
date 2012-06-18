@@ -2161,7 +2161,25 @@ float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 GLuint rhtex[3] = { 0, 0, 0 }, rhfbo = 0;
 GLuint rsmdepthtex = 0, rsmcolortex = 0, rsmnormaltex = 0, rsmfbo = 0;
 
-extern int rhgrid, rhsplits, rhprec, rsmprec, rsmsize;
+extern int rhgrid, rhsplits, rhprec, rhtaps, rsmprec, rsmsize;
+
+static Shader *radiancehintsshader = NULL;
+
+Shader *loadradiancehintsshader()
+{
+    defformatstring(name)("radiancehints%d", rhtaps);
+    return generateshader(name, "radiancehintsshader %d", rhtaps);
+}
+
+void loadrhshaders()
+{
+    radiancehintsshader = loadradiancehintsshader();
+}
+
+void clearrhshaders()
+{
+    radiancehintsshader = NULL;
+}
 
 void setupradiancehints()
 {
@@ -2214,6 +2232,8 @@ void setupradiancehints()
         fatal("failed allocating RSM buffer!");
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    loadrhshaders();
 }
    
 void cleanupradiancehints()
@@ -2224,6 +2244,8 @@ void cleanupradiancehints()
     if(rsmcolortex) { glDeleteTextures(1, &rsmcolortex); rsmcolortex = 0; }
     if(rsmnormaltex) { glDeleteTextures(1, &rsmnormaltex); rsmnormaltex = 0; }
     if(rsmfbo) { glDeleteFramebuffers_(1, &rsmfbo); rsmfbo = 0; }
+
+    clearrhshaders();
 }
 
 VARF(rhsplits, 1, 2, RH_MAXSPLITS, { cleardeferredlightshaders(); cleanupradiancehints(); });
@@ -2241,8 +2263,9 @@ VARF(rhgrid, 3, 27, 128, cleanupradiancehints());
 FVAR(rsmspread, 0, 0.25f, 1);
 VAR(rhclipgrid, 0, 1, 1);
 VAR(rsmcull, 0, 1, 1);
-VARR(gidist, 1, 384, 1024);
-FVARR(giscale, 0, 1.5f, 1e3f);
+VARFP(rhtaps, 0, 20, 32, cleanupradiancehints());
+VARFR(gidist, 0, 384, 1024, { cleardeferredlightshaders(); if(!gidist) cleanupradiancehints(); });
+FVARFR(giscale, 0, 1.5f, 1e3f, { cleardeferredlightshaders(); if(!giscale) cleanupradiancehints(); });
 VARFP(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
 
 VAR(debugrsm, 0, 0, 2);
@@ -3069,7 +3092,7 @@ Shader *loaddeferredlightshader(bool minimap = false)
         if(!minimap)
         {
             if(ao && aosun) sun[sunlen++] = 'A';
-            if(gi) 
+            if(gi && giscale && gidist) 
             {
                 userh = rhsplits;
                 sun[sunlen++] = 'r'; 
@@ -3167,7 +3190,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         glActiveTexture_(GL_TEXTURE5_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[0]);
     }
-    if(sunlight && csmshadowmap && gi) loopi(3)
+    if(sunlight && csmshadowmap && gi && giscale && gidist) loopi(3)
     {
         glActiveTexture_(GL_TEXTURE6_ARB + i);
         glBindTexture(GL_TEXTURE_3D_EXT, rhtex[i]);
@@ -3601,7 +3624,7 @@ void radiancehints::renderslices()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rhfbo);
     glViewport(0, 0, rhgrid, rhgrid);
 
-    SETSHADER(radiancehints);
+    radiancehintsshader->set();
 
     LOCALPARAM(rhatten, (1.0f/(gidist*gidist)));
     LOCALPARAM(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
@@ -4868,7 +4891,7 @@ void gl_setupframe(int w, int h)
     if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
     if(smaa && !smaafbo[0]) setupsmaa();
     if(!shadowatlasfbo) setupshadowatlas();
-    if(sunlight && csmshadowmap && gi && !rhfbo) setupradiancehints();
+    if(sunlight && csmshadowmap && gi && giscale && gidist && !rhfbo) setupradiancehints();
     if(!deferredlightshader) loaddeferredlightshaders();
 }
 
@@ -4953,7 +4976,7 @@ void gl_drawframe(int w, int h)
     rendergrass();
     GLERROR;
 
-    if(sunlight && csmshadowmap && gi) 
+    if(sunlight && csmshadowmap && gi && giscale && gidist) 
     {
         renderradiancehints();
         GLERROR;
