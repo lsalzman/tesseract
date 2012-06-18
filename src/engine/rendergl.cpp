@@ -2241,9 +2241,9 @@ VARF(rhgrid, 3, 27, 128, cleanupradiancehints());
 FVAR(rsmspread, 0, 0.25f, 1);
 VAR(rhclipgrid, 0, 1, 1);
 VAR(rsmcull, 0, 1, 1);
-VAR(gidist, 1, 384, 1024);
-FVAR(giscale, 1e-3f, 1.5f, 1e3f);
-VARF(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
+VARR(gidist, 1, 384, 1024);
+FVARR(giscale, 0, 1.5f, 1e3f);
+VARFP(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
 
 VAR(debugrsm, 0, 0, 2);
 void viewrsm()
