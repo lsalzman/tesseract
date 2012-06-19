@@ -2173,7 +2173,7 @@ float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 GLuint rhtex[3] = { 0, 0, 0 }, rhfbo = 0;
 GLuint rsmdepthtex = 0, rsmcolortex = 0, rsmnormaltex = 0, rsmfbo = 0;
 
-extern int rhgrid, rhsplits, rhprec, rhtaps, rsmprec, rsmsize;
+extern int rhgrid, rhsplits, rhborder, rhprec, rhtaps, rsmprec, rsmsize;
 
 static Shader *radiancehintsshader = NULL;
 
@@ -2205,12 +2205,15 @@ void setupradiancehints()
 
     loopi(3)
     {
-        create3dtexture(rhtex[i], rhgrid, rhgrid, rhgrid*rhsplits, NULL, 7, 1, rhformat);
-        glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
-        GLfloat border[4] = { 0.5f, 0.5f, 0.5f, 0 };
-        glTexParameterfv(GL_TEXTURE_3D_EXT, GL_TEXTURE_BORDER_COLOR, border);
+        create3dtexture(rhtex[i], rhgrid+2*rhborder, rhgrid+2*rhborder, (rhgrid+2*rhborder)*rhsplits, NULL, 7, 1, rhformat);
+        if(rhborder)
+        {
+            glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_3D_EXT, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+            GLfloat border[4] = { 0.5f, 0.5f, 0.5f, 0 };
+            glTexParameterfv(GL_TEXTURE_3D_EXT, GL_TEXTURE_BORDER_COLOR, border);
+        }
         glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_3D_EXT, rhtex[i], 0, 0);
     }
 
@@ -2261,6 +2264,7 @@ void cleanupradiancehints()
 }
 
 VARF(rhsplits, 1, 2, RH_MAXSPLITS, { cleardeferredlightshaders(); cleanupradiancehints(); });
+VARF(rhborder, 0, 1, 1, cleanupradiancehints());
 VARF(rsmsize, 64, 384, 2048, cleanupradiancehints());
 VAR(rhfarplane, 64, 1024, 16384);
 FVAR(rsmpradiustweak, 1e-3f, 1, 1e3f);
@@ -2296,14 +2300,14 @@ void viewrsm()
     notextureshader->set();
 }
 
-VAR(debugrh, 0, 0, RH_MAXSPLITS*128);
+VAR(debugrh, 0, 0, RH_MAXSPLITS*(128 + 2));
 void viewrh()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
     SETSHADER(tex3d);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_3D, rhtex[1]);
-    float z = (debugrh-1+0.5f)/float(rhgrid*rhsplits);
+    float z = (debugrh-1+0.5f)/float((rhgrid+2*rhborder)*rhsplits);
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord3f(0, 0, z); glVertex2i(screen->w-w, screen->h-h);
     glTexCoord3f(1, 0, z); glVertex2i(screen->w, screen->h-h);
@@ -2638,7 +2642,7 @@ static float calcfrustumboundsphere(float nearplane, float farplane,  const vec 
         return minimapradius.magnitude();
     }
 
-    float height = tan(fovy/2.0f*RAD), width = height * aspect,
+    float width = tan(fov/2.0f*RAD), height = width / aspect,
           cdist = ((nearplane + farplane)/2)*(1 + width*width + height*height);
     if(cdist <= farplane)
     {
@@ -2840,7 +2844,6 @@ struct reflectiveshadowmap
     void getmodelmatrix();
     void getprojmatrix();
     void gencullplanes();
-    void bindparams();
 } rsm;
 
 void reflectiveshadowmap::setup()
@@ -2987,8 +2990,8 @@ void radiancehints::setup()
 
         // modify mvp with a scale and offset
         // now compute the update model view matrix for this split
-        split.scale = vec(1/(step*rhgrid), 1/(step*rhgrid), 1/(step*rhgrid*rhsplits));
-        split.offset = vec(-offset.x/rhgrid, -offset.y/rhgrid, (i - offset.z/rhgrid)/float(rhsplits));
+        split.scale = vec(1/(step*(rhgrid+2*rhborder)), 1/(step*(rhgrid+2*rhborder)), 1/(step*(rhgrid+2*rhborder)*rhsplits));
+        split.offset = vec(-(offset.x-rhborder)/(rhgrid+2*rhborder), -(offset.y-rhborder)/(rhgrid+2*rhborder), (i - (offset.z-rhborder)/(rhgrid+2*rhborder))/float(rhsplits));
     }
 }
 
@@ -3001,11 +3004,12 @@ void radiancehints::bindparams()
     loopi(rhsplits)
     {
         splitinfo &split = splits[i];
-        rhbbv[i] = vec4(split.center, split.bounds);
+        rhbbv[i] = vec4(split.center, split.bounds*(1 + rhborder*2*0.5f/rhgrid));
         rhscalev[i] = split.scale;
         rhoffsetv[i] = split.offset;
     }
-    GLOBALPARAM(rhnudge, (rhnudge/rhgrid, rhnudge/rhgrid, rhnudge/(rhgrid*rhsplits)));
+    float step = 2*splits[0].bounds/rhgrid;
+    GLOBALPARAM(rhnudge, (rhnudge*step));
 }
 
 void viewbuffersplitmerge()
@@ -3634,12 +3638,10 @@ void packlights()
 void radiancehints::renderslices()
 {
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rhfbo);
-    glViewport(0, 0, rhgrid, rhgrid);
+    glViewport(0, 0, rhgrid+2*rhborder, rhgrid+2*rhborder);
 
-    radiancehintsshader->set();
-
-    LOCALPARAM(rhatten, (1.0f/(gidist*gidist)));
-    LOCALPARAM(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
+    GLOBALPARAM(rhatten, (1.0f/(gidist*gidist)));
+    GLOBALPARAM(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
 
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
@@ -3653,57 +3655,124 @@ void radiancehints::renderslices()
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmcolortex);
     glActiveTexture_(GL_TEXTURE2_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmnormaltex);
+    glActiveTexture_(GL_TEXTURE3_ARB);
+    glBindTexture(GL_TEXTURE_3D_EXT, rhtex[0]);
+    glActiveTexture_(GL_TEXTURE4_ARB);
+    glBindTexture(GL_TEXTURE_3D_EXT, rhtex[1]);
+    glActiveTexture_(GL_TEXTURE5_ARB);
+    glBindTexture(GL_TEXTURE_3D_EXT, rhtex[2]);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glClearColor(0.5f, 0.5f, 0.5f, 0);
 
-    loopi(rhsplits)
+    loopirev(rhsplits)
     {
         splitinfo &split = splits[i];
 
         float cellradius = split.bounds/rhgrid, step = 2*cellradius;
-        LOCALPARAM(rhspread, (cellradius));
+        GLOBALPARAM(rhspread, (cellradius));
 
-        vec cmin, cmax;
+        vec cmin, cmax, bmin(1e16f, 1e16f, 1e16f), bmax(-1e16f, -1e16f, -1e16f);
         loopk(3)
         {
-            cmin[k] = floor((worldmin[k] - split.center[k] + split.bounds)/step)*step + split.center[k] - split.bounds;
-            cmax[k] = ceil((worldmax[k] - split.center[k] + split.bounds)/step)*step + split.center[k] - split.bounds;
+            cmin[k] = floor((worldmin[k] - (split.center[k] - split.bounds))/step)*step + split.center[k] - split.bounds;
+            cmax[k] = ceil((worldmax[k] - (split.center[k] - split.bounds))/step)*step + split.center[k] - split.bounds;
+        }
+        if(rhborder && i + 1 < rhsplits)
+        {
+            GLOBALPARAM(bordercenter, (0.5f, 0.5f, float(i+1 + 0.5f)/rhsplits));
+            GLOBALPARAM(borderrange, (0.5f - 0.5f/(rhgrid+2), 0.5f - 0.5f/(rhgrid+2), (0.5f - 0.5f/(rhgrid+2))/rhsplits));
+            GLOBALPARAM(borderscale, (rhgrid+2, rhgrid+2, (rhgrid+2)*rhsplits));
+            splitinfo &next = splits[i+1];
+            loopk(3)
+            {
+                bmin[k] = floor((max(float(worldmin[k]), next.center[k] - next.bounds) - (split.center[k] - split.bounds))/step)*step + split.center[k] - split.bounds;
+                bmax[k] = ceil((min(float(worldmax[k]), next.center[k] + next.bounds) - (split.center[k] - split.bounds))/step)*step + split.center[k] - split.bounds;
+            }
         }
 
-        loopj(rhgrid)
+        loopjrev(rhgrid+2*rhborder)
         {
-            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_3D_EXT, rhtex[0], 0, i*rhgrid + j);
-            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_3D_EXT, rhtex[1], 0, i*rhgrid + j);
-            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_3D_EXT, rhtex[2], 0, i*rhgrid + j);
+            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_3D_EXT, rhtex[0], 0, i*(rhgrid+2*rhborder) + j);
+            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_3D_EXT, rhtex[1], 0, i*(rhgrid+2*rhborder) + j);
+            glFramebufferTexture3D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_3D_EXT, rhtex[2], 0, i*(rhgrid+2*rhborder) + j);
 
             float x1 = split.center.x - split.bounds, x2 = split.center.x + split.bounds,
                   y1 = split.center.y - split.bounds, y2 = split.center.y + split.bounds,
-                  z = split.center.z - split.bounds + 2*split.bounds*(j+0.5f)/rhgrid,
-                  vx1 = -1, vx2 = 1, vy1 = -1, vy2 = 1,
+                  z = split.center.z - split.bounds + (j-rhborder+0.5f)*step,
+                  vx1 = -1 + rhborder*2.0f/(rhgrid+2), vx2 = 1 - rhborder*2.0f/(rhgrid+2), vy1 = -1 + rhborder*2.0f/(rhgrid+2), vy2 = 1 - rhborder*2.0f/(rhgrid+2),
                   tx1 = x1, tx2 = x2, ty1 = y1, ty2 = y2;
+
+            if(rhborder && i + 1 < rhsplits)
+            {
+                splitinfo &next = splits[i+1];
+                float bx1 = x1-step, bx2 = x2+step, by1 = y1-step, by2 = y2+step, bz = z,
+                      bvx1 = -1, bvx2 = 1, bvy1 = -1, bvy2 = 1,
+                      btx1 = bx1, btx2 = bx2, bty1 = by1, bty2 = by2;
+
+                if(rhclipgrid)
+                {
+                    if(bz < bmin.z || bz > bmax.z) goto noborder;
+                    if(bx1 < bmin.x || bx2 > bmax.x || by1 < bmin.y || by2 > bmax.y)
+                    {
+                        btx1 = max(bx1, bmin.x);
+                        btx2 = min(bx2, bmax.x);
+                        bty1 = max(by1, bmin.y);
+                        bty2 = min(by2, bmax.y);
+                        if(btx1 > tx2 || bty1 > bty2) goto noborder;
+                        bvx1 += 2*(btx1 - bx1)/(bx2 - bx1);
+                        bvx2 += 2*(btx2 - bx2)/(bx2 - bx1);
+                        bvy1 += 2*(bty1 - by1)/(by2 - by1);
+                        bvy2 += 2*(bty2 - by2)/(by2 - by1);
+
+                        glClear(GL_COLOR_BUFFER_BIT);
+                    }
+                }
+
+                btx1 = btx1*next.scale.x + next.offset.x;
+                btx2 = btx2*next.scale.x + next.offset.x;
+                bty1 = bty1*next.scale.y + next.offset.y;
+                bty2 = bty2*next.scale.y + next.offset.y;
+                bz = bz*next.scale.z + next.offset.z;
+                
+                SETSHADER(radiancehintsborder);
+
+                glBegin(GL_TRIANGLE_STRIP);
+                glTexCoord3f(btx2, bty1, bz); glVertex2f(bvx2, bvy1);
+                glTexCoord3f(btx1, bty1, bz); glVertex2f(bvx1, bvy1);
+                glTexCoord3f(btx2, bty2, bz); glVertex2f(bvx2, bvy2);
+                glTexCoord3f(btx1, bty2, bz); glVertex2f(bvx1, bvy2);
+                glEnd();
+            }
+            else
+            {
+            noborder:
+                if(rhborder) glClear(GL_COLOR_BUFFER_BIT);
+            }
 
             if(rhclipgrid)
             {
-                if(z < cmin.z || z > cmax.z)
+                if(z < cmin.z || z > cmax.z) 
                 {
-                    glClear(GL_COLOR_BUFFER_BIT);
+                    if(!rhborder) glClear(GL_COLOR_BUFFER_BIT);
                     continue;
                 }
                 if(x1 < cmin.x || x2 > cmax.x || y1 < cmin.y || y2 > cmax.y)
                 {
-                    glClear(GL_COLOR_BUFFER_BIT);
+                    if(!rhborder) glClear(GL_COLOR_BUFFER_BIT);
                     tx1 = max(x1, cmin.x);
                     tx2 = min(x2, cmax.x);
                     ty1 = max(y1, cmin.y);
                     ty2 = min(y2, cmax.y);
                     if(tx1 > tx2 || ty1 > ty2) continue;
-                    vx1 += 2*(tx1 - x1)/(x2 - x1);
-                    vx2 += 2*(tx2 - x2)/(x2 - x1);
-                    vy1 += 2*(ty1 - y1)/(y2 - y1);
-                    vy2 += 2*(ty2 - y2)/(y2 - y1);
+                    vx1 += 2*rhgrid/float(rhgrid+2*rhborder)*(tx1 - x1)/(x2 - x1);
+                    vx2 += 2*rhgrid/float(rhgrid+2*rhborder)*(tx2 - x2)/(x2 - x1);
+                    vy1 += 2*rhgrid/float(rhgrid+2*rhborder)*(ty1 - y1)/(y2 - y1);
+                    vy2 += 2*rhgrid/float(rhgrid+2*rhborder)*(ty2 - y2)/(y2 - y1);
                 }
             }
+
+            radiancehintsshader->set();
 
             glBegin(GL_TRIANGLE_STRIP);
             glTexCoord3f(tx2, ty1, z); glVertex2f(vx2, vy1);

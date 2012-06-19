@@ -91,7 +91,11 @@ static inline T clamp(T a, U b, U c)
 #define loopj(m) loop(j,m)
 #define loopk(m) loop(k,m)
 #define loopl(m) loop(l,m)
-#define loopirev(v) for(int i = v-1; i>=0; i--)
+#define looprev(v,m) for(int v = int(m)-1; v>=0; v--)
+#define loopirev(m) looprev(i,m)
+#define loopjrev(m) looprev(j,m)
+#define loopkrev(m) looprev(k,m)
+#define looplrev(m) looprev(l,m)
 
 #define DELETEP(p) if(p) { delete   p; p = 0; }
 #define DELETEA(p) if(p) { delete[] p; p = 0; }
