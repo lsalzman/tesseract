@@ -3191,11 +3191,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glEnable(GL_SCISSOR_TEST);
 
     if(!depthtestlights) glDisable(GL_DEPTH_TEST);
-    else
-    {
-        glDepthMask(GL_FALSE);
-        if(hasDBT && depthtestlights > 1) glEnable(GL_DEPTH_BOUNDS_TEST_EXT);
-    }
+    else glDepthMask(GL_FALSE);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
@@ -3279,6 +3275,9 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         glVertex3f(-1,  1, -1);
         glEnd();
     }
+
+    if(hasDBT && depthtestlights > 1) glEnable(GL_DEPTH_BOUNDS_TEST_EXT);
+
     for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
     {
         vector<int> &tile = lighttiles[y][x];
