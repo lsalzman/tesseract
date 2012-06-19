@@ -3786,9 +3786,14 @@ void radiancehints::renderslices()
     glClearColor(0, 0, 0, 0);
 }
 
+VAR(rhinoq, 0, 0, 1);
+
 void renderradiancehints()
 {
-    timer_begin(TIMER_RH);
+    if(!sunlight || !csmshadowmap || !gi || !giscale || !gidist) return;
+
+    if(!rhinoq) timer_begin(TIMER_RH);
+    else glFlush();
 
     rsm.setup();
     rh.setup();
@@ -3835,7 +3840,12 @@ void renderradiancehints()
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
 
-    timer_end(TIMER_RH);
+    if(!rhinoq) timer_end(TIMER_RH);
+    else
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+        glViewport(0, 0, vieww, viewh);
+    }
 }
 
 void rendercsmshadowmaps()
@@ -5057,7 +5067,7 @@ void gl_drawframe(int w, int h)
     rendergrass();
     GLERROR;
 
-    if(sunlight && csmshadowmap && gi && giscale && gidist) 
+    if(!rhinoq) 
     {
         renderradiancehints();
         GLERROR;

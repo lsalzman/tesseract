@@ -1697,6 +1697,9 @@ void cleanupTMUs(renderstate &cur)
 
 VAR(oqgeom, 0, 1, 1);
 
+extern int rhinoq;
+extern void renderradiancehints();
+
 void rendergeom()
 {
     bool mainpass = !envmapping,
@@ -1761,14 +1764,15 @@ void rendergeom()
     if(doZP)
     {
         glFlush();
+        glDisableClientState(GL_VERTEX_ARRAY);
         if(cur.colormask) { cur.colormask = false; glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); }
         if(cur.depthmask) { cur.depthmask = false; glDepthMask(GL_FALSE); }
-        glDisableClientState(GL_VERTEX_ARRAY);
         collectlights();
-        glEnableClientState(GL_VERTEX_ARRAY);
         if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
         if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
-		glFlush();
+        if(rhinoq) renderradiancehints();
+        glFlush();
+        glEnableClientState(GL_VERTEX_ARRAY);
         setupTMUs(cur);
         if(!multipassing) { multipassing = true; glDepthFunc(GL_LEQUAL); }
         cur.vbuf = 0;
@@ -1850,6 +1854,7 @@ void rendergeom()
         collectlights();
         if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
         if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
+        if(mainpass && rhinoq) renderradiancehints();
         glFlush();
     }
 }
