@@ -413,7 +413,7 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
-    extern int gdepthstencil, lighttilebatch;
+    extern int gdepthstencil, lighttilebatch, sunlightbatch;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
@@ -430,6 +430,7 @@ void gl_checkextensions()
         gdepthstencil = 0; // workaround for buggy stencil on windows ivy bridge driver
 #endif
         lighttilebatch = 4;
+        sunlightbatch = 0;
     }
     else
     {
@@ -3179,6 +3180,7 @@ void resetlights()
 
 VAR(depthtestlights, 0, 1, 2);
 VAR(lighttilebatch, 1, 8, 8);
+VAR(batchsunlight, 0, 0, 1);
 
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
@@ -3274,7 +3276,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
         for(int i = 0;;)
         {
-            int n = min(tile.length() - i, lighttilebatch);
+            int n = min(tile.length() - i, !sunlight || !csmshadowmap || !batchsunlight || i ? lighttilebatch : 1);
 
             bool shadowmap = false, spotlight = false;
             if(n > 0)
