@@ -413,7 +413,7 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
-    extern int gdepthstencil, lighttilebatch, batchsunlight;
+    extern int gdepthstencil, glineardepth, lighttilebatch, batchsunlight;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
@@ -425,10 +425,9 @@ void gl_checkextensions()
     else if(intel)
     {
 #ifdef WIN32
-        extern int glineardepth;
-        glineardepth = 1; // causes massive slowdown in windows driver if not using linear depth, but linux is slower with linear depth
         gdepthstencil = 0; // workaround for buggy stencil on windows ivy bridge driver
 #endif
+        glineardepth = 1; // causes massive slowdown in windows driver (and sometimes in linux driver) if not using linear depth
         lighttilebatch = 4;
         batchsunlight = 0;
     }
