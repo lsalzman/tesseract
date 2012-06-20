@@ -3180,7 +3180,7 @@ void resetlights()
 
 VAR(depthtestlights, 0, 1, 2);
 VAR(lighttilebatch, 1, 8, 8);
-VAR(batchsunlight, 0, 0, 1);
+VAR(batchsunlight, 0, 1, 1);
 
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
@@ -3244,6 +3244,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     else
         GLOBALPARAM(lightscale, (ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale));
 
+    bool sunpass = false;
     if(sunlight && csmshadowmap)
     {
         csm.bindparams();
@@ -3261,10 +3262,24 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
             GLOBALPARAM(giscale, (2*giscale));
         }
+        if(!batchsunlight || lighttilebatch==1) sunpass = true; 
     }
 
     int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
         btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+    if(sunpass)
+    {
+        int tx1 = max(int(floor((bsx1*0.5f+0.5f)*vieww)), 0), ty1 = max(int(floor((bsy1*0.5f+0.5f)*viewh)), 0),
+            tx2 = min(int(ceil((bsx2*0.5f+0.5f)*vieww)), vieww), ty2 = min(int(ceil((bsy2*0.5f+0.5f)*viewh)), viewh);
+        s->set();
+        glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex3f( 1, -1, -1);
+        glVertex3f(-1, -1, -1);
+        glVertex3f( 1,  1, -1);
+        glVertex3f(-1,  1, -1);
+        glEnd();
+    }
     for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
     {
         vector<int> &tile = lighttiles[y][x];
@@ -3274,10 +3289,10 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         static vec lightcolorv[8], spotxv[8], spotyv[8];
         static vec2 shadowoffsetv[8];
 
+        if(sunpass && tile.empty()) continue;
         for(int i = 0;;)
         {
-            int n = min(tile.length() - i, !sunlight || !csmshadowmap || !batchsunlight || i ? lighttilebatch : 1);
-
+            int n = min(tile.length() - i, lighttilebatch);
             bool shadowmap = false, spotlight = false;
             if(n > 0)
             {
@@ -3335,12 +3350,12 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 sz1 = min(sz1, l.sz1);
                 sz2 = max(sz2, l.sz2);
             }
-            if(!i) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
+            if(!i && !sunpass) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
             else if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) continue;
 
             if(n) 
             {
-                s->setvariant(n-1, (shadowmap ? 1 : 0) + (i ? 2 : 0) + (spotlight ? 4 : 0));
+                s->setvariant(n-1, (shadowmap ? 1 : 0) + (i || sunpass ? 2 : 0) + (spotlight ? 4 : 0));
                 lightpos.set(lightposv, n);
                 lightcolor.set(lightcolorv, n);
                 if(spotlight) spotparams.set(spotparamsv, n);
