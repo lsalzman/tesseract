@@ -209,7 +209,10 @@ void gl_checkextensions()
 #endif
 
     if(strstr(renderer, "Mesa") || strstr(version, "Mesa"))
+    {
         mesa = true;
+        if(strstr(renderer, "Intel")) intel = true;
+    }
     else if(strstr(vendor, "NVIDIA"))
         nvidia = true;
     else if(strstr(vendor, "ATI") || strstr(vendor, "Advanced Micro Devices"))
@@ -410,7 +413,7 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
-    extern int gdepthstencil, glineardepth, lighttilebatch;
+    extern int gdepthstencil, lighttilebatch;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
@@ -421,8 +424,9 @@ void gl_checkextensions()
     }
     else if(intel)
     {
-        glineardepth = 1;
 #ifdef WIN32
+        extern int glineardepth;
+        glineardepth = 1; // causes massive slowdown in windows driver if not using linear depth, but linux is slower with linear depth
         gdepthstencil = 0; // workaround for buggy stencil on windows ivy bridge driver
 #endif
         lighttilebatch = 4;
