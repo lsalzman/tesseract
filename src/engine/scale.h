@@ -91,7 +91,7 @@ static void FUNCNAME(scaletexture)(uchar *src, uint sw, uint sh, uint stride, uc
                         PIXELOP
                         #undef OP
                     }
-                    #define OP(c, n) c##t += ((c<<12) + xsrc[n]*xlow + xend[n]*xhigh)>>cscale;
+                    #define OP(c, n) c##t += ((c<<12) + xsrc[n]*xlow + xend[n]*xhigh)>>cscale
                     PIXELOP
                     #undef OP
                 }

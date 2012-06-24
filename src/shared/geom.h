@@ -1104,6 +1104,9 @@ struct bvec
 
     bvec &shl(int n) { x<<= n; y<<= n; z<<= n; return *this; }
     bvec &shr(int n) { x>>= n; y>>= n; z>>= n; return *this; }
+
+    static bvec fromcolor(const vec &v) { return bvec(uchar(v.x*255.0f), uchar(v.y*255.0f), uchar(v.z*255.0f)); }
+    vec tocolor() const { return vec(x*(1.0f/255.0f), y*(1.0f/255.0f), z*(1.0f/255.0f)); }
 };
 
 struct glmatrixf

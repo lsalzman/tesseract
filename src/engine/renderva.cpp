@@ -1207,7 +1207,7 @@ VAR(envpass, 0, 1, 1);
 
 struct renderstate
 {
-    bool colormask, depthmask, blending;
+    bool colormask, depthmask;
     int alphaing;
     GLuint vbuf;
     int diffusetmu;
@@ -1223,7 +1223,7 @@ struct renderstate
     float texgenscrollS, texgenscrollT;
     int texgendim;
 
-    renderstate() : colormask(true), depthmask(true), blending(false), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
+    renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
     {
         loopk(4) color[k] = 1;
         loopk(8) textures[k] = 0;
@@ -1273,8 +1273,9 @@ struct geombatch
     {
         if(va->vbuf < b.va->vbuf) return -1;
         if(va->vbuf > b.va->vbuf) return 1;
-        if(es.layer&LAYER_BLEND)
+        if(es.layer&LAYER_BOTTOM)
         {
+            if(!(b.es.layer&LAYER_BOTTOM)) return 1;
             int x1 = va->o.x&~0xFFF, x2 = b.va->o.x&~0xFFF;
             if(x1 < x2) return -1;
             if(x1 > x2) return 1;
@@ -1282,6 +1283,7 @@ struct geombatch
             if(y1 < y2) return -1;
             if(y1 > y2) return 1;
         }
+        else if(b.es.layer&LAYER_BOTTOM) return -1;
         if(vslot.slot->shader < b.vslot.slot->shader) return -1;
         if(vslot.slot->shader > b.vslot.slot->shader) return 1;
         if(vslot.slot->params.length() < b.vslot.slot->params.length()) return -1;
@@ -1409,7 +1411,7 @@ static void changebatchtmus(renderstate &cur, int pass, geombatch &b)
             changed = true;
         }
     }
-    if(cur.blending && (cur.blendx != (b.va->o.x&~0xFFF) || cur.blendy != (b.va->o.y&~0xFFF)))
+    if(b.es.layer&LAYER_BOTTOM && (cur.blendx != (b.va->o.x&~0xFFF) || cur.blendy != (b.va->o.y&~0xFFF)))
     {
         glActiveTexture_(GL_TEXTURE7_ARB);
         bindblendtexture(b.va->o);
@@ -1514,15 +1516,17 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
     cur.texgendim = dim;
 }
 
-static inline void changeshader(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
+static inline void changeshader(renderstate &cur, int pass, geombatch &b)
 {
+    VSlot &vslot = b.vslot;
+    Slot &slot = *vslot.slot;
     if(pass == RENDERPASS_RSM)
     {
-        if(cur.blending) rsmworldshader->setvariant(0, 0, slot, vslot);
+        if(b.es.layer&LAYER_BOTTOM) rsmworldshader->setvariant(0, 0, slot, vslot);
         else rsmworldshader->set(slot, vslot);
     }
-    else if(cur.blending) slot.shader->setvariant(0, 0, slot, vslot);
     else if(cur.alphaing > 1 && vslot.refractscale > 0) slot.shader->setvariant(0, 1, slot, vslot);
+    else if(b.es.layer&LAYER_BOTTOM) slot.shader->setvariant(0, 0, slot, vslot);
     else slot.shader->set(slot, vslot);
 }
 
@@ -1536,7 +1540,7 @@ static void renderbatch(renderstate &cur, int pass, geombatch &b)
         {
             if(rendered < 0)
             {
-                changeshader(cur, pass, *b.vslot.slot, b.vslot);
+                changeshader(cur, pass, b);
                 rendered = 0;
                 gbatches++;
             }
@@ -1682,7 +1686,7 @@ void setupTMUs(renderstate &cur)
     glEnableClientState(GL_NORMAL_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
     GLOBALPARAM(colorparams, (1, 1, 1, 1));
-    GLOBALPARAM(ambient, (ambientcolor.x/255.0f, ambientcolor.y/255.0f, ambientcolor.z/255.0f));
+    GLOBALPARAM(blendlayer, (1.0f));
     glColor4fv(cur.color);
 }
 
@@ -1814,12 +1818,12 @@ void rendergeom()
         if(!multipassing) { multipassing = true; glDepthFunc(GL_LEQUAL); }
         glDepthMask(GL_FALSE);
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+        glBlendFunc(GL_ONE, GL_ONE);
+        maskgbuffer("cng");
 
+        GLOBALPARAM(blendlayer, (0.0f));
         cur.vbuf = 0;
         cur.texgendim = -1;
-        cur.blending = true;
         for(vtxarray *va = visibleva; va; va = va->next)
         {
             if(!va->blends) continue;
@@ -1828,9 +1832,8 @@ void rendergeom()
             renderva(cur, va, RENDERPASS_GBUFFER_BLEND);
         }
         if(geombatches.length()) renderbatches(cur, RENDERPASS_GBUFFER);
-        cur.blending = false;
 
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        maskgbuffer("cngd");
         glDisable(GL_BLEND);
         glDepthMask(GL_TRUE);
     }
@@ -1884,21 +1887,18 @@ void renderrsmgeom()
         if(!multipassing) { multipassing = true; glDepthFunc(GL_LEQUAL); }
         glDepthMask(GL_FALSE);
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+        glBlendFunc(GL_ONE, GL_ONE);
 
+        GLOBALPARAM(blendlayer, (0.0f));
         cur.vbuf = 0;
         cur.texgendim = -1;
-        cur.blending = true;
         for(vtxarray *va = shadowva; va; va = va->rnext)
         {
             if(!va->blends) continue;
             renderva(cur, va, RENDERPASS_RSM_BLEND);
         }
         if(geombatches.length()) renderbatches(cur, RENDERPASS_RSM);
-        cur.blending = false;
 
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glDisable(GL_BLEND);
         glDepthMask(GL_TRUE);
     }

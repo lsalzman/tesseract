@@ -1,11 +1,12 @@
 #include "engine.h"
 
-bvec ambientcolor(0x19, 0x19, 0x19), skylightcolor(0, 0, 0);
+bvec ambientcolor(0x19, 0x19, 0x19);
 HVARFR(ambient, 1, 0x191919, 0xFFFFFF, 
 {
     if(ambient <= 255) ambient |= (ambient<<8) | (ambient<<16);
     ambientcolor = bvec((ambient>>16)&0xFF, (ambient>>8)&0xFF, ambient&0xFF);
 });
+FVARR(ambientscale, 0, 1, 16);
 extern void setupsunlight();
 bvec sunlightcolor(0, 0, 0);
 HVARFR(sunlight, 0, 0, 0xFFFFFF,

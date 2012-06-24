@@ -369,8 +369,8 @@ struct GlobalShaderParam
         g->val[2] = z;
         g->val[3] = w;
     }
-    void set(const vec &v) { set(v.x, v.y, v.z); }
-    void set(const vec2 &v) { set(v.x, v.y); }
+    void set(const vec &v, float w = 0) { set(v.x, v.y, v.z, w); }
+    void set(const vec2 &v, float z = 0, float w = 0) { set(v.x, v.y, z, w); }
     void set(const vec4 &v) { set(v.x, v.y, v.z, v.w); }
     void set(const plane &p) { set(p.x, p.y, p.z, p.offset); }
     void set(const matrix3x3 &m) { memcpy(resolve()->val, m.a.v, sizeof(m.a.v)); }
@@ -414,8 +414,8 @@ struct LocalShaderParam
             case GL_FLOAT_VEC4_ARB: glUniform4f_(b->loc, x, y, z, w); break;
         }
     }
-    void set(const vec &v) { set(v.x, v.y, v.z); }
-    void set(const vec2 &v) { set(v.x, v.y); }
+    void set(const vec &v, float w = 0) { set(v.x, v.y, v.z, w); }
+    void set(const vec2 &v, float z = 0, float w = 0) { set(v.x, v.y, z, w); }
     void set(const vec4 &v) { set(v.x, v.y, v.z, v.w); }
     void set(const plane &p) { set(p.x, p.y, p.z, p.offset); }
     void set(const float *f, int n = 1) { ShaderParamBinding *b = resolve(); if(b) glUniform1fv_(b->loc, n, f); }

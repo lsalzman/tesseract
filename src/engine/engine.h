@@ -274,6 +274,7 @@ extern void screenquad(float sw, float sh, float sw2, float sh2);
 extern void recomputecamera();
 extern void findorientation();
 extern void writecrosshairs(stream *f);
+extern void maskgbuffer(const char *mask);
 
 // renderextras
 extern void render3dbox(vec &o, float tofloor, float toceil, float xradius, float yradius = 0);

@@ -1668,7 +1668,7 @@ void screenquad(float sw, float sh, float sw2, float sh2)
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0;
 GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[3] = { 0, 0, 0 };
-GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[5] = { 0, 0, 0, 0, 0 }, bloomtex[5] = { 0, 0, 0, 0, 0 };
+GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[6] = { 0, 0, 0, 0, 0 }, bloomtex[6] = { 0, 0, 0, 0, 0 };
 int hdrclear = 0;
 GLuint refractfbo = 0, refracttex = 0;
 GLenum bloomformat = 0, hdrformat = 0;
@@ -1696,14 +1696,20 @@ void setupbloom(int w, int h)
     bloomformat = bloomprec >= 3 && hasTF ? GL_RGB16F_ARB : (bloomprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
     createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(bloomtex[3], bloomw, bloomh, NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(bloomtex[3], bloomw, bloomh, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+    if(bloomformat != GL_RGB)
+    {
+        if(!bloomtex[5]) glGenTextures(1, &bloomtex[5]);
+        if(!bloomfbo[5]) glGenFramebuffers_(1, &bloomfbo[5]);
+        createtexture(bloomtex[5], bloomw, bloomh, NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB); 
+    }
 
     static uchar gray[3] = { 32, 32, 32 };
     static float grayf[3] = { 0.125f, 0.125f, 0.125f };
     createtexture(bloomtex[4], 1, 1, hasTF ? (void *)grayf : (void *)gray, 3, 1, hasTF ? GL_RGB16F_ARB : GL_RGB16, GL_TEXTURE_RECTANGLE_ARB);
 
-    loopi(5)
+    loopi(5 + (bloomformat != GL_RGB ? 1 : 0))
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo[i]);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, bloomtex[i], 0);
@@ -1717,8 +1723,8 @@ void setupbloom(int w, int h)
 
 void cleanupbloom()
 {
-    loopi(5) if(bloomfbo[i]) { glDeleteFramebuffers_(1, &bloomfbo[i]); bloomfbo[i] = 0; }
-    loopi(5) if(bloomtex[i]) { glDeleteTextures(1, &bloomtex[i]); bloomtex[i] = 0; }
+    loopi(6) if(bloomfbo[i]) { glDeleteFramebuffers_(1, &bloomfbo[i]); bloomfbo[i] = 0; }
+    loopi(6) if(bloomtex[i]) { glDeleteTextures(1, &bloomtex[i]); bloomtex[i] = 0; }
     bloomw = bloomh = -1;
     lasthdraccum = 0;
 }
@@ -2168,23 +2174,21 @@ VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
 VARFP(hdr, 0, 1, 1, cleanupgbuffer());
 VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
-FVAR(bloomthreshold, 0, 1.5f, 10.0f);
-FVARP(bloomscale, 0, 1.0f, 10.0f);
+FVAR(bloomthreshold, 0, 0.95f, 1e3f);
+FVARP(bloomscale, 0, 4.0f, 1e3f);
 VARP(bloomblur, 0, 7, 7);
 VARP(bloomiter, 0, 0, 4);
 FVARP(bloomsigma, 0.005f, 0.5f, 2.0f);
-VARFP(bloomsize, 6, 8, 10, cleanupbloom());
+VARFP(bloomsize, 6, 9, 11, cleanupbloom());
 VARFP(bloomprec, 0, 2, 3, cleanupbloom());
 FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 
-FVARR(hdrbright, 1e-3f, 0.18f, 1e3f);
-FVAR(hdrtonemin, 1e-3f, 0.75f, 1e3f);
-FVAR(hdrtonemax, 1e-3f, 2.0f, 1e3f);
-FVARR(bloombright, 1e-3f, 1.5f, 1e3f);
-FVAR(bloomlummin, 1e-3f, 0.125f, 1e3f);
-FVAR(bloomlummax, 1e-3f, 8.0f, 1e3f);
+FVARR(hdrbright, 1e-3f, 1.0f, 1e3f);
+FVAR(hdrtonegrey, 1e-3f, 0.18f, 1e3f);
+FVAR(hdrtonemin, 1e-3f, 0.025f, 1e3f);
+FVAR(hdrtonemax, 1e-3f, 0.1f, 1e3f);
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
@@ -3077,8 +3081,9 @@ void viewbuffersplitmerge()
 VAR(debugbuffersplit, 0, 0, 1);
 
 VARFP(ao, 0, 1, 1, { cleanupao(); cleardeferredlightshaders(); });
-FVARR(aoradius, 0, 3, 256);
-FVARR(aodark, 1e-3f, 3, 1e3f);
+FVARR(aoradius, 0, 5, 256);
+FVAR(aocutoff, 0, 2.0f, 1e3f);
+FVARR(aodark, 1e-3f, 11.0f, 1e3f);
 FVARR(aosharp, 1e-3f, 1, 1e3f);
 FVARR(aomin, 0, 0.25f, 1);
 VARFR(aosun, 0, 1, 1, cleardeferredlightshaders());
@@ -3321,7 +3326,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     if(editmode && fullbright)
         GLOBALPARAM(lightscale, (fullbrightlevel*lightscale, fullbrightlevel*lightscale, fullbrightlevel*lightscale, 255*lightscale));
     else
-        GLOBALPARAM(lightscale, (ambientcolor.x*lightscale, ambientcolor.y*lightscale, ambientcolor.z*lightscale, 255*lightscale));
+        GLOBALPARAM(lightscale, (ambientcolor.x*lightscale*ambientscale, ambientcolor.y*lightscale*ambientscale, ambientcolor.z*lightscale*ambientscale, 255*lightscale));
 
     bool sunpass = !lighttilebatch;
     if(sunlight && csmshadowmap)
@@ -3336,7 +3341,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         }
         else
         {
-            extern float sunlightscale;
             GLOBALPARAM(sunlightdir, (sunlightdir));
             GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
             GLOBALPARAM(giscale, (2*giscale));
@@ -4443,7 +4447,8 @@ void renderao()
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    LOCALPARAM(tapparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, (2.0f*M_PI*aodark)/aotaps, aosharp));
+    LOCALPARAM(tapparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, aoradius*aoradius*aocutoff*aocutoff));
+    LOCALPARAM(contrastparams, ((2.0f*aodark)/aotaps, aosharp));
     LOCALPARAM(offsetscale, (xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]));
     screenquad(vieww, viewh, aow/float(1<<aonoise), aoh/float(1<<aonoise));
 
@@ -4510,7 +4515,7 @@ void processhdr(GLuint outfbo = 0)
             SETSHADER(hdrreduce2);
         }
         else SETSHADER(hdrreduce);
-        if(cw == bloomw && ch == bloomh) { cfbo = bloomfbo[2]; ctex = bloomtex[2]; }
+        if(cw == bloomw && ch == bloomh) { if(bloomfbo[5]) { cfbo = bloomfbo[5]; ctex = bloomtex[5]; } else { cfbo = bloomfbo[2]; ctex = bloomtex[2]; } }
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, cfbo);
         glViewport(0, 0, cw, ch);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
@@ -4581,7 +4586,7 @@ void processhdr(GLuint outfbo = 0)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
     glViewport(0, 0, b0w, b0h);
     SETSHADER(hdrbloom);
-    LOCALPARAM(bloomparams, (-bloombright, bloomthreshold*bloombright/hdrbright, bloomlummin, bloomlummax));
+    LOCALPARAM(bloomparams, (hdrbright*hdrtonegrey, bloomthreshold, hdrtonemin, hdrtonemax));
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
     screenquad(pw, ph);
 
@@ -4607,7 +4612,7 @@ void processhdr(GLuint outfbo = 0)
     glViewport(0, 0, vieww, viewh);
     SETSHADER(hdrtonemap);
     LOCALPARAM(bloomsize, (b0w, b0h));
-    LOCALPARAM(hdrparams, (-hdrbright, bloomscale, hdrtonemin, hdrtonemax));
+    LOCALPARAM(hdrparams, (hdrbright*hdrtonegrey, bloomscale, hdrtonemin, hdrtonemax));
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
@@ -4784,7 +4789,7 @@ void rendertransparent()
         }
         else
         {
-            maskgbuffer("cg");
+            maskgbuffer("cng");
             bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
             if(scissor)
             {

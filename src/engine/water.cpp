@@ -98,7 +98,19 @@ void renderwaterfog(int mat, float surface)
           syl = p[1].z > p[0].z ? 2*(bz - p[0].z)/(p[1].z - p[0].z) - 1 : 1,
           syr = p[3].z > p[2].z ? 2*(bz - p[2].z)/(p[3].z - p[2].z) - 1 : 1;
 
-    if(mat == MAT_WATER) rendercaustics(surface, syl, syr);
+    if(mat == MAT_WATER)
+    {
+        GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*ldrscaleb, waterdeepcolor.y*ldrscaleb, waterdeepcolor.z*ldrscaleb));
+        ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
+        GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f, waterdeep ? 1.0f/waterdeep : 1e4f));
+
+        rendercaustics(surface, syl, syr);
+    }
+    else
+    {
+        GLOBALPARAM(waterdeepcolor, (0, 0, 0));
+        GLOBALPARAM(waterdeepfade, (0, 0, 0));
+    }
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     vec4 d = mvmatrix.getrow(2);
@@ -113,17 +125,7 @@ void renderwaterfog(int mat, float surface)
     glLoadMatrixf(m);
     glMultMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
-    if(mat == MAT_WATER)
-    {
-        GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*ldrscaleb, waterdeepcolor.y*ldrscaleb, waterdeepcolor.z*ldrscaleb));
-        ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
-        GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f));
-    }
-    else
-    {
-        GLOBALPARAM(waterdeepcolor, (0, 0, 0));
-        GLOBALPARAM(waterdeepfade, (0, 0, 0));
-    }
+
     SETSHADER(waterfog);
     glBegin(GL_TRIANGLE_STRIP);
     glVertex2f(1, -1);
@@ -598,7 +600,7 @@ void renderwater()
     GLOBALPARAM(waterdeepcolor, (waterdeepcolor.x*colorscale, waterdeepcolor.y*colorscale, waterdeepcolor.z*colorscale));
     GLOBALPARAM(waterfog, (waterfog ? 1.0f/waterfog : 1e4f));
     ivec deepfade = ivec(waterdeepfadecolor.x, waterdeepfadecolor.y, waterdeepfadecolor.z).mul(waterdeep);
-    GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f));
+    GLOBALPARAM(waterdeepfade, (deepfade.x ? 255.0f/deepfade.x : 1e4f, deepfade.y ? 255.0f/deepfade.y : 1e4f, deepfade.z ? 255.0f/deepfade.z : 1e4f, waterdeep ? 1.0f/waterdeep : 1e4f));
     GLOBALPARAM(waterspec, (0.5f*waterspec/100.0f));
     GLOBALPARAM(waterreflect, (reflectscale, reflectscale, reflectscale, waterreflectstep));
     GLOBALPARAM(waterrefract, (waterrefractcolor.x*refractscale, waterrefractcolor.y*refractscale, waterrefractcolor.z*refractscale, waterrefract*viewh));

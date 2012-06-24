@@ -730,7 +730,7 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         if(vslot.refractscale > 0) loopk(numverts) { vc.refractmin.min(pos[k]); vc.refractmax.max(pos[k]); }
     }
 
-    sortkey key(texture, vslot.scrollS || vslot.scrollT ? dim : 3, layer == LAYER_BLEND ? LAYER_BLEND : LAYER_TOP, envmap, alpha ? (vslot.refractscale > 0 ? ALPHA_REFRACT : (vslot.alphaback ? ALPHA_BACK : ALPHA_FRONT)) : NO_ALPHA);
+    sortkey key(texture, vslot.scrollS || vslot.scrollT ? dim : 3, layer&LAYER_BOTTOM ? layer : LAYER_TOP, envmap, alpha ? (vslot.refractscale > 0 ? ALPHA_REFRACT : (vslot.alphaback ? ALPHA_BACK : ALPHA_FRONT)) : NO_ALPHA);
     addtris(key, orient, verts, index, numverts, convex, tj);
 
     if(grassy) 
@@ -950,9 +950,9 @@ void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
         { 
             const surfaceinfo &surf = c.ext->surfaces[i];
             if(!surf.numverts || surf.numverts&LAYER_TOP)
-                addcubeverts(vslot, i, size, pos, convex, c.texture[i], verts, numverts, hastj, envmap, grassy, (c.material&MAT_ALPHA)!=0, LAYER_TOP|(surf.numverts&LAYER_BLEND));
+                addcubeverts(vslot, i, size, pos, convex, c.texture[i], verts, numverts, hastj, envmap, grassy, (c.material&MAT_ALPHA)!=0, surf.numverts&LAYER_BLEND);
             if(surf.numverts&LAYER_BOTTOM)
-                addcubeverts(layer ? *layer : vslot, i, size, pos, convex, vslot.layer, verts, numverts, hastj, envmap2);
+                addcubeverts(layer ? *layer : vslot, i, size, pos, convex, vslot.layer, verts, numverts, hastj, envmap2, 0, false, surf.numverts&LAYER_TOP ? LAYER_BOTTOM : LAYER_TOP);
         }
     }
     else
@@ -1147,7 +1147,8 @@ int genmergedfaces(cube &c, const ivec &co, int size, int minlevel = -1)
             {
                 mf.tex = vslot.layer;
                 mf.envmap = envmap2;
-                mf.numverts &= ~LAYER_TOP;
+                mf.numverts &= ~LAYER_BLEND;
+                mf.numverts |= surf.numverts&LAYER_TOP ? LAYER_BOTTOM : LAYER_TOP;
                 vamerges[level].add(mf);
             }
         }
