@@ -2195,9 +2195,9 @@ VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 
 FVARR(hdrbright, 1e-3f, 1.0f, 1e3f);
-FVAR(hdrtonegrey, 1e-3f, 0.18f, 1e3f);
+FVAR(hdrtonegrey, 1e-3f, 0.10f, 1e3f);
 FVAR(hdrtonemin, 1e-3f, 0.025f, 1e3f);
-FVAR(hdrtonemax, 1e-3f, 0.1f, 1e3f);
+FVAR(hdrtonemax, 1e-3f, 0.100f, 1e3f);
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
