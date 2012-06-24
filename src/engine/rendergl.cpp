@@ -2194,10 +2194,10 @@ FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 
-FVARR(hdrbright, 1e-3f, 1.0f, 1e3f);
-FVAR(hdrtonegrey, 1e-3f, 0.10f, 1e3f);
-FVAR(hdrtonemin, 1e-3f, 0.025f, 1e3f);
-FVAR(hdrtonemax, 1e-3f, 0.100f, 1e3f);
+FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
+FVAR(hdrtonegrey, 1e-4f, 0.125f, 1e4f);
+FVAR(hdrtonemin, 1e-4f, 0.025f, 1e4f);
+FVAR(hdrtonemax, 1e-4f, 0.25f, 1e4f);
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
@@ -4567,7 +4567,7 @@ void processhdr(GLuint outfbo = 0)
             swap(b0w, b1w);
             swap(b0h, b1h);
         }
-
+   
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, bloomfbo[4]);
         glViewport(0, 0, 1, 1);
         glEnable(GL_BLEND);
