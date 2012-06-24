@@ -253,7 +253,9 @@ extern bool envmapping;
 extern int minimapping;
 extern const glmatrixf viewmatrix;
 extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, eyematrix, worldmatrix;
+extern int fog;
 extern bvec fogcolor;
+extern vec curfogcolor;
 
 extern void gl_checkextensions();
 extern void gl_init(int w, int h, int bpp, int depth, int fsaa);
@@ -273,8 +275,11 @@ extern void screenquad(float sw, float sh);
 extern void screenquad(float sw, float sh, float sw2, float sh2);
 extern void recomputecamera();
 extern void findorientation();
-extern void writecrosshairs(stream *f);
+extern void setfogcolor(const vec &v);
+extern void zerofogcolor();
+extern void resetfogcolor();
 extern void maskgbuffer(const char *mask);
+extern void writecrosshairs(stream *f);
 
 // renderextras
 extern void render3dbox(vec &o, float tofloor, float toceil, float xradius, float yradius = 0);

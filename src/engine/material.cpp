@@ -731,10 +731,8 @@ void rendereditmaterials()
 
     foggednotextureshader->set();
 
-    static const float zerofog[4] = { 0, 0, 0, 1 };
-    float oldfogc[4];
-    glGetFloatv(GL_FOG_COLOR, oldfogc);
-    glFogfv(GL_FOG_COLOR, zerofog);
+    zerofogcolor();
+
     glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
     glEnable(GL_BLEND);
 
@@ -767,7 +765,8 @@ void rendereditmaterials()
     xtraverts += varray::end();
 
     glDisable(GL_BLEND);
-    glFogfv(GL_FOG_COLOR, oldfogc);
+
+    resetfogcolor();
 
     rendermatgrid();
     

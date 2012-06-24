@@ -174,7 +174,6 @@ void setvfcP(const vec &bbmin, const vec &bbmax)
     vfcP[3] = plane(vec4(pw).mul(bbmax.y).sub(py)).normalize(); // top plane
     vfcP[4] = plane(vec4(pw).add(pz)).normalize(); // near/far planes
 
-    extern int fog;
     vfcDfog = fog;
     calcvfcD();
 }

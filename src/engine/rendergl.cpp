@@ -808,14 +808,6 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     glShadeModel(GL_SMOOTH);
     
-    
-    glDisable(GL_FOG);
-    glFogi(GL_FOG_MODE, GL_LINEAR);
-    //glHint(GL_FOG_HINT, GL_NICEST);
-    GLfloat fogcolor[4] = { 0, 0, 0, 0 };
-    glFogfv(GL_FOG_COLOR, fogcolor);
-    
-
     glEnable(GL_LINE_SMOOTH);
     //glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
@@ -1392,6 +1384,7 @@ HVARFR(fogcolour, 0, 0x8099B3, 0xFFFFFF,
 {
     fogcolor = bvec((fogcolour>>16)&0xFF, (fogcolour>>8)&0xFF, fogcolour&0xFF);
 });
+VAR(fogoverlay, 0, 1, 1);
 
 static float findsurface(int fogmat, const vec &v, int &abovemat)
 {
@@ -1413,7 +1406,7 @@ static float findsurface(int fogmat, const vec &v, int &abovemat)
     return worldsize;
 }
 
-static void blendfog(int fogmat, float below, float blend, float logblend, float &start, float &end, float *fogc)
+static void blendfog(int fogmat, float below, float blend, float logblend, float &start, float &end, vec &fogc)
 {
     switch(fogmat)
     {
@@ -1421,40 +1414,56 @@ static void blendfog(int fogmat, float below, float blend, float logblend, float
         {
             float deepfade = clamp(below/max(waterdeep, waterfog), 0.0f, 1.0f);
             vec color;
-            loopk(3) color[k] = watercolor[k]*(1-deepfade) + waterdeepcolor[k]*deepfade;
-            loopk(3) fogc[k] += blend*color[k]/255.0f;
-            end += logblend*min(fog, max(waterfog*4, 32));
+            color.lerp(watercolor.tocolor(), waterdeepcolor.tocolor(), deepfade);
+            fogc.add(vec(color).mul(blend));
+            end += logblend*min(fog, max(waterfog*2, 16));
             break;
         }
 
         case MAT_LAVA:
-            loopk(3) fogc[k] += blend*lavacolor[k]/255.0f;
-            end += logblend*min(fog, max(lavafog*4, 32));
+            fogc.add(lavacolor.tocolor().mul(blend));
+            end += logblend*min(fog, max(lavafog*2, 16));
             break;
 
         default:
-            loopk(3) fogc[k] += blend*fogcolor[k]/255.0f;
+            fogc.add(fogcolor.tocolor().mul(blend));
             start += logblend*(fog+64)/8;
             end += logblend*fog;
             break;
     }
 }
 
+vec curfogcolor(0, 0, 0);
+
+void setfogcolor(const vec &v)
+{
+    GLOBALPARAM(fogcolor, (v));
+}
+
+void zerofogcolor()
+{
+    setfogcolor(vec(0, 0, 0));
+}
+
+void resetfogcolor()
+{
+    setfogcolor(curfogcolor);
+}
+
+FVAR(fogscale, 0, 1.5f, 1e3f);
+
 static void setfog(int fogmat, float below = 0, float blend = 1, int abovemat = MAT_AIR)
 {
-    float fogc[4] = { 0, 0, 0, 1 };
     float start = 0, end = 0;
     float logscale = 256, logblend = log(1 + (logscale - 1)*blend) / log(logscale);
 
-    blendfog(fogmat, below, blend, logblend, start, end, fogc);
-    if(blend < 1) blendfog(abovemat, 0, 1-blend, 1-logblend, start, end, fogc);
+    curfogcolor = vec(0, 0, 0);
+    blendfog(fogmat, below, blend, logblend, start, end, curfogcolor);
+    if(blend < 1) blendfog(abovemat, 0, 1-blend, 1-logblend, start, end, curfogcolor);
+    curfogcolor.mul(ldrscale);
 
-    loopk(3) fogc[k] *= ldrscale;
-
-    glFogf(GL_FOG_START, start);
-    glFogf(GL_FOG_END, end);
-    glFogfv(GL_FOG_COLOR, fogc);
-    //glClearColor(fogc[0], fogc[1], fogc[2], 1.0f);
+    GLOBALPARAM(fogcolor, (curfogcolor));
+    GLOBALPARAM(fogparams, (start, end, 1/(end - start)));
 }
 
 static void blendfogoverlay(int fogmat, float below, float blend, float *overlay)
@@ -5382,7 +5391,7 @@ void gl_drawframe(int w, int h)
     if(smaa) dosmaa();
 
     addmotionblur();
-    if(fogmat != MAT_AIR) drawfogoverlay(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
+    if(fogoverlay && fogmat != MAT_AIR) drawfogoverlay(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
     renderpostfx();
 
     defaultshader->set();

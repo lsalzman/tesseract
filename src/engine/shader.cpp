@@ -639,12 +639,15 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     const char *vspragma = strstr(vs, "#pragma CUBE2_fog"), *pspragma = strstr(ps, "#pragma CUBE2_fog");
     if(!vspragma && !pspragma) return;
     static const int pragmalen = strlen("#pragma CUBE2_fog");
-    const char *vsend = strrchr(vs, '}');
-    if(vsend)
+    const char *vsmain = findglslmain(vs), *vsend = strrchr(vs, '}');
+    if(vsmain && vsend)
     {
-        vsbuf.put(vs, vsend - vs);
+        vsbuf.put(vs, vsmain - vs);
+        const char *fogparams = "\nvarying float fogcoord;\n";
+        vsbuf.put(fogparams, strlen(fogparams));
+        vsbuf.put(vsmain, vsend - vsmain);
         const char *vsdef = "\n#define FOG_COORD ";
-        const char *vsfog = "\ngl_FogFragCoord = -dot((FOG_COORD), gl_ModelViewMatrixTranspose[2]);\n";
+        const char *vsfog = "\nfogcoord = -dot((FOG_COORD), gl_ModelViewMatrixTranspose[2]);\n";
         int clen = 0;
         if(vspragma)
         {
@@ -659,15 +662,18 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
         vsbuf.put(vsfog, strlen(vsfog));
         vsbuf.put(vsend, strlen(vsend)+1);
     }
-    const char *psend = strrchr(ps, '}');
-    if(psend)
+    const char *psmain = findglslmain(ps), *psend = strrchr(ps, '}');
+    if(psmain && psend)
     {
-        psbuf.put(ps, psend - ps);
+        psbuf.put(ps, psmain - ps);
+        const char *fogparams = "\nuniform vec3 fogcolor, fogparams;\nvarying float fogcoord;\n"; 
+        psbuf.put(fogparams, strlen(fogparams));
+        psbuf.put(psmain, psend - psmain);
         const char *psdef = "\n#define FOG_COLOR ";
         const char *psfog =
             pspragma && !strncmp(pspragma+pragmalen, "rgba", 4) ?
-                "\ngl_FragColor = mix((FOG_COLOR), gl_FragColor, clamp((gl_Fog.end - gl_FogFragCoord) * gl_Fog.scale, 0.0, 1.0));\n" :
-                "\ngl_FragColor.rgb = mix((FOG_COLOR).rgb, gl_FragColor.rgb, clamp((gl_Fog.end - gl_FogFragCoord) * gl_Fog.scale, 0.0, 1.0));\n";
+                "\ngl_FragColor = mix((FOG_COLOR), gl_FragColor, clamp((fogparams.y + fogcoord)*fogparams.z, 0.0, 1.0));\n" :
+                "\ngl_FragColor.rgb = mix((FOG_COLOR).rgb, gl_FragColor.rgb, clamp((fogparams.y + fogcoord)*fogparams.z, 0.0, 1.0));\n";
         int clen = 0;
         if(pspragma)
         {
@@ -677,7 +683,7 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
             pspragma += strspn(pspragma, " \t\v\f");
             clen = strcspn(pspragma, "\r\n");
         }
-        if(clen <= 0) { pspragma = "gl_Fog.color"; clen = strlen(pspragma); }
+        if(clen <= 0) { pspragma = "fogcolor"; clen = strlen(pspragma); }
         psbuf.put(psdef, strlen(psdef));
         psbuf.put(pspragma, clen);
         psbuf.put(psfog, strlen(psfog));
