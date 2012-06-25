@@ -2181,8 +2181,6 @@ void viewrefract()
 VARF(gstencil, 0, 0, 1, cleanupgbuffer());
 VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
-VARFP(hdr, 0, 1, 1, cleanupgbuffer());
-VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVAR(bloomthreshold, 0, 0.8f, 1e3f);
 FVARP(bloomscale, 0, 1.0f, 1e3f);
 VARP(bloomblur, 0, 7, 7);
@@ -2193,10 +2191,10 @@ VARFP(bloomprec, 0, 2, 3, cleanupbloom());
 FVAR(hdraccumscale, 0, 0.98f, 1);
 VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
-
+VARFP(hdr, 0, 1, 1, cleanupgbuffer());
+VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
-FVAR(hdrtonemin, 1e-4f, 1e-4f, 1e4f);
-FVAR(hdrtonemax, 1e-4f, 1e4f, 1e4f);
+FVAR(hdrsaturate, 0, 0.8f, 1e3f);
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
@@ -4591,10 +4589,11 @@ void processhdr(GLuint outfbo = 0)
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomtex[4]);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
+    GLOBALPARAM(hdrparams, (hdrbright, hdrsaturate, bloomthreshold, bloomscale));
+
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
     glViewport(0, 0, b0w, b0h);
     SETSHADER(hdrbloom);
-    LOCALPARAM(bloomparams, (hdrbright, bloomthreshold, hdrtonemin, hdrtonemax));
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, ptex);
     screenquad(pw, ph);
 
@@ -4619,13 +4618,11 @@ void processhdr(GLuint outfbo = 0)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
     glViewport(0, 0, vieww, viewh);
     SETSHADER(hdrtonemap);
-    LOCALPARAM(bloomsize, (b0w, b0h));
-    LOCALPARAM(hdrparams, (hdrbright, bloomscale, hdrtonemin, hdrtonemax));
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
     glActiveTexture_(GL_TEXTURE0_ARB);
-    screenquad(vieww, viewh);
+    screenquad(vieww, viewh, b0w, b0h);
     timer_end(TIMER_HDR);
 }
 
