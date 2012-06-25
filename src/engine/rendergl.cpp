@@ -2181,7 +2181,7 @@ void viewrefract()
 VARF(gstencil, 0, 0, 1, cleanupgbuffer());
 VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
-FVAR(bloomthreshold, 0, 0.8f, 1e3f);
+FVAR(bloomthreshold, 1e-3f, 0.8f, 1e3f);
 FVARP(bloomscale, 0, 1.0f, 1e3f);
 VARP(bloomblur, 0, 7, 7);
 VARP(bloomiter, 0, 0, 4);
@@ -2194,7 +2194,7 @@ VAR(hdrreduce, 0, 2, 2);
 VARFP(hdr, 0, 1, 1, cleanupgbuffer());
 VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
-FVAR(hdrsaturate, 0, 0.8f, 1e3f);
+FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
