@@ -2195,6 +2195,7 @@ VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 VARFP(hdr, 0, 1, 1, cleanupgbuffer());
 VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
+FVARP(hdrgamma, 1e-3f, 2.2f, 1e3f);
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
 FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
 
@@ -4508,6 +4509,10 @@ void processhdr(GLuint outfbo = 0)
     }
 
     timer_begin(TIMER_HDR);
+
+    GLOBALPARAM(hdrparams, (hdrbright, hdrsaturate, bloomthreshold, bloomscale));
+    GLOBALPARAM(hdrgamma, (hdrgamma, 1.0f/hdrgamma));
+
     GLuint b0fbo = bloomfbo[1], b0tex = bloomtex[1], b1fbo =  bloomfbo[0], b1tex = bloomtex[0], ptex = hdrtex;
     int b0w = max(vieww/4, bloomw), b0h = max(viewh/4, bloomh), b1w = max(vieww/2, bloomw), b1h = max(viewh/2, bloomh),
         pw = vieww, ph = viewh;
@@ -4590,8 +4595,6 @@ void processhdr(GLuint outfbo = 0)
     glActiveTexture_(GL_TEXTURE2_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, bloomtex[4]);
     glActiveTexture_(GL_TEXTURE0_ARB);
-
-    GLOBALPARAM(hdrparams, (hdrbright, hdrsaturate, bloomthreshold, bloomscale));
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b0fbo);
     glViewport(0, 0, b0w, b0h);
