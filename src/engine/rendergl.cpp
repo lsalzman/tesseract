@@ -1691,10 +1691,12 @@ extern int bloomsize, bloomprec;
 void setupbloom(int w, int h)
 {
     int maxsize = ((1<<bloomsize)*5)/4;
-    while(w >= maxsize) w /= 2;
-    while(h >= maxsize) h /= 2; 
+    while(w >= maxsize || h >= maxsize) 
+    {
+        w /= 2;
+        h /= 2;
+    }
     if(w == bloomw && h == bloomh) return;
-
     bloomw = w;
     bloomh = h;
 
