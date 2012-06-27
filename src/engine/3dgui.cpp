@@ -482,25 +482,15 @@ struct gui : g3d_gui
         float xs = t->xs*scale, ys = t->ys*scale;
         x += int((size-xs)/2);
         y += int((size-ys)/2);
-        if(hit && actionon)
-        {
-            glDisable(GL_TEXTURE_2D);
-            notextureshader->set();
-            glColor4f(0, 0, 0, 0.75f);
-            rect_(x+SHADOW, y+SHADOW, xs, ys);
-            glEnable(GL_TEXTURE_2D);
-            defaultshader->set();
-        }
-        static const float tc[4][2] = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
         const vec &color = hit ? vec(1, 0.5f, 0.5f) : (overlaid ? vec(1, 1, 1) : light);
         glBindTexture(GL_TEXTURE_2D, t->id);
+        if(hit && actionon)
+        {
+            glColor4f(0, 0, 0, 0.75f);
+            rect_(x+SHADOW, y+SHADOW, xs, ys, 0);
+        }
         glColor3fv(color.v);
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2fv(tc[0]); glVertex2f(x,    y);
-        glTexCoord2fv(tc[1]); glVertex2f(x+xs, y);
-        glTexCoord2fv(tc[3]); glVertex2f(x,    y+ys);
-        glTexCoord2fv(tc[2]); glVertex2f(x+xs, y+ys);
-        glEnd();
+        rect_(x, y, xs, ys, 0);
 
         if(overlaid)
         {
