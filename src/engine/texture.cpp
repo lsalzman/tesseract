@@ -637,6 +637,16 @@ static GLenum textype(GLenum component, GLenum &format)
         case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
             if(!format) format = GL_RGBA;
             break;
+
+        case GL_LUMINANCE8:
+        case GL_LUMINANCE16:
+            if(!format) format = GL_LUMINANCE;
+            break;
+        
+        case GL_LUMINANCE8_ALPHA8:
+        case GL_LUMINANCE16_ALPHA16:
+            if(!format) format = GL_LUMINANCE_ALPHA;
+            break;
     }
     if(!format) format = component;
     return type;
