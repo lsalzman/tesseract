@@ -251,7 +251,6 @@ void flipqueries()
     loopi(qf.cur) qf.queries[i].owner = NULL;
     for(; qf.defer > 0 && qf.max < MAXQUERY; qf.defer--)
     {
-        qf.queries[qf.max].id = 9669;
         qf.queries[qf.max].owner = NULL;
         qf.queries[qf.max].fragments = -1;
         glGenQueries_(1, &qf.queries[qf.max++].id);
