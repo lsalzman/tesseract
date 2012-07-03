@@ -732,6 +732,7 @@ static inline void timer_begin(int whichone)
     if(whichone < TIMER_GPU_N)
     {
         if(!hasTQ) return;
+        deferquery++;
         glBeginQuery_(GL_TIME_ELAPSED_EXT, timers[timer_curr][whichone]);
     }
     else timer_began[whichone] = getclockmillis();
@@ -744,6 +745,7 @@ static inline void timer_end(int whichone)
         if(!hasTQ) return; 
         glEndQuery_(GL_TIME_ELAPSED_EXT);
         timer_used[timer_curr] |= 1<<whichone;
+        deferquery--;
     }
     else 
     {
@@ -5047,7 +5049,8 @@ void drawminimap()
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    xtravertsva = xtraverts = glde = gbatches = 0;
+    xtravertsva = xtraverts = glde = gbatches = vtris = vverts = 0;
+    flipqueries();
 
     ldrscale = 1;
     ldrscaleb = ldrscale/255;
@@ -5171,7 +5174,8 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    xtravertsva = xtraverts = glde = gbatches = 0;
+    xtravertsva = xtraverts = glde = gbatches = vtris = vverts = 0;
+    flipqueries();
 
     ldrscale = 1;
     ldrscaleb = ldrscale/255;
@@ -5298,7 +5302,8 @@ void gl_drawframe(int w, int h)
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    xtravertsva = xtraverts = glde = gbatches = 0;
+    xtravertsva = xtraverts = glde = gbatches = vtris = vverts = 0;
+    flipqueries();
 
     ldrscale = hdr ? 0.5f : 1;
     ldrscaleb = ldrscale/255;
@@ -5407,7 +5412,7 @@ void gl_drawframe(int w, int h)
 
 void gl_drawmainmenu(int w, int h)
 {
-    xtravertsva = xtraverts = glde = gbatches = 0;
+    xtravertsva = xtraverts = glde = gbatches = vtris = vverts = 0;
 
     renderbackground(NULL, NULL, NULL, NULL, true, true);
     renderpostfx();

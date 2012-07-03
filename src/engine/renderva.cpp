@@ -231,12 +231,13 @@ static inline bool insideva(const vtxarray *va, const vec &v, int margin = 2)
 
 struct queryframe
 {
-    int cur, max;
+    int cur, max, defer;
     occludequery queries[MAXQUERY];
 };
 
 static queryframe queryframes[2] = {{0, 0}, {0, 0}};
 static uint flipquery = 0;
+int deferquery = 0;
 
 int getnumqueries()
 {
@@ -248,7 +249,14 @@ void flipqueries()
     flipquery = (flipquery + 1) % 2;
     queryframe &qf = queryframes[flipquery];
     loopi(qf.cur) qf.queries[i].owner = NULL;
-    qf.cur = 0;
+    for(; qf.defer > 0 && qf.max < MAXQUERY; qf.defer--)
+    {
+        qf.queries[qf.max].id = 9669;
+        qf.queries[qf.max].owner = NULL;
+        qf.queries[qf.max].fragments = -1;
+        glGenQueries_(1, &qf.queries[qf.max++].id);
+    }
+    qf.cur = qf.defer = 0;
 }
 
 occludequery *newquery(void *owner)
@@ -257,6 +265,11 @@ occludequery *newquery(void *owner)
     if(qf.cur >= qf.max)
     {
         if(qf.max >= MAXQUERY) return NULL;
+        if(deferquery)
+        {
+            if(qf.max + qf.defer < MAXQUERY) qf.defer++;
+            return NULL;
+        }
         glGenQueries_(1, &qf.queries[qf.max++].id);
     }
     occludequery *query = &qf.queries[qf.cur++];
@@ -280,7 +293,7 @@ void clearqueries()
             glDeleteQueries_(1, &qf.queries[j].id);
             qf.queries[j].owner = NULL;
         }
-        qf.cur = qf.max = 0;
+        qf.cur = qf.max = qf.defer = 0;
     }
 }
 
@@ -1709,11 +1722,6 @@ void rendergeom()
          doOQ = hasOQ && oqfrags && oqgeom && mainpass,
          doZP = doOQ && zpass;
     renderstate cur;
-    if(mainpass)
-    {
-        flipqueries();
-        vtris = vverts = 0;
-    }
     if(!doZP) 
     {
         setupTMUs(cur);
