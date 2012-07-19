@@ -210,6 +210,10 @@
 			<Option target="default" />
 			<Option target="debug" />
 		</Unit>
+		<Unit filename="..\engine\hitzone.h">
+			<Option target="default" />
+			<Option target="debug" />
+		</Unit>
 		<Unit filename="..\engine\iqm.h">
 			<Option target="default" />
 			<Option target="debug" />

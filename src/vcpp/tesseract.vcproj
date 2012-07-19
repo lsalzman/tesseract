@@ -990,6 +990,10 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath="..\engine\hitzone.h"
+					>
+				</File>
+				<File
 					RelativePath="..\engine\iqm.h"
 					>
 				</File>

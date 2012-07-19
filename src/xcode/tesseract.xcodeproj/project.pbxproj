@@ -209,6 +209,7 @@
 		D19E773511977E1E003753EF /* rpgent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpgent.h; path = ../rpggame/rpgent.h; sourceTree = SOURCE_ROOT; };
 		D19E773611977E1E003753EF /* rpgobj.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpgobj.h; path = ../rpggame/rpgobj.h; sourceTree = SOURCE_ROOT; };
 		D19E773711977E1E003753EF /* stats.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = stats.h; path = ../rpggame/stats.h; sourceTree = SOURCE_ROOT; };
+		D19E775D11977E82003753EF /* hitzone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hitzone.h; sourceTree = "<group>"; };
 		D19E775D11977E82003753EF /* iqm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iqm.h; sourceTree = "<group>"; };
 		D19E775E11977E82003753EF /* mpr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mpr.h; sourceTree = "<group>"; };
 		D19E776011977E82003753EF /* smd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = smd.h; sourceTree = "<group>"; };
@@ -402,6 +403,7 @@
 				B9AC7A860D06DB44005506F8 /* bih.h */,
 				B9AC7A8B0D06DB44005506F8 /* engine.h */,
 				D18B8FBE0DB0AF8200171439 /* explosion.h */,
+				D19E775D11977E82003753EF /* hitzone.h.h */,
 				D19E775D11977E82003753EF /* iqm.h */,
 				D18B8FBF0DB0AF8200171439 /* lensflare.h */,
 				D18B8FC00DB0AF8200171439 /* lightning.h */,
