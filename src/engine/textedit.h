@@ -694,7 +694,7 @@ static editor *useeditor(const char *name, int mode, bool focus, const char *ini
 
 #define TEXTCOMMAND(f, s, d, body) ICOMMAND(f, s, d,\
     editor *top = currentfocus();\
-    if(!top) return;\
+    if(!top || identflags&IDF_OVERRIDDEN) return;\
     body\
 )
 
