@@ -1776,7 +1776,7 @@ void texlayer(int *layer)
     s.variants->layer = *layer < 0 ? max(slots.length()-1+*layer, 0) : *layer;
     propagatevslot(s.variants, 1<<VSLOT_LAYER);
 }
-COMMAND(texlayer, "isif");
+COMMAND(texlayer, "i");
 
 void texalpha(float *front, float *back)
 {
