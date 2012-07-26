@@ -43,7 +43,6 @@ extern int fullbright, fullbrightlevel;
 extern void clearlights();
 extern void initlights();
 extern void clearlightcache(int e = -1);
-extern void resetlightmaps(bool fullclean = true);
 extern void brightencube(cube &c);
 extern void setsurfaces(cube &c, const surfaceinfo *surfs, const vertinfo *verts, int numverts);
 extern void setsurface(cube &c, int orient, const surfaceinfo &surf, const vertinfo *verts, int numverts);
