@@ -4377,7 +4377,7 @@ void rendershadowatlas()
     timer_begin(TIMER_SM);
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, shadowatlasfbo);
-    //glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
     if(debugshadowatlas)
     {
@@ -4411,7 +4411,6 @@ void rendershadowatlas()
     glPopMatrix();
 
     glCullFace(GL_BACK);
-    glEnable(GL_CULL_FACE);
     glDisable(GL_SCISSOR_TEST);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
