@@ -3047,50 +3047,6 @@ void radiancehints::bindparams()
     GLOBALPARAM(rhnudge, (rhnudge*step));
 }
 
-void viewbuffersplitmerge()
-{
-    const int w = screen->w, h = screen->h;
-#if 1
-    Shader *splitshader = lookupshaderbyname("buffersplit");
-    splitshader->set();
-    const float split[] = {4.f, 4.f};
-    const float tiledim[] = {float(w)/split[0], float(h)/split[1]};
-    LOCALPARAM(tiledim, (tiledim[0], tiledim[1]));
-    LOCALPARAM(rcptiledim, (1.f/tiledim[0], 1.f/tiledim[1]));
-    LOCALPARAM(split, (split[0], split[1]));
-    timer_begin(TIMER_SPLITTING);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0,        0);        glVertex2i(-w, -h);
-    glTexCoord2f(float(w), 0);        glVertex2i(w, -h);
-    glTexCoord2f(0,        float(h)); glVertex2i(-w, h);
-    glTexCoord2f(float(w), float(h)); glVertex2i(w, h);
-    glEnd();
-    timer_end(TIMER_SPLITTING);
-    notextureshader->set();
-#else
-    Shader *mergeshader = lookupshaderbyname("buffermerge");
-    mergeshader->set();
-    const float split[] = {4.f, 4.f};
-    const float tiledim[] = {float(w)/split[0], float(h)/split[1]};
-    LOCALPARAM(tiledim, (tiledim[0], tiledim[1]));
-    LOCALPARAM(rcptiledim, (1.f/tiledim[0], 1.f/tiledim[1]));
-    LOCALPARAM(split, (split[0], split[1]));
-    timer_begin(TIMER_MERGING);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0,        0);        glVertex2i(-w, -h);
-    glTexCoord2f(float(w), 0);        glVertex2i(w, -h);
-    glTexCoord2f(0,        float(h)); glVertex2i(-w, h);
-    glTexCoord2f(float(w), float(h)); glVertex2i(w, h);
-    glEnd();
-    timer_end(TIMER_MERGING);
-    notextureshader->set();
-
-#endif
-}
-VAR(debugbuffersplit, 0, 0, 1);
-
 VARFP(ao, 0, 1, 1, { cleanupao(); cleardeferredlightshaders(); });
 FVARR(aoradius, 0, 5, 256);
 FVAR(aocutoff, 0, 2.0f, 1e3f);
@@ -5650,7 +5606,6 @@ void gl_drawhud(int w, int h)
     glColor3f(1, 1, 1);
 
     if(debugshadowatlas) viewshadowatlas();
-    else if(debugbuffersplit) viewbuffersplitmerge();
     else if(debugao) viewao(); 
     else if(debugdepth) viewdepth();
     else if(debugrefract) viewrefract();
