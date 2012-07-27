@@ -1282,7 +1282,7 @@ namespace game
                 int prevaction = s->lastaction;
                 s->lastaction = lastmillis;
                 s->lastattackgun = s->gunselect;
-                shoteffects(gun, from, to, s, false, id, prevaction);
+                shoteffects(s->gunselect, from, to, s, false, id, prevaction);
                 break;
             }
 
