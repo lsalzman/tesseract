@@ -10,6 +10,7 @@ namespace game
     VARP(ragdollfade, 0, 1000, 300000);
     VARFP(playermodel, 0, 0, 4, changedplayermodel());
     VARP(forceplayermodels, 0, 0, 1);
+    VARP(hidedead, 0, 0, 1);
 
     vector<fpsent *> ragdolls;
 
@@ -200,7 +201,7 @@ namespace game
         loopv(players)
         {
             fpsent *d = players[i];
-            if(d == player1 || d->state==CS_SPECTATOR || d->state==CS_SPAWNING || d->lifesequence < 0 || d == exclude) continue;
+            if(d == player1 || d->state==CS_SPECTATOR || d->state==CS_SPAWNING || d->lifesequence < 0 || d == exclude || (d->state==CS_DEAD && hidedead)) continue;
             int team = 0;
             if(teamskins || m_teammode) team = isteam(player1->team, d->team) ? 1 : 2;
             renderplayer(d, getplayermodelinfo(d), team, 1);

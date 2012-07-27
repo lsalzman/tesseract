@@ -823,6 +823,17 @@ struct gzstream : stream
     offset tell() { return reading ? zfile.total_out : (writing ? zfile.total_in : -1); }
     offset rawtell() { return file ? file->tell() : -1; }
 
+    offset size()
+    {
+        if(!file) return -1;
+        offset pos = tell();
+        if(!file->seek(-4, SEEK_END)) return -1;
+        uint isize = file->getlil<uint>();
+        return file->seek(pos, SEEK_SET) ? isize : -1;
+    }
+
+    offset rawsize() { return file ? file->size() : -1; }
+
     bool seek(offset pos, int whence)
     {
         if(writing || !reading) return false;

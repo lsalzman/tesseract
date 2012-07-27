@@ -1062,6 +1062,7 @@ struct stream
     virtual offset rawtell() { return tell(); }
     virtual bool seek(offset pos, int whence = SEEK_SET) { return false; }
     virtual offset size();
+    virtual offset rawsize() { return size(); }
     virtual int read(void *buf, int len) { return 0; }
     virtual int write(const void *buf, int len) { return 0; }
     virtual int getchar() { uchar c; return read(&c, 1) == 1 ? c : -1; }
@@ -1072,10 +1073,12 @@ struct stream
     virtual int printf(const char *fmt, ...);
     virtual uint getcrc() { return 0; }
 
+    template<class T> int put(const T *v, int n) { return write(v, n*sizeof(T))/sizeof(T); } 
     template<class T> bool put(T n) { return write(&n, sizeof(n)) == sizeof(n); }
     template<class T> bool putlil(T n) { return put<T>(lilswap(n)); }
     template<class T> bool putbig(T n) { return put<T>(bigswap(n)); }
 
+    template<class T> int get(T *v, int n) { return read(v, n*sizeof(T))/sizeof(T); }
     template<class T> T get() { T n; return read(&n, sizeof(n)) == sizeof(n) ? n : 0; }
     template<class T> T getlil() { return lilswap(get<T>()); }
     template<class T> T getbig() { return bigswap(get<T>()); }
@@ -1083,6 +1086,20 @@ struct stream
 #ifndef STANDALONE
     SDL_RWops *rwops();
 #endif
+};
+
+template<class T>
+struct streambuf
+{
+    stream *s;
+
+    streambuf(stream *s) : s(s) {}
+    
+    T get() { return s->get<T>(); }
+    int get(T *vals, int numvals) { return s->get(vals, numvals); }
+    void put(const T &val) { s->put(&val, 1); }
+    void put(const T *vals, int numvals) { s->put(vals, numvals); } 
+    int length() { return s->size(); }
 };
 
 enum

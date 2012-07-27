@@ -765,10 +765,14 @@ void swapundo(undolist &a, undolist &b, const char *s)
 void editundo() { swapundo(undos, redos, "undo"); }
 void editredo() { swapundo(redos, undos, "redo"); }
 
+// guard against subdivision
+#define protectsel(f) { undoblock *_u = newundocube(sel); f; if(_u) { pasteundo(_u); freeundo(_u); } }
+
 vector<editinfo *> editinfos;
 editinfo *localedit = NULL;
 
-static void packcube(cube &c, vector<uchar> &buf)
+template<class B>
+static void packcube(cube &c, B &buf)
 {
     if(c.children)
     {
@@ -785,10 +789,10 @@ static void packcube(cube &c, vector<uchar> &buf)
     }
 }
 
-static bool packeditinfo(editinfo *e, vector<uchar> &buf)
+template<class B>
+static bool packblock(block3 &b, B &buf)
 {
-    if(!e || !e->copy || e->copy->size() <= 0 || e->copy->size() > (1<<20)) return false;
-    block3 &b = *e->copy;
+    if(b.size() <= 0 || b.size() > (1<<20)) return false;
     block3 hdr = b; 
     lilswap(hdr.o.v, 3);
     lilswap(hdr.s.v, 3);
@@ -800,7 +804,8 @@ static bool packeditinfo(editinfo *e, vector<uchar> &buf)
     return true;
 }
 
-static void unpackcube(cube &c, ucharbuf &buf)
+template<class B>
+static void unpackcube(cube &c, B &buf)
 {
     int mat = buf.get();
     if(mat == 0xFF)
@@ -817,10 +822,10 @@ static void unpackcube(cube &c, ucharbuf &buf)
     }
 }
 
-static bool unpackeditinfo(editinfo *&e, ucharbuf &buf)
+template<class B>
+static bool unpackblock(block3 *&b, B &buf)
 {
-    if(!e) e = editinfos.add(new editinfo);
-    if(e->copy) { freeblock(e->copy); e->copy = NULL; }
+    if(b) { freeblock(b); b = NULL; }
     block3 hdr;
     buf.get((uchar *)&hdr, sizeof(hdr));
     lilswap(hdr.o.v, 3);
@@ -828,12 +833,11 @@ static bool unpackeditinfo(editinfo *&e, ucharbuf &buf)
     lilswap(&hdr.grid, 1);
     lilswap(&hdr.orient, 1);
     if(hdr.size() > (1<<20)) return false;
-    e->copy = (block3 *)new uchar[sizeof(block3)+hdr.size()*sizeof(cube)];
-    block3 &b = *e->copy;
-    b = hdr; 
-    cube *c = b.c(); 
-    memset(c, 0, b.size()*sizeof(cube));
-    loopi(b.size()) unpackcube(c[i], buf);
+    b = (block3 *)new uchar[sizeof(block3)+hdr.size()*sizeof(cube)];
+    *b = hdr;
+    cube *c = b->c(); 
+    memset(c, 0, b->size()*sizeof(cube));
+    loopi(b->size()) unpackcube(c[i], buf);
     return true;
 }
 
@@ -870,7 +874,7 @@ static bool uncompresseditinfo(const uchar *inbuf, int inlen, uchar *&outbuf, in
 bool packeditinfo(editinfo *e, int &inlen, uchar *&outbuf, int &outlen)
 {
     vector<uchar> buf;
-    if(!packeditinfo(e, buf)) return false;
+    if(!e || !e->copy || !packblock(*e->copy, buf)) return false;
     inlen = buf.length();
     return compresseditinfo(buf.getbuf(), buf.length(), outbuf, outlen);
 }
@@ -881,7 +885,8 @@ bool unpackeditinfo(editinfo *&e, const uchar *inbuf, int inlen, int outlen)
     uchar *outbuf = NULL;
     if(!uncompresseditinfo(inbuf, inlen, outbuf, outlen)) return false;
     ucharbuf buf(outbuf, outlen);
-    if(!unpackeditinfo(e, buf))
+    if(!e) e = editinfos.add(new editinfo);
+    if(!unpackblock(e->copy, buf))
     {
         delete[] outbuf;
         return false;
@@ -899,9 +904,95 @@ void freeeditinfo(editinfo *&e)
     e = NULL;
 }
 
-// guard against subdivision
-#define protectsel(f) { undoblock *_u = newundocube(sel); f; if(_u) { pasteundo(_u); freeundo(_u); } }
+struct octabrushheader
+{
+    char magic[4];
+    int version;
+};
 
+struct octabrush : editinfo
+{
+    char *name;
+
+    octabrush() : name(NULL) {}
+    ~octabrush() { DELETEA(name); if(copy) freeblock(copy); }
+};
+
+static inline bool htcmp(const char *key, const octabrush &b) { return !strcmp(key, b.name); }
+
+static hashset<octabrush> octabrushes;
+
+void delbrush(char *name)
+{
+    if(octabrushes.remove(name))
+        conoutf("deleted brush %s", name); 
+}
+COMMAND(delbrush, "s");
+
+void savebrush(char *name)
+{
+    if(!name[0] || noedit(true) || (nompedit && multiplayer())) return;
+    octabrush *b = octabrushes.access(name);
+    if(!b)
+    {
+        b = &octabrushes[name];
+        b->name = newstring(name);
+    }
+    if(b->copy) freeblock(b->copy);
+    protectsel(b->copy = blockcopy(block3(sel), sel.grid));
+    changed(sel);
+    defformatstring(filename)(strpbrk(name, "/\\") ? "packages/%s.obr" : "packages/brush/%s.obr", name);
+    path(filename);
+    stream *f = opengzfile(filename, "wb");
+    if(!f) { conoutf(CON_ERROR, "could not write brush to %s", filename); return; }
+    octabrushheader hdr;
+    memcpy(hdr.magic, "OEBR", 4);
+    hdr.version = 0;
+    lilswap(&hdr.version, 1);
+    f->write(&hdr, sizeof(hdr));
+    streambuf<uchar> s(f);
+    if(!packblock(*b->copy, s)) { delete f; conoutf(CON_ERROR, "could not pack brush %s", filename); return; } 
+    delete f;
+    conoutf("wrote brush file %s", filename);
+}
+COMMAND(savebrush, "s");
+
+void pasteblock(block3 &b, selinfo &sel)
+{
+    sel.s = b.s;
+    int o = sel.orient;
+    sel.orient = b.orient;
+    cube *s = b.c();
+    loopselxyz(if(!isempty(*s) || s->children || s->material != MAT_AIR) pastecube(*s, c); s++); // 'transparent'. old opaque by 'delcube; paste'
+    sel.orient = o;
+}
+
+void pastebrush(char *name)
+{
+    if(!name[0] || noedit() || (nompedit && multiplayer())) return;
+    octabrush *b = octabrushes.access(name);
+    if(!b)
+    {
+        defformatstring(filename)(strpbrk(name, "/\\") ? "packages/%s.obr" : "packages/brush/%s.obr", name);
+        path(filename);
+        stream *f = opengzfile(filename, "rb");
+        if(!f) { conoutf(CON_ERROR, "could not read brush %s", filename); return; }
+        octabrushheader hdr;
+        if(f->read(&hdr, sizeof(hdr)) != sizeof(octabrushheader) || memcmp(hdr.magic, "OEBR", 4)) { delete f; conoutf(CON_ERROR, "brush %s has malformatted header", filename); return; }
+        lilswap(&hdr.version, 1);
+        if(hdr.version != 0) { delete f; conoutf(CON_ERROR, "brush %s uses unsupported version", filename); return; }
+        streambuf<uchar> s(f);
+        block3 *copy = NULL;
+        if(!unpackblock(copy, s)) { delete f; conoutf(CON_ERROR, "could not unpack brush %s", filename); return; }
+        delete f;
+        b = &octabrushes[name];
+        b->name = newstring(name);
+        b->copy = copy;
+    }
+    pasteblock(*b->copy, sel);
+}
+COMMAND(pastebrush, "s");
+ 
 void mpcopy(editinfo *&e, selinfo &sel, bool local)
 {
     if(local) game::edittrigger(sel, EDIT_COPY);
@@ -916,15 +1007,7 @@ void mppaste(editinfo *&e, selinfo &sel, bool local)
 {
     if(e==NULL) return;
     if(local) game::edittrigger(sel, EDIT_PASTE);
-    if(e->copy)
-    {
-        sel.s = e->copy->s;
-        int o = sel.orient;
-        sel.orient = e->copy->orient;
-        cube *s = e->copy->c();
-        loopselxyz(if(!isempty(*s) || s->children || s->material != MAT_AIR) pastecube(*s, c); s++); // 'transparent'. old opaque by 'delcube; paste'
-        sel.orient = o;
-    }
+    if(e->copy) pasteblock(*e->copy, sel);
 }
 
 void copy()
