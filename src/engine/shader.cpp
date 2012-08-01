@@ -1072,7 +1072,7 @@ static int allocatepostfxtex(int scale)
     postfxtex &t = postfxtexs.add();
     t.scale = scale;
     glGenTextures(1, &t.id);
-    createtexture(t.id, max(screen->w>>scale, 1), max(screen->h>>scale, 1), NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(t.id, max(postfxw>>scale, 1), max(postfxh>>scale, 1), NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
     return postfxtexs.length()-1;
 }
 
@@ -1091,32 +1091,33 @@ void cleanuppostfx(bool fullclean)
     postfxh = 0;
 }
 
-void renderpostfx()
+GLuint setuppostfx(int w, int h)
 {
-    if(postfxpasses.empty()) return;
+    if(postfxpasses.empty()) return 0;
 
-    if(postfxw != screen->w || postfxh != screen->h) 
+    if(postfxw != w || postfxh != h)
     {
         cleanuppostfx(false);
-        postfxw = screen->w;
-        postfxh = screen->h;
+        postfxw = w;
+        postfxh = h;
     }
 
-    int binds[NUMPOSTFXBINDS];
-    loopi(NUMPOSTFXBINDS) binds[i] = -1;
+    loopi(NUMPOSTFXBINDS) postfxbinds[i] = -1;
     loopv(postfxtexs) postfxtexs[i].used = -1;
+    
+    if(!postfxfb) glGenFramebuffers_(1, &postfxfb);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, postfxfb);
+    int tex = allocatepostfxtex(0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, postfxtexs[tex].id, 0);
 
-    binds[0] = allocatepostfxtex(0);
-    postfxtexs[binds[0]].used = 0;
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, postfxtexs[binds[0]].id);
-    glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, 0, 0, screen->w, screen->h);
+    postfxbinds[0] = tex;
+    postfxtexs[tex].used = 0;
 
-    if(hasFBO && postfxpasses.length() > 1)
-    {
-        if(!postfxfb) glGenFramebuffers_(1, &postfxfb);
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, postfxfb);
-    }
-
+    return postfxfb;
+}
+     
+void renderpostfx()
+{
     loopv(postfxpasses)
     {
         postfxpass &p = postfxpasses[i];
@@ -1124,29 +1125,29 @@ void renderpostfx()
         int tex = -1;
         if(!postfxpasses.inrange(i+1))
         {
-            if(hasFBO && postfxpasses.length() > 1) glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
         }
         else
         {
             tex = allocatepostfxtex(p.outputscale);
-            if(hasFBO) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, postfxtexs[tex].id, 0);
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, postfxtexs[tex].id, 0);
         }
 
-        int w = tex >= 0 ? max(screen->w>>postfxtexs[tex].scale, 1) : screen->w, 
-            h = tex >= 0 ? max(screen->h>>postfxtexs[tex].scale, 1) : screen->h;
+        int w = tex >= 0 ? max(postfxw>>postfxtexs[tex].scale, 1) : postfxw, 
+            h = tex >= 0 ? max(postfxh>>postfxtexs[tex].scale, 1) : postfxh;
         glViewport(0, 0, w, h);
         p.shader->set();
         LOCALPARAM(params, (p.params));
         int tw = w, th = h, tmu = 0;
-        loopj(NUMPOSTFXBINDS) if(p.inputs&(1<<j) && binds[j] >= 0)
+        loopj(NUMPOSTFXBINDS) if(p.inputs&(1<<j) && postfxbinds[j] >= 0)
         {
             if(!tmu)
             {
-                tw = max(screen->w>>postfxtexs[binds[j]].scale, 1);
-                th = max(screen->h>>postfxtexs[binds[j]].scale, 1);
+                tw = max(postfxw>>postfxtexs[postfxbinds[j]].scale, 1);
+                th = max(postfxh>>postfxtexs[postfxbinds[j]].scale, 1);
             }
             else glActiveTexture_(GL_TEXTURE0_ARB + tmu);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, postfxtexs[binds[j]].id);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, postfxtexs[postfxbinds[j]].id);
             ++tmu;
         }
         if(tmu) glActiveTexture_(GL_TEXTURE0_ARB);
@@ -1157,21 +1158,16 @@ void renderpostfx()
         glTexCoord2f(tw, th); glVertex2f( 1,  1);
         glEnd();
 
-        loopj(NUMPOSTFXBINDS) if(p.freeinputs&(1<<j) && binds[j] >= 0)
+        loopj(NUMPOSTFXBINDS) if(p.freeinputs&(1<<j) && postfxbinds[j] >= 0)
         {
-            postfxtexs[binds[j]].used = -1;
-            binds[j] = -1;
+            postfxtexs[postfxbinds[j]].used = -1;
+            postfxbinds[j] = -1;
         }
         if(tex >= 0)
         {
-            if(binds[p.outputbind] >= 0) postfxtexs[binds[p.outputbind]].used = -1;
-            binds[p.outputbind] = tex;
+            if(postfxbinds[p.outputbind] >= 0) postfxtexs[postfxbinds[p.outputbind]].used = -1;
+            postfxbinds[p.outputbind] = tex;
             postfxtexs[tex].used = p.outputbind;
-            if(!hasFBO)
-            {
-                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, postfxtexs[tex].id);
-                glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, 0, 0, w, h);
-            }
         }
     }
 }
@@ -1208,13 +1204,16 @@ ICOMMAND(addpostfx, "siisffff", (char *name, int *bind, int *scale, char *inputs
     int inputmask = inputs[0] ? 0 : 1;
     int freemask = inputs[0] ? 0 : 1;
     bool freeinputs = true;
-    for(; *inputs; inputs++) if(isdigit(*inputs)) 
+    for(; *inputs; inputs++) 
     {
-        inputmask |= 1<<(*inputs-'0');
-        if(freeinputs) freemask |= 1<<(*inputs-'0');
+        if(isdigit(*inputs)) 
+        {
+            inputmask |= 1<<(*inputs-'0');
+            if(freeinputs) freemask |= 1<<(*inputs-'0');
+        }
+        else if(*inputs=='+') freeinputs = false;
+        else if(*inputs=='-') freeinputs = true;
     }
-    else if(*inputs=='+') freeinputs = false;
-    else if(*inputs=='-') freeinputs = true;
     inputmask &= (1<<NUMPOSTFXBINDS)-1;
     freemask &= (1<<NUMPOSTFXBINDS)-1;
     addpostfx(name, clamp(*bind, 0, NUMPOSTFXBINDS-1), max(*scale, 0), inputmask, freemask, vec4(*x, *y, *z, *w));

@@ -516,7 +516,6 @@ void commitchanges(bool force)
     octarender();
     inbetweenframes = true;
     setupmaterials(oldlen);
-    invalidatepostfx();
     clearshadowcache();
     updatevabbs();
 }

@@ -1486,7 +1486,6 @@ void allchanged(bool load)
     octarender();
     if(load) precachetextures();
     setupmaterials();
-    invalidatepostfx();
     clearshadowcache();
     updatevabbs(true);
     if(load) 

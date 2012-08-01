@@ -849,9 +849,6 @@ static void cleanuplightsphere();
 
 void cleanupgl()
 {
-    extern void cleanupmotionblur();
-    cleanupmotionblur();
-
     extern void clearminimap();
     clearminimap();
 
@@ -1569,87 +1566,6 @@ void clipminimap(ivec &bbmin, ivec &bbmax, cube *c = worldroot, int x = 0, int y
             loopk(3) bbmax[k] = max(bbmax[k], o[k] + size);
         }
     }
-}
-
-GLuint motiontex = 0;
-int motionw = 0, motionh = 0, lastmotion = 0;
-
-void cleanupmotionblur()
-{
-    if(motiontex) { glDeleteTextures(1, &motiontex); motiontex = 0; }
-    motionw = motionh = 0;
-    lastmotion = 0;
-}
-
-VARFP(motionblur, 0, 0, 1, { if(!motionblur) cleanupmotionblur(); });
-VARP(motionblurmillis, 1, 5, 1000);
-FVARP(motionblurscale, 0, 0.5f, 1);
-
-void addmotionblur()
-{
-    if(!motionblur || !hasTR || max(screen->w, screen->h) > hwtexsize) return;
-
-    if(paused || game::ispaused()) { lastmotion = 0; return; }
-
-    if(!motiontex || motionw != screen->w || motionh != screen->h)
-    {
-        if(!motiontex) glGenTextures(1, &motiontex);
-        motionw = screen->w;
-        motionh = screen->h;
-        lastmotion = 0;
-        createtexture(motiontex, motionw, motionh, NULL, 3, 0, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
-    }
-
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, motiontex);
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glDisable(GL_TEXTURE_2D);
-    glEnable(GL_TEXTURE_RECTANGLE_ARB);
-
-    rectshader->set();
-
-    glColor4f(1, 1, 1, lastmotion ? pow(motionblurscale, max(float(lastmillis - lastmotion)/motionblurmillis, 1.0f)) : 0);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(      0,       0); glVertex2f(-1, -1);
-    glTexCoord2f(motionw,       0); glVertex2f( 1, -1);
-    glTexCoord2f(      0, motionh); glVertex2f(-1,  1);
-    glTexCoord2f(motionw, motionh); glVertex2f( 1,  1);
-    glEnd();
-
-    glDisable(GL_TEXTURE_RECTANGLE_ARB);
-    glEnable(GL_TEXTURE_2D);
-
-    glDisable(GL_BLEND);
-
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
- 
-    if(lastmillis - lastmotion >= motionblurmillis)
-    {
-        lastmotion = lastmillis - lastmillis%motionblurmillis;
-
-        glCopyTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, 0, 0, screen->w, screen->h);
-    }
-}
-
-bool dopostfx = false;
-
-void invalidatepostfx()
-{
-    dopostfx = false;
 }
 
 void gl_drawhud(int w, int h);
@@ -4588,7 +4504,7 @@ void processhdr(GLuint outfbo = 0)
     timer_end(TIMER_HDR);
 }
 
-void dosmaa()
+void dosmaa(GLuint outfbo = 0)
 {
     timer_begin(TIMER_SMAA);
 
@@ -4645,7 +4561,7 @@ void dosmaa()
     }
     else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
     smaaneighborhoodshader->set();
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -5348,10 +5264,10 @@ void gl_drawframe(int w, int h)
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
 
-    processhdr(smaa ? smaafbo[0] : 0);
-    if(smaa) dosmaa();
+    GLuint postfxfbo = setuppostfx(w, h);
+    processhdr(smaa ? smaafbo[0] : postfxfbo);
+    if(smaa) dosmaa(postfxfbo);
 
-    addmotionblur();
     if(fogoverlay && fogmat != MAT_AIR) drawfogoverlay(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
     renderpostfx();
 
@@ -5370,7 +5286,6 @@ void gl_drawmainmenu(int w, int h)
     xtravertsva = xtraverts = glde = gbatches = vtris = vverts = 0;
 
     renderbackground(NULL, NULL, NULL, NULL, true, true);
-    renderpostfx();
     
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
