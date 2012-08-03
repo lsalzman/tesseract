@@ -72,18 +72,18 @@ struct animmodel : model
     struct skin
     {
         part *owner;
-        Texture *tex, *masks, *envmap, *unlittex, *normalmap;
+        Texture *tex, *masks, *envmap, *normalmap;
         Shader *shader;
         float spec, ambient, glow, glowdelta, glowpulse, fullbright, envmapmin, envmapmax, scrollu, scrollv, alphatest;
         bool alphablend, cullface;
 
-        skin() : owner(0), tex(notexture), masks(notexture), envmap(NULL), unlittex(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(false), cullface(true) {}
+        skin() : owner(0), tex(notexture), masks(notexture), envmap(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(false), cullface(true) {}
 
         bool envmapped() { return hasCM && envmapmax>0 && envmapmodels; }
         bool bumpmapped() { return normalmap && bumpmodels; }
         bool normals() { return true; }
         bool tangents() { return bumpmapped(); }
-        bool alphatested() { return alphatest > 0 && (bumpmapped() && unlittex ? unlittex : tex)->type&Texture::ALPHA; }
+        bool alphatested() { return alphatest > 0 && tex->type&Texture::ALPHA; }
 
         void setshaderparams(mesh *m, const animstate *as, bool masked, bool alphatested = false, bool skinned = true)
         {
@@ -166,7 +166,7 @@ struct animmodel : model
             if(!cullface && enablecullface) { glDisable(GL_CULL_FACE); enablecullface = false; }
             else if(cullface && !enablecullface) { glEnable(GL_CULL_FACE); enablecullface = true; }
 
-            Texture *s = bumpmapped() && unlittex ? unlittex : tex;
+            Texture *s = tex;
 
             if(as->cur.anim&ANIM_NOSKIN)
             {
@@ -1569,12 +1569,10 @@ template<class MDL, class MESH> struct modelcommands
         loopskins(meshname, s, s.envmap = tex);
     }
     
-    static void setbumpmap(char *meshname, char *normalmapfile, char *skinfile)
+    static void setbumpmap(char *meshname, char *normalmapfile)
     {
-        Texture *normalmaptex = NULL, *skintex = NULL;
-        normalmaptex = textureload(makerelpath(MDL::dir, normalmapfile), 0, true, false);
-        if(skinfile[0]) skintex = textureload(makerelpath(MDL::dir, skinfile), 0, true, false);
-        loopskins(meshname, s, { s.unlittex = skintex; s.normalmap = normalmaptex; m.calctangents(); });
+        Texture *normalmaptex = textureload(makerelpath(MDL::dir, normalmapfile), 0, true, false);
+        loopskins(meshname, s, { s.normalmap = normalmaptex; m.calctangents(); });
     }
     
     static void setfullbright(char *meshname, float *fullbright)
@@ -1623,7 +1621,7 @@ template<class MDL, class MESH> struct modelcommands
             modelcommand(setalphablend, "alphablend", "si");
             modelcommand(setcullface, "cullface", "si");
             modelcommand(setenvmap, "envmap", "ss");
-            modelcommand(setbumpmap, "bumpmap", "sss");
+            modelcommand(setbumpmap, "bumpmap", "ss");
             modelcommand(setfullbright, "fullbright", "sf");
             modelcommand(setshader, "shader", "ss");
             modelcommand(setscroll, "scroll", "sff");

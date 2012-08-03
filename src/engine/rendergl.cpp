@@ -2507,7 +2507,7 @@ VARFP(smtetra, 0, 0, 1, { cleardeferredlightshaders(); clearshadowcache(); });
 VAR(smtetraclip, 0, 1, 1);
 VAR(smtetraclear, 0, 1, 1);
 FVAR(smtetraborder, 0, 0, 1e3f);
-VAR(smcullside, 0, 1, 1);
+VARF(smcullside, 0, 1, 1, cleanupshadowatlas());
 VARF(smcache, 0, 1, 2, cleanupshadowatlas());
 VARFP(smfilter, 0, 2, 2, { cleardeferredlightshaders(); cleanupshadowatlas(); });
 VARFP(smgather, 0, 0, 1, { cleardeferredlightshaders(); cleanupshadowatlas(); });
