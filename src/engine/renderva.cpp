@@ -1131,13 +1131,36 @@ void rendershadowmapworld()
                 glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
             }
             glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
-            glNormalPointer(GL_BYTE, VTXSIZE, va->vdata[0].norm.v);
         }
 
         if(!smnodraw) drawvatris(va, 3*va->tris, va->edata);
         xtravertsva += va->verts;
 
         prev = va;
+    }
+
+    if(skyshadow)
+    {
+        prev = NULL;
+        for(vtxarray *va = shadowva; va; va = va->rnext)
+        {
+            if(!va->sky || !(va->shadowmask&(1<<shadowside))) continue;
+
+            if(!prev || va->vbuf != prev->vbuf)
+            {
+                if(hasVBO)
+                {
+                    glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
+                    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->skybuf);
+                }
+                glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
+            }
+
+            if(!smnodraw) drawvatris(va, va->sky, va->skydata);
+            xtravertsva += va->sky/3;
+
+            prev = va;
+        }
     }
 
     if(hasVBO)
@@ -1698,7 +1721,6 @@ void setupTMUs(renderstate &cur)
     glEnableClientState(GL_COLOR_ARRAY);
     GLOBALPARAM(colorparams, (1, 1, 1, 1));
     GLOBALPARAM(blendlayer, (1.0f));
-    glColor4fv(cur.color);
 }
 
 void cleanupTMUs(renderstate &cur)
@@ -1870,11 +1892,36 @@ void rendergeom()
 
 void renderrsmgeom()
 {
+    glEnableClientState(GL_VERTEX_ARRAY);
+    
+    if(skyshadow)
+    {
+        SETSHADER(rsmsky);
+        vtxarray *prev = NULL;
+        for(vtxarray *va = shadowva; va; va = va->next)
+        {
+            if(!va->sky) continue;
+
+            if(!prev || va->vbuf != prev->vbuf)
+            {
+                if(hasVBO)
+                {
+                    glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
+                    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->skybuf);
+                }
+                glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
+            }
+
+            drawvatris(va, va->sky, va->skydata);
+            xtravertsva += va->sky/3;
+
+            prev = va;
+        }
+    }
+
     renderstate cur;
     setupTMUs(cur);
     resetbatches();
-
-    glEnableClientState(GL_VERTEX_ARRAY);
 
     int blends = 0;
     for(vtxarray *va = shadowva; va; va = va->rnext)

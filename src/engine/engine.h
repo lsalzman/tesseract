@@ -664,7 +664,7 @@ extern void cleardecals();
 extern void renderdecals(bool mainpass = false);
 
 // rendersky
-extern int explicitsky;
+extern int skytexture, skyshadow, explicitsky;
 
 extern void drawskybox(int farplane);
 extern bool limitsky();

@@ -380,7 +380,8 @@ static void drawfogdome(int farplane)
     glEnable(GL_TEXTURE_2D);
 }
 
-VARNR(skytexture, useskytexture, 0, 1, 1);
+VARNR(skytexture, useskytexture, 0, 0, 1);
+VARFR(skyshadow, 0, 0, 1, clearshadowcache());
 
 int explicitsky = 0;
 
