@@ -972,6 +972,8 @@ FVARP(mouseaccel, 0, 0, 1000);
  
 VAR(thirdperson, 0, 0, 2);
 FVAR(thirdpersondistance, 0, 20, 1000);
+FVAR(thirdpersonup, -1000, 0, 1000);
+FVAR(thirdpersonside, -1000, 0, 1000);
 physent *camera1 = NULL;
 bool detachedcamera = false;
 bool isthirdperson() { return player!=camera1 || detachedcamera; }
@@ -1040,14 +1042,33 @@ void recomputecamera()
         camera1->move = -1;
         camera1->eyeheight = camera1->aboveeye = camera1->radius = camera1->xradius = camera1->yradius = 2;
         
-        vec dir;
+        vec dir, up, side;
         vecfromyawpitch(camera1->yaw, camera1->pitch, -1, 0, dir);
+        vecfromyawpitch(camera1->yaw, camera1->pitch+90, 1, 0, up);
+        vecfromyawpitch(camera1->yaw, 0, 0, -1, side);
         if(game::collidecamera()) 
         {
             movecamera(camera1, dir, thirdpersondistance, 1);
             movecamera(camera1, dir, clamp(thirdpersondistance - camera1->o.dist(player->o), 0.0f, 1.0f), 0.1f);
+            if(thirdpersonup)
+            {
+                vec pos = camera1->o;
+                movecamera(camera1, up, thirdpersonup, 1);
+                movecamera(camera1, up, clamp(thirdpersonup - camera1->o.dist(pos), 0.0f, 1.0f), 0.1f);
+            }
+            if(thirdpersonside)
+            {
+                vec pos = camera1->o;
+                movecamera(camera1, side, thirdpersonside, 1);
+                movecamera(camera1, side, clamp(thirdpersonside - camera1->o.dist(pos), 0.0f, 1.0f), 0.1f);
+            }
         }
-        else camera1->o.add(vec(dir).mul(thirdpersondistance));
+        else 
+        {
+            camera1->o.add(vec(dir).mul(thirdpersondistance));
+            if(thirdpersonup) camera1->o.add(vec(up).mul(thirdpersonup));
+            if(thirdpersonside) camera1->o.add(vec(side).mul(thirdpersonside));
+        }
     }
 
     setviewcell(camera1->o);
