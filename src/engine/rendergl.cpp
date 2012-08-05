@@ -1053,14 +1053,18 @@ void recomputecamera()
             if(thirdpersonup)
             {
                 vec pos = camera1->o;
-                movecamera(camera1, up, thirdpersonup, 1);
-                movecamera(camera1, up, clamp(thirdpersonup - camera1->o.dist(pos), 0.0f, 1.0f), 0.1f);
+                float dist = fabs(thirdpersonup);
+                if(thirdpersonup < 0) up.neg();
+                movecamera(camera1, up, dist, 1);
+                movecamera(camera1, up, clamp(dist - camera1->o.dist(pos), 0.0f, 1.0f), 0.1f);
             }
             if(thirdpersonside)
             {
                 vec pos = camera1->o;
-                movecamera(camera1, side, thirdpersonside, 1);
-                movecamera(camera1, side, clamp(thirdpersonside - camera1->o.dist(pos), 0.0f, 1.0f), 0.1f);
+                float dist = fabs(thirdpersonside);
+                if(thirdpersonside < 0) side.neg();
+                movecamera(camera1, side, dist, 1);
+                movecamera(camera1, side, clamp(dist - camera1->o.dist(pos), 0.0f, 1.0f), 0.1f);
             }
         }
         else 
