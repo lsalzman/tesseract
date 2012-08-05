@@ -4779,8 +4779,6 @@ void rendergbuffer()
     {
         linearworldmatrix.mul(invmvpmatrix, screenmatrix);
         worldmatrix = linearworldmatrix;
-        glScissor(1, 1, vieww-2, viewh-2);
-        glEnable(GL_SCISSOR_TEST);
     }
     else
     {
@@ -4817,7 +4815,6 @@ void rendergbuffer()
     if(minimapping)
     {
         renderminimapmaterials();
-        glDisable(GL_SCISSOR_TEST);
     }
     else if(!envmapping)
     {
@@ -4952,10 +4949,11 @@ void drawminimap()
 
     visiblecubes(false);
     collectlights();
-    rendershadowatlas();
     findmaterials();
 
     rendergbuffer();
+
+    rendershadowatlas();
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
     glViewport(0, 0, vieww, viewh);
