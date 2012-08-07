@@ -139,8 +139,6 @@ void setsurface(cube &c, int orient, const surfaceinfo &src, const vertinfo *src
     if(srcverts) memcpy(c.ext->verts() + dstoffset, srcverts, numsrcverts*sizeof(vertinfo));
 }
 
-// quality parameters, set by the calclight arg
-
 bool PackNode::insert(ushort &tx, ushort &ty, ushort tw, ushort th)
 {
     if((available < tw && available < th) || w < tw || h < th)
@@ -592,7 +590,7 @@ static Uint32 calclighttimer(Uint32 interval, void *param)
     return interval;
 }
 
-void calclight(int *quality)
+void calclight()
 {
     renderbackground("computing lighting... (esc to abort)");
     mpremip(true);
@@ -619,7 +617,7 @@ void calclight(int *quality)
             (end - start) / 1000.0f);
 }
 
-COMMAND(calclight, "i");
+COMMAND(calclight, "");
 
 VARF(fullbright, 0, 0, 1, initlights());
 VARF(fullbrightlevel, 0, 128, 255, initlights());
