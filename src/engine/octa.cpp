@@ -782,6 +782,7 @@ int faceconvexity(ivec v[4])
 {
     ivec n;
     n.cross(ivec(v[1]).sub(v[0]), ivec(v[2]).sub(v[0]));
+    if(!((n.x|n.y|n.z)&0xFFFFF)) n.shr(20);
     return ivec(v[0]).sub(v[3]).dot(n);
     // 1 if convex, -1 if concave, 0 if flat
 }
