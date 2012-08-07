@@ -417,7 +417,7 @@ static void calcsurfaces(cube &c, const ivec &co, int size, int usefacemask, int
                     numlitverts += numverts;
                 }
             }
-            else if(!flataxisface(c, i)) convex = faceconvexity(verts, numverts);
+            else if(!flataxisface(c, i)) convex = faceconvexity(verts, numverts, size);
         }
         else
         {

@@ -310,7 +310,7 @@ extern bool subdividecube(cube &c, bool fullcheck=true, bool brighten=true);
 extern void edgespan2vectorcube(cube &c);
 extern int faceconvexity(ivec v[4]);
 extern int faceconvexity(ivec v[4], int &vis);
-extern int faceconvexity(vertinfo *verts, int numverts);
+extern int faceconvexity(vertinfo *verts, int numverts, int size);
 extern int faceconvexity(cube &c, int orient);
 extern void calcvert(cube &c, int x, int y, int z, int size, ivec &vert, int i, bool solid = false);
 extern void calcvert(cube &c, int x, int y, int z, int size, vec &vert, int i, bool solid = false);

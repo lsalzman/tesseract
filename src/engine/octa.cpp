@@ -782,16 +782,24 @@ int faceconvexity(ivec v[4])
 {
     ivec n;
     n.cross(ivec(v[1]).sub(v[0]), ivec(v[2]).sub(v[0]));
-    if(!((n.x|n.y|n.z)&0xFFFFF)) n.shr(20);
     return ivec(v[0]).sub(v[3]).dot(n);
     // 1 if convex, -1 if concave, 0 if flat
 }
 
-int faceconvexity(vertinfo *verts, int numverts)
+int faceconvexity(vertinfo *verts, int numverts, int size)
 {
     if(numverts < 4) return 0;
-    ivec v[4] = { verts[0].getxyz(), verts[1].getxyz(), verts[2].getxyz(), verts[3].getxyz() };
-    return faceconvexity(v);
+    ivec v0 = verts[0].getxyz(),
+         e1 = verts[1].getxyz().sub(v0),
+         e2 = verts[2].getxyz().sub(v0),
+         n;
+    if(size >= (8<<5))
+    {
+        if(size >= (8<<10)) n.cross(e1.shr(10), e2.shr(10));
+        else n.cross(e1, e2).shr(10);
+    }
+    else n.cross(e1, e2);
+    return verts[3].getxyz().sub(v0).dot(n);
 }
 
 int faceconvexity(ivec v[4], int &vis)

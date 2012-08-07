@@ -922,7 +922,7 @@ void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
             verts = c.ext->verts() + c.ext->surfaces[i].verts;
             vec vo = ivec(x, y, z).mask(~0xFFF).tovec();
             loopj(numverts) pos[j] = verts[j].getxyz().tovec().mul(1.0f/8).add(vo);
-            if(!(c.merged&(1<<i)) && !flataxisface(c, i)) convex = faceconvexity(verts, numverts);
+            if(!(c.merged&(1<<i)) && !flataxisface(c, i)) convex = faceconvexity(verts, numverts, size);
         }
         else
         {
