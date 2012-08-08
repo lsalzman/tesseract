@@ -85,7 +85,6 @@ void BlendMapNode::splitsolid(uchar &type, uchar val)
 
 uchar BlendMapBranch::shrink(BlendMapNode &child, int quadrant)
 {
-    loopi(4) if(i != quadrant) children[i].cleanup(type[i]);
     uchar childtype = type[quadrant];
     child = children[quadrant];
     type[quadrant] = BM_SOLID;
@@ -808,11 +807,11 @@ static void updateblendtextures(uchar &type, BlendMapNode &node, int bmx, int bm
             uy2 = min(uy2, (uy+uh+step-1)&~(step-1));
             bt->valid = true;
         }
-        uchar *data = bt->data + (uy1-ty)/step*bt->size + (ux1-tx1)/step;
+        uchar *data = bt->data + (uy1-ty)/step*bt->size + (ux1-tx)/step;
         renderblendtexture(type, node, bmx, bmy, bmsize, data, bt->size, ux1, uy1, ux2-ux1, uy2-uy1);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, bt->size);
         glBindTexture(GL_TEXTURE_2D, bt->tex);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, (ux1-tx1)/step, (uy1-ty1)/step, (ux2-ux1)/step, (uy2-uy1)/step, GL_LUMINANCE, GL_UNSIGNED_BYTE, data); 
+        glTexSubImage2D(GL_TEXTURE_2D, 0, (ux1-tx)/step, (uy1-ty)/step, (ux2-ux1)/step, (uy2-uy1)/step, GL_LUMINANCE, GL_UNSIGNED_BYTE, data); 
     }
 
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
