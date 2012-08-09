@@ -2034,16 +2034,12 @@ Texture *loadthumbnail(Slot &slot)
     {
         ImageData s, g, l;
         texturedata(s, NULL, &slot.sts[0], false);
-        if(vslot.colorscale != vec(1, 1, 1)) texmad(s, vslot.colorscale, vec(0, 0, 0));
         if(glow >= 0) texturedata(g, NULL, &slot.sts[glow], false);
-        if(layer) 
-        {
-            texturedata(l, NULL, &layer->slot->sts[0], false);
-            if(layer->colorscale != vec(1, 1, 1)) texmad(l, layer->colorscale, vec(0, 0, 0));
-        }
+        if(layer) texturedata(l, NULL, &layer->slot->sts[0], false);
         if(!s.data) t = slot.thumbnail = notexture;
         else
         {
+            if(vslot.colorscale != vec(1, 1, 1)) texmad(s, vslot.colorscale, vec(0, 0, 0));
             int xs = s.w, ys = s.h;
             if(s.w > 64 || s.h > 64) scaleimage(s, min(s.w, 64), min(s.h, 64));
             if(g.data)
@@ -2053,6 +2049,7 @@ Texture *loadthumbnail(Slot &slot)
             }
             if(l.data)
             {
+                if(layer->colorscale != vec(1, 1, 1)) texmad(l, layer->colorscale, vec(0, 0, 0));
                 if(l.w != s.w/2 || l.h != s.h/2) scaleimage(l, s.w/2, s.h/2);
                 forcergbimage(s);
                 forcergbimage(l); 
