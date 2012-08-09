@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false, hasDBGO = false;
 bool mesa = false, intel = false, ati = false, nvidia = false;
 
 int hasstencil = 0;
@@ -138,6 +138,12 @@ PFNGLCLAMPCOLORARBPROC glClampColor_ = NULL;
 PFNGLTEXIMAGE3DEXTPROC        glTexImage3D_ = NULL;
 PFNGLTEXSUBIMAGE3DEXTPROC     glTexSubImage3D_ = NULL;
 PFNGLCOPYTEXSUBIMAGE3DEXTPROC glCopyTexSubImage3D_ = NULL;
+
+// GL_ARB_debug_output
+PFNGLDEBUGMESSAGECONTROLARBPROC glDebugMessageControl_ = NULL;
+PFNGLDEBUGMESSAGEINSERTARBPROC glDebugMessageInsert_ = NULL;
+PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallback_ = NULL;
+PFNGLGETDEBUGMESSAGELOGARBPROC glGetDebugMessageLog_ = NULL;
 
 void *getprocaddress(const char *name)
 {
@@ -660,7 +666,18 @@ void gl_checkextensions()
     else if(hasext(exts, "GL_NV_depth_clamp"))
     {
         hasDC = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_NV_depth_clamp extension");
+        if(dbgexts) conoutf(CON_INIT, "Using GL_NV_depth_clamp extension.");
+    }
+
+    if(hasext(exts, "GL_ARB_debug_output"))
+    {
+        glDebugMessageControl_ =  (PFNGLDEBUGMESSAGECONTROLARBPROC) getprocaddress("glDebugMessageControlARB");
+        glDebugMessageInsert_ =   (PFNGLDEBUGMESSAGEINSERTARBPROC)  getprocaddress("glDebugMessageInsertARB");
+        glDebugMessageCallback_ = (PFNGLDEBUGMESSAGECALLBACKARBPROC)getprocaddress("glDebugMessageCallbackARB");
+        glGetDebugMessageLog_ =   (PFNGLGETDEBUGMESSAGELOGARBPROC)  getprocaddress("glGetDebugMessageLogARB");
+
+        hasDBGO = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_debug_output extension.");
     }
 }
 
