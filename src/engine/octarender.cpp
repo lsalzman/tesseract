@@ -605,7 +605,7 @@ void addgrasstri(int face, vertex *verts, int numv, ushort texture, int layer)
     loopk(numv) g.radius = max(g.radius, g.v[k].dist(g.center));
 
     g.texture = texture;
-    g.blend = layer == LAYER_BLEND ? ((int(g.v[0].x)>>12)+1) | (((int(g.v[0].y)>>12)+1)<<8) : 0;
+    g.blend = layer == LAYER_BLEND ? ((int(g.center.x)>>12)+1) | (((int(g.center.y)>>12)+1)<<8) : 0;
 }
 
 static inline void calctexgen(VSlot &vslot, int dim, vec4 &sgen, vec4 &tgen)
