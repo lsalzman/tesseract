@@ -488,7 +488,7 @@ static int calcblendlayer(uchar &type, BlendMapNode &node, int bmx, int bmy, int
             if(cx + cw > bmx + bmsize) 
             {
                 int clayer = calcblendlayer(node.branch->type[3], node.branch->children[3], bmx+bmsize, bmy+bmsize, bmsize, cx, cy, cw, ch);
-                if(clayer < 0) layer = clayer; else if(clayer != layer) return LAYER_BLEND;
+                if(layer < 0) layer = clayer; else if(clayer != layer) return LAYER_BLEND;
             }
         }
         return layer >= 0 ? layer : LAYER_TOP;
