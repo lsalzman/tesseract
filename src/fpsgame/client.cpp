@@ -389,11 +389,6 @@ namespace game
 
     ICOMMAND(checkmaps, "", (), addmsg(N_CHECKMAPS, "r"));
 
-    VARP(localmode, STARTGAMEMODE, 1, STARTGAMEMODE + NUMGAMEMODES - 1);
-    SVARP(localmap, "complex");
-    VARP(lobbymode, STARTGAMEMODE, 0, STARTGAMEMODE + NUMGAMEMODES - 1);
-    SVARP(lobbymap, "complex");
-
     int gamemode = INT_MAX, nextmode = INT_MAX;
     string clientmap = "";
 
@@ -461,8 +456,6 @@ namespace game
 
     void changemap(const char *name, int mode) // request map change, server may ignore
     {
-        if(m_checknot(mode, M_EDIT) && !name[0])
-            name = clientmap[0] ? clientmap : (remote ? lobbymap : localmap);
         if(!remote)
         {
             server::forcemap(name, mode);
@@ -472,7 +465,7 @@ namespace game
     }
     void changemap(const char *name)
     {
-        changemap(name, m_valid(nextmode) ? nextmode : (remote ? lobbymode : localmode));
+        changemap(name, m_valid(nextmode) ? nextmode : (remote ? 0 : 1));
     }
     ICOMMAND(map, "s", (char *name), changemap(name));
 
@@ -1047,7 +1040,7 @@ namespace game
     {
         static char text[MAXTRANS];
         int type;
-        bool mapchanged = false, initmap = false;
+        bool mapchanged = false;
 
         while(p.remaining()) switch(type = getint(p))
         {
@@ -1072,8 +1065,6 @@ namespace game
             case N_WELCOME:
             {
                 notifywelcome();
-                int hasmap = getint(p);
-                if(!hasmap) initmap = true; // we are the first client on this server, set map
                 break;
             }
 
@@ -1155,14 +1146,6 @@ namespace game
                     if(mapchanged) entities::setspawn(n, true);
                     getint(p); // type
                 }
-                break;
-            }
-
-            case N_MAPRELOAD:          // server requests next map
-            {
-                defformatstring(nextmapalias)("nextmap_%s%s", (cmode ? cmode->prefixnextmap() : ""), getclientmap());
-                const char *map = getalias(nextmapalias);     // look up map in the cycle
-                addmsg(N_MAPCHANGE, "rsi", *map ? map : getclientmap(), nextmode);
                 break;
             }
 
@@ -1682,17 +1665,6 @@ namespace game
             default:
                 neterr("type", cn < 0);
                 return;
-        }
-        if(initmap)
-        {
-            int mode = gamemode;
-            const char *map = getclientmap();
-            if((multiplayer(false) && !m_mp(mode)) || (mode!=1 && !map[0]))
-            {
-                mode = remote ? lobbymode : localmode;
-                map = remote ? lobbymap : localmap;
-            }
-            changemap(map, mode);
         }
     }
 

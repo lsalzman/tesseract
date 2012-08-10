@@ -282,6 +282,7 @@ namespace server
         void mapchange()
         {
             mapvote[0] = 0;
+            modevote = INT_MAX;
             state.reset();
             events.deletecontents();
             overflow = 0;
@@ -376,7 +377,6 @@ namespace server
 
     string smapname = "";
     int interm = 0;
-    bool mapreload = false;
     enet_uint32 lastsend = 0;
     int mastermode = MM_OPEN, mastermask = MM_PRIVSERV;
     int currentmaster = -1;
@@ -387,6 +387,127 @@ namespace server
     vector<clientinfo *> connects, clients, bots;
     vector<worldstate *> worldstates;
     bool reliablemessages = false;
+
+    struct maprotation
+    {
+        int modes;
+        string map;
+
+        int findmode(int mode)
+        {
+            if(!(modes&(1<<(mode-STARTGAMEMODE)))) loopi(NUMGAMEMODES) if(modes&(1<<i)) return i+STARTGAMEMODE;
+            return mode;
+        }
+        
+    };
+    vector<maprotation> maprotations;
+    int curmaprotation = 0;
+
+    VAR(lockmaprotation, 0, 0, 1);
+
+    void maprotationreset()
+    {
+        maprotations.setsize(0);
+        curmaprotation = 0;
+    }
+
+    void nextmaprotation()
+    {
+        curmaprotation++;
+        if(maprotations.inrange(curmaprotation) && maprotations[curmaprotation].modes) return;
+        curmaprotation--;
+        while(maprotations.inrange(curmaprotation) && maprotations[curmaprotation].modes);
+        curmaprotation++;
+    }
+
+    int findmaprotation(int mode, const char *map)
+    {
+        for(int i = curmaprotation + 1; i < maprotations.length(); i++)
+        {
+            maprotation &rot = maprotations[i];
+            if(!rot.modes) break;
+            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+        }
+        int start;
+        for(start = curmaprotation - 1; start >= 0; start--) if(!maprotations[start].modes) break;
+        start++;
+        for(int i = start; i < curmaprotation; i++)
+        {
+            maprotation &rot = maprotations[i];
+            if(!rot.modes) break;
+            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+        }
+        loopv(maprotations)
+        {
+            maprotation &rot = maprotations[i];
+            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+        }
+        return -1;
+    }
+ 
+    void addmaprotation(tagval *args, int numargs)
+    {
+        vector<char *> modes, maps;
+        for(int i = 0; i + 1 < numargs; i += 2)
+        {
+            explodelist(args[i].getstr(), modes);
+            explodelist(args[i+1].getstr(), maps);
+            if(modes.length() && maps.length())
+            {
+                int modemask = 0;
+                loopvj(modes)
+                {
+                    const char *mode = modes[j];
+                    int op = mode[0]; 
+                    switch(mode[0])
+                    {
+                        case '*': 
+                            loopk(NUMGAMEMODES) if(m_checknot(k+STARTGAMEMODE, M_DEMO|M_EDIT|M_LOCAL)) modemask |= 1<<k; 
+                            continue;
+                        case '!':   
+                            mode++; 
+                            if(mode[0] != '?') break;
+                        case '?':
+                            mode++;
+                            loopk(NUMGAMEMODES) if(strstr(gamemodes[k].name, mode)) 
+                            {
+                                if(op == '!') modemask &= ~(1<<k);
+                                else modemask |= 1<<k;
+                            }
+                            continue;
+                    }
+                    int modenum = INT_MAX;
+                    if(isdigit(mode[0])) modenum = atoi(mode); 
+                    else loopk(NUMGAMEMODES) if(!strstr(mode, gamemodes[k].name)) { modenum = k+STARTGAMEMODE; break; }
+                    if(!m_valid(modenum)) continue;
+                    switch(op)
+                    {
+                        case '!': modemask &= ~(1 << (modenum - STARTGAMEMODE)); break;
+                        default: modemask |= 1 << (modenum - STARTGAMEMODE); break;
+                    }
+                }
+                if(modemask) loopvj(maps)
+                {
+                    int rotmask = modemask;
+                    if(!maps[j][0]) loopk(NUMGAMEMODES) if(modemask&(1<<k) && !m_check(k+STARTGAMEMODE, M_EDIT)) rotmask &= ~(1<<k);
+                    if(!rotmask) continue;
+                    maprotation &rot = maprotations.add();
+                    rot.modes = modemask;
+                    copystring(rot.map, maps[j]);
+                }
+            }
+            modes.deletearrays();
+            maps.deletearrays();
+        }
+        if(maprotations.length() && maprotations.last().modes)
+        {
+            maprotation &rot = maprotations.add();
+            rot.modes = 0;
+            rot.map[0] = '\0';
+        }
+    }
+
+    COMMANDN(maprotation, addmaprotation, "ss2V");
 
     struct demofile
     {
@@ -1059,7 +1180,7 @@ namespace server
         // only allow edit messages in coop-edit mode
         if(type>=N_EDITENT && type<=N_EDITVAR && !m_edit) return -1;
         // server only messages
-        static const int servtypes[] = { N_SERVINFO, N_INITCLIENT, N_WELCOME, N_MAPRELOAD, N_SERVMSG, N_DAMAGE, N_HITPUSH, N_SHOTFX, N_EXPLODEFX, N_DIED, N_SPAWNSTATE, N_FORCEDEATH, N_ITEMACC, N_ITEMSPAWN, N_TIMEUP, N_CDIS, N_CURRENTMASTER, N_PONG, N_RESUME, N_BASESCORE, N_BASEINFO, N_BASEREGEN, N_ANNOUNCE, N_SENDDEMOLIST, N_SENDDEMO, N_DEMOPLAYBACK, N_SENDMAP, N_DROPFLAG, N_SCOREFLAG, N_RETURNFLAG, N_RESETFLAG, N_INVISFLAG, N_CLIENT, N_AUTHCHAL, N_INITAI, N_EXPIRETOKENS, N_DROPTOKENS };
+        static const int servtypes[] = { N_SERVINFO, N_INITCLIENT, N_WELCOME, N_MAPCHANGE, N_SERVMSG, N_DAMAGE, N_HITPUSH, N_SHOTFX, N_EXPLODEFX, N_DIED, N_SPAWNSTATE, N_FORCEDEATH, N_ITEMACC, N_ITEMSPAWN, N_TIMEUP, N_CDIS, N_CURRENTMASTER, N_PONG, N_RESUME, N_BASESCORE, N_BASEINFO, N_BASEREGEN, N_ANNOUNCE, N_SENDDEMOLIST, N_SENDDEMO, N_DEMOPLAYBACK, N_SENDMAP, N_DROPFLAG, N_SCOREFLAG, N_RETURNFLAG, N_RESETFLAG, N_INVISFLAG, N_CLIENT, N_AUTHCHAL, N_INITAI, N_EXPIRETOKENS, N_DROPTOKENS };
         if(ci) 
         {
             loopi(sizeof(servtypes)/sizeof(int)) if(type == servtypes[i]) return -1;
@@ -1279,32 +1400,33 @@ namespace server
         }
     }
 
+    bool hasmap(clientinfo *ci, bool connecting = true)
+    {
+        return (m_edit && (clients.length() > 1 || ci->local || !connecting)) ||
+               (smapname[0] && (!m_timed || gamemillis < gamelimit || (ci->state.state==CS_SPECTATOR && !ci->privilege && !ci->local) || numclients(ci->clientnum, true, true, true)));
+    }
+
     int welcomepacket(packetbuf &p, clientinfo *ci)
     {
-        int hasmap = (m_edit && (clients.length()>1 || (ci && ci->local))) || (smapname[0] && (!m_timed || gamemillis<gamelimit || (ci && ci->state.state==CS_SPECTATOR && !ci->privilege && !ci->local) || numclients(ci ? ci->clientnum : -1, true, true, true)));
         putint(p, N_WELCOME);
-        putint(p, hasmap);
-        if(hasmap)
+        putint(p, N_MAPCHANGE);
+        sendstring(smapname, p);
+        putint(p, gamemode);
+        putint(p, notgotitems ? 1 : 0);
+        if(!ci || (m_timed && smapname[0]))
         {
-            putint(p, N_MAPCHANGE);
-            sendstring(smapname, p);
-            putint(p, gamemode);
-            putint(p, notgotitems ? 1 : 0);
-            if(!ci || (m_timed && smapname[0]))
+            putint(p, N_TIMEUP);
+            putint(p, gamemillis < gamelimit && !interm ? max((gamelimit - gamemillis)/1000, 1) : 0);
+        }
+        if(!notgotitems)
+        {
+            putint(p, N_ITEMLIST);
+            loopv(sents) if(sents[i].spawned)
             {
-                putint(p, N_TIMEUP);
-                putint(p, gamemillis < gamelimit && !interm ? max((gamelimit - gamemillis)/1000, 1) : 0);
+                putint(p, i);
+                putint(p, sents[i].type);
             }
-            if(!notgotitems)
-            {
-                putint(p, N_ITEMLIST);
-                loopv(sents) if(sents[i].spawned)
-                {
-                    putint(p, i);
-                    putint(p, sents[i].type);
-                }
-                putint(p, -1);
-            }
+            putint(p, -1);
         }
         if(currentmaster >= 0 || mastermode != MM_OPEN)
         {
@@ -1427,7 +1549,6 @@ namespace server
         if(smode) smode->cleanup();
         aiman::clearai();
 
-        mapreload = false;
         gamemode = mode;
         gamemillis = 0;
         gamelimit = (m_overtime ? 15 : 10)*60000;
@@ -1443,6 +1564,8 @@ namespace server
         }
 
         if(!m_mp(gamemode)) kicknonlocalclients(DISC_PRIVATE);
+
+        sendf(-1, 1, "risii", N_MAPCHANGE, smapname, gamemode, 1);
 
         if(m_teammode) autoteam();
 
@@ -1475,6 +1598,24 @@ namespace server
         if(smode) smode->setup();
     }
 
+    void rotatemap(bool next)
+    {
+        if(!maprotations.inrange(curmaprotation))
+        {
+            changemap("", 1);
+            return;
+        }
+        if(next) 
+        {
+            maprotation &rot = maprotations[curmaprotation];
+            if(!(rot.modes&(1<<(gamemode-STARTGAMEMODE))) || (rot.map[0] && strcmp(rot.map, smapname)))
+                curmaprotation = max(findmaprotation(gamemode, smapname), 0);
+            nextmaprotation();
+        }
+        maprotation &rot = maprotations[curmaprotation];
+        changemap(rot.map, rot.findmode(gamemode));
+    }
+    
     struct votecount
     {
         char *map;
@@ -1493,7 +1634,7 @@ namespace server
             if(oi->state.state==CS_SPECTATOR && !oi->privilege && !oi->local) continue;
             if(oi->state.aitype!=AI_NONE) continue;
             maxvotes++;
-            if(!oi->mapvote[0]) continue;
+            if(!m_valid(oi->modevote)) continue;
             votecount *vc = NULL;
             loopvj(votes) if(!strcmp(oi->mapvote, votes[j].map) && oi->modevote==votes[j].mode)
             {
@@ -1511,50 +1652,62 @@ namespace server
             if(best && (best->count > (force ? 1 : maxvotes/2)))
             {
                 sendservmsg(force ? "vote passed by default" : "vote passed by majority");
-                sendf(-1, 1, "risii", N_MAPCHANGE, best->map, best->mode, 1);
                 changemap(best->map, best->mode);
             }
-            else
-            {
-                mapreload = true;
-                if(clients.length()) sendf(-1, 1, "ri", N_MAPRELOAD);
-            }
+            else rotatemap(true);
         }
     }
 
     void forcemap(const char *map, int mode)
     {
         stopdemo();
-        if(hasnonlocalclients() && !mapreload)
+        if(!map[0] && !m_check(mode, M_EDIT)) 
         {
-            defformatstring(msg)("local player forced %s on map %s", modename(mode), map);
+            if(smapname[0]) map = smapname;
+            else
+            {
+                int idx = findmaprotation(mode, "");
+                if(idx >= 0) 
+                {
+                    curmaprotation = idx;
+                    map = maprotations[curmaprotation].map;
+                }
+            }
+        }
+        if(hasnonlocalclients())
+        {
+            defformatstring(msg)("local player forced %s on map %s", modename(mode), map[0] ? map : "[new map]");
             sendservmsg(msg);
         }
-        sendf(-1, 1, "risii", N_MAPCHANGE, map, mode, 1);
         changemap(map, mode);
     }
 
-    void vote(char *map, int reqmode, int sender)
+    void vote(const char *map, int reqmode, int sender)
     {
         clientinfo *ci = getinfo(sender);
         if(!ci || (ci->state.state==CS_SPECTATOR && !ci->privilege && !ci->local) || (!ci->local && !m_mp(reqmode))) return;
+        if(!m_valid(reqmode)) return;
+        if(!map[0] && !m_check(reqmode, M_EDIT)) map = smapname;
+        if(lockmaprotation && !ci->privilege && !ci->local && findmaprotation(reqmode, map) < 0) 
+        {
+            sendf(sender, 1, "ris", N_SERVMSG, "This server has locked the map rotation.");
+            return;
+        }
         copystring(ci->mapvote, map);
         ci->modevote = reqmode;
-        if(!ci->mapvote[0]) return;
-        if(ci->local || mapreload || (ci->privilege && mastermode>=MM_VETO))
+        if(ci->local || (ci->privilege && mastermode>=MM_VETO))
         {
             if(demorecord) enddemorecord();
-            if((!ci->local || hasnonlocalclients()) && !mapreload)
+            if(!ci->local || hasnonlocalclients())
             {
-                defformatstring(msg)("%s forced %s on map %s", ci->privilege && mastermode>=MM_VETO ? privname(ci->privilege) : "local player", modename(ci->modevote), ci->mapvote);
+                defformatstring(msg)("%s forced %s on map %s", ci->privilege && mastermode>=MM_VETO ? privname(ci->privilege) : "local player", modename(ci->modevote), ci->mapvote[0] ? ci->mapvote : "[new map]");
                 sendservmsg(msg);
             }
-            sendf(-1, 1, "risii", N_MAPCHANGE, ci->mapvote, ci->modevote, 1);
             changemap(ci->mapvote, ci->modevote);
         }
         else
         {
-            defformatstring(msg)("%s suggests %s on map %s (select map to vote)", colorname(ci), modename(reqmode), map);
+            defformatstring(msg)("%s suggests %s on map %s (select map to vote)", colorname(ci), modename(reqmode), map[0] ? map : "[new map]");
             sendservmsg(msg);
             checkvotes();
         }
@@ -2158,6 +2311,7 @@ namespace server
                 const char *worst = m_teammode ? chooseworstteam(NULL, ci) : NULL;
                 copystring(ci->team, worst ? worst : "good", MAXTEAMLEN+1);
 
+                if(!hasmap(ci)) rotatemap(false);
                 sendwelcome(ci);
                 if(restorescore(ci)) sendresume(ci);
                 sendinitclient(ci);
@@ -2481,12 +2635,10 @@ namespace server
             }
 
             case N_MAPVOTE:
-            case N_MAPCHANGE:
             {
                 getstring(text, p);
                 filtertext(text, text, false);
                 int reqmode = getint(p);
-                if(type!=N_MAPVOTE && !mapreload) break;
                 vote(text, reqmode, sender);
                 break;
             }
@@ -2635,10 +2787,9 @@ namespace server
                     spinfo->state.lasttimeplayed = lastmillis;
                     aiman::addclient(spinfo);
                     if(spinfo->clientmap[0] || spinfo->mapcrc) checkmaps();
-                    sendf(-1, 1, "ri", N_MAPRELOAD);
                 }
                 sendf(-1, 1, "ri3", N_SPECTATOR, spectator, val);
-                if(!val && mapreload && !spinfo->privilege && !spinfo->local) sendf(spectator, 1, "ri", N_MAPRELOAD);
+                if(!val && !hasmap(spinfo, false)) rotatemap(true);
                 break;
             }
 

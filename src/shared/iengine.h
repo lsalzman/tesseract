@@ -142,6 +142,9 @@ extern const char *escapestring(const char *s);
 extern const char *escapeid(const char *s);
 static inline const char *escapeid(ident &id) { return escapeid(id.name); }
 extern bool validateblock(const char *s);
+extern void explodelist(const char *s, vector<char *> &elems, int limit = -1);
+extern char *indexlist(const char *s, int pos);
+extern int listlen(const char *s);
 
 // console
 

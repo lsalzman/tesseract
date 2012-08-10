@@ -662,9 +662,6 @@ struct captureclientmode : clientmode
         findplayerspawn(d, pickteamspawn(d->team));
     }
 
-    const char *prefixnextmap() { return "capture_"; }
-
-
 	bool aicheck(fpsent *d, ai::aistate &b)
 	{
 		return false;

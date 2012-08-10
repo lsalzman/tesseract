@@ -1125,8 +1125,9 @@ void initserver(bool listen, bool dedicated)
 #ifdef WIN32
         setupwindow("Tesseract server");
 #endif
-        execfile("server-init.cfg", false);
     }
+    
+    execfile("server-init.cfg", false);
 
     if(listen) setuplistenserver(dedicated);
 
