@@ -46,13 +46,7 @@
 #ifndef STANDALONE
 #include <SDL.h>
 #include <SDL_image.h>
-
-#define GL_GLEXT_LEGACY
-#define __glext_h__
-#define NO_SDL_GLEXT
 #include <SDL_opengl.h>
-#undef __glext_h__
-#include "GL/glext.h"
 #endif
 
 #include <enet/enet.h>
