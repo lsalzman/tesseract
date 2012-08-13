@@ -1,32 +1,35 @@
-// GL_ARB_shading_language_100, GL_ARB_shader_objects, GL_ARB_fragment_shader, GL_ARB_vertex_shader
-extern PFNGLCREATEPROGRAMOBJECTARBPROC  glCreateProgramObject_;
-extern PFNGLDELETEOBJECTARBPROC         glDeleteObject_;
-extern PFNGLUSEPROGRAMOBJECTARBPROC     glUseProgramObject_;
-extern PFNGLCREATESHADEROBJECTARBPROC   glCreateShaderObject_;
-extern PFNGLSHADERSOURCEARBPROC         glShaderSource_;
-extern PFNGLCOMPILESHADERARBPROC        glCompileShader_;
-extern PFNGLGETOBJECTPARAMETERIVARBPROC glGetObjectParameteriv_;
-extern PFNGLATTACHOBJECTARBPROC         glAttachObject_;
-extern PFNGLGETINFOLOGARBPROC           glGetInfoLog_;
-extern PFNGLLINKPROGRAMARBPROC          glLinkProgram_;
-extern PFNGLGETUNIFORMLOCATIONARBPROC   glGetUniformLocation_;
-extern PFNGLUNIFORM1FARBPROC            glUniform1f_;
-extern PFNGLUNIFORM2FARBPROC            glUniform2f_;
-extern PFNGLUNIFORM3FARBPROC            glUniform3f_;
-extern PFNGLUNIFORM4FARBPROC            glUniform4f_;
-extern PFNGLUNIFORM1FVARBPROC           glUniform1fv_;
-extern PFNGLUNIFORM2FVARBPROC           glUniform2fv_;
-extern PFNGLUNIFORM3FVARBPROC           glUniform3fv_;
-extern PFNGLUNIFORM4FVARBPROC           glUniform4fv_;
-extern PFNGLUNIFORM1IARBPROC            glUniform1i_;
-extern PFNGLUNIFORMMATRIX2FVARBPROC     glUniformMatrix2fv_;
-extern PFNGLUNIFORMMATRIX3FVARBPROC     glUniformMatrix3fv_;
-extern PFNGLUNIFORMMATRIX4FVARBPROC     glUniformMatrix4fv_;
-extern PFNGLBINDATTRIBLOCATIONARBPROC   glBindAttribLocation_;
-extern PFNGLGETACTIVEUNIFORMARBPROC     glGetActiveUniform_;
-extern PFNGLENABLEVERTEXATTRIBARRAYARBPROC  glEnableVertexAttribArray_;
-extern PFNGLDISABLEVERTEXATTRIBARRAYARBPROC glDisableVertexAttribArray_;
-extern PFNGLVERTEXATTRIBPOINTERARBPROC      glVertexAttribPointer_;
+// OpenGL 2.0: GL_ARB_shading_language_100, GL_ARB_shader_objects, GL_ARB_fragment_shader, GL_ARB_vertex_shader
+extern PFNGLCREATEPROGRAMPROC            glCreateProgram_;
+extern PFNGLDELETEPROGRAMPROC            glDeleteProgram_;
+extern PFNGLUSEPROGRAMPROC               glUseProgram_;
+extern PFNGLCREATESHADERPROC             glCreateShader_;
+extern PFNGLDELETESHADERPROC             glDeleteShader_;
+extern PFNGLSHADERSOURCEPROC             glShaderSource_;
+extern PFNGLCOMPILESHADERPROC            glCompileShader_;
+extern PFNGLGETSHADERIVPROC              glGetShaderiv_;
+extern PFNGLGETPROGRAMIVPROC             glGetProgramiv_;
+extern PFNGLATTACHSHADERPROC             glAttachShader_;
+extern PFNGLGETPROGRAMINFOLOGPROC        glGetProgramInfoLog_;
+extern PFNGLGETSHADERINFOLOGPROC         glGetShaderInfoLog_;
+extern PFNGLLINKPROGRAMPROC              glLinkProgram_;
+extern PFNGLGETUNIFORMLOCATIONPROC       glGetUniformLocation_;
+extern PFNGLUNIFORM1FPROC                glUniform1f_;
+extern PFNGLUNIFORM2FPROC                glUniform2f_;
+extern PFNGLUNIFORM3FPROC                glUniform3f_;
+extern PFNGLUNIFORM4FPROC                glUniform4f_;
+extern PFNGLUNIFORM1FVPROC               glUniform1fv_;
+extern PFNGLUNIFORM2FVPROC               glUniform2fv_;
+extern PFNGLUNIFORM3FVPROC               glUniform3fv_;
+extern PFNGLUNIFORM4FVPROC               glUniform4fv_;
+extern PFNGLUNIFORM1IPROC                glUniform1i_;
+extern PFNGLUNIFORMMATRIX2FVPROC         glUniformMatrix2fv_;
+extern PFNGLUNIFORMMATRIX3FVPROC         glUniformMatrix3fv_;
+extern PFNGLUNIFORMMATRIX4FVPROC         glUniformMatrix4fv_;
+extern PFNGLBINDATTRIBLOCATIONPROC       glBindAttribLocation_;
+extern PFNGLGETACTIVEUNIFORMPROC         glGetActiveUniform_;
+extern PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray_;
+extern PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray_;
+extern PFNGLVERTEXATTRIBPOINTERPROC      glVertexAttribPointer_;
 
 #ifndef GL_ARB_uniform_buffer_object
 #define GL_ARB_uniform_buffer_object 1
@@ -156,13 +159,13 @@ struct GlobalShaderParamUse : ShaderParamBinding
         if(version == param->version) return;
         switch(format)
         {
-            case GL_FLOAT:          glUniform1fv_(loc, size, param->val); break;
-            case GL_FLOAT_VEC2_ARB: glUniform2fv_(loc, size, param->val); break;
-            case GL_FLOAT_VEC3_ARB: glUniform3fv_(loc, size, param->val); break;
-            case GL_FLOAT_VEC4_ARB: glUniform4fv_(loc, size, param->val); break;
-            case GL_FLOAT_MAT2_ARB: glUniformMatrix2fv_(loc, 1, GL_TRUE, param->val); break;
-            case GL_FLOAT_MAT3_ARB: glUniformMatrix3fv_(loc, 1, GL_TRUE, param->val); break;
-            case GL_FLOAT_MAT4_ARB: glUniformMatrix4fv_(loc, 1, GL_FALSE, param->val); break;
+            case GL_FLOAT:      glUniform1fv_(loc, size, param->val); break;
+            case GL_FLOAT_VEC2: glUniform2fv_(loc, size, param->val); break;
+            case GL_FLOAT_VEC3: glUniform3fv_(loc, size, param->val); break;
+            case GL_FLOAT_VEC4: glUniform4fv_(loc, size, param->val); break;
+            case GL_FLOAT_MAT2: glUniformMatrix2fv_(loc, 1, GL_TRUE, param->val); break;
+            case GL_FLOAT_MAT3: glUniformMatrix3fv_(loc, 1, GL_TRUE, param->val); break;
+            case GL_FLOAT_MAT4: glUniformMatrix4fv_(loc, 1, GL_FALSE, param->val); break;
         }
         version = param->version;
     }
@@ -190,7 +193,7 @@ struct SlotShaderParamState : LocalShaderParamState
         name = p.name; 
         loc = -1; 
         size = 1;
-        format = GL_FLOAT_VEC4_ARB; 
+        format = GL_FLOAT_VEC4; 
         memcpy(val, p.val, sizeof(val)); 
     }
 };
@@ -408,10 +411,10 @@ struct LocalShaderParam
         ShaderParamBinding *b = resolve();
         if(b) switch(b->format)
         {
-            case GL_FLOAT:          glUniform1f_(b->loc, x); break;
-            case GL_FLOAT_VEC2_ARB: glUniform2f_(b->loc, x, y); break;
-            case GL_FLOAT_VEC3_ARB: glUniform3f_(b->loc, x, y, z); break;
-            case GL_FLOAT_VEC4_ARB: glUniform4f_(b->loc, x, y, z, w); break;
+            case GL_FLOAT:      glUniform1f_(b->loc, x); break;
+            case GL_FLOAT_VEC2: glUniform2f_(b->loc, x, y); break;
+            case GL_FLOAT_VEC3: glUniform3f_(b->loc, x, y, z); break;
+            case GL_FLOAT_VEC4: glUniform4f_(b->loc, x, y, z, w); break;
         }
     }
     void set(const vec &v, float w = 0) { set(v.x, v.y, v.z, w); }
