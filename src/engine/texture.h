@@ -1,4 +1,37 @@
 // OpenGL 2.0: GL_ARB_shading_language_100, GL_ARB_shader_objects, GL_ARB_fragment_shader, GL_ARB_vertex_shader
+#ifdef __APPLE__
+#define glCreateProgram_ glCreateProgram
+#define glDeleteProgram_ glDeleteProgram
+#define glUseProgram_ glUseProgram
+#define glCreateShader_ glCreateShader
+#define glDeleteShader_ glDeleteShader
+#define glShaderSource_ glShaderSource
+#define glCompileShader_ glCompileShader
+#define glGetShaderiv_ glGetShaderiv
+#define glGetProgramiv_ glGetProgramiv
+#define glAttachShader_ glAttachShader
+#define glGetProgramInfoLog_ glGetProgramInfoLog
+#define glGetShaderInfoLog_ glGetShaderInfoLog
+#define glLinkProgram_ glLinkProgram
+#define glGetUniformLocation_ glGetUniformLocation
+#define glUniform1f_ glUniform1f
+#define glUniform2f_ glUniform2f
+#define glUniform3f_ glUniform3f
+#define glUniform4f_ glUniform4f
+#define glUniform1fv_ glUniform1fv
+#define glUniform2fv_ glUniform2fv
+#define glUniform3fv_ glUniform3fv
+#define glUniform4fv_ glUniform4fv
+#define glUniform1i_ glUniform1i
+#define glUniformMatrix2fv_ glUniformMatrix2fv
+#define glUniformMatrix3fv_ glUniformMatrix3fv
+#define glUniformMatrix4fv_ glUniformMatrix4fv
+#define glBindAttribLocation_ glBindAttribLocation
+#define glGetActiveUniform_ glGetActiveUniform
+#define glEnableVertexAttribArray_ glEnableVertexAttribArray
+#define glDisableVertexAttribArray_ glDisableVertexAttribArray
+#define glVertexAttribPointer_ glVertexAttribPointer
+#else
 extern PFNGLCREATEPROGRAMPROC            glCreateProgram_;
 extern PFNGLDELETEPROGRAMPROC            glDeleteProgram_;
 extern PFNGLUSEPROGRAMPROC               glUseProgram_;
@@ -30,6 +63,7 @@ extern PFNGLGETACTIVEUNIFORMPROC         glGetActiveUniform_;
 extern PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray_;
 extern PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray_;
 extern PFNGLVERTEXATTRIBPOINTERPROC      glVertexAttribPointer_;
+#endif
 
 #ifndef GL_ARB_uniform_buffer_object
 #define GL_ARB_uniform_buffer_object 1
@@ -239,7 +273,7 @@ struct Shader
 
     char *name, *vsstr, *psstr, *defer;
     int type;
-    GLhandleARB program, vsobj, psobj;
+    GLuint program, vsobj, psobj;
     vector<SlotShaderParamState> defaultparams;
     vector<GlobalShaderParamUse> globalparams;
     vector<LocalShaderParamState> localparams;
