@@ -450,7 +450,7 @@ void gl_checkextensions()
 
     if(glversion >= 200)
     {
-#ifdef __APPLE__
+#ifndef __APPLE__
         glCreateProgram_ =            (PFNGLCREATEPROGRAMPROC)            getprocaddress("glCreateProgram");
         glDeleteProgram_ =            (PFNGLDELETEPROGRAMPROC)            getprocaddress("glDeleteProgram");
         glUseProgram_ =               (PFNGLUSEPROGRAMPROC)               getprocaddress("glUseProgram");
