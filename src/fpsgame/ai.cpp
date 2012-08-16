@@ -212,7 +212,7 @@ namespace ai
             fpsent *e = players[i];
             if(targets.find(e->clientnum) >= 0) continue;
             if(teams && d && !isteam(d->team, e->team)) continue;
-            if(members) (*members)++
+            if(members) (*members)++;
             if(e == d || !e->ai || e->state != CS_ALIVE) continue;
             aistate &b = e->ai->getstate();
             if(state >= 0 && b.type != state) continue;
