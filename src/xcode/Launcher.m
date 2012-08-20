@@ -494,7 +494,6 @@ static int numberForKey(CFDictionaryRef desc, CFStringRef key)
 
 /*
  * nil will just launch the fps game
- * "-rpg" will launch the rpg demo
  * "-x.." will launch and run commands
  * otherwise specifying a map to play
  */
@@ -519,12 +518,7 @@ static int numberForKey(CFDictionaryRef desc, CFStringRef key)
     
     if (filename) 
     {
-        if ([filename isEqualToString:@"-rpg"]) 
-        {
-            [cmds removeAllObjects]; // rpg current doesn't require name/team
-            [args addObject:@"-grpg"]; // demo the rpg game
-        } 
-        else if ([filename hasPrefix:@"-x"])
+        if ([filename hasPrefix:@"-x"])
             [cmds addObject:[filename substringFromIndex:2]];
         else 
             [args addObject:[NSString stringWithFormat:@"-l%@", filename]];
@@ -770,11 +764,6 @@ static int numberForKey(CFDictionaryRef desc, CFStringRef key)
 { 
     [window makeFirstResponder:window]; // ensure fields are exited and committed
     [self playFile:nil]; 
-}
-
-- (IBAction)playRpg:(id)sender 
-{ 
-    [self playFile:@"-rpg"]; 
 }
 
 - (IBAction)playMap:(id)sender
