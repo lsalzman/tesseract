@@ -1479,9 +1479,9 @@ namespace server
         }
     }
 
-    bool hasmap(clientinfo *ci, bool connecting = true)
+    bool hasmap(clientinfo *ci)
     {
-        return (m_edit && (clients.length() > 1 || ci->local || !connecting)) ||
+        return (m_edit && (clients.length() > 0 || ci->local)) ||
                (smapname[0] && (!m_timed || gamemillis < gamelimit || (ci->state.state==CS_SPECTATOR && !ci->privilege && !ci->local) || numclients(ci->clientnum, true, true, true)));
     }
 
@@ -2384,6 +2384,8 @@ namespace server
 
                 if(m_demo) enddemoplayback();
 
+                if(!hasmap(ci)) rotatemap(false);
+
                 connects.removeobj(ci);
                 clients.add(ci);
 
@@ -2395,7 +2397,6 @@ namespace server
                 const char *worst = m_teammode ? chooseworstteam(NULL, ci) : NULL;
                 copystring(ci->team, worst ? worst : "good", MAXTEAMLEN+1);
 
-                if(!hasmap(ci)) rotatemap(false);
                 sendwelcome(ci);
                 if(restorescore(ci)) sendresume(ci);
                 sendinitclient(ci);
@@ -2871,7 +2872,7 @@ namespace server
                     if(spinfo->clientmap[0] || spinfo->mapcrc) checkmaps();
                 }
                 sendf(-1, 1, "ri3", N_SPECTATOR, spectator, val);
-                if(!val && !hasmap(spinfo, false)) rotatemap(true);
+                if(!val && !hasmap(spinfo)) rotatemap(true);
                 break;
             }
 
