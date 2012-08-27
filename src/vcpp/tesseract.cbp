@@ -146,7 +146,6 @@
 		<Unit filename="..\engine\server.cpp" />
 		<Unit filename="..\engine\serverbrowser.cpp" />
 		<Unit filename="..\engine\shader.cpp" />
-		<Unit filename="..\engine\shadowmap.cpp" />
 		<Unit filename="..\engine\skelmodel.h" />
 		<Unit filename="..\engine\smd.h" />
 		<Unit filename="..\engine\sound.cpp" />
