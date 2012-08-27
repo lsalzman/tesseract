@@ -3,7 +3,6 @@
 	<FileVersion major="1" minor="6" />
 	<Project>
 		<Option title="tesseract" />
-		<Option pch_mode="2" />
 		<Option default_target="client64" />
 		<Option compiler="gcc" />
 		<Build>
@@ -15,11 +14,11 @@
 				<Option compiler="gcc" />
 				<Option parameters="-t0 -w640 -h480 -qhome" />
 				<Compiler>
-					<Add option="-m64" />
+					<Add option="-fomit-frame-pointer" />
 					<Add option="-O3" />
 					<Add option="-Wall" />
+					<Add option="-m64" />
 					<Add option="-fsigned-char" />
-					<Add option="-fomit-frame-pointer" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="..\enet\include" />
@@ -27,16 +26,15 @@
 					<Add directory="..\engine" />
 					<Add directory="..\shared" />
 					<Add directory="..\vcpp" />
+					<Add directory="..\fpsgame" />
 				</Compiler>
 				<ResourceCompiler>
 					<Add directory="..\vcpp" />
 				</ResourceCompiler>
 				<Linker>
+					<Add option="-s" />
 					<Add option="-m64" />
 					<Add option="-mwindows" />
-					<Add option="-s" />
-					<Add option="-static-libgcc" />
-					<Add option="-static-libstdc++" />
 					<Add library="SDL" />
 					<Add library="SDL_image" />
 					<Add library="SDL_mixer" />
@@ -47,6 +45,9 @@
 					<Add library="winmm" />
 					<Add directory="..\lib64" />
 				</Linker>
+				<Environment>
+					<Variable name="WINDRES_TARGET" value="pe-x86-64" />
+				</Environment>
 			</Target>
 			<Target title="client32">
 				<Option output="..\..\bin\tesseract.exe" prefix_auto="0" extension_auto="0" />
@@ -56,11 +57,11 @@
 				<Option compiler="gcc" />
 				<Option parameters="-t0 -w640 -h480 -qhome" />
 				<Compiler>
-					<Add option="-m32" />
+					<Add option="-fomit-frame-pointer" />
 					<Add option="-O3" />
 					<Add option="-Wall" />
+					<Add option="-m32" />
 					<Add option="-fsigned-char" />
-					<Add option="-fomit-frame-pointer" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="..\enet\include" />
@@ -68,16 +69,15 @@
 					<Add directory="..\engine" />
 					<Add directory="..\shared" />
 					<Add directory="..\vcpp" />
+					<Add directory="..\fpsgame" />
 				</Compiler>
 				<ResourceCompiler>
 					<Add directory="..\vcpp" />
 				</ResourceCompiler>
 				<Linker>
+					<Add option="-s" />
 					<Add option="-m32" />
 					<Add option="-mwindows" />
-					<Add option="-s" />
-					<Add option="-static-libgcc" />
-					<Add option="-static-libstdc++" />
 					<Add library="SDL" />
 					<Add library="SDL_image" />
 					<Add library="SDL_mixer" />
@@ -88,535 +88,156 @@
 					<Add library="winmm" />
 					<Add directory="..\lib" />
 				</Linker>
+				<Environment>
+					<Variable name="WINDRES_TARGET" value="pe-i386" />
+				</Environment>
 			</Target>
 		</Build>
 		<VirtualTargets>
-			<Add alias="All" targets="client32;client64" />
+			<Add alias="All" targets="client32;client64;" />
 		</VirtualTargets>
-		<Unit filename="..\engine\3dgui.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\animmodel.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\bih.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\bih.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\blend.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\client.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\command.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\console.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\decal.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\dynlight.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
+		<Unit filename="..\engine\3dgui.cpp" />
+		<Unit filename="..\engine\animmodel.h" />
+		<Unit filename="..\engine\bih.cpp" />
+		<Unit filename="..\engine\bih.h" />
+		<Unit filename="..\engine\blend.cpp" />
+		<Unit filename="..\engine\client.cpp" />
+		<Unit filename="..\engine\command.cpp" />
+		<Unit filename="..\engine\console.cpp" />
+		<Unit filename="..\engine\decal.cpp" />
+		<Unit filename="..\engine\dynlight.cpp" />
 		<Unit filename="..\engine\engine.h">
 			<Option compile="1" />
 			<Option weight="0" />
-			<Option target="client64" />
-			<Option target="client32" />
 		</Unit>
-		<Unit filename="..\engine\explosion.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\grass.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\hitzone.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\iqm.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\lensflare.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\light.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\light.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\lightning.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\main.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\material.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\md2.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\md3.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\md5.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\menus.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\model.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\movie.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\mpr.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\normal.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\obj.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\octa.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\octa.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\octaedit.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\octarender.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\physics.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\pvs.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\ragdoll.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\rendergl.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\rendermodel.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\renderparticles.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\rendersky.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\rendertext.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\renderva.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\scale.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\server.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\serverbrowser.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\shader.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\skelmodel.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\smd.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\sound.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\textedit.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\texture.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\texture.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\varray.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\vertmodel.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\water.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\world.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\world.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\engine\worldio.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\ai.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\ai.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\aiman.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\capture.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\client.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\collect.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\ctf.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\entities.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\extinfo.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\fps.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
+		<Unit filename="..\engine\explosion.h" />
+		<Unit filename="..\engine\grass.cpp" />
+		<Unit filename="..\engine\hitzone.h" />
+		<Unit filename="..\engine\iqm.h" />
+		<Unit filename="..\engine\lensflare.h" />
+		<Unit filename="..\engine\light.cpp" />
+		<Unit filename="..\engine\light.h" />
+		<Unit filename="..\engine\lightning.h" />
+		<Unit filename="..\engine\main.cpp" />
+		<Unit filename="..\engine\material.cpp" />
+		<Unit filename="..\engine\md2.h" />
+		<Unit filename="..\engine\md3.h" />
+		<Unit filename="..\engine\md5.h" />
+		<Unit filename="..\engine\menus.cpp" />
+		<Unit filename="..\engine\model.h" />
+		<Unit filename="..\engine\movie.cpp" />
+		<Unit filename="..\engine\mpr.h" />
+		<Unit filename="..\engine\normal.cpp" />
+		<Unit filename="..\engine\obj.h" />
+		<Unit filename="..\engine\octa.cpp" />
+		<Unit filename="..\engine\octa.h" />
+		<Unit filename="..\engine\octaedit.cpp" />
+		<Unit filename="..\engine\octarender.cpp" />
+		<Unit filename="..\engine\physics.cpp" />
+		<Unit filename="..\engine\pvs.cpp" />
+		<Unit filename="..\engine\ragdoll.h" />
+		<Unit filename="..\engine\rendergl.cpp" />
+		<Unit filename="..\engine\rendermodel.cpp" />
+		<Unit filename="..\engine\renderparticles.cpp" />
+		<Unit filename="..\engine\rendersky.cpp" />
+		<Unit filename="..\engine\rendertext.cpp" />
+		<Unit filename="..\engine\renderva.cpp" />
+		<Unit filename="..\engine\scale.h" />
+		<Unit filename="..\engine\server.cpp" />
+		<Unit filename="..\engine\serverbrowser.cpp" />
+		<Unit filename="..\engine\shader.cpp" />
+		<Unit filename="..\engine\shadowmap.cpp" />
+		<Unit filename="..\engine\skelmodel.h" />
+		<Unit filename="..\engine\smd.h" />
+		<Unit filename="..\engine\sound.cpp" />
+		<Unit filename="..\engine\textedit.h" />
+		<Unit filename="..\engine\texture.cpp" />
+		<Unit filename="..\engine\texture.h" />
+		<Unit filename="..\engine\varray.h" />
+		<Unit filename="..\engine\vertmodel.h" />
+		<Unit filename="..\engine\water.cpp" />
+		<Unit filename="..\engine\world.cpp" />
+		<Unit filename="..\engine\world.h" />
+		<Unit filename="..\engine\worldio.cpp" />
+		<Unit filename="..\fpsgame\ai.cpp" />
+		<Unit filename="..\fpsgame\ai.h" />
+		<Unit filename="..\fpsgame\aiman.h" />
+		<Unit filename="..\fpsgame\capture.h" />
+		<Unit filename="..\fpsgame\client.cpp" />
+		<Unit filename="..\fpsgame\collect.h" />
+		<Unit filename="..\fpsgame\ctf.h" />
+		<Unit filename="..\fpsgame\entities.cpp" />
+		<Unit filename="..\fpsgame\extinfo.h" />
+		<Unit filename="..\fpsgame\fps.cpp" />
 		<Unit filename="..\fpsgame\game.h">
 			<Option compile="1" />
 			<Option weight="0" />
-			<Option target="client64" />
-			<Option target="client32" />
 		</Unit>
-		<Unit filename="..\fpsgame\monster.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\movable.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\render.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\scoreboard.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\server.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\waypoint.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\fpsgame\weapon.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\GL\glext.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_active.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_audio.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_byteorder.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_cdrom.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_config.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_config_macosx.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_config_win32.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_copying.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_cpuinfo.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_endian.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_error.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_events.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_getenv.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_image.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_joystick.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_keyboard.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_keysym.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_loadso.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_main.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_mixer.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_mouse.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_mutex.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_name.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_opengl.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_platform.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_quit.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_rwops.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_stdinc.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_syswm.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_thread.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_timer.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_types.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_version.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\SDL_video.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\begin_code.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\close_code.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\zconf.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\include\zlib.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\command.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\crypto.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
+		<Unit filename="..\fpsgame\monster.cpp" />
+		<Unit filename="..\fpsgame\movable.cpp" />
+		<Unit filename="..\fpsgame\render.cpp" />
+		<Unit filename="..\fpsgame\scoreboard.cpp" />
+		<Unit filename="..\fpsgame\server.cpp" />
+		<Unit filename="..\fpsgame\waypoint.cpp" />
+		<Unit filename="..\fpsgame\weapon.cpp" />
+		<Unit filename="..\include\GL\glext.h" />
+		<Unit filename="..\include\SDL.h" />
+		<Unit filename="..\include\SDL_active.h" />
+		<Unit filename="..\include\SDL_audio.h" />
+		<Unit filename="..\include\SDL_byteorder.h" />
+		<Unit filename="..\include\SDL_cdrom.h" />
+		<Unit filename="..\include\SDL_config.h" />
+		<Unit filename="..\include\SDL_config_macosx.h" />
+		<Unit filename="..\include\SDL_config_win32.h" />
+		<Unit filename="..\include\SDL_copying.h" />
+		<Unit filename="..\include\SDL_cpuinfo.h" />
+		<Unit filename="..\include\SDL_endian.h" />
+		<Unit filename="..\include\SDL_error.h" />
+		<Unit filename="..\include\SDL_events.h" />
+		<Unit filename="..\include\SDL_getenv.h" />
+		<Unit filename="..\include\SDL_image.h" />
+		<Unit filename="..\include\SDL_joystick.h" />
+		<Unit filename="..\include\SDL_keyboard.h" />
+		<Unit filename="..\include\SDL_keysym.h" />
+		<Unit filename="..\include\SDL_loadso.h" />
+		<Unit filename="..\include\SDL_main.h" />
+		<Unit filename="..\include\SDL_mixer.h" />
+		<Unit filename="..\include\SDL_mouse.h" />
+		<Unit filename="..\include\SDL_mutex.h" />
+		<Unit filename="..\include\SDL_name.h" />
+		<Unit filename="..\include\SDL_opengl.h" />
+		<Unit filename="..\include\SDL_platform.h" />
+		<Unit filename="..\include\SDL_quit.h" />
+		<Unit filename="..\include\SDL_rwops.h" />
+		<Unit filename="..\include\SDL_stdinc.h" />
+		<Unit filename="..\include\SDL_syswm.h" />
+		<Unit filename="..\include\SDL_thread.h" />
+		<Unit filename="..\include\SDL_timer.h" />
+		<Unit filename="..\include\SDL_types.h" />
+		<Unit filename="..\include\SDL_version.h" />
+		<Unit filename="..\include\SDL_video.h" />
+		<Unit filename="..\include\begin_code.h" />
+		<Unit filename="..\include\close_code.h" />
+		<Unit filename="..\include\zconf.h" />
+		<Unit filename="..\include\zlib.h" />
+		<Unit filename="..\shared\command.h" />
+		<Unit filename="..\shared\crypto.cpp" />
 		<Unit filename="..\shared\cube.h">
 			<Option compile="1" />
 			<Option weight="0" />
-			<Option target="client64" />
-			<Option target="client32" />
 		</Unit>
-		<Unit filename="..\shared\ents.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\geom.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\geom.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\iengine.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\igame.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\stream.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\tools.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\tools.h">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
-		<Unit filename="..\shared\zip.cpp">
-			<Option target="client64" />
-			<Option target="client32" />
-		</Unit>
+		<Unit filename="..\shared\ents.h" />
+		<Unit filename="..\shared\geom.cpp" />
+		<Unit filename="..\shared\geom.h" />
+		<Unit filename="..\shared\iengine.h" />
+		<Unit filename="..\shared\igame.h" />
+		<Unit filename="..\shared\stream.cpp" />
+		<Unit filename="..\shared\tools.cpp" />
+		<Unit filename="..\shared\tools.h" />
+		<Unit filename="..\shared\zip.cpp" />
 		<Unit filename="mingw.rc">
 			<Option compilerVar="WINDRES" />
+			<Option compiler="gcc" use="1" buildCommand="$rescomp -F $WINDRES_TARGET -i $file -J rc -o $resource_output -O coff $res_includes" />
 		</Unit>
 		<Extensions>
 			<code_completion />
