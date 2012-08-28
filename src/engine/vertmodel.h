@@ -292,9 +292,9 @@ struct vertmodel : animmodel
 
         int totalframes() const { return numframes; }
 
-        void concattagtransform(part *p, int frame, int i, const matrix3x4 &m, matrix3x4 &n)
+        void concattagtransform(part *p, int i, const matrix3x4 &m, matrix3x4 &n)
         {
-            n.mul(m, tags[frame*numtags + i].transform);
+            n.mul(m, tags[i].transform);
             n.translate(m.transformnormal(p->translate).mul(p->model->scale));
         }
 

@@ -1100,7 +1100,7 @@ struct skelmodel : animmodel
             loopv(antipodes) sc.bdata[antipodes[i].child].fixantipodal(sc.bdata[antipodes[i].parent]);
         }
 
-        void concattagtransform(part *p, int frame, int i, const matrix3x4 &m, matrix3x4 &n)
+        void concattagtransform(part *p, int i, const matrix3x4 &m, matrix3x4 &n)
         {
             matrix3x4 t;
             t.mul(bones[tags[i].bone].base, tags[i].matrix);
@@ -1486,9 +1486,9 @@ struct skelmodel : animmodel
             else if(enablebones) disablebones();
         }
 
-        void concattagtransform(part *p, int frame, int i, const matrix3x4 &m, matrix3x4 &n)
+        void concattagtransform(part *p, int i, const matrix3x4 &m, matrix3x4 &n)
         {
-            skel->concattagtransform(p, frame, i, m, n);
+            skel->concattagtransform(p, i, m, n);
         }
 
         int addblendcombo(const blendcombo &c)
