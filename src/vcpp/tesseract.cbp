@@ -38,11 +38,12 @@
 					<Add library="SDL" />
 					<Add library="SDL_image" />
 					<Add library="SDL_mixer" />
-					<Add library="zdll" />
+					<Add library="zlib1" />
 					<Add library="opengl32" />
 					<Add library="enet" />
 					<Add library="ws2_32" />
 					<Add library="winmm" />
+					<Add directory="..\..\bin64" />
 					<Add directory="..\lib64" />
 				</Linker>
 				<Environment>
@@ -81,11 +82,12 @@
 					<Add library="SDL" />
 					<Add library="SDL_image" />
 					<Add library="SDL_mixer" />
-					<Add library="zdll" />
+					<Add library="zlib1" />
 					<Add library="opengl32" />
 					<Add library="enet" />
 					<Add library="ws2_32" />
 					<Add library="winmm" />
+					<Add directory="..\..\bin" />
 					<Add directory="..\lib" />
 				</Linker>
 				<Environment>
