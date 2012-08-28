@@ -925,18 +925,34 @@ void stackdumper(unsigned int type, EXCEPTION_POINTERS *ep)
     CONTEXT *context = ep->ContextRecord;
     string out, t;
     formatstring(out)("Tesseract Win32 Exception: 0x%x [0x%x]\n\n", er->ExceptionCode, er->ExceptionCode==EXCEPTION_ACCESS_VIOLATION ? er->ExceptionInformation[1] : -1);
-    STACKFRAME sf = {{context->Eip, 0, AddrModeFlat}, {}, {context->Ebp, 0, AddrModeFlat}, {context->Esp, 0, AddrModeFlat}, 0};
     SymInitialize(GetCurrentProcess(), NULL, TRUE);
-
+#ifdef _AMD64_
+    STACKFRAME64 sf = {{context->Rip, 0, AddrModeFlat}, {}, {context->Rbp, 0, AddrModeFlat}, {context->Rsp, 0, AddrModeFlat}, 0};
+    while(::StackWalk64(IMAGE_FILE_MACHINE_AMD64, GetCurrentProcess(), GetCurrentThread(), &sf, context, NULL, ::SymFunctionTableAccess, ::SymGetModuleBase, NULL))
+    {
+        union { IMAGEHLP_SYMBOL64 sym; char symext[sizeof(IMAGEHLP_SYMBOL64) + sizeof(string)]; };
+        sym.SizeOfStruct = sizeof(sym);
+        sym.MaxNameLength = sizeof(symext) - sizeof(sym);
+        IMAGEHLP_LINE64 line;
+        line.SizeOfStruct = sizeof(line);
+        DWORD64 symoff;
+        DWORD lineoff;
+        if(SymGetSymFromAddr64(GetCurrentProcess(), sf.AddrPC.Offset, &symoff, &sym) && SymGetLineFromAddr64(GetCurrentProcess(), sf.AddrPC.Offset, &lineoff, &line))
+#else
+    STACKFRAME sf = {{context->Eip, 0, AddrModeFlat}, {}, {context->Ebp, 0, AddrModeFlat}, {context->Esp, 0, AddrModeFlat}, 0};
     while(::StackWalk(IMAGE_FILE_MACHINE_I386, GetCurrentProcess(), GetCurrentThread(), &sf, context, NULL, ::SymFunctionTableAccess, ::SymGetModuleBase, NULL))
     {
-        struct { IMAGEHLP_SYMBOL sym; string n; } si = { { sizeof( IMAGEHLP_SYMBOL ), 0, 0, 0, sizeof(string) } };
-        IMAGEHLP_LINE li = { sizeof( IMAGEHLP_LINE ) };
-        DWORD off;
-        if(SymGetSymFromAddr(GetCurrentProcess(), (DWORD)sf.AddrPC.Offset, &off, &si.sym) && SymGetLineFromAddr(GetCurrentProcess(), (DWORD)sf.AddrPC.Offset, &off, &li))
+        union { IMAGEHLP_SYMBOL sym; char symext[sizeof(IMAGEHLP_SYMBOL) + sizeof(string)]; };
+        sym.SizeOfStruct = sizeof(sym);
+        sym.MaxNameLength = sizeof(symext) - sizeof(sym);
+        IMAGEHLP_LINE line;
+        line.SizeOfStruct = sizeof(line);
+        DWORD symoff, lineoff;
+        if(SymGetSymFromAddr(GetCurrentProcess(), sf.AddrPC.Offset, &symoff, &sym) && SymGetLineFromAddr(GetCurrentProcess(), sf.AddrPC.Offset, &lineoff, &line))
+#endif
         {
-            char *del = strrchr(li.FileName, '\\');
-            formatstring(t)("%s - %s [%d]\n", si.sym.Name, del ? del + 1 : li.FileName, li.LineNumber);
+            char *del = strrchr(line.FileName, '\\');
+            formatstring(t)("%s - %s [%d]\n", sym.Name, del ? del + 1 : line.FileName, line.LineNumber);
             concatstring(out, t);
         }
     }
