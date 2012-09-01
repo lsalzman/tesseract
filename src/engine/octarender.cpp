@@ -1283,7 +1283,7 @@ void setva(cube &c, int cx, int cy, int cz, int size, int csi)
 
     calcgeombb(cx, cy, cz, size, bbmin, bbmax);
 
-    if(!vc.emptyva())
+    if(size == min(0x1000, worldsize/2) || !vc.emptyva())
     {
         vtxarray *va = newva(cx, cy, cz, size);
         ext(c).va = va;
