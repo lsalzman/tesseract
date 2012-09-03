@@ -353,6 +353,7 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     if(background || sdl_backingstore_bug > 0) restorebackground();
 
     int w = screen->w, h = screen->h;
+    if(forceaspect) w = int(ceil(h*forceaspect));
     getbackgroundres(w, h);
     gettextres(w, h);
 
