@@ -279,7 +279,7 @@ extern int hasstencil;
 extern int glslversion;
 
 extern int vieww, viewh;
-extern float curfov, fovy, aspect;
+extern float curfov, fovy, aspect, forceaspect;
 extern float nearplane;
 extern int farplane;
 extern int hdr;

@@ -149,6 +149,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
     stopsounds(); // stop sounds while loading
  
     int w = screen->w, h = screen->h;
+    if(forceaspect) w = int(ceil(h*forceaspect));
     getbackgroundres(w, h);
     gettextres(w, h);
 

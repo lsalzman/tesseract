@@ -951,6 +951,7 @@ VARP(fov, 10, 100, 150);
 VAR(avatarzoomfov, 10, 25, 60);
 VAR(avatarfov, 10, 65, 150);
 FVAR(avatardepth, 0, 0.5f, 1);
+FVARNP(aspect, forceaspect, 0, 0, 1e3f);
 
 static int zoommillis = 0;
 VARF(zoom, -1, 0, 1,
@@ -5180,7 +5181,7 @@ void gl_drawframe(int w, int h)
 
     vieww = w;
     viewh = h;
-    aspect = w/float(h);
+    aspect = forceaspect ? forceaspect : w/float(h);
     fovy = 2*atan2(tan(curfov/2*RAD), aspect)/RAD;
     
     float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
@@ -5560,6 +5561,8 @@ FVARP(conscale, 1e-3f, 0.33f, 1e3f);
 
 void gl_drawhud(int w, int h)
 {
+    if(forceaspect) w = int(ceil(h*forceaspect));
+
     gettextres(w, h);
 
     glMatrixMode(GL_PROJECTION);
