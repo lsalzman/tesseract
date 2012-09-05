@@ -3093,6 +3093,8 @@ static inline bool sortlights(int x, int y)
     const lightinfo &xl = lights[x], &yl = lights[y];
     if(!xl.spot) { if(yl.spot) return true; }
     else if(!yl.spot) return false;
+    if(xl.sz1 < yl.sz1) return true;
+    else if(xl.sz1 > yl.sz1) return false;
     return xl.dist - xl.radius < yl.dist - yl.radius;
 }
 
