@@ -2573,7 +2573,7 @@ plane smtetraclipplane;
 
 vector<lightinfo> lights;
 vector<int> lightorder;
-vector<int> lighttiles[LIGHTTILE_H][LIGHTTILE_W];
+vector<int> lighttiles[LIGHTTILE_MAXH][LIGHTTILE_MAXW];
 vector<shadowmapinfo> shadowmaps;
 
 void clearshadowcache()
@@ -3098,6 +3098,21 @@ static inline bool sortlights(int x, int y)
     return xl.dist - xl.radius < yl.dist - yl.radius;
 }
 
+VAR(lighttilealignw, 1, 16, 256);
+VAR(lighttilealignh, 1, 16, 256);
+VARN(lighttilew, lighttilemaxw, 1, 10, LIGHTTILE_MAXW);
+VARN(lighttileh, lighttilemaxh, 1, 10, LIGHTTILE_MAXH);
+
+int lighttilew = 0, lighttileh = 0, lighttilevieww = 0, lighttileviewh = 0;
+
+void calctilesize()
+{
+    lighttilevieww = (vieww + lighttilealignw - 1)/lighttilealignw;
+    lighttileviewh = (viewh + lighttilealignh - 1)/lighttilealignh;
+    lighttilew = min(lighttilevieww, lighttilemaxw);
+    lighttileh = min(lighttileviewh, lighttilemaxh);
+}
+
 void resetlights()
 {
     shadowcache.reset();
@@ -3129,10 +3144,12 @@ void resetlights()
 
     lights.setsize(0);
     lightorder.setsize(0);
-    loopi(LIGHTTILE_H) loopj(LIGHTTILE_W) lighttiles[i][j].setsize(0);
+    loopi(LIGHTTILE_MAXH) loopj(LIGHTTILE_MAXW) lighttiles[i][j].setsize(0);
 
     shadowmaps.setsize(0);
     shadowatlaspacker.reset();
+
+    calctilesize();
 }
 
 static vec *lightsphereverts = NULL;
@@ -3207,7 +3224,7 @@ VAR(lighttilebatch, 0, 8, 8);
 VAR(batchsunlight, 0, 1, 1);
 FVAR(lightradiustweak, 1, 1.11f, 2);
 
-void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
+void bug() {} void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
     Shader *s = minimapping ? deferredminimapshader : deferredlightshader;
     if(!s || s == nullshader) return;
@@ -3293,8 +3310,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glPushMatrix();
     glLoadIdentity();
 
-    int btx1 = max(int(floor((bsx1 + 1)*0.5f*LIGHTTILE_W)), 0), bty1 = max(int(floor((bsy1 + 1)*0.5f*LIGHTTILE_H)), 0),
-        btx2 = min(int(ceil((bsx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), bty2 = min(int(ceil((bsy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+    int btx1, bty1, btx2, bty2;
+    calctilebounds(bsx1, bsy1, bsx2, bsy2, btx1, bty1, btx2, bty2);
     if(sunpass)
     {
         int tx1 = max(int(floor((bsx1*0.5f+0.5f)*vieww)), 0), ty1 = max(int(floor((bsy1*0.5f+0.5f)*viewh)), 0),
@@ -3536,8 +3553,10 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             sy2 = min(sy2, bsy2);
             if(sx1 < sx2 && sy1 < sy2)
             { 
-                int tx1 = max(int(floor((sx1*0.5f+0.5f)*vieww)), (x*vieww)/LIGHTTILE_W), ty1 = max(int(floor((sy1*0.5f+0.5f)*viewh)), (y*viewh)/LIGHTTILE_H),
-                    tx2 = min(int(ceil((sx2*0.5f+0.5f)*vieww)), ((x+1)*vieww)/LIGHTTILE_W), ty2 = min(int(ceil((sy2*0.5f+0.5f)*viewh)), ((y+1)*viewh)/LIGHTTILE_H);
+                int tx1 = max(int(floor((sx1*0.5f+0.5f)*vieww)), ((x*lighttilevieww)/lighttilew)*lighttilealignw), 
+                    ty1 = max(int(floor((sy1*0.5f+0.5f)*viewh)), ((y*lighttileviewh)/lighttileh)*lighttilealignh),
+                    tx2 = min(int(ceil((sx2*0.5f+0.5f)*vieww)), min((((x+1)*lighttilevieww)/lighttilew)*lighttilealignw, vieww)), 
+                    ty2 = min(int(ceil((sy2*0.5f+0.5f)*viewh)), min((((y+1)*lighttileviewh)/lighttileh)*lighttilealignh, viewh));
 
                 glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
 
@@ -3739,8 +3758,8 @@ void collectlights()
 
 static inline void addlighttiles(const lightinfo &l, int idx)
 {
-    int tx1 = max(int(floor((l.sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((l.sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
-        tx2 = min(int(ceil((l.sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((l.sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+    int tx1, ty1, tx2, ty2;
+    calctilebounds(l.sx1, l.sy1, l.sx2, l.sy2, tx1, ty1, tx2, ty2);
     for(int y = ty1; y < ty2; y++) for(int x = tx1; x < tx2; x++) { lighttiles[y][x].add(idx); lighttilesused++; }
 }
  
@@ -4688,7 +4707,7 @@ void rendertransparent()
 
     loop(layer, 3)
     {
-        uint tiles[LIGHTTILE_H];
+        uint tiles[LIGHTTILE_MAXH];
         float sx1, sy1, sx2, sy2;
         switch(layer)
         {
@@ -4712,7 +4731,7 @@ void rendertransparent()
                 sy1 = min(sy1, matsolidsy1);
                 sx2 = max(sx2, matsolidsx2);
                 sy2 = max(sy2, matsolidsy2);
-                loopj(LIGHTTILE_H) tiles[j] |= matsolidtiles[j];
+                loopj(LIGHTTILE_MAXH) tiles[j] |= matsolidtiles[j];
             }
             break;
         default:

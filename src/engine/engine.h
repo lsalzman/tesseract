@@ -388,13 +388,27 @@ static inline cubeext &ext(cube &c)
 
 // shadowmap
 
-#define LIGHTTILE_W 10
-#define LIGHTTILE_H 10
+#define LIGHTTILE_MAXW 16
+#define LIGHTTILE_MAXH 16
+
+extern int lighttilealignw, lighttilealignh, lighttilevieww, lighttileviewh, lighttilew, lighttileh;
+
+static inline void calctilebounds(float sx1, float sy1, float sx2, float sy2, int &bx1, int &by1, int &bx2, int &by2)
+{
+    int tx1 = max(int(floor(((sx1 + 1)*0.5f*vieww)/lighttilealignw)), 0),
+        ty1 = max(int(floor(((sy1 + 1)*0.5f*viewh)/lighttilealignh)), 0),
+        tx2 = min(int(ceil(((sx2 + 1)*0.5f*vieww)/lighttilealignw)), lighttilevieww),
+        ty2 = min(int(ceil(((sy2 + 1)*0.5f*viewh)/lighttilealignh)), lighttileviewh);
+    bx1 = ((tx1 + 1) * lighttilew - 1) / lighttilevieww;
+    by1 = ((ty1 + 1) * lighttileh - 1) / lighttileviewh;
+    bx2 = (tx2 * lighttilew + lighttilevieww - 1) / lighttilevieww;
+    by2 = (ty2 * lighttileh + lighttileviewh - 1) / lighttileviewh;
+}
 
 static inline void masktiles(uint *tiles, float sx1, float sy1, float sx2, float sy2)
 {
-    int tx1 = max(int(floor((sx1 + 1)*0.5f*LIGHTTILE_W)), 0), ty1 = max(int(floor((sy1 + 1)*0.5f*LIGHTTILE_H)), 0),
-        tx2 = min(int(ceil((sx2 + 1)*0.5f*LIGHTTILE_W)), LIGHTTILE_W), ty2 = min(int(ceil((sy2 + 1)*0.5f*LIGHTTILE_H)), LIGHTTILE_H);
+    int tx1, ty1, tx2, ty2;
+    calctilebounds(sx1, sy1, sx2, sy2, tx1, ty1, tx2, ty2);
     for(int ty = ty1; ty < ty2; ty++) tiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;
 }
 
@@ -481,7 +495,7 @@ extern void updatevabbs(bool force = false);
 
 extern int oqfrags;
 extern float alphafrontsx1, alphafrontsx2, alphafrontsy1, alphafrontsy2, alphabacksx1, alphabacksx2, alphabacksy1, alphabacksy2, alpharefractsx1, alpharefractsx2, alpharefractsy1, alpharefractsy2;
-extern uint alphatiles[LIGHTTILE_H];
+extern uint alphatiles[LIGHTTILE_MAXH];
 
 extern void visiblecubes(bool cull = true);
 extern void setvfcP(const vec &bbmin = vec(-1, -1, -1), const vec &bbmax = vec(1, 1, 1));
@@ -525,7 +539,7 @@ extern bool getdynlight(int n, vec &o, float &radius, vec &color);
 extern float matliquidsx1, matliquidsy1, matliquidsx2, matliquidsy2;
 extern float matsolidsx1, matsolidsy1, matsolidsx2, matsolidsy2;
 extern float matrefractsx1, matrefractsy1, matrefractsx2, matrefractsy2;
-extern uint matliquidtiles[LIGHTTILE_H], matsolidtiles[LIGHTTILE_H];
+extern uint matliquidtiles[LIGHTTILE_MAXH], matsolidtiles[LIGHTTILE_MAXH];
 extern vector<materialsurface> editsurfs, glasssurfs, watersurfs, waterfallsurfs, lavasurfs, lavafallsurfs;
 extern const vec matnormals[6];
 

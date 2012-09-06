@@ -1973,7 +1973,7 @@ static int alphabackvas = 0, alpharefractvas = 0;
 float alphafrontsx1 = -1, alphafrontsx2 = 1, alphafrontsy1 = -1, alphafrontsy2 = -1,
       alphabacksx1 = -1, alphabacksx2 = 1, alphabacksy1 = -1, alphabacksy2 = -1,
       alpharefractsx1 = -1, alpharefractsx2 = 1, alpharefractsy1 = -1, alpharefractsy2 = 1;
-uint alphatiles[LIGHTTILE_H];
+uint alphatiles[LIGHTTILE_MAXH];
 
 int findalphavas()
 {
