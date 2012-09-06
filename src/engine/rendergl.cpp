@@ -3224,7 +3224,7 @@ VAR(lighttilebatch, 0, 8, 8);
 VAR(batchsunlight, 0, 1, 1);
 FVAR(lightradiustweak, 1, 1.11f, 2);
 
-void bug() {} void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
+void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL)
 {
     Shader *s = minimapping ? deferredminimapshader : deferredlightshader;
     if(!s || s == nullshader) return;
