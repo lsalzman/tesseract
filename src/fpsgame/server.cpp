@@ -554,6 +554,8 @@ namespace server
     VAR(maxdemosize, 0, 16, 64);
     VAR(restrictdemos, 0, 1, 1);
 
+    VAR(restrictpausegame, 0, 1, 1);
+
     SVAR(serverdesc, "");
     SVAR(serverpass, "");
     SVAR(adminpass, "");
@@ -3025,7 +3027,7 @@ namespace server
             case N_PAUSEGAME:
             {
                 int val = getint(p);
-                if(ci->privilege<PRIV_ADMIN && !ci->local) break;
+                if(ci->privilege < (restrictpausegame ? PRIV_ADMIN : PRIV_MASTER) && !ci->local) break;
                 pausegame(val > 0);
                 break;
             }
