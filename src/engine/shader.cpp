@@ -11,7 +11,7 @@ static hashtable<const char *, int> localparams(256);
 static hashtable<const char *, Shader> shaders(256);
 static Shader *slotshader = NULL;
 static vector<SlotShaderParam> slotparams;
-static bool standardshader = false, initshaders = false, forceshaders = true;
+static bool standardshader = false, forceshaders = true;
 
 VAR(maxtexcoords, 1, 0, 0);
 VAR(maxvsuniforms, 1, 0, 0);
@@ -22,21 +22,9 @@ VAR(dbgshader, 0, 1, 2);
 
 void loadshaders()
 {
-    GLint val;
-    glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &val);
-    maxvsuniforms = val/4;
-    glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &val);
-    maxfsuniforms = val/4;
-    glGetIntegerv(GL_MAX_VARYING_FLOATS, &val);
-    maxvaryings = val;
-    glGetIntegerv(GL_MAX_TEXTURE_COORDS, &val);
-    maxtexcoords = val;
-
-    initshaders = true;
     standardshader = true;
     execfile("data/glsl.cfg");
     standardshader = false;
-    initshaders = false;
 
     nullshader = lookupshaderbyname("null");
     defaultshader = lookupshaderbyname("default");
@@ -595,7 +583,16 @@ Shader *newshader(int type, const char *name, const char *vs, const char *ps, Sh
 
 void setupshaders()
 {
-    initshaders = true;
+    GLint val;
+    glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &val);
+    maxvsuniforms = val/4;
+    glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &val);
+    maxfsuniforms = val/4;
+    glGetIntegerv(GL_MAX_VARYING_FLOATS, &val);
+    maxvaryings = val;
+    glGetIntegerv(GL_MAX_TEXTURE_COORDS, &val);
+    maxtexcoords = val;
+
     standardshader = true;
     defaultshader = newshader(0, "<init>default", 
         "void main(void) {\n"
@@ -616,7 +613,7 @@ void setupshaders()
         "    gl_FragColor = gl_Color;\n"
         "}\n");
     standardshader = false;
-    initshaders = false;
+
     if(!defaultshader || !notextureshader) fatal("failed to setup shaders");
 }
 
