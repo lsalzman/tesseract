@@ -212,10 +212,14 @@ static void linkglslprogram(Shader &s, bool msg = true)
 
 bool checkglslsupport()
 {
+    const GLchar *vsstr = 
+        "void main(void) {\n" 
+        "    gl_Position = ftransform();\n"
+        "}\n";
 #if 0
     /* check if GLSL profile supports loops
      */
-    const GLchar *source = 
+    const GLchar *psstr = 
         "uniform int N;\n"
         "uniform vec4 delta;\n"
         "void main(void) {\n"
@@ -224,33 +228,36 @@ bool checkglslsupport()
         "   gl_FragColor = test;\n"
         "}\n";
 #else
-    const GLchar *source =
+    const GLchar *psstr =
         "void main(void) {\n"
         "   gl_FragColor = vec4(0.0);\n"
         "}\n";
 #endif
-    GLuint obj = glCreateShader_(GL_FRAGMENT_SHADER);
-    if(!obj) return false;
-    glShaderSource_(obj, 1, &source, NULL);
-    glCompileShader_(obj);
-    GLint success;
-    glGetShaderiv_(obj, GL_COMPILE_STATUS, &success);
-    if(!success)
-    {
-        glDeleteShader_(obj);
-        return false;
-    }
+    GLuint vsobj = glCreateShader_(GL_VERTEX_SHADER), psobj = glCreateShader_(GL_FRAGMENT_SHADER);
     GLuint program = glCreateProgram_();
-    if(!program)
+    GLint success = 0;
+    if(vsobj && psobj && program)
     {
-        glDeleteShader_(obj);
-        return false;
-    } 
-    glAttachShader_(program, obj);
-    glLinkProgram_(program); 
-    glGetProgramiv_(program, GL_LINK_STATUS, &success);
-    glDeleteShader_(obj);
-    glDeleteProgram_(program);
+        glShaderSource_(vsobj, 1, &vsstr, NULL);
+        glCompileShader_(vsobj);
+        glGetShaderiv_(vsobj, GL_COMPILE_STATUS, &success);
+        if(success) 
+        {
+            glShaderSource_(psobj, 1, &psstr, NULL);
+            glCompileShader_(psobj);
+            glGetShaderiv_(psobj, GL_COMPILE_STATUS, &success);
+            if(success)
+            {
+                glAttachShader_(program, vsobj);
+                glAttachShader_(program, psobj);
+                glLinkProgram_(program); 
+                glGetProgramiv_(program, GL_LINK_STATUS, &success);
+            }
+        }
+    }
+    if(vsobj) glDeleteShader_(vsobj);
+    if(psobj) glDeleteShader_(psobj);
+    if(program) glDeleteProgram_(program);
     return success!=0;
 }
 
@@ -584,6 +591,33 @@ Shader *newshader(int type, const char *name, const char *vs, const char *ps, Sh
     if(variant) variant->variants[row].add(&s);
     s.fixdetailshader();
     return &s;
+}
+
+void setupshaders()
+{
+    initshaders = true;
+    standardshader = true;
+    defaultshader = newshader(0, "<init>default", 
+        "void main(void) {\n"
+        "    gl_Position = ftransform();\n"
+        "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
+        "    gl_FrontColor = gl_Color;\n"
+        "}\n",
+        "uniform sampler2D tex0;\n"
+        "void main(void) {\n"
+        "    gl_FragColor = gl_Color * texture2D(tex0, gl_TexCoord[0].xy);\n"
+        "}\n");
+    notextureshader = newshader(0, "<init>notexture",
+        "void main(void) {\n"
+        "    gl_Position = ftransform();\n"
+        "    gl_FrontColor = gl_Color;\n"
+        "}\n",
+        "void main(void) {\n"
+        "    gl_FragColor = gl_Color;\n"
+        "}\n");
+    standardshader = false;
+    initshaders = false;
+    if(!defaultshader || !notextureshader) fatal("failed to setup shaders");
 }
 
 static const char *findglslmain(const char *s)

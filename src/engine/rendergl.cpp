@@ -859,6 +859,9 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
 
     renderpath = R_GLSLANG;
 
+    extern void setupshaders();
+    setupshaders();
+
     static const char * const rpnames[1] = { "GLSL shader" };
     conoutf(CON_INIT, "Rendering using the OpenGL %s path.", rpnames[renderpath]);
 
