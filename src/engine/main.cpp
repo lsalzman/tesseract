@@ -107,8 +107,6 @@ void writeinitcfg()
     f->printf("stencilbits %d\n", stencilbits);
     f->printf("fsaa %d\n", fsaa);
     f->printf("vsync %d\n", vsync);
-    extern int shaderprecision;
-    f->printf("shaderprecision %d\n", shaderprecision);
     extern int glineardepth;
     f->printf("glineardepth %d\n", glineardepth);
     extern int sound, soundchans, soundfreq, soundbufferlen;
@@ -1096,13 +1094,7 @@ int main(int argc, char **argv)
             case 'v': vsync = atoi(&argv[i][2]); break;
             case 't': fullscreen = atoi(&argv[i][2]); break;
             case 's': stencilbits = atoi(&argv[i][2]); break;
-            case 'f': 
-            {
-                extern int shaderprecision; 
-                int n = atoi(&argv[i][2]);
-                shaderprecision = clamp(n - 1, 0, 2);
-                break;
-            }
+            case 'f': /* compat, ignore */ break; 
             case 'l': 
             {
                 char pkgdir[] = "packages/"; 

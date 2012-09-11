@@ -462,8 +462,6 @@ void Shader::bindprograms()
     lastshader = this;
 }
 
-VARF(shaderprecision, 0, 0, 2, initwarning("shader quality"));
-
 bool Shader::compile()
 {
     if(!vsstr) vsobj = !reusevs || reusevs->type&SHADER_INVALID ? 0 : reusevs->vsobj;
