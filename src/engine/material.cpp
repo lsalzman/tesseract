@@ -372,15 +372,11 @@ void setupmaterials(int start, int len)
             }
             else if(m.material==MAT_GLASS)
             {
-                if(!hasCM) m.envmap = EMID_NONE;
-                else
-                {
-                    int dim = dimension(m.orient);
-                    vec center(m.o.tovec());
-                    center[R[dim]] += m.rsize/2;
-                    center[C[dim]] += m.csize/2;
-                    m.envmap = closestenvmap(center);
-                }
+                int dim = dimension(m.orient);
+                vec center(m.o.tovec());
+                center[R[dim]] += m.rsize/2;
+                center[C[dim]] += m.csize/2;
+                m.envmap = closestenvmap(center);
             }
             if(m.material&MATF_VOLUME) hasmat |= 1<<m.material;
             m.skip = 0;

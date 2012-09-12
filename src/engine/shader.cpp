@@ -840,12 +840,6 @@ void shader(int *type, char *name, char *vs, char *ps)
 {
     if(lookupshaderbyname(name)) return;
    
-    if((!hasCM && strstr(ps, "textureCube")) || (!hasTR && strstr(ps, "texture2DRect")))
-    {
-        slotparams.shrink(0);
-        return;
-    }
- 
     defformatstring(info)("shader %s", name);
     renderprogress(loadprogress, info);
     vector<char> vsbuf, psbuf, vsbak, psbak;
@@ -1206,7 +1200,7 @@ void renderpostfx()
 
 static bool addpostfx(const char *name, int outputbind, int outputscale, uint inputs, uint freeinputs, const vec4 &params)
 {
-    if(!hasTR || !*name) return false;
+    if(!*name) return false;
     Shader *s = useshaderbyname(name);
     if(!s)
     {

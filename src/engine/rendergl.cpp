@@ -582,7 +582,7 @@ void gl_checkextensions()
         if(ati) ati_cubemap_bug = 1;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_cube_map extension.");
     }
-    else conoutf(CON_WARN, "WARNING: No cube map texture support. (no reflective glass)");
+    else fatal("Cube map texture support is required!");
 
     if(hasext(exts, "GL_ARB_texture_non_power_of_two"))
     {

@@ -409,19 +409,19 @@ void preloadwatershaders(bool force)
     if(caustics && causticscale && causticmillis)
     {
         if(waterreflect) useshaderbyname("waterreflectcaustics");
-        else if(waterenvmap && hasCM) useshaderbyname("waterenvcaustics");
+        else if(waterenvmap) useshaderbyname("waterenvcaustics");
         else useshaderbyname("watercaustics");
     }
     else
     {
         if(waterreflect) useshaderbyname("waterreflect");
-        else if(waterenvmap && hasCM) useshaderbyname("waterenv");
+        else if(waterenvmap) useshaderbyname("waterenv");
         else useshaderbyname("water");
     }
 
     useshaderbyname("underwater");
 
-    if(waterfallenv && hasCM) useshaderbyname("waterfallenv");
+    if(waterfallenv) useshaderbyname("waterfallenv");
     useshaderbyname("waterfall");
 
     useshaderbyname("waterfog");
@@ -555,7 +555,7 @@ void renderwaterfalls()
     GLOBALPARAM(waterfallrefract, (refractcolor.x*refractscale, refractcolor.y*refractscale, refractcolor.z*refractscale, waterfallrefract*viewh));
     GLOBALPARAM(waterfallspec, (0.5f*waterfallspec/100.0f));
  
-    if(hasCM && waterfallenv) SETSHADER(waterfallenv);
+    if(waterfallenv) SETSHADER(waterfallenv);
     else SETSHADER(waterfall);
  
     glBindTexture(GL_TEXTURE_2D, tex->id);
@@ -563,7 +563,7 @@ void renderwaterfalls()
     glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(4) ? wslot.sts[4].t->id : notexture->id);
     glActiveTexture_(GL_TEXTURE2_ARB);
     glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(5) ? wslot.sts[5].t->id : notexture->id);
-    if(hasCM && waterfallenv)
+    if(waterfallenv)
     {
         glActiveTexture_(GL_TEXTURE3_ARB);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(wslot));
@@ -588,7 +588,7 @@ void renderwater()
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(3) ? wslot.sts[3].t->id : notexture->id);
     if(caustics && causticscale && causticmillis) setupcaustics(2);
-    if(waterenvmap && !waterreflect && hasCM && !minimapping)
+    if(waterenvmap && !waterreflect && !minimapping)
     {
         glActiveTexture_(GL_TEXTURE4_ARB);
         glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(wslot));
@@ -617,13 +617,13 @@ void renderwater()
     else if(caustics && causticscale && causticmillis)
     {
         if(waterreflect) SETWATERSHADER(above, waterreflectcaustics);
-        else if(waterenvmap && hasCM) SETWATERSHADER(above, waterenvcaustics);
+        else if(waterenvmap) SETWATERSHADER(above, waterenvcaustics);
         else SETWATERSHADER(above, watercaustics);
     }
     else
     {
         if(waterreflect) SETWATERSHADER(above, waterreflect);
-        else if(waterenvmap && hasCM) SETWATERSHADER(above, waterenv);
+        else if(waterenvmap) SETWATERSHADER(above, waterenv);
         else SETWATERSHADER(above, water);
     }
 

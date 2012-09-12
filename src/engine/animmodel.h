@@ -72,19 +72,19 @@ struct animmodel : model
     struct skin
     {
         part *owner;
-        Texture *tex, *masks, *envmap, *normalmap;
+        Texture *tex, *decal, *masks, *envmap, *normalmap;
         Shader *shader;
         float spec, ambient, glow, glowdelta, glowpulse, fullbright, envmapmin, envmapmax, scrollu, scrollv, alphatest;
         bool alphablend, cullface;
 
-        skin() : owner(0), tex(notexture), masks(notexture), envmap(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(false), cullface(true) {}
+        skin() : owner(0), tex(notexture), decal(NULL), masks(notexture), envmap(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(false), cullface(true) {}
 
-        bool envmapped() { return hasCM && envmapmax>0 && envmapmodels; }
+        bool envmapped() { return envmapmax>0 && envmapmodels; }
         bool bumpmapped() { return normalmap && bumpmodels; }
         bool normals() { return true; }
         bool tangents() { return bumpmapped(); }
         bool alphatested() { return alphatest > 0 && tex->type&Texture::ALPHA; }
-
+         
         void setshaderparams(mesh *m, const animstate *as, bool masked, bool alphatested = false, bool skinned = true)
         {
             GLOBALPARAM(texscroll, (lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f));
@@ -119,18 +119,23 @@ struct animmodel : model
                     if(alphatested) DOMODELSHADER(alphaname, return alphaname##shader); \
                     else DOMODELSHADER(name, return name##shader); \
                 } while(0)
+            #define LOADDECALMODELSHADER(name, alphaname, decalname, decalalphaname) \
+                do { \
+                    if(decal) LOADMODELSHADER(decalname, decalalphaname); \
+                    else LOADMODELSHADER(name, alphaname); \
+                } while(0)
             #define SETMODELSHADER(m, name) DOMODELSHADER(name, (m)->setshader(name##shader))
             if(shader) return shader;
             else if(shadowmapping == SM_REFLECT) LOADMODELSHADER(rsmmodel, rsmalphamodel);
             else if(bumpmapped())
             {
-                if(shouldenvmap) LOADMODELSHADER(bumpenvmapmodel, bumpenvmapalphamodel);
-                else if(masked && (lightmodels || glowmodels)) LOADMODELSHADER(bumpmasksmodel, bumpmasksalphamodel);
-                else LOADMODELSHADER(bumpmodel, bumpalphamodel);
+                if(shouldenvmap) LOADDECALMODELSHADER(bumpenvmapmodel, bumpenvmapalphamodel, decalbumpenvmapmodel, decalbumpenvmapalphamodel);
+                else if(masked && (lightmodels || glowmodels)) LOADDECALMODELSHADER(bumpmasksmodel, bumpmasksalphamodel, decalbumpmasksmodel, decalbumpmasksalphamodel);
+                else LOADDECALMODELSHADER(bumpmodel, bumpalphamodel, decalbumpmodel, decalbumpalphamodel);
             }
-            else if(shouldenvmap) LOADMODELSHADER(envmapmodel, envmapalphamodel);
-            else if(masked && (lightmodels || glowmodels)) LOADMODELSHADER(masksmodel, masksalphamodel);
-            else LOADMODELSHADER(stdmodel, alphamodel);
+            else if(shouldenvmap) LOADDECALMODELSHADER(envmapmodel, envmapalphamodel, decalenvmapmodel, decalenvmapalphamodel);
+            else if(masked && (lightmodels || glowmodels)) LOADDECALMODELSHADER(masksmodel, masksalphamodel, decalmasksmodel, decalmasksalphamodel);
+            else LOADDECALMODELSHADER(stdmodel, alphamodel, decalmodel, decalalphamodel);
         }
 
         void preloadBIH()
@@ -159,7 +164,6 @@ struct animmodel : model
             if(as->cur.anim&ANIM_NOSKIN)
             {
                 if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
-                if(enableenvmap) disableenvmap();
                 if(alphatest > 0 && s->type&Texture::ALPHA)
                 {
                     if(s!=lasttex)
@@ -184,6 +188,7 @@ struct animmodel : model
                     *n = bumpmapped() ? normalmap : NULL;
             if(!lightmodels && !glowmodels && (!envmapmodels || envmaptmu<0 || envmapmax<=0))
                 m = notexture;
+            int activetmu = 0;
             if(s!=lasttex)
             {
                 glBindTexture(GL_TEXTURE_2D, s->id);
@@ -192,9 +197,17 @@ struct animmodel : model
             if(n && n!=lastnormalmap)
             {
                 glActiveTexture_(GL_TEXTURE3_ARB);
+                activetmu = 3;
                 glBindTexture(GL_TEXTURE_2D, n->id);
-                glActiveTexture_(GL_TEXTURE0_ARB);
+                lastnormalmap = n;
             }
+            if(decal && decal!=lastdecal)
+            {
+                glActiveTexture_(GL_TEXTURE4_ARB);
+                activetmu = 4;
+                glBindTexture(GL_TEXTURE_2D, decal->id);
+                lastdecal = n;
+            } 
             if(s->type&Texture::ALPHA)
             {
                 if(alphablend)
@@ -215,26 +228,22 @@ struct animmodel : model
             if(m!=lastmasks && m!=notexture)
             {
                 glActiveTexture_(GL_TEXTURE1_ARB);
+                activetmu = 1;
                 glBindTexture(GL_TEXTURE_2D, m->id);
-                glActiveTexture_(GL_TEXTURE0_ARB);
                 lastmasks = m;
             }
             if(envmaptmu>=0 && envmapmax>0)
             {
                 GLuint emtex = envmap ? envmap->id : closestenvmaptex;
-                if(!enableenvmap || lastenvmaptex!=emtex)
+                if(lastenvmaptex!=emtex)
                 {
                     glActiveTexture_(GL_TEXTURE0_ARB+envmaptmu);
-                    if(!enableenvmap)
-                    {
-                        glEnable(GL_TEXTURE_CUBE_MAP_ARB);
-                        enableenvmap = true;
-                    }
-                    if(lastenvmaptex!=emtex) { glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, emtex); lastenvmaptex = emtex; }
-                    glActiveTexture_(GL_TEXTURE0_ARB);
+                    activetmu = envmaptmu;
+                    glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, emtex);
+                    lastenvmaptex = emtex;
                 }
             }
-            else if(enableenvmap) disableenvmap();
+            if(activetmu != 0) glActiveTexture_(GL_TEXTURE0_ARB);
             setshaderparams(b, as, m!=notexture, s->type&Texture::ALPHA && alphatest > 0);
             setshader(b, as, m!=notexture, s->type&Texture::ALPHA && alphatest > 0);
         }
@@ -1368,21 +1377,21 @@ struct animmodel : model
         center.add(radius);
     }
 
-    static bool enabletc, enablealphablend, enableenvmap, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
+    static bool enabletc, enablealphablend, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
     static float sizescale;
     static void *lastvbuf, *lasttcbuf, *lastnbuf, *lastxbuf, *lastbbuf, *lastsdata, *lastbdata;
     static GLuint lastebuf, lastenvmaptex, closestenvmaptex;
-    static Texture *lasttex, *lastmasks, *lastnormalmap;
+    static Texture *lasttex, *lastdecal, *lastmasks, *lastnormalmap;
     static int envmaptmu, matrixpos;
     static glmatrixf matrixstack[64];
 
     void startrender()
     {
-        enabletc = enablealphablend = enableenvmap = enablenormals = enabletangents = enablebones = enabledepthoffset = false;
+        enabletc = enablealphablend = enablenormals = enabletangents = enablebones = enabledepthoffset = false;
         enablecullface = true;
         lastvbuf = lasttcbuf = lastxbuf = lastnbuf = lastbbuf = lastsdata = lastbdata = NULL;
         lastebuf = lastenvmaptex = closestenvmaptex = 0;
-        lasttex = lastmasks = lastnormalmap = NULL;
+        lasttex = lastdecal = lastmasks = lastnormalmap = NULL;
         envmaptmu = -1;
         sizescale = 1;
     }
@@ -1428,19 +1437,10 @@ struct animmodel : model
         lastebuf = 0;
     }
 
-    static void disableenvmap(bool cleanup = false)
-    {
-        glActiveTexture_(GL_TEXTURE0_ARB+envmaptmu);
-        if(enableenvmap) glDisable(GL_TEXTURE_CUBE_MAP_ARB);
-        glActiveTexture_(GL_TEXTURE0_ARB);
-        enableenvmap = false;
-    }
-
     void endrender()
     {
         if(lastvbuf || lastebuf) disablevbo();
         if(enablealphablend) glDisable(GL_BLEND);
-        if(lastenvmaptex) disableenvmap(true);
         if(!enablecullface) glEnable(GL_CULL_FACE);
         if(enabledepthoffset) disablepolygonoffset(GL_POLYGON_OFFSET_FILL);
     }
@@ -1449,13 +1449,13 @@ struct animmodel : model
 int animmodel::intersectresult = -1, animmodel::intersectmode = 0;
 float animmodel::intersectdist = 0, animmodel::intersectscale = 1;
 bool animmodel::enabletc = false, animmodel::enablealphablend = false,
-     animmodel::enableenvmap = false, animmodel::enablecullface = true, 
+     animmodel::enablecullface = true, 
      animmodel::enablenormals = false, animmodel::enabletangents = false, 
      animmodel::enablebones = false, animmodel::enabledepthoffset = false;
 float animmodel::sizescale = 1;
 void *animmodel::lastvbuf = NULL, *animmodel::lasttcbuf = NULL, *animmodel::lastnbuf = NULL, *animmodel::lastxbuf = NULL, *animmodel::lastbbuf = NULL, *animmodel::lastsdata = NULL, *animmodel::lastbdata = NULL;
 GLuint animmodel::lastebuf = 0, animmodel::lastenvmaptex = 0, animmodel::closestenvmaptex = 0;
-Texture *animmodel::lasttex = NULL, *animmodel::lastmasks = NULL, *animmodel::lastnormalmap = NULL;
+Texture *animmodel::lasttex = NULL, *animmodel::lastdecal = NULL, *animmodel::lastmasks = NULL, *animmodel::lastnormalmap = NULL;
 int animmodel::envmaptmu = -1, animmodel::matrixpos = 0;
 glmatrixf animmodel::matrixstack[64];
 
@@ -1562,7 +1562,14 @@ template<class MDL, class MESH> struct modelcommands
         Texture *normalmaptex = textureload(makerelpath(MDL::dir, normalmapfile), 0, true, false);
         loopskins(meshname, s, { s.normalmap = normalmaptex; m.calctangents(); });
     }
-    
+   
+    static void setdecal(char *meshname, char *decal)
+    {
+        loopskins(meshname, s,
+            s.decal = textureload(makerelpath(MDL::dir, decal), 0, true, false);
+        );
+    }
+
     static void setfullbright(char *meshname, float *fullbright)
     {
         loopskins(meshname, s, s.fullbright = *fullbright);
@@ -1610,6 +1617,7 @@ template<class MDL, class MESH> struct modelcommands
             modelcommand(setcullface, "cullface", "si");
             modelcommand(setenvmap, "envmap", "ss");
             modelcommand(setbumpmap, "bumpmap", "ss");
+            modelcommand(setdecal, "decal", "ss");
             modelcommand(setfullbright, "fullbright", "sf");
             modelcommand(setshader, "shader", "ss");
             modelcommand(setscroll, "scroll", "sff");
