@@ -124,25 +124,13 @@ struct animmodel : model
             else if(shadowmapping == SM_REFLECT) LOADMODELSHADER(rsmmodel, rsmalphamodel);
             else if(bumpmapped())
             {
-                if(shouldenvmap)
-                {
-                    if(lightmodels && !fullbright && (masked || spec>=0.01f)) LOADMODELSHADER(bumpenvmapmodel, bumpenvmapalphamodel);
-                    else LOADMODELSHADER(bumpenvmapnospecmodel, bumpenvmapnospecalphamodel);
-                }
-                else if(masked && lightmodels && !fullbright) LOADMODELSHADER(bumpmasksmodel, bumpmasksalphamodel);
-                else if(masked && glowmodels) LOADMODELSHADER(bumpmasksnospecmodel, bumpmasksnospecalphamodel);
-                else if(spec>=0.01f && lightmodels && !fullbright) LOADMODELSHADER(bumpmodel, bumpalphamodel);
-                else LOADMODELSHADER(bumpnospecmodel, bumpnospecalphamodel);
+                if(shouldenvmap) LOADMODELSHADER(bumpenvmapmodel, bumpenvmapalphamodel);
+                else if(masked && (lightmodels || glowmodels)) LOADMODELSHADER(bumpmasksmodel, bumpmasksalphamodel);
+                else LOADMODELSHADER(bumpmodel, bumpalphamodel);
             }
-            else if(shouldenvmap)
-            {
-                if(lightmodels && !fullbright && (masked || spec>=0.01f)) LOADMODELSHADER(envmapmodel, envmapalphamodel);
-                else LOADMODELSHADER(envmapnospecmodel, envmapnospecalphamodel);
-            }
-            else if(masked && lightmodels && !fullbright) LOADMODELSHADER(masksmodel, masksalphamodel);
-            else if(masked && glowmodels) LOADMODELSHADER(masksnospecmodel, masksnospecalphamodel);
-            else if(spec>=0.01f && lightmodels && !fullbright) LOADMODELSHADER(stdmodel, alphamodel);
-            else LOADMODELSHADER(nospecmodel, nospecalphamodel);
+            else if(shouldenvmap) LOADMODELSHADER(envmapmodel, envmapalphamodel);
+            else if(masked && (lightmodels || glowmodels)) LOADMODELSHADER(masksmodel, masksalphamodel);
+            else LOADMODELSHADER(stdmodel, alphamodel);
         }
 
         void preloadBIH()
