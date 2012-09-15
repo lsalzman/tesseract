@@ -361,7 +361,6 @@ VARR(fogdomeclouds, 0, 1, 1);
 static void drawfogdome(int farplane)
 {
     ldrnotextureshader->set();
-    glDisable(GL_TEXTURE_2D);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -377,7 +376,6 @@ static void drawfogdome(int farplane)
     glPopMatrix();
 
     glDisable(GL_BLEND);
-    glEnable(GL_TEXTURE_2D);
 }
 
 VARNR(skytexture, useskytexture, 0, 0, 1);

@@ -313,6 +313,8 @@ extern void findorientation();
 extern void setfogcolor(const vec &v);
 extern void zerofogcolor();
 extern void resetfogcolor();
+extern void cleanupgbuffer();
+extern void initgbuffer();
 extern void maskgbuffer(const char *mask);
 extern void writecrosshairs(stream *f);
 
@@ -623,6 +625,7 @@ extern void writecompletions(stream *f);
 enum
 {
     NOT_INITING = 0,
+    INIT_GAME,
     INIT_LOAD,
     INIT_RESET
 };

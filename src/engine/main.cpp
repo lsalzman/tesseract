@@ -107,8 +107,6 @@ void writeinitcfg()
     f->printf("stencilbits %d\n", stencilbits);
     f->printf("fsaa %d\n", fsaa);
     f->printf("vsync %d\n", vsync);
-    extern int glineardepth;
-    f->printf("glineardepth %d\n", glineardepth);
     extern int sound, soundchans, soundfreq, soundbufferlen;
     f->printf("sound %d\n", sound);
     f->printf("soundchans %d\n", soundchans);
@@ -158,7 +156,6 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
     glLoadIdentity();
 
     defaultshader->set();
-    glEnable(GL_TEXTURE_2D);
 
     static int lastupdate = -1, lastw = -1, lasth = -1;
     static float backgroundu = 0, backgroundv = 0;
@@ -319,7 +316,6 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         glDisable(GL_BLEND);
         if(!restore) swapbuffers();
     }
-    glDisable(GL_TEXTURE_2D);
 
     if(!restore)
     {
@@ -363,7 +359,6 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     glPushMatrix();
     glLoadIdentity();
 
-    glEnable(GL_TEXTURE_2D);
     defaultshader->set();
     glColor3f(1, 1, 1);
 
@@ -447,8 +442,6 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
         glEnd();
         glDisable(GL_BLEND);
     }
-
-    glDisable(GL_TEXTURE_2D);
 
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -716,6 +709,7 @@ void resetgl()
     inbetweenframes = true;
     renderbackground("initializing...");
 	restoregamma();
+    initgbuffer();
     reloadshaders();
     reloadtextures();
     initlights();
@@ -1166,11 +1160,6 @@ int main(int argc, char **argv)
     inbetweenframes = true;
     renderbackground("initializing...");
 
-    logoutf("init: gl: effects");
-    loadshaders();
-    particleinit();
-    initdecals();
-
     logoutf("init: world");
     camera1 = player = game::iterdynents(0);
     emptymap(0, true, NULL, false);
@@ -1200,6 +1189,7 @@ int main(int argc, char **argv)
 
     identflags &= ~IDF_PERSIST;
 
+    initing = INIT_GAME;
     string gamecfgname;
     copystring(gamecfgname, "data/game_");
     concatstring(gamecfgname, game::gameident());
@@ -1207,8 +1197,17 @@ int main(int argc, char **argv)
     execfile(gamecfgname);
     
     game::loadconfigs();
+    initing = NOT_INITING;
 
     identflags |= IDF_PERSIST;
+
+    logoutf("init: shaders");
+    initgbuffer();
+    loadshaders();
+    particleinit();
+    initdecals();
+
+    logoutf("init: mainloop");
 
     if(execfile("once.cfg", false)) remove(findfile("once.cfg", "rb"));
 
@@ -1220,8 +1219,6 @@ int main(int argc, char **argv)
     }
 
     if(initscript) execute(initscript);
-
-    logoutf("init: mainloop");
 
     initmumble();
     resetfpshistory();

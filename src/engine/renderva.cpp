@@ -520,7 +520,6 @@ void renderoutline()
 {
     notextureshader->set();
 
-    glDisable(GL_TEXTURE_2D);
     glEnableClientState(GL_VERTEX_ARRAY);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -573,7 +572,6 @@ void renderoutline()
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     }
     glDisableClientState(GL_VERTEX_ARRAY);
-    glEnable(GL_TEXTURE_2D);
 
     defaultshader->set();
 }
@@ -593,7 +591,6 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-    glEnable(GL_TEXTURE_2D); 
     glBindTexture(GL_TEXTURE_2D, tex);
     bvec color((blendbrushcolor>>16)&0xFF, (blendbrushcolor>>8)&0xFF, blendbrushcolor&0xFF);
     glColor4f(color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb, 0.25f);
@@ -623,7 +620,6 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
         prev = va;
     }
 
-    glDisable(GL_TEXTURE_2D);
     glDisable(GL_BLEND);
 
     glDepthFunc(GL_LESS);

@@ -31,7 +31,6 @@ void loadshaders()
     stdworldshader = lookupshaderbyname("stdworld");
     if(!nullshader || !defaultshader || !stdworldshader) fatal("cannot find shader definitions");
 
-    extern Slot dummyslot;
     dummyslot.shader = stdworldshader;
 
     rectshader = lookupshaderbyname("rect");
@@ -592,6 +591,13 @@ void setupshaders()
     maxtexcoords = val;
 
     standardshader = true;
+    nullshader = newshader(0, "<init>null",
+        "void main(void) {\n"
+        "   gl_Position = gl_Vertex;\n"
+        "}\n",
+        "void main(void) {\n"
+        "   gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n"
+        "}\n");
     defaultshader = newshader(0, "<init>default", 
         "void main(void) {\n"
         "    gl_Position = ftransform();\n"
@@ -612,7 +618,9 @@ void setupshaders()
         "}\n");
     standardshader = false;
 
-    if(!defaultshader || !notextureshader) fatal("failed to setup shaders");
+    if(!nullshader || !defaultshader || !notextureshader) fatal("failed to setup shaders");
+
+    dummyslot.shader = nullshader;
 }
 
 static const char *findglslmain(const char *s)
@@ -789,6 +797,7 @@ void useshader(Shader *s)
 
 void fixshaderdetail()
 {
+    if(initing) return;
     // must null out separately because fixdetailshader can recursively set it
     enumerate(shaders, Shader, s, { if(!s.forced) s.detailshader = NULL; });
     enumerate(shaders, Shader, s, { if(s.forced) s.fixdetailshader(); }); 
@@ -1255,7 +1264,7 @@ void cleanupshaders()
 {
     cleanuppostfx(true);
 
-    defaultshader = notextureshader = nocolorshader = foggedshader = foggednotextureshader = NULL;
+    nullshader = defaultshader = notextureshader = NULL;
     enumerate(shaders, Shader, s, s.cleanup());
     Shader::lastshader = NULL;
     glUseProgram_(0);
@@ -1287,6 +1296,17 @@ void reloadshaders()
         if(s.forced && !s.detailshader) s.fixdetailshader();
     });
 }
+
+void resetshaders()
+{
+    cleanupgbuffer();
+    cleanupshaders();
+    setupshaders();
+    initgbuffer();
+    reloadshaders();
+    allchanged(true);
+}
+COMMAND(resetshaders, "");
 
 void setupblurkernel(int radius, float sigma, float *weights, float *offsets)
 {

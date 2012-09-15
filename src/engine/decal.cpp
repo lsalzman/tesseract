@@ -558,6 +558,7 @@ decalrenderer decals[] =
 
 void initdecals()
 {
+    if(initing) return;
     loopi(sizeof(decals)/sizeof(decals[0])) decals[i].init(maxdecaltris);
 }
 

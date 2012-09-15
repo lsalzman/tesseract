@@ -841,6 +841,7 @@ VARFP(fewparticles, 10, 100, 40000, particleinit());
 
 void particleinit() 
 {
+    if(initing) return;
     if(!particleshader) particleshader = lookupshaderbyname("particle");
     if(!particlenotextureshader) particlenotextureshader = lookupshaderbyname("particlenotexture");
     if(!particlesoftshader) particlesoftshader = lookupshaderbyname("particlesoft");

@@ -1060,7 +1060,6 @@ namespace recorder
                 glOrtho(0, tw, 0, th, -1, 1);
                 glMatrixMode(GL_MODELVIEW);
                 glLoadIdentity();
-                glEnable(GL_TEXTURE_RECTANGLE_ARB);
                 do
                 {
                     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, scaletex[1], 0);
@@ -1073,7 +1072,6 @@ namespace recorder
                     th = dh;
                     swap(scaletex[0], scaletex[1]);
                 } while(tw > m.w || th > m.h);
-                glDisable(GL_TEXTURE_RECTANGLE_ARB);
             }
             if(accelyuv)
             {
@@ -1085,12 +1083,10 @@ namespace recorder
                 glOrtho(0, (m.w*3)/8, m.h, 0, -1, 1);
                 glMatrixMode(GL_MODELVIEW);
                 glLoadIdentity();
-                glEnable(GL_TEXTURE_RECTANGLE_ARB);
                 glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[0]); 
                 SETSHADER(moviey); drawquad(m.w, m.h, 0, 0, m.w/4, m.h);
                 SETSHADER(moviev); drawquad(m.w, m.h, m.w/4, 0, m.w/8, m.h/2);
                 SETSHADER(movieu); drawquad(m.w, m.h, m.w/4, m.h/2, m.w/8, m.h/2);
-                glDisable(GL_TEXTURE_RECTANGLE_ARB);
                 const uint planesize = m.w * m.h;
                 glPixelStorei(GL_PACK_ALIGNMENT, texalign(m.video, m.w/4, 4)); 
                 glReadPixels(0, 0, m.w/4, m.h, GL_BGRA, GL_UNSIGNED_BYTE, m.video);
@@ -1150,7 +1146,6 @@ namespace recorder
         glLoadIdentity();
 
         glEnable(GL_BLEND);
-        glEnable(GL_TEXTURE_2D);
         defaultshader->set();
 
         glPushMatrix();
@@ -1166,7 +1161,6 @@ namespace recorder
 
         glPopMatrix();
 
-        glDisable(GL_TEXTURE_2D);
         glDisable(GL_BLEND);
     }
 

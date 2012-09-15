@@ -862,9 +862,6 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     static const char * const rpnames[1] = { "GLSL shader" };
     conoutf(CON_INIT, "Rendering using the OpenGL %s path.", rpnames[renderpath]);
 
-    extern void initgbuffer();
-    initgbuffer();
-
     setuptexcompress();
     timer_setup();
 
@@ -1550,7 +1547,6 @@ static void blendfogoverlay(int fogmat, float below, float blend, float *overlay
 void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
 {
     notextureshader->set();
-    glDisable(GL_TEXTURE_2D);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
@@ -1581,7 +1577,6 @@ void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
 
-    glEnable(GL_TEXTURE_2D);
     defaultshader->set();
 }
 
@@ -2187,6 +2182,7 @@ void cleanupgbuffer()
     if(refractfbo) { glDeleteFramebuffers_(1, &refractfbo); refractfbo = 0; }
     if(refracttex) { glDeleteTextures(1, &refracttex); refracttex = 0; }
     gw = gh = -1;
+    cleardeferredlightshaders();
 }
 
 VAR(debugdepth, 0, 0, 1);
@@ -2225,7 +2221,7 @@ void viewrefract()
 
 VARF(gstencil, 0, 0, 1, cleanupgbuffer());
 VARF(gdepthstencil, 0, 1, 1, cleanupgbuffer());
-VARF(glineardepth, 0, 0, 3, initwarning("g-buffer setup"))
+VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD));
 FVAR(bloomthreshold, 1e-3f, 0.8f, 1e3f);
 FVARP(bloomscale, 0, 1.0f, 1e3f);
 VARP(bloomblur, 0, 7, 7);
@@ -5702,7 +5698,6 @@ void drawdamagescreen(int w, int h)
     if(lastmillis >= damageblendmillis) return;
 
     defaultshader->set();
-    glEnable(GL_TEXTURE_2D);
 
     static Texture *damagetex = NULL;
     if(!damagetex) damagetex = textureload("packages/hud/damage.png", 3);
@@ -5721,7 +5716,6 @@ void drawdamagescreen(int w, int h)
     glTexCoord2f(1, 1); glVertex2f(w, h);
     glEnd();
 
-    glDisable(GL_TEXTURE_2D);
     notextureshader->set();
 }
 
@@ -5863,7 +5857,6 @@ void gl_drawhud(int w, int h)
         drawdamagecompass(w, h);
     }
 
-    glEnable(GL_TEXTURE_2D);
     defaultshader->set();
 
     int conw = int(w/conscale), conh = int(h/conscale), abovehud = conh - FONTH, limitgui = abovehud;
@@ -6000,7 +5993,6 @@ void gl_drawhud(int w, int h)
     drawcrosshair(w, h);
 
     glDisable(GL_BLEND);
-    glDisable(GL_TEXTURE_2D);
 }
 
 
