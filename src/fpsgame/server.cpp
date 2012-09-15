@@ -436,7 +436,7 @@ namespace server
     {
         curmaprotation++;
         if(maprotations.inrange(curmaprotation) && maprotations[curmaprotation].modes) return;
-        curmaprotation--;
+        do curmaprotation--;
         while(maprotations.inrange(curmaprotation) && maprotations[curmaprotation].modes);
         curmaprotation++;
     }
