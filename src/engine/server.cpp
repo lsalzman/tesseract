@@ -403,7 +403,22 @@ ENetPacket *sendfile(int cn, int chan, stream *file, const char *format, ...)
     return packet->referenceCount > 0 ? packet : NULL;
 }
 
-const char *disc_reasons[] = { "normal", "end of packet", "client num", "kicked/banned", "tag type", "ip is banned", "server is in private mode", "server FULL", "connection timed out", "overflow" };
+const char *disconnectreason(int reason)
+{
+    switch(reason)
+    {
+        case DISC_EOP: return "end of packet";
+        case DISC_LOCAL: return "server is in local mode";
+        case DISC_KICK: return "kicked/banned";
+        case DISC_TAGT: return "tag type";
+        case DISC_PRIVATE: return "server is in private mode";
+        case DISC_MAXCLIENTS: return "server FULL";
+        case DISC_TIMEOUT: return "connection timed out";
+        case DISC_OVERFLOW: return "overflow";
+        case DISC_PASSWORD: return "invalid password";
+        default: return NULL;
+    }
+}
 
 void disconnect_client(int n, int reason)
 {
@@ -411,7 +426,10 @@ void disconnect_client(int n, int reason)
     enet_peer_disconnect(clients[n]->peer, reason);
     server::clientdisconnect(n);
     delclient(clients[n]);
-    defformatstring(s)("client (%s) disconnected because: %s", clients[n]->hostname, disc_reasons[reason]);
+    const char *msg = disconnectreason(reason);
+    string s;
+    if(msg) formatstring(s)("client (%s) disconnected because: %s", clients[n]->hostname, msg);
+    else formatstring(s)("client (%s) disconnected", clients[n]->hostname);
     logoutf("%s", s);
     server::sendservmsg(s);
 }

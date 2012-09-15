@@ -59,7 +59,7 @@ namespace game
 
     bool connected = false, remote = false, demoplayback = false, gamepaused = false;
     int sessionid = 0, mastermode = MM_OPEN;
-    string servinfo = "", connectpass = "";
+    string servinfo = "", servauth = "", connectpass = "";
 
     VARP(deadpush, 1, 2, 20);
 
@@ -165,6 +165,7 @@ namespace game
 
     void sendmapinfo()
     {
+        if(!connected) return;
         sendcrc = true;
         if(player1->state!=CS_SPECTATOR || player1->privilege || !remote) senditemstoserver = true;
     }
@@ -362,20 +363,21 @@ namespace game
     {
         if(!arg[0]) return;
         int val = 1, cn = player1->clientnum;
+        if(who[0])
+        {
+            cn = parseplayer(who);
+            if(cn < 0) return;
+        }
         string hash = "";
         if(!arg[1] && isdigit(arg[0])) val = parseint(arg);
         else 
         {
-            if(who[0])
-            {
-                cn = parseplayer(who);
-                if(cn < 0) return;
-            }
+            if(cn != player1->clientnum) return;
             server::hashpassword(player1->clientnum, sessionid, arg, hash);
         }
         addmsg(N_SETMASTER, "riis", cn, val, hash);
     }
-    COMMAND(setmaster, "s");
+    COMMAND(setmaster, "ss");
     ICOMMAND(mastermode, "i", (int *val), addmsg(N_MASTERMODE, "ri", *val));
 
     bool tryauth(const char *desc)
@@ -720,7 +722,7 @@ namespace game
         player1->lifesequence = 0;
         player1->state = CS_ALIVE;
         player1->privilege = PRIV_NONE;
-        senditemstoserver = false;
+        sendcrc = senditemstoserver = false;
         demoplayback = false;
         gamepaused = false;
         clearclients(false);
@@ -874,6 +876,7 @@ namespace game
         packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
         putint(p, N_CONNECT);
         sendstring(player1->name, p);
+        putint(p, player1->playermodel);
         string hash = "";
         if(connectpass[0])
         {
@@ -881,7 +884,18 @@ namespace game
             memset(connectpass, 0, sizeof(connectpass));
         }
         sendstring(hash, p);
-        putint(p, player1->playermodel);
+        authkey *a = servauth[0] && autoauth ? findauthkey(servauth) : NULL;
+        if(a)
+        {
+            a->lastauth = lastmillis;
+            sendstring(a->desc, p);
+            sendstring(a->name, p);
+        }
+        else
+        {
+            sendstring("", p);
+            sendstring("", p);
+        }
         sendclientpacket(p.finalize(), 1);
     }
 
@@ -1064,8 +1078,8 @@ namespace game
                 sessionid = getint(p);
                 player1->clientnum = mycn;      // we are now connected
                 if(getint(p) > 0) conoutf("this server is password protected");
-                getstring(text, p);
-                copystring(servinfo, text);
+                getstring(servinfo, p, sizeof(servinfo));
+                getstring(servauth, p, sizeof(servauth));
                 sendintro();
                 break;
             }

@@ -227,8 +227,9 @@ namespace server
         bool warned, gameclip;
         ENetPacket *getdemo, *getmap, *clipboard;
         int lastclipboard, needclipboard;
+        int connectauth;
         uint authreq;
-        string authname;
+        string authname, authdesc;
         void *authchallenge;
 
         clientinfo() : getdemo(NULL), getmap(NULL), clipboard(NULL), authchallenge(NULL) { reset(); }
@@ -323,6 +324,7 @@ namespace server
             playermodel = -1;
             privilege = PRIV_NONE;
             connected = local = false;
+            connectauth = 0;
             position.setsize(0);
             messages.setsize(0);
             ping = 0;
@@ -411,7 +413,7 @@ namespace server
         loopvrev(clients) 
         {
             clientinfo &c = *clients[i];
-            if(c.state.aitype != AI_NONE) continue;
+            if(c.state.aitype != AI_NONE || c.privilege >= PRIV_ADMIN || c.local) continue;
             if(getclientip(c.clientnum) == ip) disconnect_client(c.clientnum, DISC_KICK);
         }
     }
@@ -1150,19 +1152,35 @@ namespace server
 
     SVAR(serverauth, "");
 
-    struct userinfo
+    struct userkey
     {
         char *name;
+        char *desc;
+        
+        userkey() : name(NULL), desc(NULL) {}
+        userkey(char *name, char *desc) : name(name), desc(desc) {}
+    };
+
+    static inline uint hthash(const userkey &k) { return ::hthash(k.name); }
+    static inline bool htcmp(const userkey &x, const userkey &y) { return !strcmp(x.name, y.name) && !strcmp(x.desc, y.desc); }
+
+    struct userinfo : userkey
+    {
         void *pubkey;
         int privilege;
-    };
-    hashtable<char *, userinfo> users;
 
-    void adduser(char *name, char *pubkey, char *priv)
+        userinfo() : pubkey(NULL), privilege(PRIV_NONE) {}
+        ~userinfo() { delete[] name; delete[] desc; if(pubkey) freepubkey(pubkey); }
+    };
+    hashset<userinfo> users;
+
+    void adduser(char *name, char *desc, char *pubkey, char *priv)
     {
-        name = newstring(name);
-        userinfo &u = users[name];
-        u.name = name;
+        userkey key(name, desc);
+        userinfo &u = users[key];
+        if(u.pubkey) { freepubkey(u.pubkey); u.pubkey = NULL; }
+        if(!u.name) u.name = newstring(name);
+        if(!u.desc) u.desc = newstring(desc);
         u.pubkey = parsepubkey(pubkey);
         switch(priv[0])
         {
@@ -1170,11 +1188,10 @@ namespace server
             case 'm': case 'M': default: u.privilege = PRIV_AUTH; break;
         }
     }
-    COMMAND(adduser, "sss");
+    COMMAND(adduser, "ssss");
 
     void clearusers()
     {
-        enumerate(users, userinfo, u, { delete[] u.name; freepubkey(u.pubkey); });
         users.clear();
     }
     COMMAND(clearusers, "");
@@ -1199,6 +1216,8 @@ namespace server
         ci->privilege = PRIV_NONE;
         if(ci->state.state==CS_SPECTATOR && !ci->local) aiman::removeai(ci);
     }
+
+    extern void connected(clientinfo *ci);
 
     void setmaster(clientinfo *ci, bool val, const char *pass = "", const char *authname = NULL, const char *authdesc = NULL, int authpriv = PRIV_MASTER, bool force = false)
     {
@@ -1253,8 +1272,9 @@ namespace server
             else formatstring(msg)("%s claimed %s as '\fs\f5%s\fr'", colorname(ci), name, authname);
         } 
         else formatstring(msg)("%s %s %s", colorname(ci), val ? "claimed" : "relinquished", name);
-        sendservmsg(msg);
-        packetbuf p(100, ENET_PACKET_FLAG_RELIABLE);
+        packetbuf p(MAXTRANS, ENET_PACKET_FLAG_RELIABLE);
+        putint(p, N_SERVMSG);
+        sendstring(msg, p);
         putint(p, N_CURRENTMASTER);
         putint(p, mastermode);
         loopv(clients) if(clients[i]->privilege >= PRIV_MASTER)
@@ -1311,7 +1331,11 @@ namespace server
 
     int checktype(int type, clientinfo *ci)
     {
-        if(ci && ci->local) return type;
+        if(ci)
+        {
+            if(!ci->connected) { printf("connectauth: %d, type: %d\n", ci->connectauth, type); return type == (ci->connectauth ? N_AUTHANS : N_CONNECT) || type == N_PING ? type : -1; }
+            if(ci->local) return type;
+        }
         // only allow edit messages in coop-edit mode
         if(type>=N_EDITENT && type<=N_EDITVAR && !m_edit) return -1;
         // server only messages
@@ -1710,7 +1734,7 @@ namespace server
             ci->state.timeplayed += lastmillis - ci->state.lasttimeplayed;
         }
 
-        if(!m_mp(gamemode)) kicknonlocalclients(DISC_PRIVATE);
+        if(!m_mp(gamemode)) kicknonlocalclients(DISC_LOCAL);
 
         sendf(-1, 1, "risii", N_MAPCHANGE, smapname, gamemode, 1);
 
@@ -2194,7 +2218,7 @@ namespace server
 
     void sendservinfo(clientinfo *ci)
     {
-        sendf(ci->clientnum, 1, "ri5s", N_SERVINFO, ci->clientnum, PROTOCOL_VERSION, ci->sessionid, serverpass[0] ? 1 : 0, serverdesc);
+        sendf(ci->clientnum, 1, "ri5ss", N_SERVINFO, ci->clientnum, PROTOCOL_VERSION, ci->sessionid, serverpass[0] ? 1 : 0, serverdesc, serverauth);
     }
 
     void noclients()
@@ -2229,7 +2253,7 @@ namespace server
         ci->sessionid = (rnd(0x1000000)*((totalmillis%10000)+1))&0xFFFFFF;
 
         connects.add(ci);
-        if(!m_mp(gamemode)) return DISC_PRIVATE;
+        if(!m_mp(gamemode)) return DISC_LOCAL;
         sendservinfo(ci);
         return DISC_NONE;
     }
@@ -2297,13 +2321,13 @@ namespace server
         }
     }
        
-    int allowconnect(clientinfo *ci, const char *pwd)
+    int allowconnect(clientinfo *ci, const char *pwd = "")
     {
         if(ci->local) return DISC_NONE;
-        if(!m_mp(gamemode)) return DISC_PRIVATE;
+        if(!m_mp(gamemode)) return DISC_LOCAL;
         if(serverpass[0])
         {
-            if(!checkpassword(ci, serverpass, pwd)) return DISC_PRIVATE;
+            if(!checkpassword(ci, serverpass, pwd)) return DISC_PASSWORD;
             return DISC_NONE;
         }
         if(adminpass[0] && checkpassword(ci, adminpass, pwd)) return DISC_NONE;
@@ -2332,6 +2356,7 @@ namespace server
         clientinfo *ci = findauth(id);
         if(!ci) return;
         ci->cleanauth();
+        if(ci->connectauth) disconnect_client(ci->clientnum, ci->connectauth);
     }
 
     void authsucceeded(uint id)
@@ -2339,6 +2364,7 @@ namespace server
         clientinfo *ci = findauth(id);
         if(!ci) return;
         ci->cleanauth();
+        if(ci->connectauth) connected(ci);
         setmaster(ci, true, "", ci->authname, NULL, PRIV_AUTH);
     }
 
@@ -2351,50 +2377,66 @@ namespace server
 
     uint nextauthreq = 0;
 
-    void tryauth(clientinfo *ci, const char *user, const char *desc)
+    bool tryauth(clientinfo *ci, const char *user, const char *desc)
     {
         ci->cleanauth();
         if(!nextauthreq) nextauthreq = 1;
         ci->authreq = nextauthreq++;
         filtertext(ci->authname, user, false, 100);
-        if(desc[0])
+        copystring(ci->authdesc, desc);
+        if(ci->authdesc[0])
         {
-            if(strcmp(desc, serverauth)) return;
-            userinfo *u = users.access(ci->authname);
-            if(!u) return;
-            uint seed[3] = { hthash(serverauth) + detrnd(size_t(ci) + size_t(user) + size_t(desc), 0x10000), uint(totalmillis), randomMT() };
-            vector<char> buf;
-            ci->authchallenge = genchallenge(u->pubkey, seed, sizeof(seed), buf);
-            sendf(ci->clientnum, 1, "risis", N_AUTHCHAL, serverauth, ci->authreq, buf.getbuf());
+            userinfo *u = users.access(userkey(ci->authname, ci->authdesc));
+            if(u) 
+            {
+                uint seed[3] = { ::hthash(serverauth) + detrnd(size_t(ci) + size_t(user) + size_t(desc), 0x10000), uint(totalmillis), randomMT() };
+                vector<char> buf;
+                ci->authchallenge = genchallenge(u->pubkey, seed, sizeof(seed), buf);
+                sendf(ci->clientnum, 1, "risis", N_AUTHCHAL, desc, ci->authreq, buf.getbuf());
+            }
+            else ci->cleanauth();
         }
         else if(!requestmasterf("reqauth %u %s\n", ci->authreq, ci->authname))
         {
             ci->cleanauth();
             sendf(ci->clientnum, 1, "ris", N_SERVMSG, "not connected to authentication server");
         }
+        if(ci->authreq) return true;
+        if(ci->connectauth) disconnect_client(ci->clientnum, ci->connectauth);
+        return false;
     }
 
     void answerchallenge(clientinfo *ci, uint id, char *val, const char *desc)
     {
-        if(ci->authreq != id) return;
+        if(ci->authreq != id || strcmp(ci->authdesc, desc)) 
+        {
+            ci->cleanauth();
+            if(ci->connectauth) disconnect_client(ci->clientnum, ci->connectauth);
+            return;
+        }
         for(char *s = val; *s; s++)
         {
             if(!isxdigit(*s)) { *s = '\0'; break; }
         }
         if(desc[0])
         {
-            if(!strcmp(desc, serverauth) && ci->authchallenge && checkchallenge(val, ci->authchallenge))
+            if(ci->authchallenge && checkchallenge(val, ci->authchallenge))
             {
-                userinfo *u = users.access(ci->authname);
-                if(u) setmaster(ci, true, "", ci->authname, serverauth, u->privilege);
+                userinfo *u = users.access(userkey(ci->authname, ci->authdesc));
+                if(u) 
+                {
+                    if(ci->connectauth) connected(ci);
+                    setmaster(ci, true, "", ci->authname, ci->authdesc, u->privilege);
+                }
             }
             ci->cleanauth(); 
         } 
         else if(!requestmasterf("confauth %u %s\n", id, val))
         {
-            ci->authreq = 0;
+            ci->cleanauth();
             sendf(ci->clientnum, 1, "ris", N_SERVMSG, "not connected to authentication server");
         }
+        if(!ci->authreq && ci->connectauth) disconnect_client(ci->clientnum, ci->connectauth);
     }
 
     void processmasterinput(const char *cmd, int cmdlen, const char *args)
@@ -2442,6 +2484,35 @@ namespace server
         }
     }
 
+    void connected(clientinfo *ci)
+    {
+        if(m_demo) enddemoplayback();
+
+        if(!hasmap(ci)) rotatemap(false);
+
+        connects.removeobj(ci);
+        clients.add(ci);
+
+        ci->connectauth = 0;
+        ci->connected = true;
+        ci->needclipboard = totalmillis ? totalmillis : 1;
+        if(mastermode>=MM_LOCKED) ci->state.state = CS_SPECTATOR;
+        ci->state.lasttimeplayed = lastmillis;
+
+        const char *worst = m_teammode ? chooseworstteam(NULL, ci) : NULL;
+        copystring(ci->team, worst ? worst : "good", MAXTEAMLEN+1);
+
+        sendwelcome(ci);
+        if(restorescore(ci)) sendresume(ci);
+        sendinitclient(ci);
+
+        aiman::addclient(ci);
+
+        if(m_demo) setupdemoplayback();
+
+        if(servermotd[0]) sendf(ci->clientnum, 1, "ris", N_SERVMSG, servermotd);
+    }
+
     void parsepacket(int sender, int chan, packetbuf &p)     // has to parse exactly each byte of the packet
     {
         if(sender<0 || p.packet->flags&ENET_PACKET_FLAG_UNSEQUENCED) return;
@@ -2451,49 +2522,54 @@ namespace server
         if(ci && !ci->connected)
         {
             if(chan==0) return;
-            else if(chan!=1 || getint(p)!=N_CONNECT) { disconnect_client(sender, DISC_TAGT); return; }
-            else
+            else if(chan!=1) { disconnect_client(sender, DISC_TAGT); return; }
+            else while(p.length() < p.maxlen) switch(checktype(getint(p), ci))
             {
-                getstring(text, p);
-                filtertext(text, text, false, MAXNAMELEN);
-                if(!text[0]) copystring(text, "unnamed");
-                copystring(ci->name, text, MAXNAMELEN+1);
-
-                getstring(text, p);
-                int disc = allowconnect(ci, text);
-                if(disc)
+                case N_CONNECT:
                 {
-                    disconnect_client(sender, disc);
-                    return;
+                    getstring(text, p);
+                    filtertext(text, text, false, MAXNAMELEN);
+                    if(!text[0]) copystring(text, "unnamed");
+                    copystring(ci->name, text, MAXNAMELEN+1);
+                    ci->playermodel = getint(p);
+
+                    string password, authdesc, authname;
+                    getstring(password, p, sizeof(password));
+                    getstring(authdesc, p, sizeof(authdesc));
+                    getstring(authname, p, sizeof(authname));
+                    int disc = allowconnect(ci, password);
+                    if(disc)
+                    {
+                        if(disc == DISC_LOCAL || !serverauth[0] || strcmp(serverauth, authdesc) || !tryauth(ci, authname, authdesc))
+                        {
+                            disconnect_client(sender, disc);
+                            return;
+                        }
+                        ci->connectauth = disc;
+                    }
+                    else connected(ci);
+                    break;
                 }
 
-                ci->playermodel = getint(p);
+                case N_AUTHANS:
+                {
+                    string desc, ans;
+                    getstring(desc, p, sizeof(desc));
+                    uint id = (uint)getint(p);
+                    getstring(ans, p, sizeof(ans));
+                    answerchallenge(ci, id, ans, desc);
+                    break;
+                }
 
-                if(m_demo) enddemoplayback();
+                case N_PING:
+                    getint(p);
+                    break;
 
-                if(!hasmap(ci)) rotatemap(false);
-
-                connects.removeobj(ci);
-                clients.add(ci);
-
-                ci->connected = true;
-                ci->needclipboard = totalmillis ? totalmillis : 1;
-                if(mastermode>=MM_LOCKED) ci->state.state = CS_SPECTATOR;
-                ci->state.lasttimeplayed = lastmillis;
-
-                const char *worst = m_teammode ? chooseworstteam(NULL, ci) : NULL;
-                copystring(ci->team, worst ? worst : "good", MAXTEAMLEN+1);
-
-                sendwelcome(ci);
-                if(restorescore(ci)) sendresume(ci);
-                sendinitclient(ci);
-
-                aiman::addclient(ci);
-
-                if(m_demo) setupdemoplayback();
-
-                if(servermotd[0]) sendf(sender, 1, "ris", N_SERVMSG, servermotd);
+                default:
+                    disconnect_client(sender, DISC_TAGT);
+                    break;
             }
+            return;
         }
         else if(chan==2)
         {
@@ -2926,11 +3002,15 @@ namespace server
             case N_KICK:
             {
                 int victim = getint(p);
-                if((ci->privilege || ci->local) && ci->clientnum!=victim && getclientinfo(victim)) // no bots
+                if((ci->privilege || ci->local) && ci->clientnum!=victim)
                 {
-                    uint ip = getclientip(victim);
-                    addban(ip, 4*60*60000);
-                    kickclients(ip);
+                    clientinfo *vinfo = (clientinfo *)getclientinfo(victim);
+                    if(vinfo->privilege < PRIV_ADMIN)
+                    { 
+                        uint ip = getclientip(victim);
+                        addban(ip, 4*60*60000);
+                        kickclients(ip);
+                    }
                 }
                 break;
             }
