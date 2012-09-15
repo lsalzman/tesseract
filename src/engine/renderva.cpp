@@ -2084,6 +2084,42 @@ void renderalphageom(int side)
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+void renderinferdepth()
+{
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    nocolorshader->set();
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+
+    vtxarray *prev = NULL;
+    for(vtxarray *va = visibleva; va; va = va->next)
+    {
+        if(!va->texs || va->occluded >= OCCLUDE_GEOM) continue;
+
+        if(!prev || va->vbuf != prev->vbuf)
+        {
+            if(hasVBO)
+            {
+                glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+            }
+            glVertexPointer(3, GL_FLOAT, VTXSIZE, va->vdata[0].pos.v);
+        }
+
+        xtravertsva += va->verts;
+        drawvatris(va, 3*va->tris, va->edata);
+    }
+
+    if(hasVBO)
+    {
+        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    }
+    glDisableClientState(GL_VERTEX_ARRAY);
+
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+}
+
 HVARP(explicitskycolour, 0, 0x800080, 0xFFFFFF);
 
 bool renderexplicitsky(bool outline)

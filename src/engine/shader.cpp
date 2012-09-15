@@ -176,9 +176,9 @@ static void linkglslprogram(Shader &s, bool msg = true)
     if(success)
     {
         glUseProgram_(s.program);
-        loopi(10)
+        loopi(16)
         {
-            static const char * const texnames[10] = { "tex0", "tex1", "tex2", "tex3", "tex4", "tex5", "tex6", "tex7", "tex8", "tex9" };
+            static const char * const texnames[16] = { "tex0", "tex1", "tex2", "tex3", "tex4", "tex5", "tex6", "tex7", "tex8", "tex9", "tex10", "tex11", "tex12", "tex13", "tex14", "tex15" };
             GLint loc = glGetUniformLocation_(s.program, texnames[i]);
             if(loc != -1) glUniform1i_(loc, i);
         }
