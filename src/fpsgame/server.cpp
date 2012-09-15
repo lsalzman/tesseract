@@ -1333,7 +1333,7 @@ namespace server
     {
         if(ci)
         {
-            if(!ci->connected) { printf("connectauth: %d, type: %d\n", ci->connectauth, type); return type == (ci->connectauth ? N_AUTHANS : N_CONNECT) || type == N_PING ? type : -1; }
+            if(!ci->connected) return type == (ci->connectauth ? N_AUTHANS : N_CONNECT) || type == N_PING ? type : -1;
             if(ci->local) return type;
         }
         // only allow edit messages in coop-edit mode
