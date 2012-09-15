@@ -695,7 +695,7 @@ void glext(char *ext)
 COMMAND(glext, "s");
 
 // GPU-side timing information will use OGL timers
-enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_INFERRED, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_RH, TIMER_TRANSPARENT, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
+enum { TIMER_SM = 0, TIMER_GBUFFER, TIMER_INFERRED, TIMER_SHADING, TIMER_HDR, TIMER_AO, TIMER_RH, TIMER_TRANSPARENT, TIMER_FXAA, TIMER_SMAA, TIMER_SPLITTING, TIMER_MERGING, TIMER_CPU_SM, TIMER_CPU_GBUFFER, TIMER_CPU_SHADING, TIMER_N };
 #define TIMER_GPU_N TIMER_CPU_SM
 static const char *timer_string[] = {
     "shadow map",
@@ -706,6 +706,7 @@ static const char *timer_string[] = {
     "ambient obscurance",
     "radiance hints",
     "transparent",
+    "fxaa",
     "smaa",
     "buffer splitting",
     "buffer merging",
@@ -884,6 +885,9 @@ void cleanupgl()
 
     extern void cleanupao();
     cleanupao();
+
+    extern void cleanupfxaa();
+    cleanupfxaa();
 
     extern void cleanupsmaa();
     cleanupsmaa();
@@ -1645,6 +1649,7 @@ void screenquad(float sw, float sh, float sw2, float sh2)
 
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0;
+GLuint fxaafbo = 0;
 GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[3] = { 0, 0, 0 };
 GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[6] = { 0, 0, 0, 0, 0, 0 }, bloomtex[6] = { 0, 0, 0, 0, 0, 0 };
 int hdrclear = 0;
@@ -1841,10 +1846,46 @@ void viewao()
     notextureshader->set();
 }
 
+extern int fxaaquality, smaaquality, hdrprec, gdepthformat, gstencil, gdepthstencil, glineardepth, inferprec, inferdepth, inferlights;
+
+static Shader *fxaashader = NULL;
+
+void loadfxaashaders()
+{
+    defformatstring(fxaaname)("fxaa%d", fxaaquality);
+    fxaashader = generateshader(fxaaname, "fxaashaders %d", fxaaquality);
+}
+
+void clearfxaashaders()
+{
+    fxaashader = NULL;
+}
+
+void setupfxaa()
+{
+    if(!fxaafbo) glGenFramebuffers_(1, &fxaafbo);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, fxaafbo);
+    GLuint tex = gcolortex;
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, tex, 0);
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating FXAA buffer!");
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    loadfxaashaders();
+}
+
+void cleanupfxaa()
+{
+    if(fxaafbo) { glDeleteFramebuffers_(1, &fxaafbo); fxaafbo = 0; }
+
+    clearfxaashaders();
+}
+
+VARFP(fxaa, 0, 0, 1, cleanupfxaa());
+VARFP(fxaaquality, 0, 1, 3, cleanupfxaa());
+
 #include "AreaTex.h"
 #include "SearchTex.h"
-
-extern int smaaquality, hdrprec, gdepthformat, gstencil, gdepthstencil, glineardepth, inferprec, inferdepth, inferlights;
 
 static Shader *smaalumaedgeshader = NULL, *smaacoloredgeshader = NULL, *smaablendweightshader = NULL, *smaaneighborhoodshader = NULL;
 
@@ -2164,6 +2205,7 @@ void setupgbuffer(int w, int h)
 
     cleanupbloom();
     cleanupao();
+    cleanupfxaa();
     cleanupsmaa();
     cleanupinferred();
 }
@@ -4632,7 +4674,7 @@ void processhdr(GLuint outfbo = 0)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
         glViewport(0, 0, vieww, viewh);
-        SETSHADER(hdrnop);
+        if(fxaa || smaa) SETSHADER(hdrnopluma); else SETSHADER(hdrnop);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
         screenquad(vieww, viewh);
         return;
@@ -4752,13 +4794,29 @@ void processhdr(GLuint outfbo = 0)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
     glViewport(0, 0, vieww, viewh);
-    SETSHADER(hdrtonemap);
+    if(fxaa || smaa) SETSHADER(hdrtonemapluma); else SETSHADER(hdrtonemap);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
     glActiveTexture_(GL_TEXTURE0_ARB);
     screenquad(vieww, viewh, b0w, b0h);
     timer_end(TIMER_HDR);
+}
+
+void dofxaa(GLuint outfbo = 0)
+{
+    timer_begin(TIMER_FXAA);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+    fxaashader->set();
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    screenquad(vieww, viewh);
+    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    timer_end(TIMER_FXAA);
 }
 
 void dosmaa(GLuint outfbo = 0)
@@ -5434,6 +5492,7 @@ void gl_setupframe(int w, int h)
     setupgbuffer(w, h);
     if(hdr && (bloomw < 0 || bloomh < 0)) setupbloom(w, h);
     if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
+    if(fxaa && !fxaafbo) setupfxaa();
     if(smaa && !smaafbo[0]) setupsmaa();
     if(inferlights && !infbo) setupinferred();
     if(!shadowatlasfbo) setupshadowatlas();
@@ -5584,8 +5643,9 @@ void gl_drawframe(int w, int h)
     glDisable(GL_DEPTH_TEST);
 
     GLuint postfxfbo = setuppostfx(w, h);
-    processhdr(smaa ? smaafbo[0] : postfxfbo);
+    processhdr(smaa ? smaafbo[0] : (fxaa ? fxaafbo : postfxfbo));
     if(smaa) dosmaa(postfxfbo);
+    else if(fxaa) dofxaa(postfxfbo);
 
     if(fogoverlay && fogmat != MAT_AIR) drawfogoverlay(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
     renderpostfx();
