@@ -1898,7 +1898,7 @@ void renderrsmgeom()
     {
         SETSHADER(rsmsky);
         vtxarray *prev = NULL;
-        for(vtxarray *va = shadowva; va; va = va->next)
+        for(vtxarray *va = shadowva; va; va = va->rnext)
         {
             if(!va->sky) continue;
 
