@@ -358,14 +358,22 @@ namespace game
     }
     COMMAND(hashpwd, "s");
 
-    void setmaster(const char *arg)
+    void setmaster(const char *arg, const char *who)
     {
         if(!arg[0]) return;
-        int val = 1;
+        int val = 1, cn = player1->clientnum;
         string hash = "";
         if(!arg[1] && isdigit(arg[0])) val = parseint(arg);
-        else server::hashpassword(player1->clientnum, sessionid, arg, hash);
-        addmsg(N_SETMASTER, "ris", val, hash);
+        else 
+        {
+            if(who[0])
+            {
+                cn = parseplayer(who);
+                if(cn < 0) return;
+            }
+            server::hashpassword(player1->clientnum, sessionid, arg, hash);
+        }
+        addmsg(N_SETMASTER, "riis", cn, val, hash);
     }
     COMMAND(setmaster, "s");
     ICOMMAND(mastermode, "i", (int *val), addmsg(N_MASTERMODE, "ri", *val));
@@ -1511,11 +1519,12 @@ namespace game
 
             case N_CURRENTMASTER:
             {
-                int mn = getint(p), priv = getint(p), mm = getint(p);
+                int mm = getint(p), mn;
                 loopv(players) players[i]->privilege = PRIV_NONE;
-                if(mn>=0)
+                while((mn = getint(p))>=0 && !p.overread())
                 {
                     fpsent *m = mn==player1->clientnum ? player1 : newclient(mn);
+                    int priv = getint(p);
                     if(m) m->privilege = priv;
                 }
                 if(mm != mastermode)
@@ -1738,7 +1747,7 @@ namespace game
     {
         if(remote)
         {
-            if(player1->privilege<PRIV_ADMIN) return;
+            if(player1->privilege<PRIV_MASTER) return;
             addmsg(N_STOPDEMO, "r");
         }
         else server::stopdemo();
@@ -1747,14 +1756,14 @@ namespace game
 
     void recorddemo(int val)
     {
-        if(remote && player1->privilege<PRIV_ADMIN) return;
+        if(remote && player1->privilege<PRIV_MASTER) return;
         addmsg(N_RECORDDEMO, "ri", val);
     }
     ICOMMAND(recorddemo, "i", (int *val), recorddemo(*val));
 
     void cleardemos(int val)
     {
-        if(remote && player1->privilege<PRIV_ADMIN) return;
+        if(remote && player1->privilege<PRIV_MASTER) return;
         addmsg(N_CLEARDEMOS, "ri", val);
     }
     ICOMMAND(cleardemos, "i", (int *val), cleardemos(*val));
