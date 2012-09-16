@@ -2388,15 +2388,16 @@ void cleanupradiancehints()
 VARF(rhsplits, 1, 2, RH_MAXSPLITS, { cleardeferredlightshaders(); cleanupradiancehints(); });
 VARF(rhborder, 0, 1, 1, cleanupradiancehints());
 VARF(rsmsize, 64, 384, 2048, cleanupradiancehints());
-VAR(rhfarplane, 64, 1024, 16384);
-FVAR(rsmpradiustweak, 1e-3f, 1, 1e3f);
-FVAR(rhpradiustweak, 1e-3f, 1, 1e3f);
-FVAR(rsmdepthrange, 0, 1024, 1e6f);
-FVAR(rsmdepthmargin, 0, 0.1f, 1e3f);
+VARF(rhnearplane, 1, 1, 16, clearradiancehintscache());
+VARF(rhfarplane, 64, 1024, 16384, clearradiancehintscache());
+FVARF(rsmpradiustweak, 1e-3f, 1, 1e3f, clearradiancehintscache());
+FVARF(rhpradiustweak, 1e-3f, 1, 1e3f, clearradiancehintscache());
+FVARF(rsmdepthrange, 0, 1024, 1e6f, clearradiancehintscache());
+FVARF(rsmdepthmargin, 0, 0.1f, 1e3f, clearradiancehintscache());
 VARF(rhprec, 0, 0, 1, cleanupradiancehints());
 VARF(rsmprec, 0, 0, 3, cleanupradiancehints());
 FVAR(rhnudge, 0, 0.5f, 4);
-FVAR(rhsplitweight, 0.20f, 0.6f, 0.95f);
+FVARF(rhsplitweight, 0.20f, 0.6f, 0.95f, clearradiancehintscache());
 VARF(rhgrid, 3, 27, 128, cleanupradiancehints());
 FVARF(rsmspread, 0, 0.2f, 1, clearradiancehintscache());
 VAR(rhclipgrid, 0, 1, 1);
@@ -2781,6 +2782,7 @@ static float calcfrustumboundsphere(float nearplane, float farplane,  const vec 
     }
 }
 
+VAR(csmnearplane, 1, 1, 16);
 VAR(csmfarplane, 64, 1024, 16384);
 FVAR(csmpradiustweak, 1e-3f, 1, 1e3f);
 FVAR(csmdepthrange, 0, 1024, 1e6f);
@@ -2793,7 +2795,7 @@ VAR(csmcull, 0, 1, 1);
 
 void cascaded_shadow_map::updatesplitdist()
 {
-    float lambda = csmsplitweight, nd = nearplane, fd = csmfarplane, ratio = fd/nd;
+    float lambda = csmsplitweight, nd = csmnearplane, fd = csmfarplane, ratio = fd/nd;
     splits[0].nearplane = nd;
     for(int i = 1; i < csmsplitn; ++i)
     {
@@ -2837,7 +2839,7 @@ void cascaded_shadow_map::getprojmatrix()
         // compute the projected bounding box of the sphere
         vec tc;
         this->model.transform(c, tc);
-        const float pradius = radius * csmpradiustweak, step = (2*pradius) / (sm.size - 2*smborder);
+        const float pradius = ceil(radius * csmpradiustweak), step = (2*pradius) / (sm.size - 2*smborder);
         vec2 offset = vec2(tc).sub(pradius).div(step);
         offset.x = floor(offset.x);
         offset.y = floor(offset.y);
@@ -2996,12 +2998,12 @@ void reflectiveshadowmap::getprojmatrix()
     maxz += zmargin;
 
     vec c;
-    float radius = calcfrustumboundsphere(nearplane, rhfarplane, camera1->o, camdir, c);
+    float radius = calcfrustumboundsphere(rhnearplane, rhfarplane, camera1->o, camdir, c);
 
     // compute the projected bounding box of the sphere
     vec tc;
     model.transform(c, tc);
-    const float pradius = (radius + gidist) * rsmpradiustweak, step = (2*pradius) / rsmsize;
+    const float pradius = ceil((radius + gidist) * rsmpradiustweak), step = (2*pradius) / rsmsize;
     vec2 tcoff = vec2(tc).sub(pradius).div(step);
     tcoff.x = floor(tcoff.x);
     tcoff.y = floor(tcoff.y);
@@ -3074,11 +3076,9 @@ struct radiancehints
         vec center; float bounds;
         vec cached;
     
-        splitinfo() : nearplane(-1e16f), farplane(-1e16f), bounds(-1e16f) {}
+        splitinfo() : bounds(-1e16f) {}
 
         void clearcache() { bounds = -1e16f; }
-        void setnearplane(float n) { if(nearplane != n) { nearplane = n; clearcache(); } }
-        void setfarplane(float f) { if(farplane != f) { farplane = f; clearcache(); } }
     } splits[RH_MAXSPLITS];
 
     void setup();
@@ -3097,15 +3097,15 @@ void clearradiancehintscache()
 
 void radiancehints::updatesplitdist()
 {
-    float lambda = rhsplitweight, nd = nearplane, fd = rhfarplane, ratio = fd/nd;
-    splits[0].setnearplane(nd);
+    float lambda = rhsplitweight, nd = rhnearplane, fd = rhfarplane, ratio = fd/nd;
+    splits[0].nearplane = nd;
     for(int i = 1; i < rhsplits; ++i)
     {
         float si = i / float(rhsplits);
-        splits[i].setnearplane(lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si));
-        splits[i-1].setfarplane(splits[i].nearplane * 1.005f);
+        splits[i].nearplane = lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
+        splits[i-1].farplane = splits[i].nearplane * 1.005f;
     }
-    splits[rhsplits-1].setfarplane(fd);
+    splits[rhsplits-1].farplane = fd;
 }
 
 void radiancehints::setup()
@@ -3120,7 +3120,7 @@ void radiancehints::setup()
         float radius = calcfrustumboundsphere(split.nearplane, split.farplane, camera1->o, camdir, c);
 
         // compute the projected bounding box of the sphere
-        const float pradius = radius * rhpradiustweak, step = (2*pradius) / rhgrid;
+        const float pradius = ceil(radius * rhpradiustweak), step = (2*pradius) / rhgrid;
         vec offset = vec(c).sub(pradius).div(step);
         offset.x = floor(offset.x);
         offset.y = floor(offset.y);
