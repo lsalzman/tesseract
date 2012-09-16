@@ -3076,7 +3076,7 @@ struct radiancehints
         vec center; float bounds;
         vec cached;
     
-        splitinfo() : bounds(-1e16f) {}
+        splitinfo() : center(-1e16f, -1e16f, -1e16f), bounds(-1e16f), cached(-1e16f, -1e16f, -1e16f) {}
 
         void clearcache() { bounds = -1e16f; }
     } splits[RH_MAXSPLITS];
@@ -3134,8 +3134,6 @@ void radiancehints::setup()
         split.scale = vec(1/(step*(rhgrid+2*rhborder)), 1/(step*(rhgrid+2*rhborder)), 1/(step*(rhgrid+2*rhborder)*rhsplits));
         split.offset = vec(-(offset.x-rhborder)/(rhgrid+2*rhborder), -(offset.y-rhborder)/(rhgrid+2*rhborder), (i - (offset.z-rhborder)/(rhgrid+2*rhborder))/float(rhsplits));
     }
-
-    if(rhcache) loopi(3) swap(rhtex[i], rhtex[i+3]);
 }
 
 void radiancehints::bindparams()
@@ -4102,6 +4100,8 @@ void packlights()
 
 void radiancehints::renderslices()
 {
+    if(rhcache) loopi(3) swap(rhtex[i], rhtex[i+3]);
+        
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rhfbo);
     glViewport(0, 0, rhgrid+2*rhborder, rhgrid+2*rhborder);
 
@@ -4215,6 +4215,8 @@ void radiancehints::renderslices()
                 if(rhborder) glClear(GL_COLOR_BUFFER_BIT);
             }
 
+            if(j < rhborder || j >= rhgrid + rhborder) continue;
+
             if(rhclipgrid)
             {
                 if(z < cmin.z || z > cmax.z) 
@@ -4305,21 +4307,22 @@ void renderradiancehints()
     if(!sunlight || !csmshadowmap || !gi || !giscale || !gidist) return;
 
     if(!rhinoq) timer_begin(TIMER_RH);
-    else glFlush();
 
     rh.setup();
 
-    rsm.setup();
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadMatrixf(rsm.proj.v);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadMatrixf(rsm.model.v);
-
     if(!rhcache || !rh.allcached())
     {
+        if(rhinoq) glFlush();
+ 
+        rsm.setup();
+
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadMatrixf(rsm.proj.v);
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadMatrixf(rsm.model.v);
+
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
 
         shadowmapping = SM_REFLECT;
@@ -4348,21 +4351,22 @@ void renderradiancehints()
         clearbatchedmapmodels();
 
         shadowmapping = 0;
+
+        rh.renderslices();
+
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+
+        if(rhinoq)
+        {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+            glViewport(0, 0, vieww, viewh);
+        }
     }
-
-    rh.renderslices();
-
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
 
     if(!rhinoq) timer_end(TIMER_RH);
-    else
-    {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
-        glViewport(0, 0, vieww, viewh);
-    }
 }
 
 void rendercsmshadowmaps()
