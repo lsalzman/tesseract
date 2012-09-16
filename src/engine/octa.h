@@ -132,7 +132,7 @@ struct vtxarray
     ushort minvert, maxvert; // DRE info
     elementset *eslist;      // List of element indices sets (range) per texture
     materialsurface *matbuf; // buffer of material surfaces
-    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, refracttris, refract, texmask, sky, matsurfs, matmask, distance, rdistance;
+    int verts, tris, texs, blendtris, blends, alphabacktris, alphaback, alphafronttris, alphafront, refracttris, refract, texmask, sky, matsurfs, matmask, distance, rdistance, dyntexs;
     ivec o;
     int size;                // location and size of cube.
     ivec geommin, geommax;   // BB of geom

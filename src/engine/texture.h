@@ -239,6 +239,7 @@ enum
     SHADER_ENVMAP     = 1<<1,
     SHADER_REFRACT    = 1<<2,
     SHADER_OPTION     = 1<<3,
+    SHADER_DYNAMIC    = 1<<4,
 
     SHADER_INVALID    = 1<<8,
     SHADER_DEFERRED   = 1<<9
@@ -314,6 +315,8 @@ struct Shader
         if(!detailshader || detailshader->variants[row].empty()) return false;
         return (detailshader->variants[row][0]->type&SHADER_OPTION)!=0;
     }
+
+    bool isdynamic() const { return (type&SHADER_DYNAMIC)!=0; }
 
     void setvariant_(int col, int row, Shader *fallbackshader)
     {
@@ -666,6 +669,8 @@ struct VSlot
     {
         linked = false;
     }
+
+    bool isdynamic() const;
 };
 
 struct Slot
@@ -725,6 +730,11 @@ inline void VSlot::addvariant(Slot *slot)
         while(prev->next) prev = prev->next;
         prev->next = this;
     }
+}
+
+inline bool VSlot::isdynamic() const
+{
+    return scrollS || scrollT || slot->shader->isdynamic();
 }
 
 struct MSlot : Slot, VSlot

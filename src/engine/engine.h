@@ -432,6 +432,7 @@ extern void findshadowvas();
 extern void findshadowmms();
 
 extern void renderrsmgeom();
+extern int dynamicshadowvabounds(int mask, vec &bbmin, vec &bbmax);
 extern void rendershadowmapworld();
 extern void batchshadowmapmodels();
 
@@ -698,6 +699,7 @@ extern void clearbatchedmapmodels();
 extern void preloadmodelshaders();
 extern void preloadusedmapmodels(bool msg = false, bool bih = false);
 extern int batcheddynamicmodels();
+extern int batcheddynamicmodelbounds(int mask, vec &bbmin, vec &bbmax);
 
 // renderparticles
 extern void particleinit();

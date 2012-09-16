@@ -636,6 +636,39 @@ int batcheddynamicmodels()
     return visible;
 }
 
+int batcheddynamicmodelbounds(int mask, vec &bbmin, vec &bbmax)
+{
+    int vis = 0;
+    loopv(batchedmodels)
+    {
+        batchedmodel &b = batchedmodels[i];
+        if(b.flags&MDL_MAPMODEL) break;
+        if(b.visible&mask)
+        {
+            bbmin.min(vec(b.center).sub(b.radius)); 
+            bbmax.max(vec(b.center).add(b.radius));
+            ++vis;
+        }
+    }
+    loopv(batches)
+    {
+        modelbatch &b = batches[i];
+        if(!(b.flags&MDL_MAPMODEL) || b.batched < 0 || !b.m->animated()) continue;
+        for(int j = b.batched; j >= 0;)
+        {
+            batchedmodel &bm = batchedmodels[j];
+            j = bm.next;
+            if(bm.visible&mask)
+            {
+                bbmin.min(vec(bm.center).sub(bm.radius)); 
+                bbmax.max(vec(bm.center).add(bm.radius));
+                ++vis;
+            }
+        }
+    }
+    return vis;
+}
+
 void rendermodelbatches()
 {
     loopv(batches)

@@ -426,9 +426,12 @@ struct vacollect : verthash
         }
 
         va->texmask = 0;
+        va->dyntexs = 0;
         loopi(va->texs+va->blends+va->alphaback+va->alphafront+va->refract)
         {
-            Slot &slot = *lookupvslot(va->eslist[i].texture, false).slot;
+            VSlot &vslot = lookupvslot(va->eslist[i].texture, false); 
+            if(vslot.isdynamic()) va->dyntexs++;
+            Slot &slot = *vslot.slot;
             loopvj(slot.sts) va->texmask |= 1<<slot.sts[j].type;
             if(slot.shader->type&SHADER_ENVMAP) va->texmask |= 1<<TEX_ENVMAP;
         }

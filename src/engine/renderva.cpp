@@ -1886,6 +1886,21 @@ void rendergeom()
     }
 }
 
+int dynamicshadowvabounds(int mask, vec &bbmin, vec &bbmax)
+{
+    int vis = 0;
+    for(vtxarray *va = shadowva; va; va = va->rnext)
+    {
+        if(va->shadowmask&mask && va->dyntexs)
+        {
+            bbmin.min(va->geommin.tovec());
+            bbmax.max(va->geommax.tovec());
+            vis++;
+        }
+    }
+    return vis;
+}
+ 
 void renderrsmgeom()
 {
     glEnableClientState(GL_VERTEX_ARRAY);
