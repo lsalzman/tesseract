@@ -1853,7 +1853,7 @@ static Shader *fxaashader = NULL;
 void loadfxaashaders()
 {
     useshaderbyname("hdrtonemapluma");
-    useshaderbyname("hdrluma");
+    useshaderbyname("hdrnopluma");
     defformatstring(fxaaname)("fxaa%d", fxaaquality);
     fxaashader = generateshader(fxaaname, "fxaashaders %d", fxaaquality);
 }
@@ -1894,7 +1894,7 @@ static Shader *smaalumaedgeshader = NULL, *smaacoloredgeshader = NULL, *smaablen
 void loadsmaashaders()
 {
     useshaderbyname("hdrtonemapluma");
-    useshaderbyname("hdrluma");
+    useshaderbyname("hdrnopluma");
     defformatstring(lumaedgename)("SMAALumaEdgeDetection%d", smaaquality);
     defformatstring(coloredgename)("SMAAColorEdgeDetection%d", smaaquality);
     defformatstring(blendweightname)("SMAABlendingWeightCalculation%d", smaaquality);
