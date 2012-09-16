@@ -3657,149 +3657,153 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
             glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
         }
     }
-    else if(infer != 1 || !inferskiplights) for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) for(int x = btx1, skips[LIGHTTILE_MAXW] = {0}; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
+    else if(infer != 1 || !inferskiplights) for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y]) 
     {
-        vector<int> &tile = lighttiles[y][x];
-        if(tile.empty() ? sunpass || skips[x] : skips[x] >= tile.length()) continue;
-        for(int i = skips[x];;)
+        int skips[LIGHTTILE_MAXW] = {0};
+        for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
         {
-            int n = min(tile.length() - i, lighttilebatch);
-            bool shadowmap = false, spotlight = false;
-            if(n > 0)
+            vector<int> &tile = lighttiles[y][x];
+            if(tile.empty() ? sunpass || skips[x] : skips[x] >= tile.length()) continue;
+            for(int i = skips[x];;)
             {
-                lightinfo &l = lights[tile[i]];
-                shadowmap = l.shadowmap >= 0;
-                spotlight = l.spot > 0;
-            }
-            loopj(n)
-            {
-                lightinfo &l = lights[tile[i+j]];
-                if((l.shadowmap >= 0) != shadowmap || (l.spot > 0) != spotlight) { n = j; break; }
-            }
+                int n = min(tile.length() - i, lighttilebatch);
+                bool shadowmap = false, spotlight = false;
+                if(n > 0)
+                {
+                    lightinfo &l = lights[tile[i]];
+                    shadowmap = l.shadowmap >= 0;
+                    spotlight = l.spot > 0;
+                }
+                loopj(n)
+                {
+                    lightinfo &l = lights[tile[i+j]];
+                    if((l.shadowmap >= 0) != shadowmap || (l.spot > 0) != spotlight) { n = j; break; }
+                }
 
-            int striplength = 1;
-            if(lighttilestrip && n >= min(min(lighttilebatch, lighttilestripthreshold), tile.length() - i)) 
-            {
-                for(int k = x+1; k < btx2; k++) 
-                { 
-                    vector<int> &striptile = lighttiles[y][k];
-                    if((tilemask && !(tilemask[y]&(1<<k))) ||
-                       skips[k] != i ||
-                       striptile.length() < i+n || 
-                       memcmp(&tile[i], &striptile[i], n*sizeof(int)) ||
-                       n < min(min(lighttilebatch, lighttilestripthreshold), striptile.length()-i))
-                        break;
-                    skips[k] = max(i+n, 1);
-                    striplength++;
-                }
-            }
- 
-            float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
-            loopj(n)
-            {
-                lightinfo &l = lights[tile[i+j]];
-                lightposv[j] = vec4(l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
-                lightcolorv[j] = vec(l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
-                if(spotlight)
+                int striplength = 1;
+                if(lighttilestrip && n >= min(min(lighttilebatch, lighttilestripthreshold), tile.length() - i)) 
                 {
-                    float maxatten = sincos360[l.spot].x;
-                    spotparamsv[j] = vec4(l.dir, maxatten).div(1 - maxatten);
+                    for(int k = x+1; k < btx2; k++) 
+                    { 
+                        vector<int> &striptile = lighttiles[y][k];
+                        if((tilemask && !(tilemask[y]&(1<<k))) ||
+                           skips[k] != i ||
+                           striptile.length() < i+n || 
+                           memcmp(&tile[i], &striptile[i], n*sizeof(int)) ||
+                           n < min(min(lighttilebatch, lighttilestripthreshold), striptile.length()-i))
+                            break;
+                        skips[k] = max(i+n, 1);
+                        striplength++;
+                    }
                 }
-                if(shadowmap)
+     
+                float sx1 = 1, sy1 = 1, sx2 = -1, sy2 = -1, sz1 = 1, sz2 = -1;
+                loopj(n)
                 {
-                    shadowmapinfo &sm = shadowmaps[l.shadowmap];
-                    float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
-                          bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
+                    lightinfo &l = lights[tile[i+j]];
+                    lightposv[j] = vec4(l.o.x, l.o.y, l.o.z, 1.0f/l.radius);
+                    lightcolorv[j] = vec(l.color.x*lightscale, l.color.y*lightscale, l.color.z*lightscale);
                     if(spotlight)
                     {
-                        spotxv[j] = l.spotx;
-                        spotyv[j] = l.spoty;
                         float maxatten = sincos360[l.spot].x;
-                        shadowparamsv[j] = vec4(
-                            0.5f * sm.size / (1 - maxatten),
-                            (-smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias) / (1 - maxatten),
-                            sm.size,
-                            0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                        spotparamsv[j] = vec4(l.dir, maxatten).div(1 - maxatten);
                     }
-                    else 
+                    if(shadowmap)
                     {
-                        shadowparamsv[j] = vec4(
-                            0.5f * (sm.size - smborder),
-                            -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
-                            sm.size,
-                            0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                        shadowmapinfo &sm = shadowmaps[l.shadowmap];
+                        float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3,
+                              bias = (smcullside ? smbias : -smbias) * smnearclip * (1024.0f / sm.size);
+                        if(spotlight)
+                        {
+                            spotxv[j] = l.spotx;
+                            spotyv[j] = l.spoty;
+                            float maxatten = sincos360[l.spot].x;
+                            shadowparamsv[j] = vec4(
+                                0.5f * sm.size / (1 - maxatten),
+                                (-smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias) / (1 - maxatten),
+                                sm.size,
+                                0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                        }
+                        else 
+                        {
+                            shadowparamsv[j] = vec4(
+                                0.5f * (sm.size - smborder),
+                                -smnearclip * smfarclip / (smfarclip - smnearclip) - 0.5f*bias,
+                                sm.size,
+                                0.5f + 0.5f * (smfarclip + smnearclip) / (smfarclip - smnearclip));
+                        }
+                        shadowoffsetv[j] = vec2(sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
                     }
-                    shadowoffsetv[j] = vec2(sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
+                    sx1 = min(sx1, l.sx1);
+                    sy1 = min(sy1, l.sy1);
+                    sx2 = max(sx2, l.sx2);
+                    sy2 = max(sy2, l.sy2);
+                    sz1 = min(sz1, l.sz1);
+                    sz2 = max(sz2, l.sz2);
                 }
-                sx1 = min(sx1, l.sx1);
-                sy1 = min(sy1, l.sy1);
-                sx2 = max(sx2, l.sx2);
-                sy2 = max(sy2, l.sy2);
-                sz1 = min(sz1, l.sz1);
-                sz2 = max(sz2, l.sz2);
-            }
-            if(!i && !sunpass) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
-            else if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) 
-            {
+                if(!i && !sunpass) { sx1 = sy1 = sz1 = -1; sx2 = sy2 = sz2 = 1; }
+                else if(sx1 >= sx2 || sy1 >= sy2 || sz1 >= sz2) 
+                {
+                    i += n;
+                    if(i >= tile.length()) break;
+                    continue;
+                }
+
+                if(infer > 1 && !inferclear)
+                {
+                    if(n && (i || sunpass))
+                    {
+                        if(!blend) { glEnable(GL_BLEND); blend = true; }
+                    }
+                    else if(blend) { glDisable(GL_BLEND); blend = false; }
+                }
+
+                if(n) 
+                {
+                    s->setvariant(n-1, (shadowmap ? 1 : 0) + (i || sunpass ? 2 : 0) + (spotlight ? 4 : 0));
+                    lightpos.set(lightposv, n);
+                    lightcolor.set(lightcolorv, n);
+                    if(spotlight) spotparams.set(spotparamsv, n);
+                    if(shadowmap)   
+                    {
+                        if(spotlight) 
+                        { 
+                            spotx.set(spotxv, n);
+                            spoty.set(spotyv, n);
+                        }
+                        shadowparams.set(shadowparamsv, n);
+                        shadowoffset.set(shadowoffsetv, n);
+                    }
+                } 
+                else s->set();
+
+                sx1 = max(sx1, bsx1);
+                sy1 = max(sy1, bsy1);
+                sx2 = min(sx2, bsx2);
+                sy2 = min(sy2, bsy2);
+                if(sx1 < sx2 && sy1 < sy2)
+                { 
+                    int tx1 = max(int(floor((sx1*0.5f+0.5f)*vieww)), ((x*lighttilevieww)/lighttilew)*lighttilealignw), 
+                        ty1 = max(int(floor((sy1*0.5f+0.5f)*viewh)), ((y*lighttileviewh)/lighttileh)*lighttilealignh),
+                        tx2 = min(int(ceil((sx2*0.5f+0.5f)*vieww)), min((((x+striplength)*lighttilevieww)/lighttilew)*lighttilealignw, vieww)), 
+                        ty2 = min(int(ceil((sy2*0.5f+0.5f)*viewh)), min((((y+1)*lighttileviewh)/lighttileh)*lighttilealignh, viewh));
+                    if(infer > 1) { tx1 /= 2; ty1 /= 2; tx2 = (tx2+1)/2; ty2 = (ty2+1)/2; }
+                    glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
+
+                    if(hasDBT && depthtestlights > 1) glDepthBounds_(sz1*0.5f + 0.5f, sz2*0.5f + 0.5f);
+
+                    // FIXME: render light geometry here
+                    glBegin(GL_TRIANGLE_STRIP);
+                    glVertex3f( 1, -1, sz1);
+                    glVertex3f(-1, -1, sz1);
+                    glVertex3f( 1,  1, sz1);
+                    glVertex3f(-1,  1, sz1);
+                    glEnd();
+                }
+
                 i += n;
                 if(i >= tile.length()) break;
-                continue;
             }
-
-            if(infer > 1 && !inferclear)
-            {
-                if(n && (i || sunpass))
-                {
-                    if(!blend) { glEnable(GL_BLEND); blend = true; }
-                }
-                else if(blend) { glDisable(GL_BLEND); blend = false; }
-            }
-
-            if(n) 
-            {
-                s->setvariant(n-1, (shadowmap ? 1 : 0) + (i || sunpass ? 2 : 0) + (spotlight ? 4 : 0));
-                lightpos.set(lightposv, n);
-                lightcolor.set(lightcolorv, n);
-                if(spotlight) spotparams.set(spotparamsv, n);
-                if(shadowmap)   
-                {
-                    if(spotlight) 
-                    { 
-                        spotx.set(spotxv, n);
-                        spoty.set(spotyv, n);
-                    }
-                    shadowparams.set(shadowparamsv, n);
-                    shadowoffset.set(shadowoffsetv, n);
-                }
-            } 
-            else s->set();
-
-            sx1 = max(sx1, bsx1);
-            sy1 = max(sy1, bsy1);
-            sx2 = min(sx2, bsx2);
-            sy2 = min(sy2, bsy2);
-            if(sx1 < sx2 && sy1 < sy2)
-            { 
-                int tx1 = max(int(floor((sx1*0.5f+0.5f)*vieww)), ((x*lighttilevieww)/lighttilew)*lighttilealignw), 
-                    ty1 = max(int(floor((sy1*0.5f+0.5f)*viewh)), ((y*lighttileviewh)/lighttileh)*lighttilealignh),
-                    tx2 = min(int(ceil((sx2*0.5f+0.5f)*vieww)), min((((x+striplength)*lighttilevieww)/lighttilew)*lighttilealignw, vieww)), 
-                    ty2 = min(int(ceil((sy2*0.5f+0.5f)*viewh)), min((((y+1)*lighttileviewh)/lighttileh)*lighttilealignh, viewh));
-                if(infer > 1) { tx1 /= 2; ty1 /= 2; tx2 = (tx2+1)/2; ty2 = (ty2+1)/2; }
-                glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
-
-                if(hasDBT && depthtestlights > 1) glDepthBounds_(sz1*0.5f + 0.5f, sz2*0.5f + 0.5f);
-
-                // FIXME: render light geometry here
-                glBegin(GL_TRIANGLE_STRIP);
-                glVertex3f( 1, -1, sz1);
-                glVertex3f(-1, -1, sz1);
-                glVertex3f( 1,  1, sz1);
-                glVertex3f(-1,  1, sz1);
-                glEnd();
-            }
-
-            i += n;
-            if(i >= tile.length()) break;
         }
     }
 
