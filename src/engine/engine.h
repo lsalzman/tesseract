@@ -316,6 +316,7 @@ extern void resetfogcolor();
 extern void cleanupgbuffer();
 extern void initgbuffer();
 extern void maskgbuffer(const char *mask);
+extern void clearradiancehintscache();
 extern void writecrosshairs(stream *f);
 
 // renderextras

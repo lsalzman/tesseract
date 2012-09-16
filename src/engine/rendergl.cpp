@@ -2288,10 +2288,10 @@ float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
 #define RH_MAXSPLITS 4
 
-GLuint rhtex[3] = { 0, 0, 0 }, rhfbo = 0;
+GLuint rhtex[6] = { 0, 0, 0, 0, 0, 0 }, rhfbo = 0;
 GLuint rsmdepthtex = 0, rsmcolortex = 0, rsmnormaltex = 0, rsmfbo = 0;
 
-extern int rhgrid, rhsplits, rhborder, rhprec, rhtaps, rsmprec, rsmsize;
+extern int rhgrid, rhsplits, rhborder, rhprec, rhtaps, rhcache, rsmprec, rsmsize;
 
 static Shader *radiancehintsshader = NULL;
 
@@ -2303,6 +2303,8 @@ Shader *loadradiancehintsshader()
 
 void loadrhshaders()
 {
+    if(rhborder) useshaderbyname("radiancehintsborder");
+    if(rhcache) useshaderbyname("radiancehintscached");
     radiancehintsshader = loadradiancehintsshader();
 }
 
@@ -2313,7 +2315,7 @@ void clearrhshaders()
 
 void setupradiancehints()
 {
-    loopi(3) if(!rhtex[i]) glGenTextures(1, &rhtex[i]);
+    loopi(rhcache ? 6 : 3) if(!rhtex[i]) glGenTextures(1, &rhtex[i]);
 
     if(!rhfbo) glGenFramebuffers_(1, &rhfbo);
 
@@ -2321,7 +2323,7 @@ void setupradiancehints()
 
     GLenum rhformat = hasTF && rhprec >= 1 ? GL_RGBA16F_ARB : GL_RGBA8;
 
-    loopi(3)
+    loopi(rhcache ? 6 : 3)
     {
         create3dtexture(rhtex[i], rhgrid+2*rhborder, rhgrid+2*rhborder, (rhgrid+2*rhborder)*rhsplits, NULL, 7, 1, rhformat);
         if(rhborder)
@@ -2368,10 +2370,12 @@ void setupradiancehints()
 
     loadrhshaders();
 }
-   
+
 void cleanupradiancehints()
 {
-    loopi(3) if(rhtex[i]) { glDeleteTextures(1, &rhtex[i]); rhtex[i] = 0; }
+    clearradiancehintscache();
+
+    loopi(6) if(rhtex[i]) { glDeleteTextures(1, &rhtex[i]); rhtex[i] = 0; }
     if(rhfbo) { glDeleteFramebuffers_(1, &rhfbo); rhfbo = 0; }
     if(rsmdepthtex) { glDeleteTextures(1, &rsmdepthtex); rsmdepthtex = 0; }
     if(rsmcolortex) { glDeleteTextures(1, &rsmcolortex); rsmcolortex = 0; }
@@ -2394,8 +2398,9 @@ VARF(rsmprec, 0, 0, 3, cleanupradiancehints());
 FVAR(rhnudge, 0, 0.5f, 4);
 FVAR(rhsplitweight, 0.20f, 0.6f, 0.95f);
 VARF(rhgrid, 3, 27, 128, cleanupradiancehints());
-FVAR(rsmspread, 0, 0.2f, 1);
+FVARF(rsmspread, 0, 0.2f, 1, clearradiancehintscache());
 VAR(rhclipgrid, 0, 1, 1);
+VARF(rhcache, 0, 1, 1, cleanupradiancehints());
 VAR(rsmcull, 0, 1, 1);
 VARFP(rhtaps, 0, 20, 32, cleanupradiancehints());
 VARFR(gidist, 0, 384, 1024, { cleardeferredlightshaders(); if(!gidist) cleanupradiancehints(); });
@@ -2693,6 +2698,8 @@ vector<shadowmapinfo> shadowmaps;
 void clearshadowcache()
 {
     shadowmaps.setsize(0);
+
+    clearradiancehintscache();
 }
 
 static shadowmapinfo *addshadowmap(ushort x, ushort y, int size, int &idx)
@@ -3065,25 +3072,40 @@ struct radiancehints
         float nearplane, farplane;
         vec offset, scale;
         vec center; float bounds;
+        vec cached;
+    
+        splitinfo() : nearplane(-1e16f), farplane(-1e16f), bounds(-1e16f) {}
+
+        void clearcache() { bounds = -1e16f; }
+        void setnearplane(float n) { if(nearplane != n) { nearplane = n; clearcache(); } }
+        void setfarplane(float f) { if(farplane != f) { farplane = f; clearcache(); } }
     } splits[RH_MAXSPLITS];
 
     void setup();
     void updatesplitdist();
     void bindparams();
     void renderslices();
+
+    void clearcache() { loopi(RH_MAXSPLITS) splits[i].clearcache(); }
+    bool allcached() const { loopi(rhsplits) if(splits[i].cached != splits[i].center) return false; return true; }
 } rh;
+
+void clearradiancehintscache()
+{
+    rh.clearcache();
+}
 
 void radiancehints::updatesplitdist()
 {
     float lambda = rhsplitweight, nd = nearplane, fd = rhfarplane, ratio = fd/nd;
-    splits[0].nearplane = nd;
+    splits[0].setnearplane(nd);
     for(int i = 1; i < rhsplits; ++i)
     {
         float si = i / float(rhsplits);
-        splits[i].nearplane = lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si);
-        splits[i-1].farplane = splits[i].nearplane * 1.005f;
+        splits[i].setnearplane(lambda*(nd*pow(ratio, si)) + (1-lambda)*(nd + (fd - nd)*si));
+        splits[i-1].setfarplane(splits[i].nearplane * 1.005f);
     }
-    splits[rhsplits-1].farplane = fd;
+    splits[rhsplits-1].setfarplane(fd);
 }
 
 void radiancehints::setup()
@@ -3103,6 +3125,7 @@ void radiancehints::setup()
         offset.x = floor(offset.x);
         offset.y = floor(offset.y);
         offset.z = floor(offset.z);
+        split.cached = split.bounds == pradius ? split.center : vec(-1e16f, -1e16f, -1e16f);
         split.center = vec(offset).mul(step).add(pradius);
         split.bounds = pradius;
 
@@ -3111,6 +3134,8 @@ void radiancehints::setup()
         split.scale = vec(1/(step*(rhgrid+2*rhborder)), 1/(step*(rhgrid+2*rhborder)), 1/(step*(rhgrid+2*rhborder)*rhsplits));
         split.offset = vec(-(offset.x-rhborder)/(rhgrid+2*rhborder), -(offset.y-rhborder)/(rhgrid+2*rhborder), (i - (offset.z-rhborder)/(rhgrid+2*rhborder))/float(rhsplits));
     }
+
+    if(rhcache) loopi(3) swap(rhtex[i], rhtex[i+3]);
 }
 
 void radiancehints::bindparams()
@@ -4095,12 +4120,11 @@ void radiancehints::renderslices()
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmcolortex);
     glActiveTexture_(GL_TEXTURE2_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmnormaltex);
-    glActiveTexture_(GL_TEXTURE3_ARB);
-    glBindTexture(GL_TEXTURE_3D_EXT, rhtex[0]);
-    glActiveTexture_(GL_TEXTURE4_ARB);
-    glBindTexture(GL_TEXTURE_3D_EXT, rhtex[1]);
-    glActiveTexture_(GL_TEXTURE5_ARB);
-    glBindTexture(GL_TEXTURE_3D_EXT, rhtex[2]);
+    loopi(rhcache ? 6 : 3)
+    {
+        glActiveTexture_(GL_TEXTURE3_ARB + i);
+        glBindTexture(GL_TEXTURE_3D_EXT, rhtex[i]);
+    }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glClearColor(0.5f, 0.5f, 0.5f, 0);
@@ -4118,6 +4142,7 @@ void radiancehints::renderslices()
             cmin[k] = floor((worldmin[k] - (split.center[k] - split.bounds))/step)*step + split.center[k] - split.bounds;
             cmax[k] = ceil((worldmax[k] - (split.center[k] - split.bounds))/step)*step + split.center[k] - split.bounds;
         }
+
         if(rhborder && i + 1 < rhsplits)
         {
             GLOBALPARAM(bordercenter, (0.5f, 0.5f, float(i+1 + 0.5f)/rhsplits));
@@ -4212,6 +4237,53 @@ void radiancehints::renderslices()
                 }
             }
 
+            if(rhcache && z > split.cached.z - split.bounds && z < split.cached.z + split.bounds)
+            {
+                float px1 = max(tx1, split.cached.x - split.bounds), px2 = min(tx2, split.cached.x + split.bounds),
+                      py1 = max(ty1, split.cached.y - split.bounds), py2 = min(ty2, split.cached.y + split.bounds);
+                if(px1 < px2 && py1 < py2)
+                {
+                    float pvx1 = -1 + rhborder*2.0f/(rhgrid+2) + 2*rhgrid/float(rhgrid+2*rhborder)*(px1 - x1)/(x2 - x1), 
+                          pvx2 = 1 - rhborder*2.0f/(rhgrid+2) + 2*rhgrid/float(rhgrid+2*rhborder)*(px2 - x2)/(x2 - x1), 
+                          pvy1 = -1 + rhborder*2.0f/(rhgrid+2) + 2*rhgrid/float(rhgrid+2*rhborder)*(py1 - y1)/(y2 - y1), 
+                          pvy2 = 1 - rhborder*2.0f/(rhgrid+2) + 2*rhgrid/float(rhgrid+2*rhborder)*(py2 - y2)/(y2 - y1),
+                          ptx1 = (px1 + split.center.x - split.cached.x)*split.scale.x + split.offset.x, 
+                          ptx2 = (px2 + split.center.x - split.cached.x)*split.scale.x + split.offset.x,
+                          pty1 = (py1 + split.center.y - split.cached.y)*split.scale.y + split.offset.y, 
+                          pty2 = (py2 + split.center.y - split.cached.y)*split.scale.y + split.offset.y,
+                          pz = (z + split.center.z - split.cached.z)*split.scale.z + split.offset.z;
+
+                    if(px1 != tx1 || px2 != tx2 || py1 != ty1 || py2 != ty2)
+                    {
+                        radiancehintsshader->set();
+
+                        glBegin(GL_TRIANGLE_STRIP);
+                        glTexCoord3f(px2, py1, z); glVertex2f(pvx2, pvy1);
+                            glTexCoord3f(tx2, ty1, z); glVertex2f(vx2, vy1);
+                        glTexCoord3f(px1, py1, z); glVertex2f(pvx1, pvy1);
+                            glTexCoord3f(tx1, ty1, z); glVertex2f(vx1, vy1);
+                        glTexCoord3f(px1, py2, z); glVertex2f(pvx1, pvy2);
+                            glTexCoord3f(tx1, ty2, z); glVertex2f(vx1, vy2);
+                        glTexCoord3f(px2, py2, z); glVertex2f(pvx2, pvy2);
+                            glTexCoord3f(tx2, ty2, z); glVertex2f(vx2, vy2);
+                        glTexCoord3f(px2, py1, z); glVertex2f(pvx2, pvy1);
+                            glTexCoord3f(tx2, ty1, z); glVertex2f(vx2, vy1);
+                        glEnd();
+                    }
+
+                    SETSHADER(radiancehintscached);
+           
+                    glBegin(GL_TRIANGLE_STRIP);
+                    glTexCoord3f(ptx2, pty1, pz); glVertex2f(pvx2, pvy1);
+                    glTexCoord3f(ptx1, pty1, pz); glVertex2f(pvx1, pvy1);
+                    glTexCoord3f(ptx2, pty2, pz); glVertex2f(pvx2, pvy2);
+                    glTexCoord3f(ptx1, pty2, pz); glVertex2f(pvx1, pvy2);
+                    glEnd();
+
+                    continue;
+                }
+            }
+
             radiancehintsshader->set();
 
             glBegin(GL_TRIANGLE_STRIP);
@@ -4235,24 +4307,9 @@ void renderradiancehints()
     if(!rhinoq) timer_begin(TIMER_RH);
     else glFlush();
 
-    rsm.setup();
     rh.setup();
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
-
-    shadowmapping = SM_REFLECT;
-    shadoworigin = vec(0, 0, 0);
-    shadowdir = rsm.lightview;
-    shadowbias = rsm.lightview.project_bb(worldmin, worldmax);
-    shadowradius = fabs(rsm.lightview.project_bb(worldmax, worldmin));
-
-    GLOBALPARAM(rsmdir, (-rsm.lightview.x, -rsm.lightview.y, -rsm.lightview.z));
-
-    findshadowvas();
-    findshadowmms();
-
-    shadowmaskbatchedmodels(false);
-    batchshadowmapmodels();
+    rsm.setup();
 
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -4260,18 +4317,38 @@ void renderradiancehints()
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     glLoadMatrixf(rsm.model.v);
-    glViewport(0, 0, rsmsize, rsmsize);
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
 
-    shadowside = 0;
+    if(!rhcache || !rh.allcached())
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
 
-    renderrsmgeom();
-    rendermodelbatches();
+        shadowmapping = SM_REFLECT;
+        shadoworigin = vec(0, 0, 0);
+        shadowdir = rsm.lightview;
+        shadowbias = rsm.lightview.project_bb(worldmin, worldmax);
+        shadowradius = fabs(rsm.lightview.project_bb(worldmax, worldmin));
 
-    clearbatchedmapmodels();
+        GLOBALPARAM(rsmdir, (-rsm.lightview.x, -rsm.lightview.y, -rsm.lightview.z));
 
-    shadowmapping = 0;
+        findshadowvas();
+        findshadowmms();
+
+        shadowmaskbatchedmodels(false);
+        batchshadowmapmodels();
+
+        glViewport(0, 0, rsmsize, rsmsize);
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
+
+        shadowside = 0;
+    
+        renderrsmgeom();
+        rendermodelbatches();
+
+        clearbatchedmapmodels();
+
+        shadowmapping = 0;
+    }
 
     rh.renderslices();
 

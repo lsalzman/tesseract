@@ -42,6 +42,7 @@ void setupsunlight()
     sunlightent.attr4 = int(sunlightcolor.z*sunlightscale);
     float dist = min(min(sunlightdir.x ? 1/fabs(sunlightdir.x) : 1e16f, sunlightdir.y ? 1/fabs(sunlightdir.y) : 1e16f), sunlightdir.z ? 1/fabs(sunlightdir.z) : 1e16f);
     sunlightent.o = vec(sunlightdir).mul(dist*worldsize).add(vec(worldsize/2, worldsize/2, worldsize/2)); 
+    clearradiancehintscache();
 }
 
 static const surfaceinfo brightsurfaces[6] =
