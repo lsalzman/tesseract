@@ -988,7 +988,7 @@ vtxarray *newva(int x, int y, int z, int size)
 
     vc.setupdata(va);
 
-    if(va->alphafronttris || va->alphabacktris)
+    if(va->alphafronttris || va->alphabacktris || va->refracttris)
     {
         va->alphamin = ivec(vec(vc.alphamin).mul(8)).shr(3);
         va->alphamax = ivec(vec(vc.alphamax).mul(8)).add(7).shr(3);
