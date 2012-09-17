@@ -706,13 +706,20 @@ struct timer
     float result, print;
 };
 static vector<timer> timers;
+static vector<int> timerorder;
 static int timercycle = 0;
 
 extern int usetimers;
 
 timer *findtimer(const char *name, bool gpu)
 {
-    loopv(timers) if(!strcmp(timers[i].name, name) && timers[i].gpu == gpu) return &timers[i];
+    loopv(timers) if(!strcmp(timers[i].name, name) && timers[i].gpu == gpu) 
+    {
+        timerorder.removeobj(i);
+        timerorder.add(i);
+        return &timers[i];
+    }
+    timerorder.add(timers.length());
     timer &t = timers.add();
     t.name = name;
     t.gpu = gpu;
@@ -754,9 +761,9 @@ void synctimers()
 {
     timercycle = (timercycle + 1) % timer::MAXQUERY;
 
-    loopv(timers)
+    loopv(timerorder)
     {
-        timer &t = timers[i];
+        timer &t = timers[timerorder[i]];
         if(t.waiting&(1<<timercycle))
         {
             GLint available = 0;
@@ -779,6 +786,7 @@ void cleanuptimers()
         if(t.gpu) glDeleteQueries_(timer::MAXQUERY, t.query);
     }
     timers.shrink(0);
+    timerorder.shrink(0);
 }
 
 VARFN(timer, usetimers, 0, 0, 1, cleanuptimers());
