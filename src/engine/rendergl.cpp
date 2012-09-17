@@ -404,7 +404,7 @@ void gl_checkextensions()
         vacubesize = 64;
     }
 
-    if(hasext(exts, "GL_EXT_timer_query"))
+    if(hasext(exts, "GL_EXT_timer_query") || hasext(exts, "GL_ARB_timer_query"))
     {
         glGetQueryiv_ =          (PFNGLGETQUERYIVARBPROC)       getprocaddress("glGetQueryivARB");
         glGenQueries_ =          (PFNGLGENQUERIESARBPROC)       getprocaddress("glGenQueriesARB");
@@ -413,10 +413,19 @@ void gl_checkextensions()
         glEndQuery_ =            (PFNGLENDQUERYARBPROC)         getprocaddress("glEndQueryARB");
         glGetQueryObjectiv_ =    (PFNGLGETQUERYOBJECTIVARBPROC) getprocaddress("glGetQueryObjectivARB");
         glGetQueryObjectuiv_ =   (PFNGLGETQUERYOBJECTUIVARBPROC)getprocaddress("glGetQueryObjectuivARB");
-        glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VEXTPROC)  getprocaddress("glGetQueryObjecti64vEXT");
-        glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VEXTPROC) getprocaddress("glGetQueryObjectui64vEXT");
+        if(hasext(exts, "GL_EXT_timer_query"))
+        {
+            glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VEXTPROC)  getprocaddress("glGetQueryObjecti64vEXT");
+            glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VEXTPROC) getprocaddress("glGetQueryObjectui64vEXT");
+            if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
+        }
+        else
+        {
+            glGetQueryObjecti64v_ =  (PFNGLGETQUERYOBJECTI64VEXTPROC)  getprocaddress("glGetQueryObjecti64v");
+            glGetQueryObjectui64v_ = (PFNGLGETQUERYOBJECTUI64VEXTPROC) getprocaddress("glGetQueryObjectui64v");
+            if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_timer_query extension.");
+        }
         hasTQ = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_timer_query extension.");
     }
 
     extern int gdepthstencil, glineardepth, lighttilebatch, batchsunlight, lighttilestrip;
