@@ -926,6 +926,10 @@ void renderparticles(bool mainpass)
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);             
 
+            glActiveTexture_(GL_TEXTURE2_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+            glActiveTexture_(GL_TEXTURE0_ARB);
+
             particleshader->set();
             LOCALPARAM(colorscale, (ldrscale, ldrscale, ldrscale, 1));
         }

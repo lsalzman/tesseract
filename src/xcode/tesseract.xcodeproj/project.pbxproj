@@ -19,6 +19,7 @@
 		B94198C309207E810029DAD1 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		B94198C409207E810029DAD1 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F67ED704C74A3F00A80002 /* OpenGL.framework */; };
 		B9AC7ACF0D06DB44005506F8 /* 3dgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A840D06DB44005506F8 /* 3dgui.cpp */; };
+		B9AC7AD00D06DB44005506F8 /* aa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A850D06DB44005506F8 /* bih.cpp */; };
 		B9AC7AD00D06DB44005506F8 /* bih.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A850D06DB44005506F8 /* bih.cpp */; };
 		B9AC7AD20D06DB44005506F8 /* client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A870D06DB44005506F8 /* client.cpp */; };
 		B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A880D06DB44005506F8 /* command.cpp */; };
@@ -34,6 +35,7 @@
 		B9AC7AE40D06DB44005506F8 /* octarender.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A990D06DB44005506F8 /* octarender.cpp */; };
 		B9AC7AE50D06DB44005506F8 /* physics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9A0D06DB44005506F8 /* physics.cpp */; };
 		B9AC7AE60D06DB44005506F8 /* rendergl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9B0D06DB44005506F8 /* rendergl.cpp */; };
+		B9AC7AE60D06DB44005506F8 /* renderlights.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9B0D06DB44005506F8 /* renderlights.cpp */; };
 		B9AC7AE70D06DB44005506F8 /* rendermodel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9C0D06DB44005506F8 /* rendermodel.cpp */; };
 		B9AC7AE80D06DB44005506F8 /* renderparticles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9D0D06DB44005506F8 /* renderparticles.cpp */; };
 		B9AC7AE90D06DB44005506F8 /* rendersky.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9E0D06DB44005506F8 /* rendersky.cpp */; };
@@ -132,6 +134,7 @@
 		B96D0D6C0920976E00B6C936 /* main.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		B97E99CE085F4B3E002F9BC6 /* tesseract.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = tesseract.icns; sourceTree = "<group>"; };
 		B9AC7A840D06DB44005506F8 /* 3dgui.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = 3dgui.cpp; sourceTree = "<group>"; };
+		B9AC7A850D06DB44005506F8 /* aa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bih.cpp; sourceTree = "<group>"; };
 		B9AC7A850D06DB44005506F8 /* bih.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bih.cpp; sourceTree = "<group>"; };
 		B9AC7A860D06DB44005506F8 /* bih.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bih.h; sourceTree = "<group>"; };
 		B9AC7A870D06DB44005506F8 /* client.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = client.cpp; sourceTree = "<group>"; };
@@ -154,6 +157,7 @@
 		B9AC7A990D06DB44005506F8 /* octarender.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = octarender.cpp; sourceTree = "<group>"; };
 		B9AC7A9A0D06DB44005506F8 /* physics.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = physics.cpp; sourceTree = "<group>"; };
 		B9AC7A9B0D06DB44005506F8 /* rendergl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = rendergl.cpp; sourceTree = "<group>"; };
+		B9AC7A9B0D06DB44005506F8 /* renderlights.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = renderlights.cpp; sourceTree = "<group>"; };
 		B9AC7A9C0D06DB44005506F8 /* rendermodel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = rendermodel.cpp; sourceTree = "<group>"; };
 		B9AC7A9D0D06DB44005506F8 /* renderparticles.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = renderparticles.cpp; sourceTree = "<group>"; };
 		B9AC7A9E0D06DB44005506F8 /* rendersky.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = rendersky.cpp; sourceTree = "<group>"; };
@@ -367,6 +371,7 @@
 			children = (
 				D1D040D90F830C350043BA95 /* movie.cpp */,
 				B9AC7A840D06DB44005506F8 /* 3dgui.cpp */,
+				B9AC7A850D06DB44005506F8 /* aa.cpp */
 				B9AC7A850D06DB44005506F8 /* bih.cpp */,
 				D16E4E130ED107C300C401A2 /* blend.cpp */,
 				B9AC7A870D06DB44005506F8 /* client.cpp */,
@@ -386,6 +391,7 @@
 				B9AC7A980D06DB44005506F8 /* octaedit.cpp */,
 				B9AC7A990D06DB44005506F8 /* octarender.cpp */,
 				B9AC7A9B0D06DB44005506F8 /* rendergl.cpp */,
+				B9AC7A9B0D06DB44005506F8 /* renderlights.cpp */,
 				B9AC7A9C0D06DB44005506F8 /* rendermodel.cpp */,
 				B9AC7A9D0D06DB44005506F8 /* renderparticles.cpp */,
 				B9AC7A9E0D06DB44005506F8 /* rendersky.cpp */,
@@ -589,6 +595,7 @@
 				B90ADD7609B344D800A5B00B /* unix.c in Sources */,
 				666E40F00B67D87F005B491F /* macutils.mm in Sources */,
 				B9AC7ACF0D06DB44005506F8 /* 3dgui.cpp in Sources */,
+				B9AC7AD00D06DB44005506F8 /* aa.cpp in Sources */,
 				B9AC7AD00D06DB44005506F8 /* bih.cpp in Sources */,
 				B9AC7AD20D06DB44005506F8 /* client.cpp in Sources */,
 				B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */,

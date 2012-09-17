@@ -2284,7 +2284,6 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
     float yaw = 0, pitch = 0;
     uchar *pixels = new uchar[3*rendersize*rendersize*2];
     glPixelStorei(GL_PACK_ALIGNMENT, texalign(pixels, rendersize, 3));
-    if(hasCBF && hdrfloat) glClampColor_(GL_CLAMP_READ_COLOR_ARB, GL_TRUE);
     loopi(6)
     {
         const cubemapside &side = cubemapsides[i];
@@ -2305,7 +2304,7 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
         }
         drawcubemap(rendersize, o, yaw, pitch, side);
         uchar *src = pixels, *dst = &pixels[3*rendersize*rendersize];
-        glReadPixels(0, 0, rendersize, rendersize, GL_RGB, GL_UNSIGNED_BYTE, src);
+        readhdr(rendersize, rendersize, GL_RGB, GL_UNSIGNED_BYTE, src);
         if(rendersize > texsize)
         {
             scaletexture(src, rendersize, rendersize, 3, 3*rendersize, dst, texsize, texsize);
@@ -2321,7 +2320,6 @@ GLuint genenvmap(const vec &o, int envmapsize, int blur)
     }
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, vieww, viewh);
-    if(hasCBF && hdrfloat) glClampColor_(GL_CLAMP_READ_COLOR_ARB, GL_FIXED_ONLY_ARB);
     delete[] pixels;
     clientkeepalive();
     forcecubemapload(tex);
@@ -2352,7 +2350,7 @@ void genenvmaps()
     if(envmaps.empty()) return;
     renderprogress(0, "generating environment maps...");
     int lastprogress = SDL_GetTicks();
-    gl_setupframe(screen->w, screen->h);
+    setupframe(screen->w, screen->h);
     loopv(envmaps)
     {
         envmap &em = envmaps[i];

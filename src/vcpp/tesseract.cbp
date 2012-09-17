@@ -99,6 +99,7 @@
 			<Add alias="All" targets="client32;client64;" />
 		</VirtualTargets>
 		<Unit filename="..\engine\3dgui.cpp" />
+		<Unit filename="..\engine\aa.cpp" />
 		<Unit filename="..\engine\animmodel.h" />
 		<Unit filename="..\engine\bih.cpp" />
 		<Unit filename="..\engine\bih.h" />
@@ -139,6 +140,7 @@
 		<Unit filename="..\engine\pvs.cpp" />
 		<Unit filename="..\engine\ragdoll.h" />
 		<Unit filename="..\engine\rendergl.cpp" />
+		<Unit filename="..\engine\renderlights.cpp" />
 		<Unit filename="..\engine\rendermodel.cpp" />
 		<Unit filename="..\engine\renderparticles.cpp" />
 		<Unit filename="..\engine\rendersky.cpp" />

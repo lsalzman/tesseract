@@ -49,6 +49,7 @@ CLIENT_OBJS= \
 	shared/tools.o \
 	shared/zip.o \
 	engine/3dgui.o \
+	engine/aa.o \
 	engine/bih.o \
 	engine/blend.o \
 	engine/client.o	\
@@ -69,6 +70,7 @@ CLIENT_OBJS= \
 	engine/physics.o \
 	engine/pvs.o \
 	engine/rendergl.o \
+	engine/renderlights.o \
 	engine/rendermodel.o \
 	engine/renderparticles.o \
 	engine/rendersky.o \
@@ -222,6 +224,11 @@ engine/3dgui.o: shared/ents.h shared/command.h shared/iengine.h
 engine/3dgui.o: shared/igame.h engine/world.h engine/octa.h engine/light.h
 engine/3dgui.o: engine/bih.h engine/texture.h engine/model.h engine/varray.h
 engine/3dgui.o: engine/textedit.h
+engine/aa.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
+engine/aa.o: shared/ents.h shared/command.h shared/iengine.h shared/igame.h
+engine/aa.o: engine/world.h engine/octa.h engine/light.h engine/bih.h
+engine/aa.o: engine/texture.h engine/model.h engine/varray.h engine/AreaTex.h
+engine/aa.o: engine/SearchTex.h
 engine/bih.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/bih.o: shared/ents.h shared/command.h shared/iengine.h shared/igame.h
 engine/bih.o: engine/world.h engine/octa.h engine/light.h engine/bih.h
@@ -309,7 +316,12 @@ engine/rendergl.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/rendergl.o: shared/ents.h shared/command.h shared/iengine.h
 engine/rendergl.o: shared/igame.h engine/world.h engine/octa.h engine/light.h
 engine/rendergl.o: engine/bih.h engine/texture.h engine/model.h
-engine/rendergl.o: engine/varray.h engine/AreaTex.h engine/SearchTex.h
+engine/rendergl.o: engine/varray.h
+engine/renderlights.o: engine/engine.h shared/cube.h shared/tools.h
+engine/renderlights.o: shared/geom.h shared/ents.h shared/command.h
+engine/renderlights.o: shared/iengine.h shared/igame.h engine/world.h
+engine/renderlights.o: engine/octa.h engine/light.h engine/bih.h
+engine/renderlights.o: engine/texture.h engine/model.h engine/varray.h
 engine/rendermodel.o: engine/engine.h shared/cube.h shared/tools.h
 engine/rendermodel.o: shared/geom.h shared/ents.h shared/command.h
 engine/rendermodel.o: shared/iengine.h shared/igame.h engine/world.h

@@ -87,6 +87,10 @@ void renderwaterfog(int mat, float surface)
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
 
+    glActiveTexture_(GL_TEXTURE9_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    glActiveTexture_(GL_TEXTURE0_ARB);
+
     vec p[4] = 
     {
         invmvpmatrix.perspectivetransform(vec(-1, -1, -1)),

@@ -279,6 +279,7 @@ extern int hasstencil;
 extern int glslversion;
 
 extern int vieww, viewh;
+extern int fov;
 extern float curfov, fovy, aspect, forceaspect;
 extern float nearplane;
 extern int farplane;
@@ -288,36 +289,39 @@ extern float ldrscale, ldrscaleb;
 extern bool envmapping;
 extern int minimapping;
 extern const glmatrixf viewmatrix;
-extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, eyematrix, worldmatrix;
+extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix;
 extern int fog;
 extern bvec fogcolor;
 extern vec curfogcolor;
+extern int wireframe;
 
 extern void gl_checkextensions();
 extern void gl_init(int w, int h, int bpp, int depth, int fsaa);
 extern void cleangl();
-extern void gl_setupframe(int w, int h);
 extern void gl_drawframe(int w, int h);
 extern void gl_drawmainmenu(int w, int h);
 extern void drawminimap();
 extern void enablepolygonoffset(GLenum type);
 extern void disablepolygonoffset(GLenum type);
-extern bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2);
+extern bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2);
 extern bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2);
+extern bool calcspotscissor(const vec &origin, float radius, const vec &dir, int spot, const vec &spotx, const vec &spoty, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2);
 extern int pushscissor(float sx1, float sy1, float sx2, float sy2);
 extern void popscissor();
 extern void screenquad(float sw, float sh);
 extern void screenquad(float sw, float sh, float sw2, float sh2);
 extern void recomputecamera();
 extern void findorientation();
+extern float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, const vec &view, vec &center);
 extern void setfogcolor(const vec &v);
 extern void zerofogcolor();
 extern void resetfogcolor();
-extern void cleanupgbuffer();
-extern void initgbuffer();
-extern void maskgbuffer(const char *mask);
-extern void clearradiancehintscache();
+extern void renderavatar();
 extern void writecrosshairs(stream *f);
+
+struct timer;
+extern timer *begintimer(const char *name, bool gpu = true);
+extern void endtimer(timer *t);
 
 // renderextras
 extern void render3dbox(vec &o, float tofloor, float toceil, float xradius, float yradius = 0);
@@ -389,7 +393,7 @@ static inline cubeext &ext(cube &c)
     return *(c.ext ? c.ext : newcubeext(c));
 }
 
-// shadowmap
+// renderlights
 
 #define LIGHTTILE_MAXW 16
 #define LIGHTTILE_MAXH 16
@@ -426,15 +430,22 @@ extern vec shadoworigin, shadowdir;
 extern float shadowradius, shadowbias;
 extern int shadowside, shadowspot;
 
+extern void resetlights();
 extern void collectlights();
+extern void loaddeferredlightshaders();
+extern void cleardeferredlightshaders();
+extern void clearshadowcache();
 
 extern void findshadowvas();
 extern void findshadowmms();
 
-extern void renderrsmgeom();
 extern int dynamicshadowvabounds(int mask, vec &bbmin, vec &bbmax);
 extern void rendershadowmapworld();
 extern void batchshadowmapmodels();
+extern void rendershadowatlas();
+extern void renderrsmgeom();
+extern void renderradiancehints();
+extern void clearradiancehintscache();
 
 extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
@@ -459,10 +470,32 @@ static inline bool bbinsidespot(const vec &origin, const vec &dir, int spot, con
     return sphereinsidespot(dir, spot, center.sub(origin), radius.magnitude());
 }
 
-extern void loaddeferredlightshaders();
-extern void cleardeferredlightshaders();
+extern glmatrixf worldmatrix;
 
-extern void clearshadowcache();
+extern int gw, gh, gdepthformat, gstencil, gdepthstencil;
+extern GLuint gdepthtex, gcolortex, gnormaltex, gglowtex, gdepthrb, gstencilrb;
+
+extern void cleanupgbuffer();
+extern void initgbuffer();
+extern void maskgbuffer(const char *mask);
+extern void rendergbuffer();
+extern void shadegbuffer();
+extern void shademinimap(const vec &color = vec(0, 0, 0));
+extern void rendertransparent();
+extern void renderao();
+extern void loadhdrshaders(bool luma = false);
+extern void processhdr(GLuint outfbo = 0, bool luma = false);
+extern void readhdr(int w, int h, GLenum format, GLenum type, void *dst, GLenum target = 0, GLuint tex = 0);
+extern void setupframe(int w, int h);
+extern bool debuglights();
+extern void cleanuplights();
+
+// aa
+
+extern void setupaa(int w, int h);
+extern void doaa(GLuint outfbo, void (*resolve)(GLuint, bool));
+extern bool debugaa();
+extern void cleanupaa();
 
 // ents
 extern char *entname(entity &e);

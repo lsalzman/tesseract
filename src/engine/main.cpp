@@ -668,8 +668,7 @@ void resetgl()
     extern void cleanupmodels();
     extern void cleanuptextures();
     extern void cleanupblendmap();
-    extern void cleanshadowmap();
-    extern void cleanupglare();
+    extern void cleanuplights();
     extern void cleanupshaders();
     extern void cleanupgl();
     recorder::cleanup();
@@ -679,6 +678,7 @@ void resetgl()
     cleanupmodels();
     cleanuptextures();
     cleanupblendmap();
+    cleanuplights();
     cleanupshaders();
     cleanupgl();
     
@@ -1267,7 +1267,7 @@ int main(int argc, char **argv)
 
         if(minimized) continue;
 
-        if(!mainmenu) gl_setupframe(screen->w, screen->h);
+        if(!mainmenu) setupframe(screen->w, screen->h);
 
         inbetweenframes = false;
         if(mainmenu) gl_drawmainmenu(screen->w, screen->h);
