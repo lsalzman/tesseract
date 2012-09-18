@@ -770,9 +770,9 @@ void synctimers()
 {
     timercycle = (timercycle + 1) % timer::MAXQUERY;
 
-    loopv(timerorder)
+    loopv(timers)
     {
-        timer &t = timers[timerorder[i]];
+        timer &t = timers[i];
         if(t.waiting&(1<<timercycle))
         {
             GLint available = 0;
@@ -799,35 +799,33 @@ void cleanuptimers()
 }
 
 VARFN(timer, usetimers, 0, 0, 1, cleanuptimers());
+VAR(frametimer, 0, 0, 1);
+int framemillis = 0; // frame time (ie does not take into account the swap)
      
 void printtimers(int conw, int conh)
 {
-    if(!usetimers) return; 
+    if(!frametimer && !usetimers) return;
+
     static int lastprint = 0;
     int offset = 0;
-    loopv(timers)
+    if(frametimer)
     {
-        timer &t = timers[i];
+        static int printmillis = 0;
+        if(totalmillis - lastprint >= 200) printmillis = framemillis;
+        draw_textf("frame time %i ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, printmillis);
+        offset++;
+    }
+    if(usetimers) loopv(timerorder)
+    {
+        timer &t = timers[timerorder[i]];
         if(t.print < 0 ? t.result >= 0 : totalmillis - lastprint >= 200) t.print = t.result;
-        if(t.print < 0) continue;
+        if(t.print < 0 || (t.gpu && !(t.waiting&(1<<timercycle)))) continue;
         draw_textf("%s%s %5.2f ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, t.name, t.gpu ? "" : " (cpu)", t.print);
         offset++;
     }
     if(totalmillis - lastprint >= 200) lastprint = totalmillis;
 }
          
-static void printframetimer(int conw, int conh)
-{
-    extern int framemillis, frametimer;
-    if(!frametimer) return;
-    static int lastprint = 0, printmillis = 0;
-    if(totalmillis - lastprint >= 200) 
-    {
-        printmillis = framemillis;
-        lastprint = totalmillis;
-    }
-    draw_textf("frame time %i ms", conw-40*FONTH, conh-FONTH*3/2, printmillis);
-}
 
 void gl_init(int w, int h, int bpp, int depth, int fsaa)
 {
@@ -2278,7 +2276,6 @@ void gl_drawhud(int w, int h)
             }
 
             printtimers(conw, conh);
-            printframetimer(conw, conh);
 
             if(wallclock)
             {
@@ -2386,6 +2383,12 @@ void gl_drawhud(int w, int h)
     drawcrosshair(w, h);
 
     glDisable(GL_BLEND);
+
+    if(frametimer)
+    {
+        glFinish();
+        framemillis = getclockmillis() - totalmillis;
+    }
 }
 
 
