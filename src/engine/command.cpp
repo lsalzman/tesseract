@@ -2317,9 +2317,18 @@ int listlen(const char *s)
     return n;
 }
 
-void at(char *s, int *pos)
+void at(tagval *args, int numargs)
 {
-    commandret->setstr(indexlist(s, *pos));
+    if(!numargs) return;
+    const char *start = args[0].getstr(), *end = start + strlen(start);
+    for(int i = 1; i < numargs; i++)
+    {
+        const char *list = start;
+        int pos = args[i].getint();
+        for(; pos > 0; pos--) if(!parselist(list)) break;
+        if(pos > 0 || !parselist(list, start, end)) start = end = "";
+    }
+    commandret->setstr(newstring(start, end-start));
 }
 
 void substr(char *s, int *start, int *count, int *numargs)
@@ -2353,7 +2362,7 @@ ICOMMAND(result, "t", (tagval *v),
 COMMAND(concat, "V");
 COMMAND(concatword, "V");
 COMMAND(format, "V");
-COMMAND(at, "si");
+COMMAND(at, "si1V");
 ICOMMAND(escape, "s", (char *s), result(escapestring(s)));
 ICOMMAND(unescape, "s", (char *s),
 {
