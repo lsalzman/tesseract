@@ -645,7 +645,7 @@ ushort encodenormal(const vec &n)
 
 vec decodenormal(ushort norm)
 {
-    if(!norm) return vec(0, 0, 0);
+    if(!norm) return vec(0, 0, 1);
     norm--;
     const vec2 &yaw = sincos360[norm%360], &pitch = sincos360[norm/360+270];
     return vec(-yaw.y*pitch.x, yaw.x*pitch.x, pitch.y);
@@ -719,9 +719,9 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         }
         else
         {
-            v.norm = bvec(128, 128, 128);
-            v.tangent = bvec(128, 128, 128);
-            v.bitangent = 128;
+            v.norm = bvec(128, 128, 255);
+            v.tangent = bvec(255, 128, 128);
+            v.bitangent = 255;
         }
         index[k] = vc.addvert(v);
         if(index[k] < 0) return;
