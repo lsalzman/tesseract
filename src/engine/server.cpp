@@ -16,6 +16,11 @@ void closelogfile()
     }
 }
 
+FILE *getlogfile()
+{
+    return logfile ? logfile : stdout;
+}
+
 void setlogfile(const char *fname)
 {
     closelogfile();

@@ -74,20 +74,24 @@ static void showglslinfo(GLenum type, GLuint obj, const char *name, const char *
     else glGetProgramiv_(obj, GL_INFO_LOG_LENGTH, &length);
     if(length > 1)
     {
-        GLchar *log = new GLchar[length];
-        if(type) glGetShaderInfoLog_(obj, length, &length, log);
-        else glGetProgramInfoLog_(obj, length, &length, log);
         conoutf(CON_ERROR, "GLSL ERROR (%s:%s)", type == GL_VERTEX_SHADER ? "VS" : (type == GL_FRAGMENT_SHADER ? "FS" : "PROG"), name);
-        puts(log);
-        if(source) loopi(1000)
+        FILE *l = getlogfile();
+        if(l)
         {
-            const char *next = strchr(source, '\n');
-            printf("%d: ", i+1);
-            fwrite(source, 1, next ? next - source + 1 : strlen(source), stdout); 
-            if(!next) { putchar('\n'); break; }
-            source = next + 1;
-        } 
-        delete[] log;
+            GLchar *log = new GLchar[length];
+            if(type) glGetShaderInfoLog_(obj, length, &length, log);
+            else glGetProgramInfoLog_(obj, length, &length, log);
+            fprintf(l, "%s\n", log);
+            if(source) loopi(1000)
+            {
+                const char *next = strchr(source, '\n');
+                fprintf(l, "%d: ", i+1);
+                fwrite(source, 1, next ? next - source + 1 : strlen(source), l); 
+                if(!next) { fputc('\n', l); break; }
+                source = next + 1;
+            } 
+            delete[] log;
+        }
     }
 }
 

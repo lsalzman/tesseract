@@ -162,6 +162,7 @@ extern void conoutf(const char *s, ...);
 extern void conoutf(int type, const char *s, ...);
 extern void conoutfv(int type, const char *fmt, va_list args);
 
+extern FILE *getlogfile();
 extern void setlogfile(const char *fname);
 extern void closelogfile();
 extern void logoutfv(const char *fmt, va_list args);
