@@ -33,11 +33,8 @@ void setlogfile(const char *fname)
         fname = findfile(fname, "w");
         if(fname) logfile = fopen(fname, "w");
     }
-#ifdef WIN32
-    if(logfile) setvbuf(logfile, NULL, _IOLBF, BUFSIZ);
-#else
-    setvbuf(logfile ? logfile : stdout, NULL, _IOLBF, BUFSIZ);
-#endif
+    FILE *f = getlogfile();
+    if(f) setvbuf(f, NULL, _IOLBF, BUFSIZ);
 }
 
 void logoutf(const char *fmt, ...)
@@ -1077,7 +1074,8 @@ void logoutfv(const char *fmt, va_list args)
 
 void logoutfv(const char *fmt, va_list args)
 {
-    writelog(logfile ? logfile : stdout, fmt, args);
+    FILE *f = getlogfile();
+    if(f) writelog(f, fmt, args);
 }
 
 #endif
