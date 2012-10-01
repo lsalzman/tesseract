@@ -18,7 +18,11 @@ void closelogfile()
 
 FILE *getlogfile()
 {
+#ifdef WIN32
+    return logfile;
+#else
     return logfile ? logfile : stdout;
+#endif
 }
 
 void setlogfile(const char *fname)
@@ -29,7 +33,11 @@ void setlogfile(const char *fname)
         fname = findfile(fname, "w");
         if(fname) logfile = fopen(fname, "w");
     }
+#ifdef WIN32
+    if(logfile) setvbuf(logfile, NULL, _IOLBF, BUFSIZ);
+#else
     setvbuf(logfile ? logfile : stdout, NULL, _IOLBF, BUFSIZ);
+#endif
 }
 
 void logoutf(const char *fmt, ...)
