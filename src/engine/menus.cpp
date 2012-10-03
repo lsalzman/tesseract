@@ -30,7 +30,7 @@ struct menu : g3d_callback
 
     virtual void clear() 
     {
-        freecode(onclear);
+        if(onclear) { freecode(onclear); onclear = NULL; }
     }
 };
 
@@ -202,7 +202,7 @@ void clearguis(int level = -1)
            uint *action = m->onclear;
            m->onclear = NULL;
            execute(action);
-           delete[] action;
+           freecode(action);
        }
     }
     cleargui(level);
@@ -212,7 +212,7 @@ void guionclear(char *action)
 {
     if(guistack.empty()) return;
     menu *m = guistack.last();
-    DELETEA(m->onclear);
+    if(m->onclear) { freecode(m->onclear); m->onclear = NULL; } 
     if(action[0]) m->onclear = compilecode(action);
 }
 
