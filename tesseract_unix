@@ -32,7 +32,7 @@ case ${MACHINE_NAME} in
 i486|i586|i686)
   MACHINE_NAME=
   ;;
-x86_64)
+x86_64|amd64)
   MACHINE_NAME=64_
   ;;
 *)
