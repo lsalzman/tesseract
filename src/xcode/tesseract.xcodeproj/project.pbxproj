@@ -19,7 +19,6 @@
 		B94198C309207E810029DAD1 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		B94198C409207E810029DAD1 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B2F67ED704C74A3F00A80002 /* OpenGL.framework */; };
 		B9AC7ACF0D06DB44005506F8 /* 3dgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A840D06DB44005506F8 /* 3dgui.cpp */; };
-		B9AC7AD00D06DB44005506F8 /* aa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A850D06DB44005506F8 /* bih.cpp */; };
 		B9AC7AD00D06DB44005506F8 /* bih.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A850D06DB44005506F8 /* bih.cpp */; };
 		B9AC7AD20D06DB44005506F8 /* client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A870D06DB44005506F8 /* client.cpp */; };
 		B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A880D06DB44005506F8 /* command.cpp */; };
@@ -35,7 +34,6 @@
 		B9AC7AE40D06DB44005506F8 /* octarender.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A990D06DB44005506F8 /* octarender.cpp */; };
 		B9AC7AE50D06DB44005506F8 /* physics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9A0D06DB44005506F8 /* physics.cpp */; };
 		B9AC7AE60D06DB44005506F8 /* rendergl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9B0D06DB44005506F8 /* rendergl.cpp */; };
-		B9AC7AE60D06DB44005506F8 /* renderlights.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9B0D06DB44005506F8 /* renderlights.cpp */; };
 		B9AC7AE70D06DB44005506F8 /* rendermodel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9C0D06DB44005506F8 /* rendermodel.cpp */; };
 		B9AC7AE80D06DB44005506F8 /* renderparticles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9D0D06DB44005506F8 /* renderparticles.cpp */; };
 		B9AC7AE90D06DB44005506F8 /* rendersky.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7A9E0D06DB44005506F8 /* rendersky.cpp */; };
@@ -69,6 +67,8 @@
 		D13E4D48111E42A100E8E19D /* Development.m in Sources */ = {isa = PBXBuildFile; fileRef = D13E4D47111E42A100E8E19D /* Development.m */; };
 		D16BD00D0D7000EA0053CECE /* dynlight.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D16BD00C0D7000EA0053CECE /* dynlight.cpp */; };
 		D16E4E140ED107C300C401A2 /* blend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D16E4E130ED107C300C401A2 /* blend.cpp */; };
+		D1B750F516278BF500FA16AA /* aa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B750F016278BF500FA16AA /* aa.cpp */; };
+		D1B750F616278BF500FA16AA /* renderlights.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B750F316278BF500FA16AA /* renderlights.cpp */; };
 		D1B87D600F7F57C80063BD1C /* crypto.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B87D5D0F7F57C80063BD1C /* crypto.cpp */; };
 		D1B87D610F7F57C80063BD1C /* stream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B87D5E0F7F57C80063BD1C /* stream.cpp */; };
 		D1B87D620F7F57C80063BD1C /* zip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B87D5F0F7F57C80063BD1C /* zip.cpp */; };
@@ -134,7 +134,6 @@
 		B96D0D6C0920976E00B6C936 /* main.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		B97E99CE085F4B3E002F9BC6 /* tesseract.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = tesseract.icns; sourceTree = "<group>"; };
 		B9AC7A840D06DB44005506F8 /* 3dgui.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = 3dgui.cpp; sourceTree = "<group>"; };
-		B9AC7A850D06DB44005506F8 /* aa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bih.cpp; sourceTree = "<group>"; };
 		B9AC7A850D06DB44005506F8 /* bih.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bih.cpp; sourceTree = "<group>"; };
 		B9AC7A860D06DB44005506F8 /* bih.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bih.h; sourceTree = "<group>"; };
 		B9AC7A870D06DB44005506F8 /* client.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = client.cpp; sourceTree = "<group>"; };
@@ -157,7 +156,6 @@
 		B9AC7A990D06DB44005506F8 /* octarender.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = octarender.cpp; sourceTree = "<group>"; };
 		B9AC7A9A0D06DB44005506F8 /* physics.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = physics.cpp; sourceTree = "<group>"; };
 		B9AC7A9B0D06DB44005506F8 /* rendergl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = rendergl.cpp; sourceTree = "<group>"; };
-		B9AC7A9B0D06DB44005506F8 /* renderlights.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = renderlights.cpp; sourceTree = "<group>"; };
 		B9AC7A9C0D06DB44005506F8 /* rendermodel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = rendermodel.cpp; sourceTree = "<group>"; };
 		B9AC7A9D0D06DB44005506F8 /* renderparticles.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = renderparticles.cpp; sourceTree = "<group>"; };
 		B9AC7A9E0D06DB44005506F8 /* rendersky.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = rendersky.cpp; sourceTree = "<group>"; };
@@ -205,20 +203,17 @@
 		D18B8FBE0DB0AF8200171439 /* explosion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = explosion.h; sourceTree = "<group>"; };
 		D18B8FBF0DB0AF8200171439 /* lensflare.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lensflare.h; sourceTree = "<group>"; };
 		D18B8FC00DB0AF8200171439 /* lightning.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lightning.h; sourceTree = "<group>"; };
-		D19E773011977E1E003753EF /* ent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ent.cpp; path = ../rpggame/ent.cpp; sourceTree = SOURCE_ROOT; };
-		D19E773111977E1E003753EF /* entities.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = entities.cpp; path = ../rpggame/entities.cpp; sourceTree = SOURCE_ROOT; };
-		D19E773211977E1E003753EF /* objset.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = objset.cpp; path = ../rpggame/objset.cpp; sourceTree = SOURCE_ROOT; };
-		D19E773311977E1E003753EF /* rpg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = rpg.cpp; path = ../rpggame/rpg.cpp; sourceTree = SOURCE_ROOT; };
-		D19E773411977E1E003753EF /* rpg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpg.h; path = ../rpggame/rpg.h; sourceTree = SOURCE_ROOT; };
-		D19E773511977E1E003753EF /* rpgent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpgent.h; path = ../rpggame/rpgent.h; sourceTree = SOURCE_ROOT; };
-		D19E773611977E1E003753EF /* rpgobj.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpgobj.h; path = ../rpggame/rpgobj.h; sourceTree = SOURCE_ROOT; };
-		D19E773711977E1E003753EF /* stats.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = stats.h; path = ../rpggame/stats.h; sourceTree = SOURCE_ROOT; };
-		D19E775D11977E82003753EF /* hitzone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hitzone.h; sourceTree = "<group>"; };
 		D19E775D11977E82003753EF /* iqm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iqm.h; sourceTree = "<group>"; };
 		D19E775E11977E82003753EF /* mpr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mpr.h; sourceTree = "<group>"; };
 		D19E776011977E82003753EF /* smd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = smd.h; sourceTree = "<group>"; };
 		D19E776111977E82003753EF /* varray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = varray.h; sourceTree = "<group>"; };
 		D1AB44FB0E245F7A00B5D3A5 /* help */ = {isa = PBXFileReference; lastKnownFileType = folder; path = help; sourceTree = "<group>"; };
+		D1B750F016278BF500FA16AA /* aa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aa.cpp; sourceTree = "<group>"; };
+		D1B750F116278BF500FA16AA /* AreaTex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AreaTex.h; sourceTree = "<group>"; };
+		D1B750F216278BF500FA16AA /* hitzone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hitzone.h; sourceTree = "<group>"; };
+		D1B750F316278BF500FA16AA /* renderlights.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = renderlights.cpp; sourceTree = "<group>"; };
+		D1B750F416278BF500FA16AA /* SearchTex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SearchTex.h; sourceTree = "<group>"; };
+		D1B750F816278C1100FA16AA /* collect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = collect.h; sourceTree = "<group>"; };
 		D1B87D5D0F7F57C80063BD1C /* crypto.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = crypto.cpp; sourceTree = "<group>"; };
 		D1B87D5E0F7F57C80063BD1C /* stream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stream.cpp; sourceTree = "<group>"; };
 		D1B87D5F0F7F57C80063BD1C /* zip.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = zip.cpp; sourceTree = "<group>"; };
@@ -319,7 +314,6 @@
 				B90ADCEE09B344D800A5B00B /* enet */,
 				B9AC7A830D06DB44005506F8 /* engine */,
 				B9AC7AAD0D06DB44005506F8 /* fpsgame */,
-				D19E772F11977E01003753EF /* rpggame */,
 				B9AC7AC10D06DB44005506F8 /* shared */,
 			);
 			name = "Other Sources";
@@ -369,9 +363,10 @@
 		B9AC7A830D06DB44005506F8 /* engine */ = {
 			isa = PBXGroup;
 			children = (
+				D1B750F016278BF500FA16AA /* aa.cpp */,
+				D1B750F316278BF500FA16AA /* renderlights.cpp */,
 				D1D040D90F830C350043BA95 /* movie.cpp */,
 				B9AC7A840D06DB44005506F8 /* 3dgui.cpp */,
-				B9AC7A850D06DB44005506F8 /* aa.cpp */
 				B9AC7A850D06DB44005506F8 /* bih.cpp */,
 				D16E4E130ED107C300C401A2 /* blend.cpp */,
 				B9AC7A870D06DB44005506F8 /* client.cpp */,
@@ -391,7 +386,6 @@
 				B9AC7A980D06DB44005506F8 /* octaedit.cpp */,
 				B9AC7A990D06DB44005506F8 /* octarender.cpp */,
 				B9AC7A9B0D06DB44005506F8 /* rendergl.cpp */,
-				B9AC7A9B0D06DB44005506F8 /* renderlights.cpp */,
 				B9AC7A9C0D06DB44005506F8 /* rendermodel.cpp */,
 				B9AC7A9D0D06DB44005506F8 /* renderparticles.cpp */,
 				B9AC7A9E0D06DB44005506F8 /* rendersky.cpp */,
@@ -405,11 +399,13 @@
 				B9AC7AA90D06DB44005506F8 /* water.cpp */,
 				B9AC7AAA0D06DB44005506F8 /* world.cpp */,
 				B9AC7AAC0D06DB44005506F8 /* worldio.cpp */,
+				D1B750F116278BF500FA16AA /* AreaTex.h */,
+				D1B750F216278BF500FA16AA /* hitzone.h */,
+				D1B750F416278BF500FA16AA /* SearchTex.h */,
 				B91D401E0D525FD3004EF78A /* animmodel.h */,
 				B9AC7A860D06DB44005506F8 /* bih.h */,
 				B9AC7A8B0D06DB44005506F8 /* engine.h */,
 				D18B8FBE0DB0AF8200171439 /* explosion.h */,
-				D19E775D11977E82003753EF /* hitzone.h.h */,
 				D19E775D11977E82003753EF /* iqm.h */,
 				D18B8FBF0DB0AF8200171439 /* lensflare.h */,
 				D18B8FC00DB0AF8200171439 /* lightning.h */,
@@ -454,6 +450,7 @@
 				D1DE11180E21986800FA387C /* extinfo.h */,
 				D123F95A0DA8B312001DB09F /* ctf.h */,
 				B9AC7AAE0D06DB44005506F8 /* capture.h */,
+				D1B750F816278C1100FA16AA /* collect.h */,
 				B9AC7AB40D06DB44005506F8 /* game.h */,
 			);
 			name = fpsgame;
@@ -480,21 +477,6 @@
 			name = shared;
 			path = ../shared;
 			sourceTree = SOURCE_ROOT;
-		};
-		D19E772F11977E01003753EF /* rpggame */ = {
-			isa = PBXGroup;
-			children = (
-				D19E773011977E1E003753EF /* ent.cpp */,
-				D19E773111977E1E003753EF /* entities.cpp */,
-				D19E773211977E1E003753EF /* objset.cpp */,
-				D19E773311977E1E003753EF /* rpg.cpp */,
-				D19E773411977E1E003753EF /* rpg.h */,
-				D19E773511977E1E003753EF /* rpgent.h */,
-				D19E773611977E1E003753EF /* rpgobj.h */,
-				D19E773711977E1E003753EF /* stats.h */,
-			);
-			name = rpggame;
-			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
@@ -595,7 +577,6 @@
 				B90ADD7609B344D800A5B00B /* unix.c in Sources */,
 				666E40F00B67D87F005B491F /* macutils.mm in Sources */,
 				B9AC7ACF0D06DB44005506F8 /* 3dgui.cpp in Sources */,
-				B9AC7AD00D06DB44005506F8 /* aa.cpp in Sources */,
 				B9AC7AD00D06DB44005506F8 /* bih.cpp in Sources */,
 				B9AC7AD20D06DB44005506F8 /* client.cpp in Sources */,
 				B9AC7AD30D06DB44005506F8 /* command.cpp in Sources */,
@@ -650,6 +631,8 @@
 				D10F2F54111E23680004BCB9 /* Launcher.m in Sources */,
 				D10F2F55111E236C0004BCB9 /* main.m in Sources */,
 				D13E4D48111E42A100E8E19D /* Development.m in Sources */,
+				D1B750F516278BF500FA16AA /* aa.cpp in Sources */,
+				D1B750F616278BF500FA16AA /* renderlights.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -698,7 +681,6 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = NO;
 				GCC_PREFIX_HEADER = "";
 				GCC_PREPROCESSOR_DEFINITIONS = HAS_SOCKLEN_T;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				HEADER_SEARCH_PATHS = (
 					../enet/include,
 					../include/,
@@ -708,7 +690,6 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				OTHER_LDFLAGS = "-lz";
 				PRODUCT_NAME = tesseract;
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 			};
 			name = Debug;
 		};
@@ -727,7 +708,6 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = NO;
 				GCC_PREFIX_HEADER = "";
 				GCC_PREPROCESSOR_DEFINITIONS = HAS_SOCKLEN_T;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				HEADER_SEARCH_PATHS = (
 					../enet/include,
 					../include/,
@@ -741,7 +721,6 @@
 				);
 				OTHER_LDFLAGS = "-lz";
 				PRODUCT_NAME = tesseract;
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 			};
 			name = Release;
 		};
@@ -760,7 +739,6 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = NO;
 				GCC_PREFIX_HEADER = "";
 				GCC_PREPROCESSOR_DEFINITIONS = HAS_SOCKLEN_T;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				HEADER_SEARCH_PATHS = (
 					../enet/include,
 					../include/,
@@ -774,7 +752,6 @@
 				);
 				OTHER_LDFLAGS = "-lz";
 				PRODUCT_NAME = tesseract;
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 			};
 			name = "Release-Deployment";
 		};
@@ -788,12 +765,10 @@
 				ENABLE_OPENMP_SUPPORT = NO;
 				GCC_ENABLE_CPP_EXCEPTIONS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_i386 = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_ppc = 10.3;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 				STRIP_INSTALLED_PRODUCT = NO;
 				VALID_ARCHS = "i386 x86_64";
 			};
@@ -807,12 +782,10 @@
 				ENABLE_OPENMP_SUPPORT = NO;
 				GCC_ENABLE_CPP_EXCEPTIONS = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_i386 = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_ppc = 10.3;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 				STRIP_INSTALLED_PRODUCT = NO;
 				VALID_ARCHS = "i386 x86_64";
 			};
@@ -827,12 +800,10 @@
 				ENABLE_OPENMP_SUPPORT = NO;
 				GCC_ENABLE_CPP_EXCEPTIONS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_i386 = 10.5;
 				MACOSX_DEPLOYMENT_TARGET_ppc = 10.3;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.6.sdk";
 				STRIP_INSTALLED_PRODUCT = NO;
 				VALID_ARCHS = "i386 x86_64";
 			};
