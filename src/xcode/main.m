@@ -20,7 +20,7 @@
 // Prevent beeps from unhandled keys as a consequence of having enabled SDL_ENABLEAPPEVENTS
 - (void)sendEvent:(NSEvent *)anEvent
 {
-	if([(Launcher*)[self delegate] gameRunning] && (NSKeyDown == [anEvent type] || NSKeyUp == [anEvent type]) ) {
+	if(NSKeyDown == [anEvent type] || NSKeyUp == [anEvent type]) {
 		if( [anEvent modifierFlags] & NSCommandKeyMask ) 
 			[super sendEvent: anEvent];
 	} else 

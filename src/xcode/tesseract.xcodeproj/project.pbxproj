@@ -51,20 +51,14 @@
 		B9AC7B0D0D06DB44005506F8 /* geom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AC50D06DB44005506F8 /* geom.cpp */; };
 		B9AC7B110D06DB44005506F8 /* pch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7AC90D06DB44005506F8 /* pch.cpp */; };
 		B9AC7B150D06DB44005506F8 /* tools.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B9AC7ACD0D06DB44005506F8 /* tools.cpp */; };
-		D10F2F52111E23660004BCB9 /* ConsoleView.m in Sources */ = {isa = PBXBuildFile; fileRef = B930D0910A3D9BC700BDFB85 /* ConsoleView.m */; };
 		D10F2F54111E23680004BCB9 /* Launcher.m in Sources */ = {isa = PBXBuildFile; fileRef = B96D0D580920970C00B6C936 /* Launcher.m */; };
 		D10F2F55111E236C0004BCB9 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = B96D0D6C0920976E00B6C936 /* main.m */; };
 		D10F2F72111E240F0004BCB9 /* MainMenu.nib in Resources */ = {isa = PBXBuildFile; fileRef = B96D0D5A0920971300B6C936 /* MainMenu.nib */; };
 		D10F2F73111E240F0004BCB9 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		D10F2F74111E240F0004BCB9 /* Maps.icns in Resources */ = {isa = PBXBuildFile; fileRef = B930D0D10A3DA92300BDFB85 /* Maps.icns */; };
-		D10F2F75111E240F0004BCB9 /* Keys.gif in Resources */ = {isa = PBXBuildFile; fileRef = D17E0F280BAF1FA9008BB696 /* Keys.gif */; };
-		D10F2F76111E240F0004BCB9 /* Help.tiff in Resources */ = {isa = PBXBuildFile; fileRef = D17E0F300BAF2031008BB696 /* Help.tiff */; };
-		D10F2F77111E240F0004BCB9 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D1DB53E70D70F1CD003AE25C /* Localizable.strings */; };
 		D10F2F78111E240F0004BCB9 /* help in Resources */ = {isa = PBXBuildFile; fileRef = D1AB44FB0E245F7A00B5D3A5 /* help */; };
-		D10F2F79111E240F0004BCB9 /* Server.png in Resources */ = {isa = PBXBuildFile; fileRef = D177C5A30F5D3AA600ABBD38 /* Server.png */; };
 		D11B024E0F830BA400334D69 /* ai.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D11B024A0F830BA400334D69 /* ai.cpp */; };
 		D11B02510F830BA400334D69 /* waypoint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D11B024D0F830BA400334D69 /* waypoint.cpp */; };
-		D13E4D48111E42A100E8E19D /* Development.m in Sources */ = {isa = PBXBuildFile; fileRef = D13E4D47111E42A100E8E19D /* Development.m */; };
 		D16BD00D0D7000EA0053CECE /* dynlight.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D16BD00C0D7000EA0053CECE /* dynlight.cpp */; };
 		D16E4E140ED107C300C401A2 /* blend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D16E4E130ED107C300C401A2 /* blend.cpp */; };
 		D1B750F516278BF500FA16AA /* aa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B750F016278BF500FA16AA /* aa.cpp */; };
@@ -124,8 +118,6 @@
 		B91D40200D525FE0004EF78A /* decal.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = decal.cpp; sourceTree = "<group>"; };
 		B91D40220D525FE9004EF78A /* md5.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = md5.h; sourceTree = "<group>"; };
 		B91D40240D52600A004EF78A /* skelmodel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = skelmodel.h; sourceTree = "<group>"; };
-		B930D0900A3D9BC700BDFB85 /* ConsoleView.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = ConsoleView.h; sourceTree = "<group>"; };
-		B930D0910A3D9BC700BDFB85 /* ConsoleView.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = ConsoleView.m; sourceTree = "<group>"; };
 		B930D0D10A3DA92300BDFB85 /* Maps.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Maps.icns; sourceTree = "<group>"; };
 		B94198CB09207E810029DAD1 /* tesseract.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tesseract.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B96D0D570920970C00B6C936 /* Launcher.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = Launcher.h; sourceTree = "<group>"; };
@@ -191,15 +183,10 @@
 		D11B024C0F830BA400334D69 /* aiman.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aiman.h; sourceTree = "<group>"; };
 		D11B024D0F830BA400334D69 /* waypoint.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = waypoint.cpp; sourceTree = "<group>"; };
 		D123F95A0DA8B312001DB09F /* ctf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ctf.h; sourceTree = "<group>"; };
-		D13E4D46111E42A100E8E19D /* Development.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Development.h; sourceTree = "<group>"; };
-		D13E4D47111E42A100E8E19D /* Development.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Development.m; sourceTree = "<group>"; };
 		D16BD00C0D7000EA0053CECE /* dynlight.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = dynlight.cpp; sourceTree = "<group>"; };
 		D16C16900E04812500A522EB /* obj.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = obj.h; sourceTree = "<group>"; };
 		D16C16910E04812500A522EB /* textedit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = textedit.h; sourceTree = "<group>"; };
 		D16E4E130ED107C300C401A2 /* blend.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = blend.cpp; sourceTree = "<group>"; };
-		D177C5A30F5D3AA600ABBD38 /* Server.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Server.png; sourceTree = "<group>"; };
-		D17E0F280BAF1FA9008BB696 /* Keys.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = Keys.gif; sourceTree = "<group>"; };
-		D17E0F300BAF2031008BB696 /* Help.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = Help.tiff; sourceTree = "<group>"; };
 		D18B8FBE0DB0AF8200171439 /* explosion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = explosion.h; sourceTree = "<group>"; };
 		D18B8FBF0DB0AF8200171439 /* lensflare.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lensflare.h; sourceTree = "<group>"; };
 		D18B8FC00DB0AF8200171439 /* lightning.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lightning.h; sourceTree = "<group>"; };
@@ -228,7 +215,6 @@
 		D1D07EFB0F645590007098A8 /* scoreboard.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = scoreboard.cpp; sourceTree = "<group>"; };
 		D1D07EFC0F645590007098A8 /* server.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = server.cpp; sourceTree = "<group>"; };
 		D1D07EFD0F645590007098A8 /* weapon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = weapon.cpp; sourceTree = "<group>"; };
-		D1DB53E50D70F1C3003AE25C /* English */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/Localizable.strings; sourceTree = "<group>"; };
 		D1DE11180E21986800FA387C /* extinfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = extinfo.h; sourceTree = "<group>"; };
 		D1ECACF41129213900F58615 /* SDL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL.framework; path = Frameworks/SDL.framework; sourceTree = "<group>"; };
 		D1ECACF51129213900F58615 /* SDL_mixer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL_mixer.framework; path = Frameworks/SDL_mixer.framework; sourceTree = "<group>"; };
@@ -257,12 +243,8 @@
 			children = (
 				666E40EF0B67D87F005B491F /* macutils.mm */,
 				B96D0D6C0920976E00B6C936 /* main.m */,
-				B930D0900A3D9BC700BDFB85 /* ConsoleView.h */,
-				B930D0910A3D9BC700BDFB85 /* ConsoleView.m */,
 				B96D0D570920970C00B6C936 /* Launcher.h */,
 				B96D0D580920970C00B6C936 /* Launcher.m */,
-				D13E4D46111E42A100E8E19D /* Development.h */,
-				D13E4D47111E42A100E8E19D /* Development.m */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -323,15 +305,11 @@
 			isa = PBXGroup;
 			children = (
 				D1AB44FB0E245F7A00B5D3A5 /* help */,
-				D17E0F280BAF1FA9008BB696 /* Keys.gif */,
-				D177C5A30F5D3AA600ABBD38 /* Server.png */,
-				D17E0F300BAF2031008BB696 /* Help.tiff */,
 				B930D0D10A3DA92300BDFB85 /* Maps.icns */,
 				B9CACA12092099DF00A13F04 /* tesseract.plist */,
 				B97E99CE085F4B3E002F9BC6 /* tesseract.icns */,
 				B96D0D5A0920971300B6C936 /* MainMenu.nib */,
 				089C165CFE840E0CC02AAC07 /* InfoPlist.strings */,
-				D1DB53E70D70F1CD003AE25C /* Localizable.strings */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -537,11 +515,7 @@
 				D1E605B90E2416150045244E /* tesseract.icns in Resources */,
 				D10F2F73111E240F0004BCB9 /* InfoPlist.strings in Resources */,
 				D10F2F74111E240F0004BCB9 /* Maps.icns in Resources */,
-				D10F2F75111E240F0004BCB9 /* Keys.gif in Resources */,
-				D10F2F76111E240F0004BCB9 /* Help.tiff in Resources */,
-				D10F2F77111E240F0004BCB9 /* Localizable.strings in Resources */,
 				D10F2F78111E240F0004BCB9 /* help in Resources */,
-				D10F2F79111E240F0004BCB9 /* Server.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -627,10 +601,8 @@
 				D11B024E0F830BA400334D69 /* ai.cpp in Sources */,
 				D11B02510F830BA400334D69 /* waypoint.cpp in Sources */,
 				D1D040DA0F830C350043BA95 /* movie.cpp in Sources */,
-				D10F2F52111E23660004BCB9 /* ConsoleView.m in Sources */,
 				D10F2F54111E23680004BCB9 /* Launcher.m in Sources */,
 				D10F2F55111E236C0004BCB9 /* main.m in Sources */,
-				D13E4D48111E42A100E8E19D /* Development.m in Sources */,
 				D1B750F516278BF500FA16AA /* aa.cpp in Sources */,
 				D1B750F616278BF500FA16AA /* renderlights.cpp in Sources */,
 			);
@@ -653,14 +625,6 @@
 				B96D0D5B0920971300B6C936 /* English */,
 			);
 			name = MainMenu.nib;
-			sourceTree = "<group>";
-		};
-		D1DB53E70D70F1CD003AE25C /* Localizable.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				D1DB53E50D70F1C3003AE25C /* English */,
-			);
-			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
