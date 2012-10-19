@@ -180,6 +180,7 @@ VAR(usetexrect, 1, 0, 0);
 VAR(useubo, 1, 0, 0);
 VAR(usebue, 1, 0, 0);
 VAR(usetexgather, 1, 0, 0);
+VAR(usetexcompress, 1, 0, 0);
 
 #if 0
 static bool checkseries(const char *s, int low, int high)
@@ -447,11 +448,6 @@ void gl_checkextensions()
         lighttilebatch = 4;
         if(mesa) batchsunlight = 0; // causes massive slowdown in linux driver
     }
-    else
-    {
-        // silence warnings
-        (void)mesa;
-    }
 
     if(glversion >= 200)
     {
@@ -612,6 +608,7 @@ void gl_checkextensions()
         glGetCompressedTexImage_ =   (PFNGLGETCOMPRESSEDTEXIMAGEARBPROC)  getprocaddress("glGetCompressedTexImageARB");
 
         hasTC = true;
+        if(!mesa) usetexcompress = 1;
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture_compression_s3tc extension.");
     }
 
