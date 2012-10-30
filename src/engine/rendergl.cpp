@@ -2137,6 +2137,7 @@ VAR(hidehud, 0, 0, 1);
 VARP(crosshairsize, 0, 15, 50);
 VARP(cursorsize, 0, 30, 50);
 VARP(crosshairfx, 0, 1, 1);
+VARP(crosshaircolors, 0, 1, 1);
 
 #define MAXCROSSHAIRS 4
 static Texture *crosshairs[MAXCROSSHAIRS] = { NULL, NULL, NULL, NULL };
@@ -2197,11 +2198,8 @@ void drawcrosshair(int w, int h)
     { 
         int index = game::selectcrosshair(r, g, b);
         if(index < 0) return;
-        if(!crosshairfx)
-        {
-            index = 0;
-            r = g = b = 1;
-        }
+        if(!crosshairfx) index = 0;
+        if(!crosshairfx || !crosshaircolors) r = g = b = 1;
         crosshair = crosshairs[index];
         if(!crosshair) 
         {
