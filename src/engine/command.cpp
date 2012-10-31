@@ -1018,7 +1018,7 @@ static bool compileblocksub(vector<uint> &code, const char *&p)
             case ID_SVAR: code.add(CODE_SVAR|RET_STR|(id->index<<8)); goto done;
             case ID_ALIAS: code.add((id->index < MAXARGS ? CODE_LOOKUPARG : CODE_LOOKUP)|RET_STR|(id->index<<8)); goto done;
             }
-            compilestr(code, lookup, p-start, true);
+            compilestr(code, lookup, lookuplen, true);
             code.add(CODE_LOOKUPU|RET_STR);
         done:
             delete[] lookup;
