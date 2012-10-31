@@ -755,10 +755,10 @@ static inline const char *parseword(const char *p)
     int brakdepth = 0;
     for(;; p++)
     {
-        p += strcspn(p, "\"/;()[] \t\r\n\0");
+        p += strcspn(p, "\"/;@()[] \t\r\n\0");
         switch(p[0])
         {
-            case '"': case ';': case ' ': case '\t': case '\r': case '\n': case '\0': return p;
+            case '"': case ';': case '@': case ' ': case '\t': case '\r': case '\n': case '\0': return p;
             case '/': if(p[1] == '/') return p; break;
             case '[': case '(': if(brakdepth >= maxbrak) return p; brakstack[brakdepth++] = p[0]; break;
             case ']': if(brakdepth <= 0 || brakstack[--brakdepth] != '[') return p; break;
@@ -906,10 +906,14 @@ static void compilelookup(vector<uint> &code, const char *&p, int ltype)
         case '$':
             compilelookup(code, p, VAL_STR);
             break;
+        case '\"':
+            lookup = cutstring(p, lookuplen);
+            goto lookupid;
         default:
         {
             lookup = cutword(p, lookuplen);
             if(!lookup) goto invalid;
+        lookupid:
             ident *id = newident(lookup, IDF_UNKNOWN);
             if(id) switch(id->type)
             {
@@ -982,6 +986,8 @@ done:
 
 static bool compileblocksub(vector<uint> &code, const char *&p)
 {
+    char *lookup = NULL;
+    int lookuplen = 0;
     switch(*p)
     {
         case '(':
@@ -991,12 +997,19 @@ static bool compileblocksub(vector<uint> &code, const char *&p)
             if(!compilearg(code, p, VAL_STR)) return false;
             code.add(CODE_LOOKUPU|RET_STR);
             break;
+        case '\"':
+            lookup = cutstring(p, lookuplen);
+            goto lookupid;
         default:
         {
-            const char *start = p;
-            while(iscubealnum(*p) || *p=='_') p++;
-            if(p <= start) return false; 
-            char *lookup = newstring(start, p-start);
+            {
+                const char *start = p;
+                while(iscubealnum(*p) || *p=='_') p++;
+                lookuplen = p-start;
+                if(!lookuplen) return false;
+                lookup = newstring(start, lookuplen);
+            }
+        lookupid:
             ident *id = newident(lookup, IDF_UNKNOWN);
             if(id) switch(id->type)
             {
@@ -1129,6 +1142,10 @@ static bool compileword(vector<uint> &code, const char *&p, int wordtype, char *
         case '[':
             p++;
             compileblock(code, p, wordtype);
+            return true;
+        case '@':
+            debugcode(debugline(p, "unexpected \"@\""));
+            p++;
             return true;
         default: word = cutword(p, wordlen); break;
     }
