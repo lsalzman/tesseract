@@ -1491,19 +1491,21 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         if(t.type==TEX_DIFFUSE || t.combined>=0) continue;
         if(t.type==TEX_ENVMAP)
         {
-            if(envmaptmu>=0 && cur.textures[envmaptmu]!=t.t->id)
+            if(envmaptmu>=0 && t.t && cur.textures[envmaptmu]!=t.t->id)
             {
                 glActiveTexture_(GL_TEXTURE0_ARB+envmaptmu);
                 glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, cur.textures[envmaptmu] = t.t->id);
             }
-            continue;
         }
-        else if(cur.textures[tmu]!=t.t->id)
-        {  
-            glActiveTexture_(GL_TEXTURE0_ARB+tmu);
-            glBindTexture(GL_TEXTURE_2D, cur.textures[tmu] = t.t->id);
+        else 
+        {
+            if(cur.textures[tmu]!=t.t->id)
+            {
+                glActiveTexture_(GL_TEXTURE0_ARB+tmu);
+                glBindTexture(GL_TEXTURE_2D, cur.textures[tmu] = t.t->id);
+            }
+            if(++tmu >= 8) break;
         }
-        tmu++;
     }
     glActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
 
