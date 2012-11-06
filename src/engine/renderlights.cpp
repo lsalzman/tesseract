@@ -354,11 +354,11 @@ void cleanupinferred()
     inw = inh = -1;
 }
 
-VARF(inferlights, 0, 0, 1, { cleardeferredlightshaders(); cleanupinferred(); });
+VARFP(inferlights, 0, 0, 1, { cleardeferredlightshaders(); cleanupinferred(); });
 FVAR(inferthreshold, -1e3f, 0.15f, 1e3f);
 FVAR(inferspecthreshold, 0, 0.25f, 1e3f);
 VAR(inferskiplights, 0, 0, 1);
-VARF(inferprec, 0, 2, 3, cleanupinferred());
+VARFP(inferprec, 0, 2, 3, cleanupinferred());
 VARF(inferdepth, 0, 1, 1, cleanupinferred());
 VAR(inferclear, 0, 0, 1);
 VAR(infertransparent, 0, 0, 1);
