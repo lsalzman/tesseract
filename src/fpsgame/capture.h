@@ -761,7 +761,7 @@ ICOMMAND(insidebases, "", (),
         if(capturemode.insidebase(capturemode.bases[i], player1->feetpos()))
         {
             if(buf.length()) buf.add(' ');
-            defformatstring(basenum)("%d", i);
+            defformatstring(basenum)("%d", i+1);
             buf.put(basenum, strlen(basenum));
         }
     }
