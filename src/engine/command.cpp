@@ -1410,12 +1410,23 @@ typedef void (__cdecl *comfun7)(void *, void *, void *, void *, void *, void *, 
 typedef void (__cdecl *comfun8)(void *, void *, void *, void *, void *, void *, void *, void *);
 typedef void (__cdecl *comfunv)(tagval *, int);
 
+#define MAXRUNDEPTH 1000
+static int rundepth = 0;
+
 static const uint *runcode(const uint *code, tagval &result)
 {
     ident *id = NULL;
     int numargs = 0;
     tagval args[MAXARGS+1], *prevret = commandret;
     result.setnull();
+    if(rundepth >= MAXRUNDEPTH)
+    {
+        debugcode("exceeded recursion limit");
+        while((*code&CODE_OP_MASK) != CODE_EXIT) code++;
+        forcearg(result, *code&CODE_RET_MASK);
+        return code+1;
+    }
+    ++rundepth;
     commandret = &result;
     for(;;)
     {
@@ -1874,6 +1885,7 @@ static const uint *runcode(const uint *code, tagval &result)
     }
 exit:
     commandret = prevret;
+    --rundepth;
     return code;
 }
                  
