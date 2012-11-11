@@ -1446,7 +1446,7 @@ static const uint *skipcode(const uint *code, tagval &result)
     }
 }
 
-#define MAXRUNDEPTH 1000
+#define MAXRUNDEPTH 255
 static int rundepth = 0;
 
 static const uint *runcode(const uint *code, tagval &result)
