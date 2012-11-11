@@ -456,7 +456,7 @@ void keyrepeat(bool on)
                              SDL_DEFAULT_REPEAT_INTERVAL);
 }
 
-static bool grabinput = false, minimized = false;
+bool grabinput = false, minimized = false;
 
 void inputgrab(bool on)
 {

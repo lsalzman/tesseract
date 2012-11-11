@@ -673,6 +673,8 @@ enum
 };
 extern bool initwarning(const char *desc, int level = INIT_RESET, int type = CHANGE_GFX);
 
+extern bool grabinput, minimized;
+
 extern void pushevent(const SDL_Event &e);
 extern bool interceptkey(int sym);
 
