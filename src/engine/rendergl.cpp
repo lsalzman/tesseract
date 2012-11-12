@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasS3TC = false, hasFXT1 = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false, hasDBGO = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasS3TC = false, hasFXT1 = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasUBO = false, hasBUE = false, hasMBR = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false, hasDBGO = false;
 bool mesa = false, intel = false, ati = false, nvidia = false;
 
 int hasstencil = 0;
@@ -149,6 +149,10 @@ PFNGLDEBUGMESSAGECONTROLARBPROC glDebugMessageControl_ = NULL;
 PFNGLDEBUGMESSAGEINSERTARBPROC glDebugMessageInsert_ = NULL;
 PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallback_ = NULL;
 PFNGLGETDEBUGMESSAGELOGARBPROC glGetDebugMessageLog_ = NULL;
+
+// GL_ARB_map_buffer_range
+PFNGLMAPBUFFERRANGEPROC         glMapBufferRange_         = NULL;
+PFNGLFLUSHMAPPEDBUFFERRANGEPROC glFlushMappedBufferRange_ = NULL;
 
 void *getprocaddress(const char *name)
 {
@@ -496,6 +500,14 @@ void gl_checkextensions()
         else glslversion = majorversion*100 + minorversion; 
     }
     if(!hasGLSL || glslversion < 100) fatal("GLSL support is required!");
+
+    if(hasext(exts, "GL_ARB_map_buffer_range"))
+    {
+        glMapBufferRange_         = (PFNGLMAPBUFFERRANGEPROC)        getprocaddress("glMapBufferRange");
+        glFlushMappedBufferRange_ = (PFNGLFLUSHMAPPEDBUFFERRANGEPROC)getprocaddress("glFlushMappedBufferRange");
+        hasMBR = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_map_buffer_range.");
+    }
  
     if(hasext(exts, "GL_ARB_uniform_buffer_object"))
     {

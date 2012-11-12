@@ -152,11 +152,11 @@ struct skelmodel : animmodel
     {
         dualquat *bdata;
         matrix3x4 *mdata;
-        int version;
+        int version, usize;
         GLuint ubuf;
         bool dirty;
  
-        skelcacheentry() : bdata(NULL), mdata(NULL), version(-1), ubuf(0), dirty(false) {}
+        skelcacheentry() : bdata(NULL), mdata(NULL), version(-1), usize(-1), ubuf(0), dirty(false) {}
         
         void nextversion()
         {
@@ -1159,6 +1159,7 @@ struct skelmodel : animmodel
             loopv(skelcache)
             {
                 skelcacheentry &c = skelcache[i];
+                goto mismatch;
                 loopj(numanimparts) if(c.as[j]!=as[j]) goto mismatch;
                 if(c.pitch != pitch || c.partmask != partmask || c.ragdoll != rdata || (rdata && c.millis < rdata->lastmove)) goto mismatch;
                 match = true;
@@ -1193,15 +1194,36 @@ struct skelmodel : animmodel
                 if(!lastsdata && lastbdata == &bc.ubuf && !bc.dirty) return;
             }
             else if(u.version == bc.version && u.data == &bc.ubuf) return;
-            if(!bc.ubuf) { glGenBuffers_(1, &bc.ubuf); bc.dirty = true; }
+            if(!bc.ubuf) { glGenBuffers_(1, &bc.ubuf); bc.usize = -1; bc.dirty = true; }
             if(bc.dirty)
             {
                 GLenum target = hasUBO ? GL_UNIFORM_BUFFER : GL_UNIFORM_BUFFER_EXT;
                 glBindBuffer_(target, bc.ubuf);
-                glBufferData_(target, u.size, NULL, GL_STREAM_DRAW_ARB);
-                int bsize = usematskel ? sizeof(matrix3x4) : sizeof(dualquat), boffset = numgpubones*bsize;
-                glBufferSubData_(target, u.offset, boffset, usematskel ? (void *)sc.mdata : (void *)sc.bdata);
-                if(count > 0) glBufferSubData_(target, u.offset + boffset, count*bsize, usematskel ? (void *)&bc.mdata[numgpubones] : (void *)&bc.bdata[numgpubones]);
+                if(!hasMBR || bc.usize != u.size)        
+                {
+                    glBufferData_(target, u.size, NULL, GL_STREAM_DRAW_ARB);
+                    bc.usize = u.size;
+                }
+                uchar *bdata, *sdata;
+                int bsize;
+                if(usematskel) { bdata = (uchar *)bc.mdata; sdata = (uchar *)sc.mdata; bsize = sizeof(matrix3x4); }
+                else { bdata = (uchar *)bc.bdata; sdata = (uchar *)sc.bdata; bsize = sizeof(dualquat); } 
+                int boffset = numgpubones*bsize;
+                if(hasMBR)
+                {
+                    uchar *mapped = (uchar *)glMapBufferRange_(target, u.offset, boffset + count*bsize, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+                    if(mapped)
+                    {
+                        memcpy(mapped, sdata, boffset);
+                        if(count > 0) memcpy(mapped + boffset, bdata + boffset, count*bsize);
+                    }
+                    glUnmapBuffer_(target);
+                }
+                else
+                {
+                    glBufferSubData_(target, u.offset, boffset, sdata);
+                    if(count > 0) glBufferSubData_(target, u.offset + boffset, count*bsize, bdata + boffset);
+                }
                 glBindBuffer_(target, 0);
                 bc.dirty = false;
             }
