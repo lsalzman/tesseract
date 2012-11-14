@@ -1,3 +1,19 @@
+#ifndef GL_VERSION_2_1
+#define GL_VERSION_2_1 1
+#define GL_FLOAT_MAT2x3                   0x8B65
+#define GL_FLOAT_MAT2x4                   0x8B66
+#define GL_FLOAT_MAT3x2                   0x8B67
+#define GL_FLOAT_MAT3x4                   0x8B68
+#define GL_FLOAT_MAT4x2                   0x8B69
+#define GL_FLOAT_MAT4x3                   0x8B6A
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX2X3FVPROC) (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX3X2FVPROC) (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX2X4FVPROC) (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX4X2FVPROC) (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX3X4FVPROC) (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void (APIENTRYP PFNGLUNIFORMMATRIX4X3FVPROC) (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+#endif
+
 // OpenGL 2.0: GL_ARB_shading_language_100, GL_ARB_shader_objects, GL_ARB_fragment_shader, GL_ARB_vertex_shader
 #ifdef __APPLE__
 #define glCreateProgram_ glCreateProgram
@@ -31,6 +47,13 @@
 #define glEnableVertexAttribArray_ glEnableVertexAttribArray
 #define glDisableVertexAttribArray_ glDisableVertexAttribArray
 #define glVertexAttribPointer_ glVertexAttribPointer
+
+#define glUniformMatrix2x3fv_ glUniformMatrix2x3fv
+#define glUniformMatrix3x2fv_ glUniformMatrix3x2fv
+#define glUniformMatrix2x4fv_ glUniformMatrix2x4fv
+#define glUniformMatrix4x2fv_ glUniformMatrix4x2fv
+#define glUniformMatrix3x4fv_ glUniformMatrix3x4fv
+#define glUniformMatrix4x3fv_ glUniformMatrix4x3fv
 #else
 extern PFNGLCREATEPROGRAMPROC            glCreateProgram_;
 extern PFNGLDELETEPROGRAMPROC            glDeleteProgram_;
@@ -63,6 +86,13 @@ extern PFNGLGETACTIVEUNIFORMPROC         glGetActiveUniform_;
 extern PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray_;
 extern PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray_;
 extern PFNGLVERTEXATTRIBPOINTERPROC      glVertexAttribPointer_;
+
+extern PFNGLUNIFORMMATRIX2X3FVPROC       glUniformMatrix2x3fv_;
+extern PFNGLUNIFORMMATRIX3X2FVPROC       glUniformMatrix3x2fv_;
+extern PFNGLUNIFORMMATRIX2X4FVPROC       glUniformMatrix2x4fv_;
+extern PFNGLUNIFORMMATRIX4X2FVPROC       glUniformMatrix4x2fv_;
+extern PFNGLUNIFORMMATRIX3X4FVPROC       glUniformMatrix3x4fv_;
+extern PFNGLUNIFORMMATRIX4X3FVPROC       glUniformMatrix4x3fv_;
 #endif
 
 #ifndef GL_ARB_uniform_buffer_object
