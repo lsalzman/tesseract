@@ -1392,6 +1392,7 @@ namespace server
         loopv(clients)
         {
             clientinfo &ci = *clients[i];
+            if(ci.state.aitype != AI_NONE) continue;
             uchar *data = wsbuf.buf;
             int size = wslen;
             if(ci.wsdata >= wsbuf.buf) { data = ci.wsdata + ci.wslen; size -= ci.wslen; }
@@ -1425,6 +1426,7 @@ namespace server
         loopv(clients)
         {
             clientinfo &ci = *clients[i];
+            if(ci.state.aitype != AI_NONE) continue;
             uchar *data = wsbuf.buf;
             int size = wslen;
             if(ci.wsdata >= wsbuf.buf) { data = ci.wsdata + ci.wslen; size -= ci.wslen; }
