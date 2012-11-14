@@ -15,11 +15,7 @@ typedef signed long long int llong;
 typedef unsigned long long int ullong;
 
 #ifdef _DEBUG
-#ifdef __GNUC__
-#define ASSERT(c) if(!(c)) { asm("int $3"); }
-#else
-#define ASSERT(c) if(!(c)) { __asm int 3 }
-#endif
+#define ASSERT(c) assert(c)
 #else
 #define ASSERT(c) if(c) {}
 #endif
