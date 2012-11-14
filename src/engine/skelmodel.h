@@ -420,7 +420,7 @@ struct skelmodel : animmodel
         template<class M>
         void interpverts(const M * RESTRICT mdata1, const M * RESTRICT mdata2, bool norms, bool tangents, void * RESTRICT vdata, skin &s)
         {
-            const int blendoffset = ((skelmeshgroup *)group)->skel->numinterpbones;
+            const int blendoffset = ((skelmeshgroup *)group)->skel->numgpubones;
             mdata2 -= blendoffset;
 
             #define IPLOOP(type, dosetup, dotransform) \
@@ -550,8 +550,9 @@ struct skelmodel : animmodel
 
         bool usegpuskel, usematskel;
         vector<skelcacheentry> skelcache;
+        hashtable<GLuint, int> blendoffsets;
 
-        skeleton() : name(NULL), shared(0), bones(NULL), numbones(0), numinterpbones(0), numgpubones(0), numframes(0), framebones(NULL), ragdoll(NULL), usegpuskel(false), usematskel(false)
+        skeleton() : name(NULL), shared(0), bones(NULL), numbones(0), numinterpbones(0), numgpubones(0), numframes(0), framebones(NULL), ragdoll(NULL), usegpuskel(false), usematskel(false), blendoffsets(32)
         {
         }
 
@@ -1138,6 +1139,7 @@ struct skelmodel : animmodel
                 DELETEA(sc.mdata);
             }
             skelcache.setsize(0);
+            blendoffsets.clear();
             lastsdata = lastbdata = NULL;
             if(full) loopv(users) users[i]->cleanup();
         }
@@ -1185,27 +1187,37 @@ struct skelmodel : animmodel
             return *sc;
         }
 
+        int getblendoffset(UniformLoc &u)
+        {
+            int &offset = blendoffsets.access(Shader::lastshader->program, -1);
+            if(offset < 0)
+            {
+                defformatstring(offsetname)("%s[%d]", u.name, (usematskel ? 3 : 2)*numgpubones); 
+                offset = glGetUniformLocation_(Shader::lastshader->program, offsetname);
+            }
+            return offset;
+        }
+            
         void setglslbones(UniformLoc &u, skelcacheentry &sc, skelcacheentry &bc, int count)
         {
             if(u.version == bc.version && u.data == (usematskel ? (void *)bc.mdata : (void *)bc.bdata)) return;
-            count += numgpubones;
-            if(usematskel) 
+            if(usematskel)
             {
-                if(count > numgpubones && bc.dirty) 
+                glUniform4fv_(u.loc, 3*numgpubones, sc.mdata[0].a.v);
+                if(count > 0) 
                 {
-                    memcpy(bc.mdata, sc.mdata, numgpubones*sizeof(matrix3x4));
-                    bc.dirty = false;
+                    int offset = getblendoffset(u);
+                    if(offset >= 0) glUniform4fv_(offset, 3*count, bc.mdata[0].a.v);
                 }
-                glUniform4fv_(u.loc, 3*count, bc.mdata[0].a.v);
             }
-            else 
+            else
             {
-                if(count > numgpubones && bc.dirty) 
+                glUniform4fv_(u.loc, 2*numgpubones, sc.bdata[0].real.v);
+                if(count > 0) 
                 {
-                    memcpy(bc.bdata, sc.bdata, numgpubones*sizeof(dualquat));
-                    bc.dirty = false;
+                    int offset = getblendoffset(u);
+                    if(offset >= 0) glUniform4fv_(offset, 2*count, bc.bdata[0].real.v);
                 }
-                glUniform4fv_(u.loc, 2*count, bc.bdata[0].real.v);
             }
             u.version = bc.version;
             u.data = usematskel ? (void *)bc.mdata : (void *)bc.bdata;
@@ -1340,7 +1352,7 @@ struct skelmodel : animmodel
                 loopv(blendcombos)
                 {
                     blendcombo &c = blendcombos[i];
-                    c.interpindex = c.weights[1] ? skel->numinterpbones + vblends++ : -1;
+                    c.interpindex = c.weights[1] ? skel->numgpubones + vblends++ : -1;
                 }
 
                 vertsize = tangents ? sizeof(vvertbump) : (norms ? sizeof(vvertn) : sizeof(vvert));
@@ -1506,9 +1518,9 @@ struct skelmodel : animmodel
         void blendmatbones(const skelcacheentry &sc, blendcacheentry &bc)
         {
             bc.nextversion();
-            if(!bc.mdata) bc.mdata = new matrix3x4[(skel->usegpuskel ? skel->numgpubones : 0) + vblends];
+            if(!bc.mdata) bc.mdata = new matrix3x4[vblends];
             if(lastbdata == bc.mdata) lastbdata = NULL;
-            matrix3x4 *dst = bc.mdata - (skel->usegpuskel ? 0 : skel->numinterpbones);
+            matrix3x4 *dst = bc.mdata - skel->numgpubones;
             loopv(blendcombos)
             {
                 const blendcombo &c = blendcombos[i];
@@ -1520,9 +1532,9 @@ struct skelmodel : animmodel
         void blendbones(const skelcacheentry &sc, blendcacheentry &bc)
         {
             bc.nextversion();
-            if(!bc.bdata) bc.bdata = new dualquat[(skel->usegpuskel ? skel->numgpubones : 0) + vblends];
+            if(!bc.bdata) bc.bdata = new dualquat[vblends];
             if(lastbdata == bc.bdata) lastbdata = NULL;
-            dualquat *dst = bc.bdata - (skel->usegpuskel ? 0 : skel->numinterpbones);
+            dualquat *dst = bc.bdata - skel->numgpubones;
             bool normalize = !skel->usegpuskel || vweights<=1;
             loopv(blendcombos)
             {
