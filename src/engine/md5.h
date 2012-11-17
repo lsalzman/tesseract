@@ -304,7 +304,7 @@ struct md5 : skelmodel, skelloader<md5>
                     while(f->getline(buf, sizeof(buf)) && buf[0]!='}')
                     {
                         md5hierarchy h;
-                        if(sscanf(buf, " %s %d %d %d", h.name, &h.parent, &h.flags, &h.start)==4)
+                        if(sscanf(buf, " %100s %d %d %d", h.name, &h.parent, &h.flags, &h.start)==4)
                             hierarchy.add(h);
                     }
                 }

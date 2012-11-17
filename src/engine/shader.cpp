@@ -510,7 +510,7 @@ static void genattriblocs(Shader &s, const char *vs, const char *ps)
     int loc;
     while((vs = strstr(vs, "#pragma CUBE2_attrib")))
     {
-        if(sscanf(vs, "#pragma CUBE2_attrib %s %d", name, &loc) == 2)
+        if(sscanf(vs, "#pragma CUBE2_attrib %100s %d", name, &loc) == 2)
             s.attriblocs.add(AttribLoc(getshaderparamname(name), loc));
         vs += len;
     }
@@ -523,7 +523,7 @@ static void genuniformlocs(Shader &s, const char *vs, const char *ps)
     int binding, stride;
     while((vs = strstr(vs, "#pragma CUBE2_uniform")))
     {
-        int numargs = sscanf(vs, "#pragma CUBE2_uniform %s %s %d %d", name, blockname, &binding, &stride);
+        int numargs = sscanf(vs, "#pragma CUBE2_uniform %100s %100s %d %d", name, blockname, &binding, &stride);
         if(numargs >= 3) s.uniformlocs.add(UniformLoc(getshaderparamname(name), getshaderparamname(blockname), binding, numargs >= 4 ? stride : 0));
         else if(numargs >= 1) s.uniformlocs.add(UniformLoc(getshaderparamname(name)));
         vs += len;

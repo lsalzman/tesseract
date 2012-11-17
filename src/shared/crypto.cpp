@@ -740,7 +740,7 @@ void genprivkey(const char *seed, vector<char> &privstr, vector<char> &pubstr)
     tiger::hashval hash;
     tiger::hash((const uchar *)seed, (int)strlen(seed), hash);
     bigint<8*sizeof(hash.bytes)/BI_DIGIT_BITS> privkey;
-    memcpy(privkey.digits, hash.bytes, sizeof(privkey.digits));
+    memcpy(privkey.digits, hash.bytes, sizeof(hash.bytes));
     privkey.len = 8*sizeof(hash.bytes)/BI_DIGIT_BITS;
     privkey.shrink();
     privkey.printdigits(privstr);
@@ -797,7 +797,7 @@ void *genchallenge(void *pubkey, const void *seed, int seedlen, vector<char> &ch
     tiger::hashval hash;
     tiger::hash((const uchar *)seed, sizeof(seed), hash);
     gfint challenge;
-    memcpy(challenge.digits, hash.bytes, sizeof(challenge.digits));
+    memcpy(challenge.digits, hash.bytes, sizeof(hash.bytes));
     challenge.len = 8*sizeof(hash.bytes)/BI_DIGIT_BITS;
     challenge.shrink();
 

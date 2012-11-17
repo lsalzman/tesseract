@@ -1012,7 +1012,7 @@ bool load_world(const char *mname, const char *cname)        // still supports a
             }
             default: continue;
         }
-        if(id) switch(id->type)
+        if(id && id->flags&IDF_OVERRIDE) switch(id->type)
         {
             case ID_VAR:
             {

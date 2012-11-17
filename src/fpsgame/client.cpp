@@ -1509,10 +1509,11 @@ namespace game
             case N_SENDDEMOLIST:
             {
                 int demos = getint(p);
-                if(!demos) conoutf("no demos available");
+                if(demos <= 0) conoutf("no demos available");
                 else loopi(demos)
                 {
                     getstring(text, p);
+                    if(p.overread()) break;
                     conoutf("%d. %s", i+1, text);
                 }
                 break;

@@ -2467,11 +2467,11 @@ namespace server
             authfailed(id);
         else if(sscanf(cmd, "succauth %u", &id) == 1)
             authsucceeded(id);
-        else if(sscanf(cmd, "chalauth %u %s", &id, val) == 2)
+        else if(sscanf(cmd, "chalauth %u %255s", &id, val) == 2)
             authchallenged(id, val);
         else if(!strncmp(cmd, "cleargbans", cmdlen))
             cleargbans();
-        else if(sscanf(cmd, "addgban %s", val) == 1)
+        else if(sscanf(cmd, "addgban %100s", val) == 1)
             addgban(val);
     }
 
