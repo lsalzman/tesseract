@@ -1,0 +1,11 @@
+# enet stuff
+*.lo
+*.la
+*.pc
+*.status
+*.log
+libtool
+Makefile
+autom4te.cache/
+.deps/
+.libs/

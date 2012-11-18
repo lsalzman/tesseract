@@ -7,3 +7,9 @@
 *.rej
 *.bak
 *~
+
+# binaries
+/src/tess_client
+/src/tess_server
+/bin_unix/native_*
+
