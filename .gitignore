@@ -1,0 +1,9 @@
+# ignore compiled objects
+*.[oa]
+*.gch
+
+# ignore backups and other misc files
+*.orig
+*.rej
+*.bak
+*~
