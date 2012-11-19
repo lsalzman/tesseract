@@ -416,10 +416,20 @@ namespace server
         int modes;
         string map;
 
-        int findmode(int mode)
+        int findmode(int mode) const
         {
             if(!(modes&(1<<(mode-STARTGAMEMODE)))) loopi(NUMGAMEMODES) if(modes&(1<<i)) return i+STARTGAMEMODE;
             return mode;
+        }
+
+        bool match(int reqmode, const char *reqmap) const
+        {
+            return modes&(1<<(reqmode-STARTGAMEMODE)) && (!map[0] || !reqmap[0] || !strcmp(map, reqmap));
+        }
+
+        bool includes(const maprotation &rot) const
+        {
+            return rot.modes != modes && (rot.modes & modes) == rot.modes;
         }
     };
     vector<maprotation> maprotations;
@@ -448,7 +458,7 @@ namespace server
         {
             maprotation &rot = maprotations[i];
             if(!rot.modes) break;
-            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+            if(rot.match(mode, map)) return i;
         }
         int start;
         for(start = curmaprotation - 1; start >= 0; start--) if(!maprotations[start].modes) break;
@@ -457,14 +467,15 @@ namespace server
         {
             maprotation &rot = maprotations[i];
             if(!rot.modes) break;
-            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+            if(rot.match(mode, map)) return i;
         }
+        int best = -1;
         loopv(maprotations)
         {
             maprotation &rot = maprotations[i];
-            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+            if(rot.match(mode, map) && (best < 0 || maprotations[best].includes(rot))) best = i;
         }
-        return -1;
+        return best;
     }
 
     int genmodemask(vector<char *> &modes)
