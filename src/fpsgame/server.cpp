@@ -591,6 +591,16 @@ namespace server
     struct teamkillkick
     {
         int modes, limit, ban;
+
+        bool match(int mode) const
+        {
+            return (modes&(1<<(mode-STARTGAMEMODE)))!=0;
+        }
+
+        bool includes(const teamkillkick &tk) const
+        {
+            return tk.modes != modes && (tk.modes & modes) == tk.modes;
+        }
     };
     vector<teamkillkick> teamkillkicks;
 
@@ -599,11 +609,8 @@ namespace server
         if(!m_timed || actor->state.aitype != AI_NONE) return;
         uint ip = getclientip(actor->clientnum);
         teamkillkick *kick = NULL;
-        loopv(teamkillkicks) if(teamkillkicks[i].modes & (1 << (gamemode + STARTGAMEMODE)))         
-        {
+        loopv(teamkillkicks) if(teamkillkicks[i].match(gamemode) && (!kick || kick->includes(teamkillkicks[i])))
             kick = &teamkillkicks[i];
-            break;
-        }
         if(!kick) return;
         teamkillinfo *tk = NULL;
         loopv(teamkills) if(teamkills[i].ip == ip) { tk = &teamkills[i]; tk->teamkills += n; break; }
