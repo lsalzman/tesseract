@@ -2078,7 +2078,7 @@ void rotate(int *cw)
 COMMAND(flip, "");
 COMMAND(rotate, "i");
 
-enum { EDITMATF_EMPTY = 0x100, EDITMATF_NOTEMPTY = 0x200, EDITMATF_SOLID = 0x400, EDITMATF_NOTSOLID = 0x800 };
+enum { EDITMATF_EMPTY = 0x100, EDITMATF_NOTEMPTY = 0x200, EDITMATF_SOLID = 0x300, EDITMATF_NOTSOLID = 0x400 };
 static const struct { const char *name; int filter; } editmatfilters[] =
 {
     { "empty", EDITMATF_EMPTY },
