@@ -429,7 +429,7 @@ namespace server
 
         bool includes(const maprotation &rot) const
         {
-            return rot.modes != modes && (rot.modes & modes) == rot.modes;
+            return rot.modes == modes ? rot.map[0] && !map[0] : (rot.modes & modes) == rot.modes;
         }
     };
     vector<maprotation> maprotations;
