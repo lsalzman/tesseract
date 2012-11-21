@@ -416,10 +416,20 @@ namespace server
         int modes;
         string map;
 
-        int findmode(int mode)
+        int findmode(int mode) const
         {
             if(!(modes&(1<<(mode-STARTGAMEMODE)))) loopi(NUMGAMEMODES) if(modes&(1<<i)) return i+STARTGAMEMODE;
             return mode;
+        }
+
+        bool match(int reqmode, const char *reqmap) const
+        {
+            return modes&(1<<(reqmode-STARTGAMEMODE)) && (!map[0] || !reqmap[0] || !strcmp(map, reqmap));
+        }
+
+        bool includes(const maprotation &rot) const
+        {
+            return rot.modes == modes ? rot.map[0] && !map[0] : (rot.modes & modes) == rot.modes;
         }
     };
     vector<maprotation> maprotations;
@@ -448,7 +458,7 @@ namespace server
         {
             maprotation &rot = maprotations[i];
             if(!rot.modes) break;
-            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+            if(rot.match(mode, map)) return i;
         }
         int start;
         for(start = curmaprotation - 1; start >= 0; start--) if(!maprotations[start].modes) break;
@@ -457,14 +467,15 @@ namespace server
         {
             maprotation &rot = maprotations[i];
             if(!rot.modes) break;
-            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+            if(rot.match(mode, map)) return i;
         }
+        int best = -1;
         loopv(maprotations)
         {
             maprotation &rot = maprotations[i];
-            if(rot.modes&(1<<(mode-STARTGAMEMODE)) && (!rot.map[0] || !map[0] || !strcmp(rot.map, map))) return i;
+            if(rot.match(mode, map) && (best < 0 || maprotations[best].includes(rot))) best = i;
         }
-        return -1;
+        return best;
     }
 
     int genmodemask(vector<char *> &modes)
@@ -580,6 +591,16 @@ namespace server
     struct teamkillkick
     {
         int modes, limit, ban;
+
+        bool match(int mode) const
+        {
+            return (modes&(1<<(mode-STARTGAMEMODE)))!=0;
+        }
+
+        bool includes(const teamkillkick &tk) const
+        {
+            return tk.modes != modes && (tk.modes & modes) == tk.modes;
+        }
     };
     vector<teamkillkick> teamkillkicks;
 
@@ -588,11 +609,8 @@ namespace server
         if(!m_timed || actor->state.aitype != AI_NONE) return;
         uint ip = getclientip(actor->clientnum);
         teamkillkick *kick = NULL;
-        loopv(teamkillkicks) if(teamkillkicks[i].modes & (1 << (gamemode + STARTGAMEMODE)))         
-        {
+        loopv(teamkillkicks) if(teamkillkicks[i].match(gamemode) && (!kick || kick->includes(teamkillkicks[i])))
             kick = &teamkillkicks[i];
-            break;
-        }
         if(!kick) return;
         teamkillinfo *tk = NULL;
         loopv(teamkills) if(teamkills[i].ip == ip) { tk = &teamkills[i]; tk->teamkills += n; break; }
