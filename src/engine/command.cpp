@@ -2582,6 +2582,70 @@ ICOMMAND(loopfiles, "rsse", (ident *id, char *dir, char *ext, uint *body),
     if(files.length()) poparg(*id);
 });
 
+struct sortitem
+{
+    const char *str, *quotestart, *quoteend;
+};
+   
+struct sortfun
+{
+    ident *x, *y;
+    uint *body;
+
+    bool operator()(const sortitem &xval, const sortitem &yval)
+    {
+        if(x->valtype != VAL_MACRO) x->valtype = VAL_MACRO;
+        cleancode(*x);
+        x->val.code = (const uint *)xval.str;
+        if(y->valtype != VAL_MACRO) y->valtype = VAL_MACRO;
+        cleancode(*y);
+        y->val.code = (const uint *)yval.str;
+        return executebool(body);
+    }
+};
+     
+void sortlist(char *list, ident *x, ident *y, uint *body)
+{
+    if(x == y || x->type != ID_ALIAS || y->type != ID_ALIAS) return;
+
+    vector<sortitem> items;
+    char *macros = newstring(list);
+    int total = 0;
+    const char *curlist = list, *start, *end, *quotestart, *quoteend;
+    while(parselist(curlist, start, end, quotestart, quoteend))
+    {
+        macros[end - list] = '\0';
+        sortitem item = { &macros[start - list], quotestart, quoteend };
+        items.add(item);
+        total += int(quoteend - quotestart);
+    } 
+
+    identstack xstack, ystack;
+    pusharg(*x, nullval, xstack); x->flags &= ~IDF_UNKNOWN;
+    pusharg(*y, nullval, ystack); y->flags &= ~IDF_UNKNOWN;
+
+    sortfun f = { x, y, body };
+    items.sort(f);
+
+    poparg(*x);
+    poparg(*y);
+    delete[] macros;
+
+    char *sorted = newstring(total + max(items.length() - 1, 0));
+    int offset = 0;
+    loopv(items)
+    {
+        sortitem &item = items[i];
+        int len = int(item.quoteend - item.quotestart);
+        if(i) sorted[offset++] = ' ';
+        memcpy(&sorted[offset], item.quotestart, len);
+        offset += len;
+    }
+ 
+    commandret->setstr(sorted);
+}
+COMMAND(sortlist, "srre");
+
 ICOMMAND(+, "ii", (int *a, int *b), intret(*a + *b));
 ICOMMAND(*, "ii", (int *a, int *b), intret(*a * *b));
 ICOMMAND(-, "ii", (int *a, int *b), intret(*a - *b));
