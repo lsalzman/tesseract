@@ -2609,8 +2609,8 @@ void sortlist(char *list, ident *x, ident *y, uint *body)
     if(x == y || x->type != ID_ALIAS || y->type != ID_ALIAS) return;
 
     vector<sortitem> items;
-    char *macros = newstring(list);
-    int total = 0;
+    int macrolen = strlen(list), total = 0;
+    char *macros = newstring(macrolen);
     const char *curlist = list, *start, *end, *quotestart, *quoteend;
     while(parselist(curlist, start, end, quotestart, quoteend))
     {
@@ -2629,9 +2629,15 @@ void sortlist(char *list, ident *x, ident *y, uint *body)
 
     poparg(*x);
     poparg(*y);
-    delete[] macros;
+    
+    char *sorted = macros;
+    int sortedlen = total + max(items.length() - 1, 0);
+    if(macrolen < sortedlen)
+    {
+        delete[] macros;
+        sorted = newstring(sortedlen);
+    }
 
-    char *sorted = newstring(total + max(items.length() - 1, 0));
     int offset = 0;
     loopv(items)
     {
