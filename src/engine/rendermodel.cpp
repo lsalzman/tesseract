@@ -279,18 +279,18 @@ void rdtri(int *v1, int *v2, int *v3)
 }
 COMMAND(rdtri, "iii");
 
-void rdjoint(int *n, int *t, char *v1, char *v2, char *v3)
+void rdjoint(int *n, int *t, int *v1, int *v2, int *v3)
 {
     checkragdoll;
     if(*n < 0 || *n >= skel->numbones) return;
     ragdollskel::joint &j = ragdoll->joints.add();
     j.bone = *n;
     j.tri = *t;
-    j.vert[0] = v1[0] ? parseint(v1) : -1;
-    j.vert[1] = v2[0] ? parseint(v2) : -1;
-    j.vert[2] = v3[0] ? parseint(v3) : -1;
+    j.vert[0] = *v1;
+    j.vert[1] = *v2;
+    j.vert[2] = *v3;
 }
-COMMAND(rdjoint, "iisss");
+COMMAND(rdjoint, "iibbb");
    
 void rdlimitdist(int *v1, int *v2, float *mindist, float *maxdist)
 {

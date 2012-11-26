@@ -34,12 +34,12 @@ void throttle()
     enet_peer_throttle_configure(curpeer, throttle_interval*1000, throttle_accel, throttle_decel);
 }
 
-bool isconnected(bool attempt)
+bool isconnected(bool attempt, bool local)
 {
-    return curpeer || (attempt && connpeer);
+    return curpeer || (attempt && connpeer) || (local && haslocalclients());
 }
 
-ICOMMAND(isconnected, "i", (int *attempt), intret(isconnected(*attempt > 0) ? 1 : 0));
+ICOMMAND(isconnected, "bb", (int *attempt, int *local), intret(isconnected(*attempt > 0, *local != 0) ? 1 : 0));
 
 const ENetAddress *connectedpeer()
 {
@@ -160,7 +160,7 @@ void disconnect(bool async, bool cleanup)
     }
 }
 
-void trydisconnect()
+void trydisconnect(bool local)
 {
     if(connpeer)
     {
@@ -172,14 +172,15 @@ void trydisconnect()
         conoutf("attempting to disconnect...");
         disconnect(!discmillis);
     }
+    else if(local && haslocalclients()) localdisconnect();
     else conoutf("not connected");
 }
 
 ICOMMAND(connect, "sis", (char *name, int *port, char *pw), connectserv(name, *port, pw));
 ICOMMAND(lanconnect, "is", (int *port, char *pw), connectserv(NULL, *port, pw));
 COMMAND(reconnect, "s");
-COMMANDN(disconnect, trydisconnect, "");
-ICOMMAND(localconnect, "", (), { if(!isconnected() && !haslocalclients()) localconnect(); });
+ICOMMAND(disconnect, "b", (int *local), trydisconnect(*local != 0));
+ICOMMAND(localconnect, "", (), { if(!isconnected()) localconnect(); });
 ICOMMAND(localdisconnect, "", (), { if(haslocalclients()) localdisconnect(); });
 
 void sendclientpacket(ENetPacket *packet, int chan)

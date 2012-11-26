@@ -121,7 +121,7 @@ void toggleedit(bool force)
 {
     if(!force)
     {
-        if(!isconnected() && !haslocalclients()) return;
+        if(!isconnected()) return;
         if(player->state!=CS_ALIVE && player->state!=CS_DEAD && player->state!=CS_EDITING) return; // do not allow dead players to edit to avoid state confusion
         if(!game::allowedittoggle()) return;         // not in most multiplayer modes
     }

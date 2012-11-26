@@ -655,7 +655,7 @@ VAR(mainmenu, 1, 1, 0);
 
 void clearmainmenu()
 {
-    if(mainmenu && (isconnected() || haslocalclients()))
+    if(mainmenu && isconnected())
     {
         mainmenu = 0;
         if(!processingmenu) cleargui();
