@@ -621,7 +621,7 @@ bool addcommand(const char *name, identfun fun, const char *args)
     bool limit = true;
     for(const char *fmt = args; *fmt; fmt++) switch(*fmt)
     {
-        case 'i': case 'f': case 't': case 'N': case 'D': if(numargs < MAXARGS) numargs++; break;
+        case 'i': case 'b': case 'f': case 't': case 'N': case 'D': if(numargs < MAXARGS) numargs++; break;
         case 's': case 'e': case 'r': if(numargs < MAXARGS) { argmask |= 1<<numargs; numargs++; } break;
         case '1': case '2': case '3': case '4': if(numargs < MAXARGS) fmt -= *fmt-'0'+1; break;
         case 'C': case 'V': case 'L': limit = false; break;
@@ -1244,6 +1244,7 @@ static void compilestatements(vector<uint> &code, const char *&p, int rettype, i
                         numargs++;
                         break;
                     case 'i': if(more) more = compilearg(code, p, VAL_INT); if(!more) { if(rep) break; compileint(code); fakeargs++; } numargs++; break;
+                    case 'b': if(more) more = compilearg(code, p, VAL_INT); if(!more) { if(rep) break; compileint(code, -1); fakeargs++; } numargs++; break;
                     case 'f': if(more) more = compilearg(code, p, VAL_FLOAT); if(!more) { if(rep) break; compilefloat(code); fakeargs++; } numargs++; break; 
                     case 't': if(more) more = compilearg(code, p, VAL_ANY); if(!more) { if(rep) break; compilenull(code); fakeargs++; } numargs++; break;
                     case 'e': if(more) more = compilearg(code, p, VAL_CODE); if(!more) { if(rep) break; compileblock(code); fakeargs++; } numargs++; break;
@@ -1819,6 +1820,7 @@ static const uint *runcode(const uint *code, tagval &result)
                         for(const char *fmt = id->args; *fmt && i < maxargs; fmt++, i++) switch(*fmt)
                         {
                             case 'i': if(numargs <= i) { args[numargs++].setint(0); fakeargs++; } else forceint(args[i]); break;
+                            case 'b': if(numargs <= i) { args[numargs++].setint(-1); fakeargs++; } else forceint(args[i]); break;
                             case 'f': if(numargs <= i) { args[numargs++].setfloat(0.0f); fakeargs++; } else forcefloat(args[i]); break;
                             case 's': if(numargs <= i) { args[numargs++].setstr(newstring("")); fakeargs++; } else forcestr(args[i]); break;
                             case 't': if(numargs <= i) { args[numargs++].setnull(); fakeargs++; } break;
