@@ -2436,6 +2436,13 @@ ICOMMAND(unescape, "s", (char *s),
     d[unescapestring(d, s, &s[len])] = '\0';
     stringret(d);
 });
+ICOMMAND(stripcolors, "s", (char *s),
+{
+    int len = strlen(s);
+    char *d = newstring(len);
+    filtertext(d, s, true, len);
+    stringret(d);
+});
 COMMAND(substr, "siiN");
 COMMAND(sublist, "siiN");
 ICOMMAND(listlen, "s", (char *s), intret(listlen(s)));
