@@ -3044,7 +3044,7 @@ namespace server
                 if((ci->privilege || ci->local) && ci->clientnum!=victim)
                 {
                     clientinfo *vinfo = (clientinfo *)getclientinfo(victim);
-                    if(ci->privilege >= vinfo->privilege && vinfo->privilege < PRIV_ADMIN && !vinfo->local)
+                    if(vinfo && ci->privilege >= vinfo->privilege && vinfo->privilege < PRIV_ADMIN && !vinfo->local)
                     { 
                         uint ip = getclientip(victim);
                         addban(ip, 4*60*60000);
