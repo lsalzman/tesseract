@@ -234,6 +234,13 @@ namespace game
     }
     ICOMMAND(ismaster, "i", (int *cn), intret(ismaster(*cn) ? 1 : 0));
 
+    bool isauth(int cn)
+    {
+        fpsent *d = getclient(cn);
+        return d && d->privilege >= PRIV_AUTH;
+    }
+    ICOMMAND(isauth, "i", (int *cn), intret(isauth(*cn) ? 1 : 0));
+
     bool isadmin(int cn)
     {
         fpsent *d = getclient(cn);
