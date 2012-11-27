@@ -3043,7 +3043,7 @@ namespace server
                 if((ci->privilege || ci->local) && ci->clientnum!=victim)
                 {
                     clientinfo *vinfo = (clientinfo *)getclientinfo(victim);
-                    if(vinfo->privilege < PRIV_ADMIN)
+                    if(ci->privilege >= vinfo->privilege && vinfo->privilege < PRIV_ADMIN)
                     { 
                         uint ip = getclientip(victim);
                         addban(ip, 4*60*60000);
