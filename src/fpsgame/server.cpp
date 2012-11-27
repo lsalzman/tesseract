@@ -401,12 +401,13 @@ namespace server
 
     vector<clientinfo *> connects, clients, bots;
 
-    void kickclients(uint ip)
+    void kickclients(uint ip, clientinfo *actor = NULL)
     {
         loopvrev(clients) 
         {
             clientinfo &c = *clients[i];
             if(c.state.aitype != AI_NONE || c.privilege >= PRIV_ADMIN || c.local) continue;
+            if(actor && (c.privilege > actor->privilege || c.clientnum == actor->clientnum)) continue;
             if(getclientip(c.clientnum) == ip) disconnect_client(c.clientnum, DISC_KICK);
         }
     }
@@ -3043,11 +3044,11 @@ namespace server
                 if((ci->privilege || ci->local) && ci->clientnum!=victim)
                 {
                     clientinfo *vinfo = (clientinfo *)getclientinfo(victim);
-                    if(ci->privilege >= vinfo->privilege && vinfo->privilege < PRIV_ADMIN)
+                    if(ci->privilege >= vinfo->privilege && vinfo->privilege < PRIV_ADMIN && !vinfo->local)
                     { 
                         uint ip = getclientip(victim);
                         addban(ip, 4*60*60000);
-                        kickclients(ip);
+                        kickclients(ip, ci);
                     }
                 }
                 break;
