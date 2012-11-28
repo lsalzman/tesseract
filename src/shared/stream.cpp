@@ -410,7 +410,9 @@ bool listdir(const char *dir, bool rel, const char *ext, vector<char *> &files)
     copystring(dirname, dir);
     path(dirname);
     #ifdef WIN32
-	defformatstring(pathname)(rel ? ".\\%s\\*.%s" : "%s\\*.%s", dirname[0] == '\\' ? &dirname[1] : dirname, ext ? ext : "*");
+    int dirlen = (int)strlen(dirname);
+    if(dirlen > 0 && dirname[dirlen-1] == '\\') dirname[dirlen-1] = '\0';
+    defformatstring(pathname)(rel ? ".\\%s\\*.%s" : "%s\\*.%s", dirname, ext ? ext : "*");
     WIN32_FIND_DATA FindFileData;
     HANDLE Find = FindFirstFile(pathname, &FindFileData);
     if(Find != INVALID_HANDLE_VALUE)
