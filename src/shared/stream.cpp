@@ -403,15 +403,10 @@ const char *findfile(const char *filename, const char *mode)
     return filename;
 }
 
-bool listdir(const char *dir, bool rel, const char *ext, vector<char *> &files)
+bool listdir(const char *dirname, bool rel, const char *ext, vector<char *> &files)
 {
     int extsize = ext ? (int)strlen(ext)+1 : 0;
-    string dirname;
-    copystring(dirname, dir);
-    path(dirname);
     #ifdef WIN32
-    int dirlen = (int)strlen(dirname);
-    if(dirlen > 0 && dirname[dirlen-1] == '\\') dirname[dirlen-1] = '\0';
     defformatstring(pathname)(rel ? ".\\%s\\*.%s" : "%s\\*.%s", dirname, ext ? ext : "*");
     WIN32_FIND_DATA FindFileData;
     HANDLE Find = FindFirstFile(pathname, &FindFileData);
@@ -454,28 +449,29 @@ bool listdir(const char *dir, bool rel, const char *ext, vector<char *> &files)
 
 int listfiles(const char *dir, const char *ext, vector<char *> &files)
 {
+    string dirname;
+    copystring(dirname, dir);
+    path(dirname);
+    int dirlen = (int)strlen(dirname);
+    while(dirlen > 1 && dirname[dirlen-1] == PATHDIV) dirname[--dirlen] = '\0';
     int dirs = 0;
-    if(listdir(dir, true, ext, files)) dirs++;
+    if(listdir(dirname, true, ext, files)) dirs++;
     string s;
     if(homedir[0])
     {
-        formatstring(s)("%s%s", homedir, dir);
+        formatstring(s)("%s%s", homedir, dirname);
         if(listdir(s, false, ext, files)) dirs++;
     }
     loopv(packagedirs)
     {
         packagedir &pf = packagedirs[i];
-        if(pf.filter)
-        {
-            int dirlen = strlen(dir);
-            if(strncmp(dir, pf.filter, dirlen == pf.filterlen-1 ? dirlen : pf.filterlen))
-                continue;
-        }
-        formatstring(s)("%s%s", pf.dir, dir);
+        if(pf.filter && strncmp(dirname, pf.filter, dirlen == pf.filterlen-1 ? dirlen : pf.filterlen))
+            continue;
+        formatstring(s)("%s%s", pf.dir, dirname);
         if(listdir(s, false, ext, files)) dirs++;
     }
 #ifndef STANDALONE
-    dirs += listzipfiles(dir, ext, files);
+    dirs += listzipfiles(dirname, ext, files);
 #endif
     return dirs;
 }
