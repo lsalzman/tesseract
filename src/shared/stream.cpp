@@ -416,7 +416,13 @@ bool listdir(const char *dir, bool rel, const char *ext, vector<char *> &files)
     if(Find != INVALID_HANDLE_VALUE)
     {
         do {
-            files.add(newstring(FindFileData.cFileName, (int)strlen(FindFileData.cFileName) - extsize));
+            if(!ext) files.add(newstring(FindFileData.cFileName));
+            else
+            {
+                int namelength = (int)strlen(FindFileData.cFileName) - extsize;
+                if(namelength > 0 && FindFileData.cFileName[namelength] == '.' && strncmp(FindFileData.cFileName+namelength+1, ext, extsize-1)==0)
+                    files.add(newstring(FindFileData.cFileName, namelength));
+            }
         } while(FindNextFile(Find, &FindFileData));
         FindClose(Find);
         return true;
