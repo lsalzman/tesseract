@@ -379,7 +379,7 @@ void viewinferred()
     notextureshader->set();
 }
 
-VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD));
+VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD, CHANGE_SHADERS));
 VAR(gdepthformat, 1, 0, 0);
 
 void initgbuffer()
@@ -557,7 +557,7 @@ VAR(hdraccummillis, 1, 33, 1000);
 VAR(hdrreduce, 0, 2, 2);
 VARFP(hdr, 0, 1, 1, cleanupgbuffer());
 VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
-FVARP(hdrgamma, 1e-3f, 2.2f, 1e3f);
+FVARFP(hdrgamma, 1e-3f, 2, 1e3f, initwarning("HDR setup", INIT_LOAD, CHANGE_SHADERS));
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
 FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
 

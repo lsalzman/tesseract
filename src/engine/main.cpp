@@ -658,7 +658,7 @@ void setupscreen(int &usedcolorbits, int &useddepthbits, int &usedfsaa)
 
 void resetgl()
 {
-    clearchanges(CHANGE_GFX);
+    clearchanges(CHANGE_GFX|CHANGE_SHADERS);
 
     renderbackground("resetting OpenGL");
 

@@ -682,8 +682,9 @@ extern int initing;
 
 enum
 {
-    CHANGE_GFX   = 1<<0,
-    CHANGE_SOUND = 1<<1
+    CHANGE_GFX     = 1<<0,
+    CHANGE_SOUND   = 1<<1,
+    CHANGE_SHADERS = 1<<2
 };
 extern bool initwarning(const char *desc, int level = INIT_RESET, int type = CHANGE_GFX);
 

@@ -595,6 +595,7 @@ static struct applymenu : menu
             int changetypes = 0;
             loopv(needsapply) changetypes |= needsapply[i].type;
             if(changetypes&CHANGE_GFX) updatelater.add().schedule("resetgl");
+            else if(changetypes&CHANGE_SHADERS) updatelater.add().schedule("resetshaders");
             if(changetypes&CHANGE_SOUND) updatelater.add().schedule("resetsound");
             clearlater = true;
         }

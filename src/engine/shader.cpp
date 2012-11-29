@@ -480,8 +480,8 @@ void Shader::cleanup(bool invalid)
     detailshader = NULL;
     used = false;
     native = true;
-    if(vsobj) { if(reusevs) glDeleteShader_(vsobj); vsobj = 0; }
-    if(psobj) { if(reuseps) glDeleteShader_(psobj); psobj = 0; }
+    if(vsobj) { if(!reusevs) glDeleteShader_(vsobj); vsobj = 0; }
+    if(psobj) { if(!reuseps) glDeleteShader_(psobj); psobj = 0; }
     if(program) { glDeleteProgram_(program); program = 0; }
     localparams.setsize(0);
     localparamremap.setsize(0);
@@ -1303,12 +1303,15 @@ void reloadshaders()
 
 void resetshaders()
 {
+    clearchanges(CHANGE_SHADERS);
+
     cleanupgbuffer();
     cleanupshaders();
     setupshaders();
     initgbuffer();
     reloadshaders();
     allchanged(true);
+    GLERROR;
 }
 COMMAND(resetshaders, "");
 
