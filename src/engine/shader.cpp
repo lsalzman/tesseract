@@ -1026,6 +1026,19 @@ COMMAND(altshader, "ss");
 COMMAND(fastshader, "ssi");
 COMMAND(defershader, "iss");
 ICOMMAND(forceshader, "s", (const char *name), useshaderbyname(name));
+ICOMMAND(dumpshader, "sbb", (const char *name, int *col, int *row),
+{
+    Shader *s = lookupshaderbyname(name);
+    FILE *l = getlogfile();
+    if(!s || !l) return;
+    if(*col >= 0)
+    {
+        if(*row >= MAXVARIANTROWS || !s->variants[max(*row, 0)].inrange(*col)) return;
+        s = s->variants[max(*row, 0)][*col];
+    }
+    if(s->vsstr) fprintf(l, "%s:%s\n%s\n", s->name, "VS", s->vsstr);        
+    if(s->psstr) fprintf(l, "%s:%s\n%s\n", s->name, "FS", s->psstr);
+});
 
 void isshaderdefined(char *name)
 {
