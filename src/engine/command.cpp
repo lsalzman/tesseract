@@ -7,7 +7,7 @@ hashset<ident> idents; // contains ALL vars/commands/aliases
 vector<ident *> identmap;
 ident *dummyident = NULL;
 
-int identflags = IDF_PERSIST;
+int identflags = 0;
 
 static const int MAXARGS = 25;
 

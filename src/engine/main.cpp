@@ -1149,7 +1149,6 @@ int main(int argc, char **argv)
     if(!notexture) fatal("could not find core textures");
 
     logoutf("init: console");
-    identflags &= ~IDF_PERSIST;
     if(!execfile("data/stdlib.cfg", false)) fatal("cannot find data files (you are running from the wrong folder, try .bat file in the main folder)");   // this is the first file we load.
     if(!execfile("data/font.cfg", false)) fatal("cannot find font definitions");
     if(!setfont("default")) fatal("no default font specified");
