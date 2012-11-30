@@ -1196,13 +1196,13 @@ int main(int argc, char **argv)
     game::loadconfigs();
     initing = NOT_INITING;
 
-    identflags |= IDF_PERSIST;
-
     logoutf("init: shaders");
     initgbuffer();
     loadshaders();
     particleinit();
     initdecals();
+
+    identflags |= IDF_PERSIST;
 
     logoutf("init: mainloop");
 
