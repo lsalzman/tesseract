@@ -15,14 +15,15 @@ struct menu : g3d_callback
 {
     char *name, *header;
     uint *contents, *init, *onclear;
+    bool showtab;
 
-    menu() : name(NULL), header(NULL), contents(NULL), init(NULL), onclear(NULL) {}
+    menu() : name(NULL), header(NULL), contents(NULL), init(NULL), onclear(NULL), showtab(true) {}
 
     void gui(g3d_gui &g, bool firstpass)
     {
         cgui = &g;
-        cgui->start(menustart, 0.03f, &menutab);
-        cgui->tab(header ? header : name, GUI_TITLE_COLOR);
+        cgui->start(menustart, 0.03f, showtab ? &menutab : NULL);
+        if(showtab) cgui->tab(header ? header : name, GUI_TITLE_COLOR);
         execute(contents);
         cgui->end();
         cgui = NULL;
@@ -508,7 +509,26 @@ void newgui(char *name, char *contents, char *header, char *init)
         freecode(m->contents);
         freecode(m->init);
     }
-    m->header = header && header[0] ? newstring(header) : NULL;
+    if(header && header[0])
+    {
+        char *end = NULL;
+        int val = strtol(header, &end, 0);
+        if(end && !*end)
+        {
+            m->header = NULL;
+            m->showtab = val != 0;
+        }
+        else
+        {
+            m->header = newstring(header);
+            m->showtab = true;
+        }
+    }
+    else
+    {
+        m->header = NULL;
+        m->showtab = true;
+    }
     m->contents = compilecode(contents);
     m->init = init && init[0] ? compilecode(init) : NULL;
 }
