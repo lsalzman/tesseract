@@ -1363,20 +1363,9 @@ void setblurshader(int pass, int size, int radius, float *weights, float *offset
         s = lookupshaderbyname(name);
     }
     s->set();
-    LOCALPARAM(weights, (weights[0], weights[1], weights[2], weights[3]));
-    LOCALPARAM(weights2, (weights[4], weights[5], weights[6], weights[7]));
-    LOCALPARAM(offsets, (
-        pass==0 ? offsets[1]/size : offsets[0]/size,
-        pass==1 ? offsets[1]/size : offsets[0]/size,
-        (offsets[2] - offsets[1])/size,
-        (offsets[3] - offsets[2])/size));
-    loopk(4)
-    {
-        static LocalShaderParam offsets2[4] = { "offset4", "offset5", "offset6", "offset7" };
-        offsets2[k].set(
-            pass==0 ? offsets[4+k]/size : offsets[0]/size,
-            pass==1 ? offsets[4+k]/size : offsets[0]/size,
-            0, 0);
-    }
+    LOCALPARAM(weights, (weights, 8));
+    float scaledoffsets[8];
+    loopk(8) scaledoffsets[k] = offsets[k]/size;
+    LOCALPARAM(offsets, (scaledoffsets, 8));
 }
 
