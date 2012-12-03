@@ -1168,7 +1168,8 @@ VARF(smcullside, 0, 1, 1, cleanupshadowatlas());
 VARF(smcache, 0, 1, 2, cleanupshadowatlas());
 VARFP(smfilter, 0, 2, 2, { cleardeferredlightshaders(); cleanupshadowatlas(); });
 VARFP(smgather, 0, 0, 1, { cleardeferredlightshaders(); cleanupshadowatlas(); });
-VAR(smnoshadow, 0, 0, 2);
+VAR(smnoshadow, 0, 0, 1);
+VAR(smnodynshadow, 0, 0, 1);
 VAR(lighttilesused, 1, 0, 0);
 
 int shadowmapping = 0;
@@ -2465,7 +2466,7 @@ void packlights()
     smused = 0;
 
     bool tetra = smtetra && glslversion >= 130;
-    if(smcache && smnoshadow <= 1 && shadowcache.numelems) loopv(lightorder)
+    if(smcache && !smnoshadow && shadowcache.numelems) loopv(lightorder)
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
@@ -2503,7 +2504,7 @@ void packlights()
         lightinfo &l = lights[idx];
         if(l.shadowmap >= 0) continue;
 
-        if(!(l.flags&L_NOSHADOW) && smnoshadow <= 1 && l.radius > smminradius)
+        if(!(l.flags&L_NOSHADOW) && !smnoshadow && l.radius > smminradius)
         {
             if(l.query && l.query->owner == &l && checkquery(l.query)) { lightsoccluded++; continue; }
             float prec = smprec, smlod;
@@ -2961,7 +2962,7 @@ void rendershadowmaps()
         findshadowvas();
         findshadowmms();
 
-        shadowmaskbatchedmodels(!(l.flags&L_NODYNSHADOW));
+        shadowmaskbatchedmodels(!(l.flags&L_NODYNSHADOW) && !smnodynshadow);
         batchshadowmapmodels();
 
         shadowcacheval *cached = NULL;
