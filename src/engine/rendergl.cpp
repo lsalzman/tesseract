@@ -2379,7 +2379,7 @@ void gl_drawhud(int w, int h)
             if(editmode)
             {
                 abovehud -= FONTH;
-                draw_textf("cube %s%d", FONTH/2, abovehud, selchildcount<0 ? "1/" : "", abs(selchildcount));
+                draw_textf("cube %s%d%s", FONTH/2, abovehud, selchildcount<0 ? "1/" : "", abs(selchildcount), showmat && selchildmat > 0 ? getmaterialdesc(selchildmat, ": ") : "");
 
                 char *editinfo = executestr("edithud");
                 if(editinfo)

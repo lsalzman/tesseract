@@ -209,7 +209,7 @@ cube &blockcube(int x, int y, int z, const block3 &b, int rgrid) // looks up a w
 
 ////////////// cursor ///////////////
 
-int selchildcount=0;
+int selchildcount = 0, selchildmat = -1;
 
 ICOMMAND(havesel, "", (), intret(havesel ? selchildcount : 0));
 
@@ -221,7 +221,15 @@ void countselchild(cube *c, const ivec &cor, int size)
     {
         ivec o(i, cor.x, cor.y, cor.z, size);
         if(c[i].children) countselchild(c[i].children, o, size/2);
-        else selchildcount++;
+        else 
+        {
+            selchildcount++;
+            if(c[i].material != MAT_AIR && selchildmat != MAT_AIR)
+            {
+                if(selchildmat < 0) selchildmat = c[i].material;
+                else if(selchildmat != c[i].material) selchildmat = MAT_AIR;
+            }
+        }
     }
 }
 
@@ -337,6 +345,7 @@ void rendereditcursor()
            if(!havesel) 
            {
                selchildcount = 0;
+               selchildmat = -1;
                sel.s = ivec(0, 0, 0);
            }
         }
@@ -410,8 +419,13 @@ void rendereditcursor()
 
             sel.corner = (cor[R[d]]-(lu[R[d]]*2)/gridsize)+(cor[C[d]]-(lu[C[d]]*2)/gridsize)*2;
             selchildcount = 0;
+            selchildmat = -1;
             countselchild(worldroot, ivec(0, 0, 0), worldsize/2);
-            if(mag>1 && selchildcount==1) selchildcount = -mag;
+            if(mag>=1 && selchildcount==1) 
+            {
+                selchildmat = c->material;
+                if(mag>1) selchildcount = -mag;
+            }
         }
     }
 

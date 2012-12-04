@@ -598,6 +598,8 @@ extern const vec matnormals[6];
 extern int showmat;
 
 extern int findmaterial(const char *name);
+extern const char *findmaterialname(int mat);
+extern const char *getmaterialdesc(int mat, const char *prefix = "");
 extern void genmatsurfs(const cube &c, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
 extern void calcmatbb(vtxarray *va, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
 extern int optimizematsurfs(materialsurface *matbuf, int matsurfs);

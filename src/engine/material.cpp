@@ -117,6 +117,29 @@ int findmaterial(const char *name)
     } 
     return -1;
 }  
+
+const char *findmaterialname(int mat)
+{
+    loopi(sizeof(materials)/sizeof(materials[0])) if(materials[i].id == mat) return materials[i].name;
+    return NULL;
+}
+
+const char *getmaterialdesc(int mat, const char *prefix)
+{
+    static const ushort matmasks[] = { MATF_VOLUME|MATF_INDEX, MATF_CLIP, MAT_DEATH, MAT_ALPHA };
+    static string desc;
+    desc[0] = '\0';
+    loopi(sizeof(matmasks)/sizeof(matmasks[0])) if(mat&matmasks[i])
+    {               
+        const char *matname = findmaterialname(mat&matmasks[i]);
+        if(matname)     
+        {               
+            concatstring(desc, desc[0] ? ", " : prefix);
+            concatstring(desc, matname);
+        }
+    }
+    return desc;
+}
     
 int visiblematerial(const cube &c, int orient, int x, int y, int z, int size, uchar matmask)
 {   
@@ -149,7 +172,7 @@ void genmatsurfs(const cube &c, int cx, int cy, int cz, int size, vector<materia
 {
     loopi(6)
     {
-        static ushort matmasks[] = { MATF_VOLUME|MATF_INDEX, MATF_CLIP, MAT_DEATH, MAT_ALPHA };
+        static const ushort matmasks[] = { MATF_VOLUME|MATF_INDEX, MATF_CLIP, MAT_DEATH, MAT_ALPHA };
         loopj(sizeof(matmasks)/sizeof(matmasks[0]))
         {
             int matmask = matmasks[j];
