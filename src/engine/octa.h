@@ -24,7 +24,8 @@ struct materialsurface
 
     ivec o;
     ushort csize, rsize;
-    uchar material, orient, flags, skip;
+    ushort material, skip;
+    uchar orient, flags;
     union
     {
         ushort envmap;
@@ -158,7 +159,7 @@ struct clipplanes
     plane p[12];
     uchar side[12];
     uchar size, visible;
-    cube *owner;
+    const cube *owner;
     int version;
 };
 
@@ -198,12 +199,15 @@ struct cube
         uint faces[3];       // 4 edges of each dimension together representing 2 perpendicular faces
     };
     ushort texture[6];       // one for each face. same order as orient.
-    uchar material;          // empty-space material
-    uchar collide;           // collision faces of the cube
-    uchar merged;            // merged faces of the cube
+    ushort material;         // empty-space material
+    union 
+    {
+        uchar merged;            // merged faces of the cube
+        uchar collide;           // collision faces of the cube
+    };
     union
     {
-        uchar escaped;       // mask of which children have escaped merges, mask of merged faces that escaped if no children
+        uchar escaped;       // mask of which children have escaped merges
         uchar visible;       // visibility info for non-merged faces
     };
 };

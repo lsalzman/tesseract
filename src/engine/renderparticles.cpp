@@ -1293,8 +1293,19 @@ static void makeparticles(entity &e)
             break;
         case 2: //water fountain - <dir>
         {
-            int color = (int(waterfallcolor[0])<<16) | (int(waterfallcolor[1])<<8) | int(waterfallcolor[2]);
-            if(!color) color = (int(watercolor[0])<<16) | (int(watercolor[1])<<8) | int(watercolor[2]);
+            int color;
+            if(e.attr3 > 0) color = colorfromattr(e.attr3);
+            else
+            {
+                int mat = MAT_WATER + clamp(-e.attr3, 0, 3);
+                const bvec &wfcol = getwaterfallcolor(mat);
+                color = (int(wfcol[0])<<16) | (int(wfcol[1])<<8) | int(wfcol[2]);
+                if(!color)
+                {
+                    const bvec &wcol = getwatercolor(mat);
+                    color = (int(wcol[0])<<16) | (int(wcol[1])<<8) | int(wcol[2]);
+                }
+            }
             regularsplash(PART_WATER, color, 150, 4, 200, offsetvec(e.o, e.attr2, rnd(10)), 0.6f, 2);
             break;
         }

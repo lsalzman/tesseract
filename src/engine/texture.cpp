@@ -1291,7 +1291,7 @@ bool settexture(const char *name, int clamp)
 
 vector<VSlot *> vslots;
 vector<Slot *> slots;
-MSlot materialslots[MATF_VOLUME+1];
+MSlot materialslots[(MATF_VOLUME|MATF_INDEX)+1];
 Slot dummyslot;
 VSlot dummyvslot(&dummyslot);
 
@@ -1314,7 +1314,7 @@ COMMAND(texturereset, "i");
 void materialreset()
 {
     if(!(identflags&IDF_OVERRIDDEN) && !game::allowedittoggle()) return;
-    loopi(MATF_VOLUME+1) materialslots[i].reset();
+    loopi((MATF_VOLUME|MATF_INDEX)+1) materialslots[i].reset();
 }
 
 COMMAND(materialreset, "");
@@ -1327,7 +1327,7 @@ void clearslots()
     resetslotshader();
     slots.deletecontents();
     vslots.deletecontents();
-    loopi(MATF_VOLUME+1) materialslots[i].reset();
+    loopi((MATF_VOLUME|MATF_INDEX)+1) materialslots[i].reset();
     clonedvslots = 0;
 }
 
@@ -1977,7 +1977,7 @@ void linkslotshaders()
 {
     loopv(slots) if(slots[i]->loaded) linkslotshader(*slots[i]);
     loopv(vslots) if(vslots[i]->linked) linkvslotshader(*vslots[i]);
-    loopi(MATF_VOLUME+1) if(materialslots[i].loaded) 
+    loopi((MATF_VOLUME|MATF_INDEX)+1) if(materialslots[i].loaded) 
     {
         linkslotshader(materialslots[i]);
         linkvslotshader(materialslots[i]);
@@ -2413,7 +2413,7 @@ void cleanuptextures()
     clearenvmaps();
     loopv(slots) slots[i]->cleanup();
     loopv(vslots) vslots[i]->cleanup();
-    loopi(MATF_VOLUME+1) materialslots[i].cleanup();
+    loopi((MATF_VOLUME|MATF_INDEX)+1) materialslots[i].cleanup();
     enumerate(textures, Texture, tex, cleanuptexture(&tex));
 }
 

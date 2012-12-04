@@ -347,46 +347,47 @@ extern void setcubeext(cube &c, cubeext *ext);
 extern cubeext *newcubeext(cube &c, int maxverts = 0, bool init = true);
 extern void getcubevector(cube &c, int d, int x, int y, int z, ivec &p);
 extern void setcubevector(cube &c, int d, int x, int y, int z, const ivec &p);
-extern int familysize(cube &c);
+extern int familysize(const cube &c);
 extern void freeocta(cube *c);
 extern void discardchildren(cube &c, bool fixtex = false, int depth = 0);
 extern void optiface(uchar *p, cube &c);
 extern void validatec(cube *c, int size = 0);
-extern bool isvalidcube(cube &c);
+extern bool isvalidcube(const cube &c);
 extern ivec lu;
 extern int lusize;
 extern cube &lookupcube(int tx, int ty, int tz, int tsize = 0, ivec &ro = lu, int &rsize = lusize);
-extern cube *neighbourstack[32];
+extern const cube *neighbourstack[32];
 extern int neighbourdepth;
-extern cube &neighbourcube(cube &c, int orient, int x, int y, int z, int size, ivec &ro = lu, int &rsize = lusize);
+extern const cube &neighbourcube(const cube &c, int orient, int x, int y, int z, int size, ivec &ro = lu, int &rsize = lusize);
 extern void resetclipplanes();
-extern int getmippedtexture(cube &p, int orient);
+extern int getmippedtexture(const cube &p, int orient);
 extern void forcemip(cube &c, bool fixtex = true);
 extern bool subdividecube(cube &c, bool fullcheck=true, bool brighten=true);
 extern void edgespan2vectorcube(cube &c);
-extern int faceconvexity(ivec v[4]);
-extern int faceconvexity(ivec v[4], int &vis);
-extern int faceconvexity(vertinfo *verts, int numverts, int size);
-extern int faceconvexity(cube &c, int orient);
-extern void calcvert(cube &c, int x, int y, int z, int size, ivec &vert, int i, bool solid = false);
-extern void calcvert(cube &c, int x, int y, int z, int size, vec &vert, int i, bool solid = false);
-extern uint faceedges(cube &c, int orient);
-extern bool collapsedface(cube &c, int orient);
-extern bool touchingface(cube &c, int orient);
-extern bool flataxisface(cube &c, int orient);
-extern bool collideface(cube &c, int orient);
-extern int genclipplane(cube &c, int i, vec *v, plane *clip);
-extern void genclipplanes(cube &c, int x, int y, int z, int size, clipplanes &p);
-extern bool visibleface(cube &c, int orient, int x, int y, int z, int size, uchar mat = MAT_AIR, uchar nmat = MAT_AIR, uchar matmask = MATF_VOLUME);
-extern int visibletris(cube &c, int orient, int x, int y, int z, int size, uchar nmat = MAT_AIR, uchar matmask = MAT_AIR);
-extern int visibleorient(cube &c, int orient);
-extern void genfaceverts(cube &c, int orient, ivec v[4]);
+extern int faceconvexity(const ivec v[4]);
+extern int faceconvexity(const ivec v[4], int &vis);
+extern int faceconvexity(const vertinfo *verts, int numverts, int size);
+extern int faceconvexity(const cube &c, int orient);
+extern void calcvert(const cube &c, int x, int y, int z, int size, ivec &vert, int i, bool solid = false);
+extern void calcvert(const cube &c, int x, int y, int z, int size, vec &vert, int i, bool solid = false);
+extern uint faceedges(const cube &c, int orient);
+extern bool collapsedface(const cube &c, int orient);
+extern bool touchingface(const cube &c, int orient);
+extern bool flataxisface(const cube &c, int orient);
+extern bool collideface(const cube &c, int orient);
+extern int collidefaces(const cube &c);
+extern int genclipplane(const cube &c, int i, vec *v, plane *clip);
+extern void genclipplanes(const cube &c, int x, int y, int z, int size, clipplanes &p);
+extern bool visibleface(const cube &c, int orient, int x, int y, int z, int size, ushort mat = MAT_AIR, ushort nmat = MAT_AIR, ushort matmask = MATF_VOLUME);
+extern int visibletris(const cube &c, int orient, int x, int y, int z, int size, ushort nmat = MAT_AIR, ushort matmask = MAT_AIR);
+extern int visibleorient(const cube &c, int orient);
+extern void genfaceverts(const cube &c, int orient, ivec v[4]);
 extern int calcmergedsize(int orient, const ivec &co, int size, const vertinfo *verts, int numverts);
 extern void invalidatemerges(cube &c, const ivec &co, int size, bool msg);
 extern void calcmerges();
 
 extern int mergefaces(int orient, facebounds *m, int sz);
-extern void mincubeface(cube &cu, int orient, const ivec &o, int size, const facebounds &orig, facebounds &cf, uchar nmat = MAT_AIR, uchar matmask = MATF_VOLUME);
+extern void mincubeface(const cube &cu, int orient, const ivec &o, int size, const facebounds &orig, facebounds &cf, ushort nmat = MAT_AIR, ushort matmask = MATF_VOLUME);
 
 static inline uchar octantrectangleoverlap(const ivec &c, int size, const ivec &o, const ivec &s)
 {
@@ -591,13 +592,13 @@ extern float matliquidsx1, matliquidsy1, matliquidsx2, matliquidsy2;
 extern float matsolidsx1, matsolidsy1, matsolidsx2, matsolidsy2;
 extern float matrefractsx1, matrefractsy1, matrefractsx2, matrefractsy2;
 extern uint matliquidtiles[LIGHTTILE_MAXH], matsolidtiles[LIGHTTILE_MAXH];
-extern vector<materialsurface> editsurfs, glasssurfs, watersurfs, waterfallsurfs, lavasurfs, lavafallsurfs;
+extern vector<materialsurface> editsurfs, glasssurfs[4], watersurfs[4], waterfallsurfs[4], lavasurfs[4], lavafallsurfs[4];
 extern const vec matnormals[6];
 
 extern int showmat;
 
 extern int findmaterial(const char *name);
-extern void genmatsurfs(cube &c, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
+extern void genmatsurfs(const cube &c, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
 extern void calcmatbb(vtxarray *va, int cx, int cy, int cz, int size, vector<materialsurface> &matsurfs);
 extern int optimizematsurfs(materialsurface *matbuf, int matsurfs);
 extern void setupmaterials(int start = 0, int len = 0);
@@ -607,12 +608,46 @@ extern void renderliquidmaterials();
 extern void rendersolidmaterials();
 extern void rendereditmaterials();
 extern void renderminimapmaterials();
-extern int visiblematerial(cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
+extern int visiblematerial(const cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
 
 // water
-extern int vertwater, waterreflect, caustics, waterfog, waterdeep, lavafog;
-extern bvec watercolor, waterdeepcolor, waterdeepfadecolor, waterfallcolor, lavacolor;
+extern int vertwater, waterreflect, caustics;
 extern float watersx1, watersy1, watersx2, watersy2;
+
+#define GETMATIDXVAR(name, var, type) \
+    type get##name##var(int mat) \
+    { \
+        switch(mat&MATF_INDEX) \
+        { \
+            default: case 0: return name##var; \
+            case 1: return name##2##var; \
+            case 2: return name##3##var; \
+            case 3: return name##4##var; \
+        } \
+    }
+
+extern const bvec &getwatercolor(int mat);
+extern const bvec &getwaterdeepcolor(int mat);
+extern const bvec &getwaterdeepfadecolor(int mat);
+extern const bvec &getwaterrefractcolor(int mat);
+extern const bvec &getwaterfallcolor(int mat);
+extern const bvec &getwaterfallrefractcolor(int mat);
+extern int getwaterfog(int mat);
+extern int getwaterdeep(int mat);
+extern int getwaterspec(int mat);
+extern float getwaterrefract(int mat);
+extern int getwaterfallspec(int mat);
+extern float getwaterfallrefract(int mat);
+
+extern const bvec &getlavacolor(int mat);
+extern int getlavafog(int mat);
+extern float getlavaglowmin(int mat);
+extern float getlavaglowmax(int mat);
+extern int getlavaspec(int mat);
+
+extern const bvec &getglasscolor(int mat);
+extern float getglassrefract(int mat);
+extern int getglassspec(int mat);
 
 extern void renderwater();
 extern void renderwaterfalls();

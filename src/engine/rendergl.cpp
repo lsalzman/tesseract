@@ -1503,6 +1503,7 @@ VAR(fogoverlay, 0, 1, 1);
 
 static float findsurface(int fogmat, const vec &v, int &abovemat)
 {
+    fogmat &= MATF_VOLUME;
     ivec o(v), co;
     int csize;
     do
@@ -1511,7 +1512,7 @@ static float findsurface(int fogmat, const vec &v, int &abovemat)
         int mat = c.material&MATF_VOLUME;
         if(mat != fogmat)
         {
-            abovemat = isliquid(mat) ? mat : MAT_AIR;
+            abovemat = isliquid(mat) ? c.material : MAT_AIR;
             return o.z;
         }
         o.z = co.z + csize;
@@ -1523,22 +1524,28 @@ static float findsurface(int fogmat, const vec &v, int &abovemat)
 
 static void blendfog(int fogmat, float below, float blend, float logblend, float &start, float &end, vec &fogc)
 {
-    switch(fogmat)
+    switch(fogmat&MATF_VOLUME)
     {
         case MAT_WATER:
         {
-            float deepfade = clamp(below/max(waterdeep, waterfog), 0.0f, 1.0f);
+            const bvec &wcol = getwatercolor(fogmat), &wdeepcol = getwaterdeepcolor(fogmat);
+            int wfog = getwaterfog(fogmat), wdeep = getwaterdeep(fogmat);
+            float deepfade = clamp(below/max(wdeep, wfog), 0.0f, 1.0f);
             vec color;
-            color.lerp(watercolor.tocolor(), waterdeepcolor.tocolor(), deepfade);
+            color.lerp(wcol.tocolor(), wdeepcol.tocolor(), deepfade);
             fogc.add(vec(color).mul(blend));
-            end += logblend*min(fog, max(waterfog*2, 16));
+            end += logblend*min(fog, max(wfog*2, 16));
             break;
         }
 
         case MAT_LAVA:
-            fogc.add(lavacolor.tocolor().mul(blend));
-            end += logblend*min(fog, max(lavafog*2, 16));
+        {
+            const bvec &lcol = getlavacolor(fogmat);
+            int lfog = getlavafog(fogmat);
+            fogc.add(lcol.tocolor().mul(blend));
+            end += logblend*min(fog, max(lfog*2, 16));
             break;
+        }
 
         default:
             fogc.add(fogcolor.tocolor().mul(blend));
@@ -1584,22 +1591,27 @@ static void setfog(int fogmat, float below = 0, float blend = 1, int abovemat = 
 static void blendfogoverlay(int fogmat, float below, float blend, float *overlay)
 {
     float maxc;
-    switch(fogmat)
+    switch(fogmat&MATF_VOLUME)
     {
         case MAT_WATER:
         {
-            float deepfade = clamp(below/max(waterdeep, waterfog), 0.0f, 1.0f);
+            const bvec &wcol = getwatercolor(fogmat), &wdeepcol = getwaterdeepcolor(fogmat);
+            int wfog = getwaterfog(fogmat), wdeep = getwaterdeep(fogmat);
+            float deepfade = clamp(below/max(wdeep, wfog), 0.0f, 1.0f);
             vec color;
-            loopk(3) color[k] = watercolor[k]*(1-deepfade) + waterdeepcolor[k]*deepfade;
+            loopk(3) color[k] = wcol[k]*(1-deepfade) + wdeepcol[k]*deepfade;
             maxc = max(color[0], max(color[1], color[2]));
             loopk(3) overlay[k] += blend*max(0.4f, color[k]/min(32.0f + maxc*7.0f/8.0f, 255.0f));
             break;
         }
 
         case MAT_LAVA:
-            maxc = max(lavacolor[0], max(lavacolor[1], lavacolor[2]));
-            loopk(3) overlay[k] += blend*max(0.4f, lavacolor[k]/min(32.0f + maxc*7.0f/8.0f, 255.0f));
+        {
+            const bvec &lcol = getlavacolor(fogmat);
+            maxc = max(lcol[0], max(lcol[1], lcol[2]));
+            loopk(3) overlay[k] += blend*max(0.4f, lcol[k]/min(32.0f + maxc*7.0f/8.0f, 255.0f));
             break;
+        }
 
         default:
             loopk(3) overlay[k] += blend;
@@ -1828,9 +1840,9 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     setviewcell(camera1->o);
 
     float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
-    int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&MATF_VOLUME, abovemat = MAT_AIR;
+    int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&(MATF_VOLUME|MATF_INDEX), abovemat = MAT_AIR;
     float fogbelow = 0;
-    if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
+    if(isliquid(fogmat&MATF_VOLUME))
     {
         float z = findsurface(fogmat, vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin), abovemat) - WATER_OFFSET;
         if(camera1->o.z < z + fogmargin)
@@ -1925,9 +1937,9 @@ void gl_drawframe(int w, int h)
     fovy = 2*atan2(tan(curfov/2*RAD), aspect)/RAD;
     
     float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
-    int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&MATF_VOLUME, abovemat = MAT_AIR;
+    int fogmat = lookupmaterial(vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin))&(MATF_VOLUME|MATF_INDEX), abovemat = MAT_AIR;
     float fogbelow = 0;
-    if(fogmat==MAT_WATER || fogmat==MAT_LAVA)
+    if(isliquid(fogmat&MATF_VOLUME))
     {
         float z = findsurface(fogmat, vec(camera1->o.x, camera1->o.y, camera1->o.z - fogmargin), abovemat) - WATER_OFFSET;
         if(camera1->o.z < z + fogmargin)

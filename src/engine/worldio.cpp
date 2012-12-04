@@ -250,11 +250,11 @@ void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
         }
         else
         {
-            int oflags = 0, surfmask = 0, totalverts = 0;
+            int oflags = 0, surfmask = 0, totalverts = 0, merged = c[i].visible&c[i].merged;;
             if(c[i].material!=MAT_AIR) oflags |= 0x40;
             if(!nolms)
             {
-                if(c[i].merged) oflags |= 0x80;
+                if(merged) oflags |= 0x80;
                 if(c[i].ext) loopj(6) 
                 {
                     const surfaceinfo &surf = c[i].ext->surfaces[j];
@@ -276,8 +276,8 @@ void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
     
             loopj(6) f->putlil<ushort>(c[i].texture[j]);
 
-            if(oflags&0x40) f->putchar(c[i].material);
-            if(oflags&0x80) f->putchar(c[i].merged);
+            if(oflags&0x40) f->putlil<ushort>(c[i].material);
+            if(oflags&0x80) f->putchar(merged);
             if(oflags&0x20) 
             {
                 f->putchar(surfmask);
@@ -291,7 +291,7 @@ void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
                         dim = dimension(j), vc = C[dim], vr = R[dim];
                     if(numverts)
                     {
-                        if(c[i].merged&(1<<j)) 
+                        if(merged&(1<<j)) 
                         {
                             vertmask |= 0x04;
                             if(layerverts == 4)
@@ -435,6 +435,11 @@ void convertoldsurfaces(cube &c, const ivec &co, int size, surfacecompat *srcsur
     }
     setsurfaces(c, dstsurfs, verts, totalverts);
 }
+
+static inline int convertoldmaterial(int mat)
+{
+    return ((mat&7)<<MATF_VOLUME_SHIFT) | (((mat>>3)&3)<<MATF_CLIP_SHIFT) | (((mat>>5)&7)<<MATF_FLAG_SHIFT);
+}
  
 void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
 {
@@ -462,10 +467,10 @@ void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
             int mat = f->getchar();
             if(mapversion < 27)
             {
-                static uchar matconv[] = { MAT_AIR, MAT_WATER, MAT_CLIP, MAT_GLASS|MAT_CLIP, MAT_NOCLIP, MAT_LAVA|MAT_DEATH, MAT_GAMECLIP, MAT_DEATH };
-                mat = size_t(mat) < sizeof(matconv)/sizeof(matconv[0]) ? matconv[mat] : MAT_AIR;
+                static ushort matconv[] = { MAT_AIR, MAT_WATER, MAT_CLIP, MAT_GLASS|MAT_CLIP, MAT_NOCLIP, MAT_LAVA|MAT_DEATH, MAT_GAMECLIP, MAT_DEATH };
+                c.material = size_t(mat) < sizeof(matconv)/sizeof(matconv[0]) ? matconv[mat] : MAT_AIR;
             }
-            c.material = mat;
+            else c.material = convertoldmaterial(mat);
         }
         surfacecompat surfaces[12];
         normalscompat normals[6];
@@ -548,7 +553,15 @@ void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
     }
     else
     {
-        if(octsav&0x40) c.material = f->getchar();
+        if(octsav&0x40) 
+        {
+            if(mapversion <= 32)
+            {
+                int mat = f->getchar();
+                c.material = convertoldmaterial(mat);
+            }
+            else c.material = f->getlil<ushort>();
+        }
         if(octsav&0x80) c.merged = f->getchar();
         if(octsav&0x20)
         {
