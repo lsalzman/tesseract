@@ -256,7 +256,7 @@ void setupaa(int w, int h)
 
 void doaa(GLuint outfbo, void (*resolve)(GLuint, bool))
 {
-    if(smaa) { resolve(smaafbo[0], true); dosmaa(outfbo); }
+    if(smaa) { resolve(smaafbo[0], !smaacoloredge); dosmaa(outfbo); }
     else if(fxaa) { resolve(fxaafbo, true); dofxaa(outfbo); }
     else resolve(outfbo, false);
 }
