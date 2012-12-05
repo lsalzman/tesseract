@@ -795,9 +795,10 @@ static void packcube(cube &c, B &buf)
     }
     else
     {
-        buf.put(c.material);
         cube data = c;
         lilswap(data.texture, 6);
+        buf.put(c.material&0xFF);
+        buf.put(c.material>>8);
         buf.put(data.edges, sizeof(data.edges));
         buf.put((uchar *)data.texture, sizeof(data.texture));
     }
@@ -829,7 +830,7 @@ static void unpackcube(cube &c, B &buf)
     }
     else
     {
-        c.material = mat;
+        c.material = mat | (buf.get()<<8);
         buf.get(c.edges, sizeof(c.edges));
         buf.get((uchar *)c.texture, sizeof(c.texture));
         lilswap(c.texture, 6);
