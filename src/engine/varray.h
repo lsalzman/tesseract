@@ -178,6 +178,7 @@ namespace varray
                 glClientActiveTexture_(GL_TEXTURE0_ARB);
                 break;
         }
+        enabled &= ~a.type;
     }
 
     int end()
@@ -193,15 +194,16 @@ namespace varray
                 const attribinfo &a = lastattribs[i];
                 if(diffmask & a.type) unsetattrib(a);
             }
+            uchar *src = buf;
             loopi(numattribs)
             {
                 const attribinfo &a = attribs[i];
                 if(forceattribs || a != lastattribs[i])
                 {
-                    setattrib(a, buf);
+                    setattrib(a, src);
                     lastattribs[i] = a;
                 }
-                buf += a.formatsize;
+                src += a.formatsize;
             }
             lastbuf = buf;
             numlastattribs = numattribs;
