@@ -1671,23 +1671,36 @@ ICOMMAND(fixinsidefaces, "i", (int *tex),
     allchanged();
 });
 
+const struct slottex
+{
+    const char *name;
+    int id;
+} slottexs[] =
+{
+    {"c", TEX_DIFFUSE},
+    {"u", TEX_UNKNOWN},
+    {"d", TEX_DECAL},
+    {"n", TEX_NORMAL},
+    {"g", TEX_GLOW},
+    {"s", TEX_SPEC},
+    {"z", TEX_DEPTH},
+    {"e", TEX_ENVMAP}
+};
+
+int findslottex(const char *name)
+{
+    loopi(sizeof(slottexs)/sizeof(slottex))
+    {
+        if(!strcmp(slottexs[i].name, name)) return slottexs[i].id;
+    }
+    return -1;
+}
+
 void texture(char *type, char *name, int *rot, int *xoffset, int *yoffset, float *scale)
 {
     if(slots.length()>=0x10000) return;
-    static const struct { const char *name; int type; } types[] =
-    {
-        {"c", TEX_DIFFUSE},
-        {"u", TEX_UNKNOWN},
-        {"d", TEX_DECAL},
-        {"n", TEX_NORMAL},
-        {"g", TEX_GLOW},
-        {"s", TEX_SPEC},
-        {"z", TEX_DEPTH},
-        {"e", TEX_ENVMAP}
-    };
     static int lastmatslot = -1;
-    int tnum = -1, matslot = findmaterial(type);
-    loopi(sizeof(types)/sizeof(types[0])) if(!strcmp(types[i].name, type)) { tnum = i; break; }
+    int tnum = findslottex(type), matslot = findmaterial(type);
     if(tnum<0) tnum = atoi(type);
     if(tnum==TEX_DIFFUSE) lastmatslot = matslot;
     else if(lastmatslot>=0) matslot = lastmatslot;
