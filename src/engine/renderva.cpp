@@ -580,9 +580,7 @@ HVAR(blendbrushcolor, 0, 0x0000C0, 0xFFFFFF);
 
 void renderblendbrush(GLuint tex, float x, float y, float w, float h)
 {
-    static Shader *blendbrushshader = NULL;
-    if(!blendbrushshader) blendbrushshader = lookupshaderbyname("blendbrush");
-    blendbrushshader->set();
+    SETSHADER(blendbrush);
 
     glEnableClientState(GL_VERTEX_ARRAY);
 

@@ -2283,10 +2283,7 @@ void rendertexturepanel(int w, int h)
         glScalef(h/1800.0f, h/1800.0f, 1);
         int y = 50, gap = 10;
 
-        static Shader *rgbonlyshader = NULL;
-        if(!rgbonlyshader) rgbonlyshader = lookupshaderbyname("rgbonly");
-        
-        rgbonlyshader->set();
+        SETSHADER(rgbonly);
 
         loopi(7)
         {
