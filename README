@@ -16,17 +16,17 @@ It provides a bunch of new rendering features such as:
 * perspective projection spotlight shadowmaps
 * orthographic projection sunlight using cascaded shadowmaps
 * HDR rendering with tonemapping and bloom
-* real-time diffuse global illumination for sunlight
+* real-time diffuse global illumination for sunlight (radiance hints)
 * screen-space ambient occlusion
 * screen-space reflections and refractions for water and glass (use as many water planes as you want now!)
 * screen-space refractive alpha cubes
-* morphological anti-aliasing
+* morphological anti-aliasing (SMAA) and FXAA
 
 Install:
 
 Currently, to use Tesseract you must have a copy of the "packages" directory
 from a recent checkout of Sauerbraten SVN. To get a copy of Sauerbraten SVN,
-please see the following page: http://sourceforge.net/scm/?type=svn&group_id=102911
+please see the following page: http://sourceforge.net/p/sauerbraten/code
 
 If you are on Linux or other unixoid, just make a symlink to the Sauerbraten
 packages directory inside your Tesseract directory. You can also edit the
