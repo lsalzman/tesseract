@@ -1260,7 +1260,7 @@ FVAR(csmpolyoffset, -1e4f, 0, 1e4f);
 FVAR(csmbias, -1e6f, 1e-4f, 1e6f);
 FVAR(csmpolyfactor2, -1e3f, 3, 1e3f);
 FVAR(csmpolyoffset2, -1e4f, 0, 1e4f);
-FVAR(csmbias2, -1e16f, 2.5e-4f, 1e6f);
+FVAR(csmbias2, -1e16f, 2e-4f, 1e6f);
 VAR(csmcull, 0, 1, 1);
 
 void cascadedshadowmap::updatesplitdist()
