@@ -941,6 +941,22 @@ struct lightinfo
     int spot;
     float dist;
     occludequery *query;
+
+    void calcspot(const vec &spotdir, int spotangle)
+    {
+        dir = spotdir;
+        spot = spotangle;
+        vec adir(fabs(dir.x), fabs(dir.y), fabs(dir.z));
+        spotx = vec(1, 0, 0);
+        spoty = vec(0, 1, 0);
+        if(adir.x > adir.y) { if(adir.x > adir.z) spotx = vec(0, 0, 1); }
+        else if(adir.y > adir.z) spoty = vec(0, 0, 1);
+        dir.orthonormalize(spotx, spoty);
+        const vec2 &sc = sincos360[spot];
+        float spotscale = sc.x/sc.y;
+        spotx.rescale(spotscale);
+        spoty.rescale(spotscale);
+    }
 };
 
 struct shadowcachekey
@@ -2374,16 +2390,7 @@ void collectlights()
         l.radius = e->attr1 > 0 ? e->attr1 : 2*worldsize;
         if(e->attached && e->attached->type == ET_SPOTLIGHT)
         {
-            l.dir = vec(e->attached->o).sub(e->o).normalize();
-            l.spot = clamp(int(e->attached->attr1), 1, 89);
-            vec adir(fabs(l.dir.x), fabs(l.dir.y), fabs(l.dir.z)), spotx(1, 0, 0), spoty(0, 1, 0);
-            if(adir.x > adir.y) { if(adir.x > adir.z) spotx = vec(0, 0, 1); }
-            else if(adir.y > adir.z) spoty = vec(0, 0, 1);
-            l.dir.orthonormalize(spotx, spoty);
-            const vec2 &sc = sincos360[l.spot];
-            float spotscale = sc.x/sc.y;
-            l.spotx = spotx.rescale(spotscale);
-            l.spoty = spoty.rescale(spotscale);
+            l.calcspot(vec(e->attached->o).sub(e->o).normalize(), clamp(int(e->attached->attr1), 1, 89));
         }
         else
         {
@@ -2399,9 +2406,10 @@ void collectlights()
     int numdynlights = finddynlights();
     loopi(numdynlights)
     {
-        vec o, color;
+        vec o, color, dir;
         float radius;
-        if(!getdynlight(i, o, radius, color)) continue;
+        int spot;
+        if(!getdynlight(i, o, radius, color, dir, spot)) continue;
 
         lightinfo &l = lights.add();
         l.shadowmap = -1;
@@ -2410,8 +2418,15 @@ void collectlights()
         l.o = o;
         l.color = vec(color).mul(255);
         l.radius = radius;
-        l.dir = vec(0, 0, 0);
-        l.spot = 0;
+        if(spot > 0)
+        {
+            l.calcspot(dir, spot);
+        }
+        else
+        {
+            l.dir = vec(0, 0, 0);
+            l.spot = 0;
+        }
         l.dist = camera1->o.dist(o);
 
         if(calclightscissor(l)) lightorder.add(lights.length()-1);

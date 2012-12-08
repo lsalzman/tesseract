@@ -584,7 +584,7 @@ extern void drawbb(const ivec &bo, const ivec &br, const vec &camera = camera1->
 
 extern void updatedynlights();
 extern int finddynlights();
-extern bool getdynlight(int n, vec &o, float &radius, vec &color);
+extern bool getdynlight(int n, vec &o, float &radius, vec &color, vec &dir, int &spot);
 
 // material
 

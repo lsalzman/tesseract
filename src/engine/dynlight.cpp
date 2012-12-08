@@ -10,6 +10,8 @@ struct dynlight
     vec color, initcolor, curcolor;
     int fade, peak, expire, flags;
     physent *owner;
+    vec dir;
+    int spot;
 
     void calcradius()
     {
@@ -52,7 +54,7 @@ struct dynlight
 vector<dynlight> dynlights;
 vector<dynlight *> closedynlights;
 
-void adddynlight(const vec &o, float radius, const vec &color, int fade, int peak, int flags, float initradius, const vec &initcolor, physent *owner)
+void adddynlight(const vec &o, float radius, const vec &color, int fade, int peak, int flags, float initradius, const vec &initcolor, physent *owner, const vec &dir, int spot)
 {
     if(!usedynlights) return;
     if(o.dist(camera1->o) > dynlightdist || radius <= 0) return;
@@ -70,6 +72,8 @@ void adddynlight(const vec &o, float radius, const vec &color, int fade, int pea
     d.expire = expire;
     d.flags = flags;
     d.owner = owner;
+    d.dir = dir;
+    d.spot = spot;
     dynlights.insert(insert, d);
 }
 
@@ -126,13 +130,15 @@ int finddynlights()
     return closedynlights.length();
 }
 
-bool getdynlight(int n, vec &o, float &radius, vec &color)
+bool getdynlight(int n, vec &o, float &radius, vec &color, vec &dir, int &spot)
 {
     if(!closedynlights.inrange(n)) return false;
     dynlight &d = *closedynlights[n];
     o = d.o;
     radius = d.curradius;
     color = d.curcolor;
+    spot = d.spot;
+    dir = d.dir;
     return true;
 }
 
@@ -144,13 +150,21 @@ void dynlightreaching(const vec &target, vec &color, vec &dir, bool hud)
         dynlight &d = dynlights[i];
         if(d.curradius<=0) continue;
 
-        vec ray(hud ? d.hud : d.o);
-        ray.sub(target);
+        vec ray(target);
+        ray.sub(hud ? d.hud : d.o);
         float mag = ray.squaredlen();
         if(mag >= d.curradius*d.curradius) continue;
 
+        float intensity = 1 - sqrtf(mag)/d.curradius;
+        if(d.spot > 0)
+        {
+            float maxatten = sincos360[d.spot].x, spotatten = (ray.dot(d.dir) - maxatten) / (1 - maxatten);
+            if(spotatten <= 0) continue;
+            intensity *= spotatten;
+        }
+
         vec color = d.curcolor;
-        color.mul(1 - sqrtf(mag)/d.curradius);
+        color.mul(intensity);
         dyncolor.add(color);
         //dyndir.add(ray.mul(intensity/mag));
     }
