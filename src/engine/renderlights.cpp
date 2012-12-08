@@ -1016,6 +1016,7 @@ static inline void setsmcomparemode() // use embedded shadow cmp
 }
 
 static inline bool usegatherforsm() { return smfilter > 1 && smgather && (hasTG || hasT4); }
+static inline bool usesmcomparemode() { return !usegatherforsm() || (hasTG && hasGPU5); }
 
 void viewshadowatlas()
 {
@@ -1030,14 +1031,14 @@ void viewshadowatlas()
     else defaultshader->set();
     glColor3f(1, 1, 1);
     glBindTexture(shadowatlastarget, shadowatlastex);
-    if(!usegatherforsm()) setsmnoncomparemode(); // "normal" mode
+    if(usesmcomparemode()) setsmnoncomparemode();
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0, 0); glVertex2i(screen->w-w, screen->h-h);
     glTexCoord2f(tw, 0); glVertex2i(screen->w, screen->h-h);
     glTexCoord2f(0, th); glVertex2i(screen->w-w, screen->h);
     glTexCoord2f(tw, th); glVertex2i(screen->w, screen->h);
     glEnd();
-    if(!usegatherforsm()) setsmcomparemode(); // "gather" mode basically
+    if(usesmcomparemode()) setsmcomparemode();
     notextureshader->set();
 }
 VAR(debugshadowatlas, 0, 0, 1);
@@ -1046,7 +1047,7 @@ void setupshadowatlas()
 {
     if(!shadowatlastex) glGenTextures(1, &shadowatlastex);
 
-    shadowatlastarget = usegatherforsm() ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB;
+    shadowatlastarget = usesmcomparemode() ? GL_TEXTURE_RECTANGLE_ARB : GL_TEXTURE_2D;
     createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT16_ARB, shadowatlastarget);
     glTexParameteri(shadowatlastarget, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
     glTexParameteri(shadowatlastarget, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);
@@ -1866,7 +1867,7 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE4_ARB);
     glBindTexture(shadowatlastarget, shadowatlastex);
-    if(usegatherforsm()) setsmnoncomparemode(); else setsmcomparemode();
+    if(usesmcomparemode()) setsmcomparemode(); else setsmnoncomparemode();
     if(ao)
     {
         glActiveTexture_(GL_TEXTURE5_ARB);
