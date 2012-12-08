@@ -1047,7 +1047,7 @@ void setupshadowatlas()
 {
     if(!shadowatlastex) glGenTextures(1, &shadowatlastex);
 
-    shadowatlastarget = usesmcomparemode() ? GL_TEXTURE_RECTANGLE_ARB : GL_TEXTURE_2D;
+    shadowatlastarget = usegatherforsm() ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE_ARB;
     createtexture(shadowatlastex, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE, NULL, 3, 1, GL_DEPTH_COMPONENT16_ARB, shadowatlastarget);
     glTexParameteri(shadowatlastarget, GL_TEXTURE_COMPARE_MODE_ARB, GL_COMPARE_R_TO_TEXTURE_ARB);
     glTexParameteri(shadowatlastarget, GL_TEXTURE_COMPARE_FUNC_ARB, GL_LEQUAL);

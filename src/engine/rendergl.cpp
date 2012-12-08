@@ -441,7 +441,7 @@ void gl_checkextensions()
         hasTQ = true;
     }
 
-    extern int gdepthstencil, glineardepth, lighttilebatch, batchsunlight, lighttilestrip;
+    extern int gdepthstencil, glineardepth, lighttilebatch, batchsunlight, lighttilestrip, smgather;
     if(ati)
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
@@ -460,6 +460,7 @@ void gl_checkextensions()
         glineardepth = 1; // causes massive slowdown in windows driver (and sometimes in linux driver) if not using linear depth
         lighttilebatch = 4;
         if(mesa) batchsunlight = 0; // causes massive slowdown in linux driver
+        smgather = 1; // native shadow filter is slow
     }
 
     if(glversion >= 200)
@@ -717,7 +718,7 @@ void gl_checkextensions()
     }
     if(hasext(exts, "GL_ARB_gpu_shader5"))
     {
-        usetexgather = 2;
+        if(!intel) usetexgather = 2;
         hasGPU5 = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_gpu_shader5 extension.");
     }
