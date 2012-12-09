@@ -2874,6 +2874,7 @@ namespace server
                 getstring(text, p);
                 filtertext(text, text);
                 QUEUE_STR(text);
+                if(isdedicatedserver()) logoutf("%s: %s", colorname(cq), text);
                 break;
             }
 
@@ -2887,6 +2888,7 @@ namespace server
                     if(t==cq || t->state.state==CS_SPECTATOR || t->state.aitype != AI_NONE || strcmp(cq->team, t->team)) continue;
                     sendf(t->clientnum, 1, "riis", N_SAYTEAM, cq->clientnum, text);
                 }
+                if(isdedicatedserver()) logoutf("%s<%s>: %s", colorname(cq), cq->team, text);
                 break;
             }
 

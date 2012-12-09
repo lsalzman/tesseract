@@ -1081,8 +1081,13 @@ void logoutfv(const char *fmt, va_list args)
 
 #endif
 
+static bool dedicatedserver = false;
+
+bool isdedicatedserver() { return dedicatedserver; }
+
 void rundedicatedserver()
 {
+    dedicatedserver = true;
     logoutf("dedicated server started, waiting for clients...");
 #ifdef WIN32
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
@@ -1100,6 +1105,7 @@ void rundedicatedserver()
 #else
     for(;;) serverslice(true, 5);
 #endif
+    dedicatedserver = false;
 }
 
 bool servererror(bool dedicated, const char *desc)
