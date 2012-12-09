@@ -173,7 +173,7 @@ struct collectclientmode : clientmode
 
 #ifdef SERVMODE
     static const int EXPIRETOKENTIME = 10000;
-    static const int STEALTOKENTIME = 1000;
+    static const int STEALTOKENTIME = 3000;
 
     bool notgotbases;
 
@@ -308,22 +308,26 @@ struct collectclientmode : clientmode
         if(b.team==team) return;
         if(ci->state.tokens > 0)
         {
+            b.laststeal = gamemillis;
             ci->state.flags += ci->state.tokens;
             int score = addscore(team, ci->state.tokens);
             sendf(-1, 1, "ri7", N_DEPOSITTOKENS, ci->clientnum, basenum, ci->state.tokens, team, score, ci->state.flags);
             ci->state.tokens = 0;
             if(score >= SCORELIMIT) startintermission();
         }
-        else if(gamemillis < b.laststeal + STEALTOKENTIME) return;
-        if(totalscore(b.team) <= 0) return;
-        int stolen = 0;
-        loopv(tokens) if(tokens[i].dropper == -1 - basenum) stolen++;
-        if(stolen < TOKENLIMIT)
+        else 
         {
-            b.laststeal = gamemillis;
-            int score = addscore(b.team, -1);
-            token &t = droptoken(b.o, rnd(360), team, lastmillis, -1 - basenum);
-            sendf(-1, 1, "ri9i3", N_STEALTOKENS, ci->clientnum, team, basenum, b.team, score, int(t.o.x*DMF), int(t.o.y*DMF), int(t.o.z*DMF), t.id, t.yaw, -1);
+            if(gamemillis < b.laststeal + STEALTOKENTIME) return;
+            if(totalscore(b.team) <= 0) return;
+            int stolen = 0;
+            loopv(tokens) if(tokens[i].dropper == -1 - basenum) stolen++;
+            if(stolen < TOKENLIMIT)
+            {
+                b.laststeal = gamemillis;
+                int score = addscore(b.team, -1);
+                token &t = droptoken(b.o, rnd(360), team, lastmillis, -1 - basenum);
+                sendf(-1, 1, "ri9i3", N_STEALTOKENS, ci->clientnum, team, basenum, b.team, score, int(t.o.x*DMF), int(t.o.y*DMF), int(t.o.z*DMF), t.id, t.yaw, -1);
+            }
         }
     }
 
