@@ -689,6 +689,11 @@ namespace server
     }
 
     void sendservmsg(const char *s) { sendf(-1, 1, "ris", N_SERVMSG, s); }
+    void sendservmsgf(const char *fmt, ...)
+    {
+         defvformatstring(s, fmt, fmt);
+         sendf(-1, 1, "ris", N_SERVMSG, s);
+    }
 
     void resetitems()
     {
@@ -945,8 +950,7 @@ namespace server
         char *timestr = ctime(&t), *trim = timestr + strlen(timestr);
         while(trim>timestr && iscubespace(*--trim)) *trim = '\0';
         formatstring(d.info)("%s: %s, %s, %.2f%s", timestr, modename(gamemode), smapname, len > 1024*1024 ? len/(1024*1024.f) : len/1024.0f, len > 1024*1024 ? "MB" : "kB");
-        defformatstring(msg)("demo \"%s\" recorded", d.info);
-        sendservmsg(msg);
+        sendservmsgf("demo \"%s\" recorded", d.info);
         d.data = new uchar[len];
         d.len = len;
         demotmp->seek(0, SEEK_SET);
@@ -1032,8 +1036,7 @@ namespace server
         {
             delete[] demos[n-1].data;
             demos.remove(n-1);
-            defformatstring(msg)("cleared demo %d", n);
-            sendservmsg(msg);
+            sendservmsgf("cleared demo %d", n);
         }
     }
 
@@ -1101,8 +1104,7 @@ namespace server
             return;
         }
 
-        formatstring(msg)("playing demo \"%s\"", file);
-        sendservmsg(msg);
+        sendservmsgf("playing demo \"%s\"", file);
 
         demomillis = 0;
         sendf(-1, 1, "ri3", N_DEMOPLAYBACK, 1, -1);
@@ -1884,11 +1886,7 @@ namespace server
                 }
             }
         }
-        if(hasnonlocalclients())
-        {
-            defformatstring(msg)("local player forced %s on map %s", modename(mode), map[0] ? map : "[new map]");
-            sendservmsg(msg);
-        }
+        if(hasnonlocalclients()) sendservmsgf("local player forced %s on map %s", modename(mode), map[0] ? map : "[new map]");
         changemap(map, mode);
     }
 
@@ -1909,16 +1907,12 @@ namespace server
         {
             if(demorecord) enddemorecord();
             if(!ci->local || hasnonlocalclients())
-            {
-                defformatstring(msg)("%s forced %s on map %s", ci->privilege && mastermode>=MM_VETO ? privname(ci->privilege) : "local player", modename(ci->modevote), ci->mapvote[0] ? ci->mapvote : "[new map]");
-                sendservmsg(msg);
-            }
+                sendservmsgf("%s forced %s on map %s", ci->privilege && mastermode>=MM_VETO ? privname(ci->privilege) : "local player", modename(ci->modevote), ci->mapvote[0] ? ci->mapvote : "[new map]");
             changemap(ci->mapvote, ci->modevote);
         }
         else
         {
-            defformatstring(msg)("%s suggests %s on map %s (select map to vote)", colorname(ci), modename(reqmode), map[0] ? map : "[new map]");
-            sendservmsg(msg);
+            sendservmsgf("%s suggests %s on map %s (select map to vote)", colorname(ci), modename(reqmode), map[0] ? map : "[new map]");
             checkvotes();
         }
     }
@@ -2504,8 +2498,7 @@ namespace server
         mapdata = opentempfile("mapdata", "w+b");
         if(!mapdata) { sendf(sender, 1, "ris", N_SERVMSG, "failed to open temporary file for map"); return; }
         mapdata->write(data, len);
-        defformatstring(msg)("[%s uploaded map to server, \"/getmap\" to receive it]", colorname(ci));
-        sendservmsg(msg);
+        sendservmsgf("[%s uploaded map to server, \"/getmap\" to receive it]", colorname(ci));
     }
 
     void sendclipboard(clientinfo *ci)
@@ -3018,8 +3011,7 @@ namespace server
                             loopv(clients) allowedips.add(getclientip(clients[i]->clientnum));
                         }
                         sendf(-1, 1, "rii", N_MASTERMODE, mastermode);
-                        //defformatstring(s)("mastermode is now %s (%d)", mastermodename(mastermode), mastermode);
-                        //sendservmsg(s);
+                        //sendservmsgf("mastermode is now %s (%d)", mastermodename(mastermode), mastermode);
                     }
                     else
                     {
@@ -3116,8 +3108,7 @@ namespace server
                     break;
                 }
                 demonextmatch = val!=0;
-                defformatstring(msg)("demo recording is %s for next match", demonextmatch ? "enabled" : "disabled");
-                sendservmsg(msg);
+                sendservmsgf("demo recording is %s for next match", demonextmatch ? "enabled" : "disabled");
                 break;
             }
 
