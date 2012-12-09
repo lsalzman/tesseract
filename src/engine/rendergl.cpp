@@ -187,6 +187,7 @@ VAR(ati_minmax_bug, 0, 0, 1);
 VAR(ati_cubemap_bug, 0, 0, 1);
 VAR(ati_ubo_bug, 0, 0, 1);
 VAR(intel_immediate_bug, 0, 0, 1);
+VAR(intel_vertexarray_bug, 0, 0, 1);
 VAR(sdl_backingstore_bug, -1, 0, 1);
 VAR(usetexrect, 1, 0, 0);
 VAR(useubo, 1, 0, 0);
@@ -455,6 +456,7 @@ void gl_checkextensions()
     {
 #ifdef WIN32
         intel_immediate_bug = 1;
+        intel_vertexarray_bug = 1;
         gdepthstencil = 0; // workaround for buggy stencil on windows ivy bridge driver
 #endif
         glineardepth = 1; // causes massive slowdown in windows driver (and sometimes in linux driver) if not using linear depth

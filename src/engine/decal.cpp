@@ -231,7 +231,6 @@ struct decalrenderer
     {
         if(startvert==endvert) return;
 
-        
         if(flags&DF_OVERBRIGHT) 
         {
             glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR); 
@@ -264,6 +263,9 @@ struct decalrenderer
             glDrawArrays(GL_TRIANGLES, 0, endvert);
         }
         xtravertsva += count;
+
+        extern int intel_vertexarray_bug;
+        if(intel_vertexarray_bug) glFlush();
     }
 
     decalinfo &newdecal()
