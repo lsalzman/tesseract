@@ -1199,7 +1199,7 @@ namespace game
                 }
                 else                    // new client
                 {
-                    conoutf("connected: %s", colorname(d, text));
+                    conoutf("\f0join:\f7 %s", colorname(d, text));
                     if(needclipboard >= 0) needclipboard++;
                 }
                 copystring(d->name, text, MAXNAMELEN+1);

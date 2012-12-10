@@ -149,7 +149,7 @@ namespace ai
         if(!d->name[0])
         {
             if(aidebug) conoutf("%s assigned to %s at skill %d", colorname(d, name), o ? colorname(o) : "?", sk);
-            else conoutf("connected: %s", colorname(d, name));
+            else conoutf("\f0join:\f7 %s", colorname(d, name));
             resetthisguy = true;
         }
         else
