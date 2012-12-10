@@ -2913,7 +2913,7 @@ void rendercsmshadowmaps()
     findshadowvas();
     findshadowmms();
 
-    shadowmaskbatchedmodels();
+    shadowmaskbatchedmodels(!smnodynshadow);
     batchshadowmapmodels();
 
     loopi(csmsplits) if(csm.splits[i].idx >= 0)
