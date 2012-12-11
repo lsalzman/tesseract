@@ -1946,9 +1946,10 @@ void gl_drawframe(int w, int h)
 
     defaultshader->set();
 
-    vieww = w;
-    viewh = h;
-    aspect = forceaspect ? forceaspect : w/float(h);
+    GLuint scalefbo = shouldscale();
+    if(scalefbo) { vieww = gw; viewh = gh; }
+    else { vieww = w; viewh = h; }
+    aspect = forceaspect ? forceaspect : vieww/float(viewh);
     fovy = 2*atan2(tan(curfov/2*RAD), aspect)/RAD;
     
     float fogmargin = 1 + WATER_AMPLITUDE + nearplane;
@@ -2058,16 +2059,17 @@ void gl_drawframe(int w, int h)
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
 
-    doaa(setuppostfx(w, h), processhdr);
+    doaa(setuppostfx(vieww, viewh, scalefbo), processhdr);
     if(fogoverlay && fogmat != MAT_AIR) drawfogoverlay(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
-    renderpostfx();
+    renderpostfx(scalefbo);
+    if(scalefbo) { vieww = w; viewh = h; doscale(vieww, viewh); }
 
     defaultshader->set();
     g3d_render();
 
     notextureshader->set();
 
-    gl_drawhud(w, h);
+    gl_drawhud(vieww, viewh);
 }
 
 void gl_drawmainmenu(int w, int h)

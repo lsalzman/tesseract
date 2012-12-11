@@ -2,6 +2,7 @@
 
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0;
+GLuint scalefbo = 0, scaletex = 0;
 GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[6] = { 0, 0, 0, 0, 0, 0 }, bloomtex[6] = { 0, 0, 0, 0, 0, 0 };
 int hdrclear = 0;
 GLuint infbo = 0, intex[2] = { 0, 0 }, indepth = 0, inw = -1, inh = -1;
@@ -304,10 +305,10 @@ void renderao()
 
 extern int inferprec, inferdepth;
 
-void setupinferred()
+void setupinferred(int w, int h)
 {
-    inw = (gw+1)/2;
-    inh = (gh+1)/2;
+    inw = (w+1)/2;
+    inh = (h+1)/2;
 
     loopi(2) if(!intex[i]) glGenTextures(1, &intex[i]);
     if(!infbo) glGenFramebuffers_(1, &infbo);
@@ -379,6 +380,54 @@ void viewinferred()
     notextureshader->set();
 }
 
+void cleanupscale()
+{
+    if(scalefbo) { glDeleteFramebuffers_(1, &scalefbo); scalefbo = 0; }
+    if(scaletex) { glDeleteTextures(1, &scaletex); scaletex = 0; }
+}
+
+void setupscale(int w, int h)
+{
+    if(!scaletex) glGenTextures(1, &scaletex);
+    if(!scalefbo) glGenFramebuffers_(1, &scalefbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, scalefbo);
+
+    createtexture(scaletex, w, h, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, scaletex, 0);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating scale buffer!");
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    useshaderbyname("scale");
+}
+
+GLuint shouldscale()
+{
+    return scalefbo;
+}
+     
+void doscale(int w, int h)
+{
+    if(!scaletex) return;
+
+    timer *scaletimer = begintimer("scaling");
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+    glViewport(0, 0, w, h);
+
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex);
+    
+    SETSHADER(scale);
+
+    screenquad(gw, gh);
+
+    endtimer(scaletimer);
+}
+   
 VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD, CHANGE_SHADERS));
 VAR(gdepthformat, 1, 0, 0);
 
@@ -403,10 +452,20 @@ void maskgbuffer(const char *mask)
 }
 
 extern int hdrprec;
+extern float gscale;
 
 void setupgbuffer(int w, int h)
 {
-    if(gw == w && gh == h) return;
+    if(gscale < 1)
+    {
+        w = max(int(ceil(w*gscale)), 1);
+        h = max(int(ceil(h*gscale)), 1);
+    }
+
+    if(gw == w && gh == h && (gscale < 1) == (scalefbo!=0)) return;
+
+    if(gscale < 1) setupscale(w, h);
+    else cleanupscale();
 
     gw = w;
     gh = h;
@@ -540,6 +599,7 @@ void cleanupgbuffer()
     if(refractfbo) { glDeleteFramebuffers_(1, &refractfbo); refractfbo = 0; }
     if(refracttex) { glDeleteTextures(1, &refracttex); refracttex = 0; }
     gw = gh = -1;
+    cleanupscale();
     cleardeferredlightshaders();
 }
 
@@ -560,6 +620,7 @@ VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVARFP(hdrgamma, 1e-3f, 2, 1e3f, initwarning("HDR setup", INIT_LOAD, CHANGE_SHADERS));
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
 FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
+FVARFP(gscale, 1e-3f, 1, 1, cleanupgbuffer());
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
@@ -3552,14 +3613,14 @@ void shadegbuffer()
 void setupframe(int w, int h)
 {
     setupgbuffer(w, h);
-    if(hdr && (bloomw < 0 || bloomh < 0)) setupbloom(w, h);
-    if(ao && (aow < 0 || aoh < 0)) setupao(w, h);
-    if(inferlights && !infbo) setupinferred();
+    if(hdr && (bloomw < 0 || bloomh < 0)) setupbloom(gw, gh);
+    if(ao && (aow < 0 || aoh < 0)) setupao(gw, gh);
+    if(inferlights && !infbo) setupinferred(gw, gh);
     if(!shadowatlasfbo) setupshadowatlas();
     if(sunlight && csmshadowmap && gi && giscale && gidist && !rhfbo) setupradiancehints();
     if(!deferredlightshader) loaddeferredlightshaders();
     if(minimapping && !deferredminimapshader) deferredminimapshader = loaddeferredlightshader("m");
-    setupaa(w, h);
+    setupaa(gw, gh);
     GLERROR;
 }
 

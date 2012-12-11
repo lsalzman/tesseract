@@ -254,8 +254,8 @@ extern void createtexture(int tnum, int w, int h, const void *pixels, int clamp,
 extern void create3dtexture(int tnum, int w, int h, int d, const void *pixels, int clamp, int filter, GLenum component = GL_RGB, GLenum target = GL_TEXTURE_3D_EXT);
 extern void blurtexture(int n, int bpp, int w, int h, uchar *dst, const uchar *src, int margin = 0);
 extern void blurnormals(int n, int w, int h, bvec *dst, const bvec *src, int margin = 0);
-extern GLuint setuppostfx(int w, int h);
-extern void renderpostfx();
+extern GLuint setuppostfx(int w, int h, GLuint outfbo = 0);
+extern void renderpostfx(GLuint outfbo = 0);
 extern void initenvmaps();
 extern void genenvmaps();
 extern ushort closestenvmap(const vec &o);
@@ -502,6 +502,8 @@ extern void loadhdrshaders(bool luma = false);
 extern void processhdr(GLuint outfbo = 0, bool luma = false);
 extern void readhdr(int w, int h, GLenum format, GLenum type, void *dst, GLenum target = 0, GLuint tex = 0);
 extern void setupframe(int w, int h);
+extern GLuint shouldscale();
+extern void doscale(int w, int h);
 extern bool debuglights();
 extern void cleanuplights();
 
