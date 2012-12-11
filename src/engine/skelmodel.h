@@ -1159,7 +1159,6 @@ struct skelmodel : animmodel
             loopv(skelcache)
             {
                 skelcacheentry &c = skelcache[i];
-                goto mismatch;
                 loopj(numanimparts) if(c.as[j]!=as[j]) goto mismatch;
                 if(c.pitch != pitch || c.partmask != partmask || c.ragdoll != rdata || (rdata && c.millis < rdata->lastmove)) goto mismatch;
                 match = true;
