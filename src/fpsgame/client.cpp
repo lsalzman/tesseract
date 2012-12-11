@@ -114,9 +114,9 @@ namespace game
     };
     vector<authkey *> authkeys;
 
-    authkey *findauthkey(const char *desc)
+    authkey *findauthkey(const char *desc = "")
     {
-        loopv(authkeys) if(!strcmp(authkeys[i]->desc, desc) && !strcmp(authkeys[i]->name, player1->name)) return authkeys[i];
+        loopv(authkeys) if(!strcmp(authkeys[i]->desc, desc) && !strcasecmp(authkeys[i]->name, player1->name)) return authkeys[i];
         loopv(authkeys) if(!strcmp(authkeys[i]->desc, desc)) return authkeys[i];
         return NULL;
     }
@@ -319,12 +319,26 @@ namespace game
     }
     COMMAND(clearbans, "");
 
-    void kick(const char *arg, const char *reason)
+    void kick(const char *victim, const char *reason)
     {
-        int i = parseplayer(arg);
-        if(i>=0 && i!=player1->clientnum) addmsg(N_KICK, "ris", i, reason);
+        int vn = parseplayer(victim);
+        if(vn>=0 && vn!=player1->clientnum) addmsg(N_KICK, "ris", vn, reason);
     }
     COMMAND(kick, "ss");
+
+    void authkick(const char *desc, const char *victim, const char *reason)
+    {
+        authkey *a = findauthkey(desc);
+        int vn = parseplayer(victim);
+        if(a && vn>=0 && vn!=player1->clientnum) 
+        {
+            a->lastauth = lastmillis;
+            addmsg(N_AUTHKICK, "rssis", a->desc, a->name, vn, reason);
+        }
+    }
+    ICOMMAND(authkick, "ss", (const char *victim, const char *reason), authkick("", victim, reason));
+    ICOMMAND(sauthkick, "ss", (const char *victim, const char *reason), if(servauth[0]) authkick(servauth, victim, reason));
+    ICOMMAND(dauthkick, "sss", (const char *desc, const char *victim, const char *reason), if(desc[0]) authkick(desc, victim, reason));
 
     vector<int> ignores;
 
@@ -396,6 +410,8 @@ namespace game
         return true;
     }
     ICOMMAND(auth, "s", (char *desc), tryauth(desc));
+    ICOMMAND(sauth, "", (), if(servauth[0]) tryauth(servauth));
+    ICOMMAND(dauth, "s", (char *desc), if(desc[0]) tryauth(desc));
 
     void togglespectator(int val, const char *who)
     {

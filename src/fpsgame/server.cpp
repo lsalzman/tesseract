@@ -232,8 +232,10 @@ namespace server
         uint authreq;
         string authname, authdesc;
         void *authchallenge;
+        int authkickvictim;
+        char *authkickreason;
 
-        clientinfo() : getdemo(NULL), getmap(NULL), clipboard(NULL), authchallenge(NULL) { reset(); }
+        clientinfo() : getdemo(NULL), getmap(NULL), clipboard(NULL), authchallenge(NULL), authkickreason(NULL) { reset(); }
         ~clientinfo() { events.deletecontents(); cleanclipboard(); cleanauth(); }
 
         void addevent(gameevent *e)
@@ -313,10 +315,17 @@ namespace server
             if(fullclean) lastclipboard = 0;
         }
 
-        void cleanauth()
+        void cleanauthkick()
+        {
+            authkickvictim = -1;
+            DELETEA(authkickreason);
+        }
+
+        void cleanauth(bool full = true)
         {
             authreq = 0;
             if(authchallenge) { freechallenge(authchallenge); authchallenge = NULL; }
+            if(full) cleanauthkick();
         }
 
         void reset()
@@ -390,7 +399,7 @@ namespace server
 
     void addban(uint ip, int expire)
     {
-        allowedips.remove(ip);
+        allowedips.removeobj(ip);
         ban b;
         b.time = totalmillis;
         b.expire = totalmillis + expire;
@@ -1233,9 +1242,9 @@ namespace server
 
     extern void connected(clientinfo *ci);
 
-    void setmaster(clientinfo *ci, bool val, const char *pass = "", const char *authname = NULL, const char *authdesc = NULL, int authpriv = PRIV_MASTER, bool force = false)
+    bool setmaster(clientinfo *ci, bool val, const char *pass = "", const char *authname = NULL, const char *authdesc = NULL, int authpriv = PRIV_MASTER, bool force = false, bool trial = false)
     {
-        if(authname && !val) return;
+        if(authname && !val) return false;
         const char *name = "";
         if(val)
         {
@@ -1243,32 +1252,34 @@ namespace server
             int wantpriv = ci->local || haspass ? PRIV_ADMIN : authpriv;
             if(ci->privilege)
             {
-                if(wantpriv <= ci->privilege) return;
+                if(wantpriv <= ci->privilege) return true;
             }
             else if(wantpriv <= PRIV_MASTER && !force)
             {
                 if(ci->state.state==CS_SPECTATOR) 
                 {
                     sendf(ci->clientnum, 1, "ris", N_SERVMSG, "Spectators may not claim master.");
-                    return;
+                    return false;
                 }
                 loopv(clients) if(ci!=clients[i] && clients[i]->privilege)
                 {
                     sendf(ci->clientnum, 1, "ris", N_SERVMSG, "Master is already claimed.");
-                    return;
+                    return false;
                 }
                 if(!authname && !(mastermask&MM_AUTOAPPROVE) && !ci->privilege && !ci->local)
                 {
                     sendf(ci->clientnum, 1, "ris", N_SERVMSG, "This server requires you to use the \"/auth\" command to claim master.");
-                    return;
+                    return false;
                 }
             }
+            if(trial) return true;
             ci->privilege = wantpriv;
             name = privname(ci->privilege);
         }
         else
         {
-            if(!ci->privilege) return;
+            if(!ci->privilege) return false;
+            if(trial) return true;
             name = privname(ci->privilege);
             revokemaster(ci);
         }
@@ -1282,7 +1293,7 @@ namespace server
         string msg;
         if(val && authname) 
         {
-            if(authdesc) formatstring(msg)("%s claimed %s as '\fs\f5%s\fr' [\fs\f0%s\fr]", colorname(ci), name, authname, authdesc);
+            if(authdesc && authdesc[0]) formatstring(msg)("%s claimed %s as '\fs\f5%s\fr' [\fs\f0%s\fr]", colorname(ci), name, authname, authdesc);
             else formatstring(msg)("%s claimed %s as '\fs\f5%s\fr'", colorname(ci), name, authname);
         } 
         else formatstring(msg)("%s %s %s", colorname(ci), val ? "claimed" : "relinquished", name);
@@ -1304,6 +1315,38 @@ namespace server
             loopv(clients) if(clients[i]->privilege >= (restrictpausegame ? PRIV_ADMIN : PRIV_MASTER) || clients[i]->local) admins++;
             if(!admins) pausegame(false);
         }
+        return true;
+    }
+
+    bool trykick(clientinfo *ci, int victim, const char *reason = NULL, const char *authname = NULL, const char *authdesc = NULL, int authpriv = PRIV_NONE, bool trial = false)
+    {
+        int priv = ci->privilege;
+        if(authname)
+        {
+            if(priv >= authpriv || ci->local) authname = authdesc = NULL;
+            else priv = authpriv;
+        }
+        if((priv || ci->local) && ci->clientnum!=victim)
+        {
+            clientinfo *vinfo = (clientinfo *)getclientinfo(victim);
+            if(vinfo && (priv >= vinfo->privilege || ci->local) && vinfo->privilege < PRIV_ADMIN && !vinfo->local)
+            {
+                if(trial) return true;
+                string kicker;
+                if(authname)
+                {
+                    if(authdesc && authdesc[0]) formatstring(kicker)("%s as '\fs\f5%s\fr' [\fs\f0%s\fr]", colorname(ci), authname, authdesc);
+                    else formatstring(kicker)("%s as '\fs\f5%s\fr'", colorname(ci), authname);
+                }
+                else copystring(kicker, colorname(ci));
+                if(reason && reason[0]) sendservmsgf("%s kicked %s because: %s", kicker, colorname(vinfo), reason);
+                else sendservmsgf("%s kicked %s", kicker, colorname(vinfo));
+                uint ip = getclientip(victim);
+                addban(ip, 4*60*60000);
+                kickclients(ip, ci);
+            }
+        }
+        return false;
     }
 
     savedscore *findscore(clientinfo *ci, bool insert)
@@ -2294,6 +2337,7 @@ namespace server
     void clientdisconnect(int n)
     {
         clientinfo *ci = getinfo(n);
+        loopv(clients) if(clients[i]->authkickvictim == ci->clientnum) clients[i]->cleanauth(); 
         if(ci->connected)
         {
             if(ci->privilege) setmaster(ci, false);
@@ -2396,9 +2440,15 @@ namespace server
     {
         clientinfo *ci = findauth(id);
         if(!ci) return;
-        ci->cleanauth();
+        ci->cleanauth(ci->connectauth!=0);
         if(ci->connectauth) connected(ci);
-        setmaster(ci, true, "", ci->authname, NULL, PRIV_AUTH);
+        if(ci->authkickvictim >= 0)
+        {
+            if(setmaster(ci, true, "", ci->authname, NULL, PRIV_AUTH, false, true))
+                trykick(ci, ci->authkickvictim, ci->authkickreason, ci->authname, NULL, PRIV_AUTH);    
+            ci->cleanauthkick();
+        }
+        else setmaster(ci, true, "", ci->authname, NULL, PRIV_AUTH);
     }
 
     void authchallenged(uint id, const char *val, const char *desc = "")
@@ -2459,7 +2509,12 @@ namespace server
                 if(u) 
                 {
                     if(ci->connectauth) connected(ci);
-                    setmaster(ci, true, "", ci->authname, ci->authdesc, u->privilege);
+                    if(ci->authkickvictim >= 0)
+                    {
+                        if(setmaster(ci, true, "", ci->authname, ci->authdesc, u->privilege, false, true))
+                            trykick(ci, ci->authkickvictim, ci->authkickreason, ci->authname, ci->authdesc, u->privilege);
+                    }
+                    else setmaster(ci, true, "", ci->authname, ci->authdesc, u->privilege);
                 }
             }
             ci->cleanauth(); 
@@ -3037,18 +3092,7 @@ namespace server
                 int victim = getint(p);
                 getstring(text, p);
                 filtertext(text, text);
-                if((ci->privilege || ci->local) && ci->clientnum!=victim)
-                {
-                    clientinfo *vinfo = (clientinfo *)getclientinfo(victim);
-                    if(vinfo && ci->privilege >= vinfo->privilege && vinfo->privilege < PRIV_ADMIN && !vinfo->local)
-                    { 
-                        if(text[0]) sendservmsgf("%s kicked %s: %s", colorname(ci), colorname(vinfo), text);
-                        else sendservmsgf("%s kicked %s", colorname(ci), colorname(vinfo));
-                        uint ip = getclientip(victim);
-                        addban(ip, 4*60*60000);
-                        kickclients(ip, ci);
-                    }
-                }
+                trykick(ci, victim, text);
                 break;
             }
 
@@ -3219,6 +3263,28 @@ namespace server
                 getstring(desc, p, sizeof(desc));
                 getstring(name, p, sizeof(name));
                 tryauth(ci, name, desc);
+                break;
+            }
+
+            case N_AUTHKICK:
+            {
+                string desc, name;
+                getstring(desc, p, sizeof(desc));
+                getstring(name, p, sizeof(name));
+                int victim = getint(p);
+                getstring(text, p);
+                filtertext(text, text);
+                int authpriv = PRIV_AUTH;
+                if(desc[0])
+                {
+                    userinfo *u = users.access(userkey(name, desc));
+                    if(u) authpriv = u->privilege; else break;
+                }
+                if(trykick(ci, victim, text, name, desc, authpriv, true) && tryauth(ci, name, desc))
+                {
+                    ci->authkickvictim = victim;
+                    ci->authkickreason = newstring(text);
+                } 
                 break;
             }
 
