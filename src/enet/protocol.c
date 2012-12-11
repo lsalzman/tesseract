@@ -210,6 +210,9 @@ enet_protocol_remove_sent_reliable_command (ENetPeer * peer, enet_uint16 reliabl
        wasSent = 0;
     }
 
+    if (outgoingCommand == NULL)
+      return ENET_PROTOCOL_COMMAND_NONE;
+
     if (channelID < peer -> channelCount)
     {
        ENetChannel * channel = & peer -> channels [channelID];
@@ -382,7 +385,7 @@ enet_protocol_handle_connect (ENetHost * host, ENetProtocolHeader * header, ENet
     verifyCommand.verifyConnect.outgoingPeerID = ENET_HOST_TO_NET_16 (currentPeer -> incomingPeerID);
     verifyCommand.verifyConnect.incomingSessionID = incomingSessionID;
     verifyCommand.verifyConnect.outgoingSessionID = outgoingSessionID;
-    verifyCommand.verifyConnect.mtu = ENET_HOST_TO_NET_16 (currentPeer -> mtu);
+    verifyCommand.verifyConnect.mtu = ENET_HOST_TO_NET_32 (currentPeer -> mtu);
     verifyCommand.verifyConnect.windowSize = ENET_HOST_TO_NET_32 (windowSize);
     verifyCommand.verifyConnect.channelCount = ENET_HOST_TO_NET_32 (channelCount);
     verifyCommand.verifyConnect.incomingBandwidth = ENET_HOST_TO_NET_32 (host -> incomingBandwidth);
@@ -1191,7 +1194,25 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
       
        host -> totalReceivedData += receivedLength;
        host -> totalReceivedPackets ++;
- 
+
+       if (host -> intercept != NULL)
+       {
+          switch (host -> intercept (host, event))
+          {
+          case 1:
+             if (event != NULL && event -> type != ENET_EVENT_TYPE_NONE)
+               return 1;
+
+             continue;
+          
+          case -1:
+             return -1;
+        
+          default:
+             break;
+          }
+       }
+        
        switch (enet_protocol_handle_incoming_commands (host, event))
        {
        case 1:

@@ -31,6 +31,10 @@ extern "C"
 
 typedef enet_uint32 ENetVersion;
 
+struct _ENetHost;
+struct _ENetEvent;
+struct _ENetPacket;
+
 typedef enum _ENetSocketType
 {
    ENET_SOCKET_TYPE_STREAM   = 1,
@@ -54,6 +58,13 @@ typedef enum _ENetSocketOption
    ENET_SOCKOPT_RCVTIMEO  = 6,
    ENET_SOCKOPT_SNDTIMEO  = 7
 } ENetSocketOption;
+
+typedef enum _ENetSocketShutdown
+{
+    ENET_SOCKET_SHUTDOWN_READ       = 0,
+    ENET_SOCKET_SHUTDOWN_WRITE      = 1,
+    ENET_SOCKET_SHUTDOWN_READ_WRITE = 2
+} ENetSocketShutdown;
 
 enum
 {
@@ -104,7 +115,6 @@ typedef enum _ENetPacketFlag
    ENET_PACKET_FLAG_UNRELIABLE_FRAGMENT = (1 << 3)
 } ENetPacketFlag;
 
-struct _ENetPacket;
 typedef void (ENET_CALLBACK * ENetPacketFreeCallback) (struct _ENetPacket *);
 
 /**
@@ -312,6 +322,9 @@ typedef struct _ENetCompressor
 
 /** Callback that computes the checksum of the data held in buffers[0:bufferCount-1] */
 typedef enet_uint32 (ENET_CALLBACK * ENetChecksumCallback) (const ENetBuffer * buffers, size_t bufferCount);
+
+/** Callback for intercepting received raw UDP packets. Should return 1 to intercept, 0 to ignore, or -1 to propagate an error. */
+typedef int (ENET_CALLBACK * ENetInterceptCallback) (struct _ENetHost * host, struct _ENetEvent * event);
  
 /** An ENet host for communicating with peers.
   *
@@ -361,6 +374,7 @@ typedef struct _ENetHost
    enet_uint32          totalSentPackets;            /**< total UDP packets sent, user should reset to 0 as needed to prevent overflow */
    enet_uint32          totalReceivedData;           /**< total data received, user should reset to 0 as needed to prevent overflow */
    enet_uint32          totalReceivedPackets;        /**< total UDP packets received, user should reset to 0 as needed to prevent overflow */
+   ENetInterceptCallback intercept;                  /**< callback the user can set to intercept received raw UDP packets */
 } ENetHost;
 
 /**
@@ -460,6 +474,7 @@ ENET_API int        enet_socket_send (ENetSocket, const ENetAddress *, const ENe
 ENET_API int        enet_socket_receive (ENetSocket, ENetAddress *, ENetBuffer *, size_t);
 ENET_API int        enet_socket_wait (ENetSocket, enet_uint32 *, enet_uint32);
 ENET_API int        enet_socket_set_option (ENetSocket, ENetSocketOption, int);
+ENET_API int        enet_socket_shutdown (ENetSocket, ENetSocketShutdown);
 ENET_API void       enet_socket_destroy (ENetSocket);
 ENET_API int        enet_socketset_select (ENetSocket, ENetSocketSet *, ENetSocketSet *, enet_uint32);
 
