@@ -3035,11 +3035,15 @@ namespace server
             case N_KICK:
             {
                 int victim = getint(p);
+                getstring(text, p);
+                filtertext(text, text);
                 if((ci->privilege || ci->local) && ci->clientnum!=victim)
                 {
                     clientinfo *vinfo = (clientinfo *)getclientinfo(victim);
                     if(vinfo && ci->privilege >= vinfo->privilege && vinfo->privilege < PRIV_ADMIN && !vinfo->local)
                     { 
+                        if(text[0]) sendservmsgf("%s kicked %s: %s", colorname(ci), colorname(vinfo), text);
+                        else sendservmsgf("%s kicked %s", colorname(ci), colorname(vinfo));
                         uint ip = getclientip(victim);
                         addban(ip, 4*60*60000);
                         kickclients(ip, ci);

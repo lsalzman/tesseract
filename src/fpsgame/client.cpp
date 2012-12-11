@@ -319,12 +319,12 @@ namespace game
     }
     COMMAND(clearbans, "");
 
-    void kick(const char *arg)
+    void kick(const char *arg, const char *reason)
     {
         int i = parseplayer(arg);
-        if(i>=0 && i!=player1->clientnum) addmsg(N_KICK, "ri", i);
+        if(i>=0 && i!=player1->clientnum) addmsg(N_KICK, "ris", i, reason);
     }
-    COMMAND(kick, "s");
+    COMMAND(kick, "ss");
 
     vector<int> ignores;
 
