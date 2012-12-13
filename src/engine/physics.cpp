@@ -1761,7 +1761,7 @@ bool moveplayer(physent *pl, int moveres, bool local, int curtime)
     // apply any player generated changes in velocity
     modifyvelocity(pl, local, water, floating, curtime);
 
-    vec d(pl->vel), oldpos(pl->o);
+    vec d(pl->vel);
     if(!floating && water) d.mul(0.5f);
     d.add(pl->falling);
     d.mul(secs);
