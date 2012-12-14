@@ -3,7 +3,6 @@
 
 namespace game
 {
-    static const int MONSTERDAMAGEFACTOR = 4;
     static const int OFFSETMILLIS = 500;
     vec sg[SGRAYS];
 
@@ -333,21 +332,14 @@ namespace game
             lasthit = lastmillis;
         }
 
-        if(d->type==ENT_INANIMATE)
-        {
-            hitmovable(damage, (movable *)d, at, vel, gun);
-            return;
-        }
-
         fpsent *f = (fpsent *)d;
 
         f->lastpain = lastmillis;
         if(at->type==ENT_PLAYER && !isteam(at->team, f->team)) at->totaldamage += damage;
 
-        if(f->type==ENT_AI || !m_mp(gamemode) || f==at) f->hitpush(damage, vel, at, gun);
+        if(!m_mp(gamemode) || f==at) f->hitpush(damage, vel, at, gun);
 
-        if(f->type==ENT_AI) hitmonster(damage, (monster *)f, at, vel, gun);
-        else if(!m_mp(gamemode)) damaged(damage, f, at);
+        if(!m_mp(gamemode)) damaged(damage, f, at);
         else
         {
             hitmsg &h = hits.add();
@@ -499,7 +491,6 @@ namespace game
             projectile &p = projs[i];
             p.offsetmillis = max(p.offsetmillis-time, 0);
             int qdam = guns[p.gun].damage*(p.owner->quadmillis ? 4 : 1);
-            if(p.owner->type==ENT_AI) qdam /= MONSTERDAMAGEFACTOR;
             vec v;
             float dist = p.to.dist(p.o, v);
             float dtime = dist*1000/p.speed;
@@ -604,7 +595,6 @@ namespace game
             case GUN_ICEBALL:
             case GUN_SLIMEBALL:
                 pspeed = guns[gun].projspeed*4;
-                if(d->type==ENT_AI) pspeed /= 2;
                 newprojectile(from, to, (float)pspeed, local, id, d, gun);
                 break;
 
@@ -649,7 +639,7 @@ namespace game
 
     void particletrack(physent *owner, vec &o, vec &d)
     {
-        if(owner->type!=ENT_PLAYER && owner->type!=ENT_AI) return;
+        if(owner->type!=ENT_PLAYER) return;
         fpsent *pl = (fpsent *)owner;
         if(pl->muzzle.x < 0 || pl->lastattackgun != pl->gunselect) return;
         float dist = o.dist(d);
@@ -665,7 +655,7 @@ namespace game
 
     void dynlighttrack(physent *owner, vec &o, vec &hud)
     {
-        if(owner->type!=ENT_PLAYER && owner->type!=ENT_AI) return;
+        if(owner->type!=ENT_PLAYER) return;
         fpsent *pl = (fpsent *)owner;
         if(pl->muzzle.x < 0 || pl->lastattackgun != pl->gunselect) return;
         o = pl->muzzle;
@@ -710,7 +700,6 @@ namespace game
     {
         int qdam = guns[d->gunselect].damage;
         if(d->quadmillis) qdam *= 4;
-        if(d->type==ENT_AI) qdam /= MONSTERDAMAGEFACTOR;
         dynent *o;
         float dist;
         if(d->gunselect==GUN_SG)

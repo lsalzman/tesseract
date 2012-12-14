@@ -70,8 +70,6 @@
 		D1D040DA0F830C350043BA95 /* movie.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D040D90F830C350043BA95 /* movie.cpp */; };
 		D1D07EFE0F645590007098A8 /* client.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EF60F645590007098A8 /* client.cpp */; };
 		D1D07EFF0F645590007098A8 /* entities.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EF70F645590007098A8 /* entities.cpp */; };
-		D1D07F000F645590007098A8 /* monster.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EF80F645590007098A8 /* monster.cpp */; };
-		D1D07F010F645590007098A8 /* movable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EF90F645590007098A8 /* movable.cpp */; };
 		D1D07F020F645590007098A8 /* render.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EFA0F645590007098A8 /* render.cpp */; };
 		D1D07F030F645590007098A8 /* scoreboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EFB0F645590007098A8 /* scoreboard.cpp */; };
 		D1D07F040F645590007098A8 /* server.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1D07EFC0F645590007098A8 /* server.cpp */; };
@@ -209,8 +207,6 @@
 		D1D040D90F830C350043BA95 /* movie.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = movie.cpp; sourceTree = "<group>"; };
 		D1D07EF60F645590007098A8 /* client.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = client.cpp; sourceTree = "<group>"; };
 		D1D07EF70F645590007098A8 /* entities.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = entities.cpp; sourceTree = "<group>"; };
-		D1D07EF80F645590007098A8 /* monster.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = monster.cpp; sourceTree = "<group>"; };
-		D1D07EF90F645590007098A8 /* movable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = movable.cpp; sourceTree = "<group>"; };
 		D1D07EFA0F645590007098A8 /* render.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = render.cpp; sourceTree = "<group>"; };
 		D1D07EFB0F645590007098A8 /* scoreboard.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = scoreboard.cpp; sourceTree = "<group>"; };
 		D1D07EFC0F645590007098A8 /* server.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = server.cpp; sourceTree = "<group>"; };
@@ -415,8 +411,6 @@
 				D11B024A0F830BA400334D69 /* ai.cpp */,
 				D1D07EF60F645590007098A8 /* client.cpp */,
 				D1D07EF70F645590007098A8 /* entities.cpp */,
-				D1D07EF80F645590007098A8 /* monster.cpp */,
-				D1D07EF90F645590007098A8 /* movable.cpp */,
 				D1D07EFA0F645590007098A8 /* render.cpp */,
 				D1D07EFB0F645590007098A8 /* scoreboard.cpp */,
 				D1D07EFC0F645590007098A8 /* server.cpp */,
@@ -589,8 +583,6 @@
 				D16E4E140ED107C300C401A2 /* blend.cpp in Sources */,
 				D1D07EFE0F645590007098A8 /* client.cpp in Sources */,
 				D1D07EFF0F645590007098A8 /* entities.cpp in Sources */,
-				D1D07F000F645590007098A8 /* monster.cpp in Sources */,
-				D1D07F010F645590007098A8 /* movable.cpp in Sources */,
 				D1D07F020F645590007098A8 /* render.cpp in Sources */,
 				D1D07F030F645590007098A8 /* scoreboard.cpp in Sources */,
 				D1D07F040F645590007098A8 /* server.cpp in Sources */,

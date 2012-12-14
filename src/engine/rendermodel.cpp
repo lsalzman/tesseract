@@ -1016,7 +1016,7 @@ void renderclient(dynent *d, const char *mdlname, modelattach *attachments, int 
             anim = ANIM_PAIN;
             basetime = lastpain;
         }
-        else if(lastpain < lastaction && (attack < 0 || (d->type != ENT_AI && lastmillis-lastaction < attackdelay)))
+        else if(lastpain < lastaction && (attack < 0 || lastmillis-lastaction < attackdelay))
         { 
             anim = attack < 0 ? -attack : attack; 
             basetime = lastaction; 
@@ -1049,7 +1049,7 @@ void setbbfrommodel(dynent *d, const char *mdl)
     if(!m) return;
     vec center, radius;
     m->collisionbox(center, radius);
-    if(d->type==ENT_INANIMATE && !m->ellipsecollide)
+    if(!m->ellipsecollide)
     {
         d->collidetype = COLLIDE_OBB;
         //d->collidetype = COLLIDE_AABB;

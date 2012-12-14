@@ -176,8 +176,6 @@
 			<Option compile="1" />
 			<Option weight="0" />
 		</Unit>
-		<Unit filename="..\fpsgame\monster.cpp" />
-		<Unit filename="..\fpsgame\movable.cpp" />
 		<Unit filename="..\fpsgame\render.cpp" />
 		<Unit filename="..\fpsgame\scoreboard.cpp" />
 		<Unit filename="..\fpsgame\server.cpp" />

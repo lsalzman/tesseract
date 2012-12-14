@@ -70,12 +70,6 @@ namespace game
 
     void resetgamestate()
     {
-        if(m_classicsp)
-        {
-            clearmovables();
-            clearmonsters();                 // all monsters back at their spawns for editing
-            entities::resettriggers();
-        }
         clearprojectiles();
         clearbouncers();
     }
@@ -220,22 +214,6 @@ namespace game
         }
     }
 
-    VARFP(slowmosp, 0, 0, 1,
-    {
-        if(m_sp && !slowmosp) setvar("gamespeed", 100);
-    });
-
-    void checkslowmo()
-    {
-        static int lastslowmohealth = 0;
-        setvar("gamespeed", intermission ? 100 : clamp(player1->health, 25, 200), true, false);
-        if(player1->health<player1->maxhealth && lastmillis-max(maptime, lastslowmohealth)>player1->health*player1->health/2)
-        {
-            lastslowmohealth = lastmillis;
-            player1->health++;
-        }
-    }
-
     void updateworld()        // main game update loop
     {
         if(!maptime) { maptime = lastmillis; maprealtime = totalmillis; return; }
@@ -252,8 +230,6 @@ namespace game
         ai::update();
         moveragdolls();
         gets2c();
-        updatemovables(curtime);
-        updatemonsters(curtime);
         if(player1->state == CS_DEAD)
         {
             if(player1->ragdoll) moveragdoll(player1);
@@ -269,12 +245,7 @@ namespace game
             moveplayer(player1, 10, true);
             swayhudgun(curtime);
             entities::checkitems(player1);
-            if(m_sp)
-            {
-                if(slowmosp) checkslowmo();
-                if(m_classicsp) entities::checktriggers();
-            }
-            else if(cmode) cmode->checkitems(player1);
+            if(cmode) cmode->checkitems(player1);
         }
         if(player1->clientnum>=0) c2sinfo();   // do this last, to reduce the effective frame lag
     }
@@ -307,13 +278,7 @@ namespace game
                 return;
             }
             if(lastmillis < player1->lastpain + spawnwait) return;
-            if(m_dmsp) { changemap(clientmap, gamemode); return; }    // if we die in SP we try the same map again
             respawnself();
-            if(m_classicsp)
-            {
-                conoutf(CON_GAMEINFO, "\f2You wasted another life! The monsters stole your armour and some ammo...");
-                loopi(NUMGUNS) if(i!=GUN_PISTOL && (player1->ammo[i] = savedammo[i]) > 5) player1->ammo[i] = max(player1->ammo[i]/3, 5);
-            }
         }
     }
 
@@ -360,8 +325,6 @@ namespace game
         damageeffect(damage, d, d!=h);
 
 		ai::damaged(d, actor);
-
-        if(m_sp && slowmosp && d==player1 && d->health < 1) d->health = 1;
 
         if(d->health<=0) { if(local) killed(d, actor); }
         else if(d==h) playsound(S_PAIN6);
@@ -412,9 +375,7 @@ namespace game
         string dname, aname;
         copystring(dname, d==player1 ? "you" : colorname(d));
         copystring(aname, actor==player1 ? "you" : colorname(actor));
-        if(actor->type==ENT_AI)
-            conoutf(contype, "\f2%s got killed by %s!", dname, aname);
-        else if(d==actor || actor->type==ENT_INANIMATE)
+        if(d==actor)
             conoutf(contype, "\f2%s suicided%s", dname, d==player1 ? "!" : "");
         else if(isteam(d->team, actor->team))
         {
@@ -450,7 +411,6 @@ namespace game
             else conoutf(CON_GAMEINFO, "\f2player frags: %d, deaths: %d", player1->frags, player1->deaths);
             int accuracy = (player1->totaldamage*100)/max(player1->totalshots, 1);
             conoutf(CON_GAMEINFO, "\f2player total damage dealt: %d, damage wasted: %d, accuracy(%%): %d", player1->totaldamage, player1->totalshots-player1->totaldamage, accuracy);
-            if(m_sp) spsummary(accuracy);
 
             showscores(true);
             disablezoom();
@@ -531,9 +491,6 @@ namespace game
 
     void startgame()
     {
-        clearmovables();
-        clearmonsters();
-
         clearprojectiles();
         clearbouncers();
         clearragdolls();
@@ -565,17 +522,8 @@ namespace game
 
         conoutf(CON_GAMEINFO, "\f2game mode is %s", server::modename(gamemode));
 
-        if(m_sp)
-        {
-            defformatstring(scorename)("bestscore_%s", getclientmap());
-            const char *best = getalias(scorename);
-            if(*best) conoutf(CON_GAMEINFO, "\f2try to beat your best score so far: %s", best);
-        }
-        else
-        {
-            const char *info = m_valid(gamemode) ? gamemodes[gamemode - STARTGAMEMODE].info : NULL;
-            if(showmodeinfo && info) conoutf(CON_GAMEINFO, "\f0%s", info);
-        }
+        const char *info = m_valid(gamemode) ? gamemodes[gamemode - STARTGAMEMODE].info : NULL;
+        if(showmodeinfo && info) conoutf(CON_GAMEINFO, "\f0%s", info);
 
         if(player1->playermodel != playermodel) switchplayermodel(playermodel);
 
@@ -607,7 +555,6 @@ namespace game
 
     void physicstrigger(physent *d, bool local, int floorlevel, int waterlevel, int material)
     {
-        if(d->type==ENT_INANIMATE) return;
         if     (waterlevel>0) { if(material!=MAT_LAVA) playsound(S_SPLASH1, d==player1 ? NULL : &d->o); }
         else if(waterlevel<0) playsound(material==MAT_LAVA ? S_BURN : S_SPLASH2, d==player1 ? NULL : &d->o);
         if     (floorlevel>0) { if(d==player1 || d->type!=ENT_PLAYER || ((fpsent *)d)->ai) msgsound(S_JUMP, d); }
@@ -616,11 +563,6 @@ namespace game
 
     void dynentcollide(physent *d, physent *o, const vec &dir)
     {
-        switch(d->type)
-        {
-            case ENT_AI: if(dir.z > 0) stackmonster((monster *)d, o); break;
-            case ENT_INANIMATE: if(dir.z > 0) stackmovable((movable *)d, o); break;
-        }
     }
 
     void msgsound(int n, physent *d)
@@ -638,15 +580,11 @@ namespace game
         }
     }
 
-    int numdynents() { return players.length()+monsters.length()+movables.length(); }
+    int numdynents() { return players.length(); }
 
     dynent *iterdynents(int i)
     {
         if(i<players.length()) return players[i];
-        i -= players.length();
-        if(i<monsters.length()) return (dynent *)monsters[i];
-        i -= monsters.length();
-        if(i<movables.length()) return (dynent *)movables[i];
         return NULL;
     }
 
@@ -681,8 +619,6 @@ namespace game
                 pl->suicided = pl->lifesequence;
             }
         }
-        else if(d->type==ENT_AI) suicidemonster((monster *)d);
-        else if(d->type==ENT_INANIMATE) suicidemovable((movable *)d);
     }
     ICOMMAND(kill, "", (), suicide(player1));
 

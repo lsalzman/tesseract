@@ -60,9 +60,6 @@ enum
 
 struct fpsentity : extentity
 {
-    int triggerstate, lasttrigger;
-    
-    fpsentity() : triggerstate(TRIGGER_RESET), lasttrigger(0) {} 
 };
 
 enum { GUN_FIST = 0, GUN_SG, GUN_CG, GUN_RL, GUN_RIFLE, GUN_GL, GUN_PISTOL, GUN_FIREBALL, GUN_ICEBALL, GUN_SLIMEBALL, GUN_BITE, GUN_BARREL, NUMGUNS };
@@ -157,10 +154,6 @@ static struct gamemodeinfo
 #define m_timed        (m_checknot(gamemode, M_DEMO|M_EDIT|M_LOCAL))
 #define m_botmode      (m_checknot(gamemode, M_DEMO|M_LOCAL))
 #define m_mp(mode)     (m_checknot(mode, M_LOCAL))
-
-#define m_sp           (m_check(gamemode, M_DMSP | M_CLASSICSP))
-#define m_dmsp         (m_check(gamemode, M_DMSP))
-#define m_classicsp    (m_check(gamemode, M_CLASSICSP))
 
 enum { MM_AUTH = -1, MM_OPEN = 0, MM_VETO, MM_LOCKED, MM_PRIVATE, MM_PASSWORD, MM_START = MM_AUTH };
 
@@ -491,7 +484,7 @@ struct fpsstate
         }
         else
         {
-            ammo[GUN_PISTOL] = m_sp ? 80 : 40;
+            ammo[GUN_PISTOL] = 40;
             ammo[GUN_GL] = 1;
         }
     }
@@ -555,7 +548,7 @@ struct fpsent : dynent, fpsstate
     {
         vec push(dir);
         push.mul(80*damage/weight);
-        if(gun==GUN_RL || gun==GUN_GL) push.mul(actor==this ? 5 : (type==ENT_AI ? 3 : 2));
+        if(gun==GUN_RL || gun==GUN_GL) push.mul(actor==this ? 5 : 2);
         vel.add(push);
     }
 
@@ -616,8 +609,6 @@ namespace entities
 
     extern void preloadentities();
     extern void renderentities();
-    extern void resettriggers();
-    extern void checktriggers();
     extern void checkitems(fpsent *d);
     extern void checkquad(int time, fpsent *d);
     extern void resetspawns();
@@ -713,32 +704,6 @@ namespace game
     extern void changemap(const char *name, int mode);
     extern void c2sinfo(bool force = false);
     extern void sendposition(fpsent *d, bool reliable = false);
-
-    // monster
-    struct monster;
-    extern vector<monster *> monsters;
-
-    extern void clearmonsters();
-    extern void preloadmonsters();
-    extern void stackmonster(monster *d, physent *o);
-    extern void updatemonsters(int curtime);
-    extern void rendermonsters();
-    extern void suicidemonster(monster *m);
-    extern void hitmonster(int damage, monster *m, fpsent *at, const vec &vel, int gun);
-    extern void monsterkilled();
-    extern void endsp(bool allkilled);
-    extern void spsummary(int accuracy);
-
-    // movable
-    struct movable;
-    extern vector<movable *> movables;
-
-    extern void clearmovables();
-    extern void stackmovable(movable *d, physent *o);
-    extern void updatemovables(int curtime);
-    extern void rendermovables();
-    extern void suicidemovable(movable *m);
-    extern void hitmovable(int damage, movable *m, fpsent *at, const vec &vel, int gun);
 
     // weapon
     extern int getweapon(const char *name);

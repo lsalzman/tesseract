@@ -88,8 +88,6 @@ CLIENT_OBJS= \
 	fpsgame/client.o \
 	fpsgame/entities.o \
 	fpsgame/fps.o \
-	fpsgame/monster.o \
-	fpsgame/movable.o \
 	fpsgame/render.o \
 	fpsgame/scoreboard.o \
 	fpsgame/server.o \
@@ -401,12 +399,6 @@ fpsgame/entities.o: shared/igame.h fpsgame/ai.h
 fpsgame/fps.o: fpsgame/game.h shared/cube.h shared/tools.h shared/geom.h
 fpsgame/fps.o: shared/ents.h shared/command.h shared/iengine.h shared/igame.h
 fpsgame/fps.o: fpsgame/ai.h
-fpsgame/monster.o: fpsgame/game.h shared/cube.h shared/tools.h shared/geom.h
-fpsgame/monster.o: shared/ents.h shared/command.h shared/iengine.h
-fpsgame/monster.o: shared/igame.h fpsgame/ai.h
-fpsgame/movable.o: fpsgame/game.h shared/cube.h shared/tools.h shared/geom.h
-fpsgame/movable.o: shared/ents.h shared/command.h shared/iengine.h
-fpsgame/movable.o: shared/igame.h fpsgame/ai.h
 fpsgame/render.o: fpsgame/game.h shared/cube.h shared/tools.h shared/geom.h
 fpsgame/render.o: shared/ents.h shared/command.h shared/iengine.h
 fpsgame/render.o: shared/igame.h fpsgame/ai.h

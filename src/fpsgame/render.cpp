@@ -220,8 +220,6 @@ namespace game
             renderplayer(d, getplayermodelinfo(d), team, fade);
         } 
         if(isthirdperson() && !followingplayer() && (player1->state!=CS_DEAD || !hidedead)) renderplayer(player1, getplayermodelinfo(player1), teamskins || m_teammode ? 1 : 0, 1);
-        rendermonsters();
-        rendermovables();
         entities::renderentities();
         renderbouncers();
         renderprojectiles();
@@ -348,13 +346,10 @@ namespace game
             vec front, right;
             vecfromyawpitch(d->yaw, d->pitch, 1, 0, front);
             offset.add(front.mul(d->radius));
-            if(d->type!=ENT_AI)
-            {
-                offset.z += (d->aboveeye + d->eyeheight)*0.75f - d->eyeheight;
-                vecfromyawpitch(d->yaw, 0, 0, -1, right);
-                offset.add(right.mul(0.5f*d->radius));
-                offset.add(front);
-            }
+            offset.z += (d->aboveeye + d->eyeheight)*0.75f - d->eyeheight;
+            vecfromyawpitch(d->yaw, 0, 0, -1, right);
+            offset.add(right.mul(0.5f*d->radius));
+            offset.add(front);
             return offset;
         }
         offset.add(vec(to).sub(from).normalize().mul(2));
@@ -396,7 +391,6 @@ namespace game
         preloadbouncers();
         preloadplayermodel();
         entities::preloadentities();
-        if(m_sp) preloadmonsters();
     }
 
 }

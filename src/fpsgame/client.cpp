@@ -483,9 +483,6 @@ namespace game
     ICOMMANDS("m_demo", "i", (int *mode), { int gamemode = *mode; intret(m_demo); });
     ICOMMANDS("m_edit", "i", (int *mode), { int gamemode = *mode; intret(m_edit); });
     ICOMMANDS("m_lobby", "i", (int *mode), { int gamemode = *mode; intret(m_lobby); });
-    ICOMMANDS("m_sp", "i", (int *mode), { int gamemode = *mode; intret(m_sp); });
-    ICOMMANDS("m_dmsp", "i", (int *mode), { int gamemode = *mode; intret(m_dmsp); });
-    ICOMMANDS("m_classicsp", "i", (int *mode), { int gamemode = *mode; intret(m_classicsp); });
 
     void changemap(const char *name, int mode) // request map change, server may ignore
     {
