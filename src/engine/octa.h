@@ -200,15 +200,11 @@ struct cube
     };
     ushort texture[6];       // one for each face. same order as orient.
     ushort material;         // empty-space material
-    union 
-    {
-        uchar merged;            // merged faces of the cube
-        uchar collide;           // collision faces of the cube
-    };
+    uchar merged;            // merged faces of the cube
     union
     {
         uchar escaped;       // mask of which children have escaped merges
-        uchar visible;       // visibility info for non-merged faces
+        uchar visible;       // visibility info for faces
     };
 };
 
