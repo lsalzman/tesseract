@@ -2176,15 +2176,11 @@ void editmat(char *name, char *filtername)
 
 COMMAND(editmat, "ss");
 
-extern int menudistance, menuautoclose;
-
 VARP(texguiwidth, 1, 12, 1000);
 VARP(texguiheight, 1, 8, 1000);
 VARP(texguitime, 0, 25, 1000);
 
 static int lastthumbnail = 0;
-
-VARP(texgui2d, 0, 1, 1);
 
 struct texturegui : g3d_callback 
 {
@@ -2253,9 +2249,8 @@ struct texturegui : g3d_callback
     {   
         if(!menuon) return;
         filltexlist();
-        extern int usegui2d;
-        if(!editmode || ((!texgui2d || !usegui2d) && camera1->o.dist(menupos) > menuautoclose)) menuon = false;
-        else g3d_addgui(this, menupos, texgui2d ? GUI_2D : 0);
+        if(editmode) g3d_addgui(this, menupos);
+        else menuon = false;
     }
 } gui;
 
@@ -2270,7 +2265,7 @@ void showtexgui(int *n)
     gui.showtextures(*n==0 ? !gui.menuon : *n==1); 
 }
 
-// 0/noargs = toggle, 1 = on, other = off - will autoclose if too far away or exit editmode
+// 0/noargs = toggle, 1 = on, other = off - will autoclose if exit editmode
 COMMAND(showtexgui, "i");
 
 void rendertexturepanel(int w, int h)

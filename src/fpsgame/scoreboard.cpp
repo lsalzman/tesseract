@@ -3,7 +3,6 @@
 
 namespace game
 {
-    VARP(scoreboard2d, 0, 1, 1);
     VARP(showservinfo, 0, 1, 1);
     VARP(showclientnum, 0, 0, 1);
     VARP(showpj, 0, 0, 1);
@@ -373,7 +372,7 @@ namespace game
 
         void render()
         {
-            if(showing) g3d_addgui(this, menupos, (scoreboard2d ? GUI_FORCE_2D : GUI_2D | GUI_FOLLOW) | GUI_BOTTOM);
+            if(showing) g3d_addgui(this, menupos, GUI_BOTTOM);
         }
 
     } scoreboard;

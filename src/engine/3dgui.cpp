@@ -124,7 +124,7 @@ struct gui : g3d_gui
             if(hit && (!guiclicktab || mousebuttons&G3D_DOWN)) 
                 *tcurrent = tpos; //roll-over to switch tab
             
-            drawskin(x1-skinx[visible()?2:6]*SKIN_SCALE, y1-skiny[1]*SKIN_SCALE, w, h, visible()?10:19, 9, gui2d ? 1 : 2, light, alpha);
+            drawskin(x1-skinx[visible()?2:6]*SKIN_SCALE, y1-skiny[1]*SKIN_SCALE, w, h, visible()?10:19, 9, alpha);
             text_(name, x1 + (skinx[3]-skinx[2])*SKIN_SCALE - (w ? INSERT : INSERT/2), y1 + (skiny[2]-skiny[1])*SKIN_SCALE - INSERT, tcolor, visible());
         }
         tx += w + ((skinx[5]-skinx[4]) + (skinx[3]-skinx[2]))*SKIN_SCALE; 
@@ -478,7 +478,7 @@ struct gui : g3d_gui
         float xs = t->xs*scale, ys = t->ys*scale;
         x += int((size-xs)/2);
         y += int((size-ys)/2);
-        const vec &color = hit ? vec(1, 0.5f, 0.5f) : (overlaid ? vec(1, 1, 1) : light);
+        const vec &color = hit ? vec(1, 0.5f, 0.5f) : vec(1, 1, 1);
         glBindTexture(GL_TEXTURE_2D, t->id);
         if(hit && actionon)
         {
@@ -492,7 +492,7 @@ struct gui : g3d_gui
         {
             if(!overlaytex) overlaytex = textureload("data/guioverlay.png", 3);
             glBindTexture(GL_TEXTURE_2D, overlaytex->id);
-            glColor3fv(light.v);
+            glColor3f(1, 1, 1);
             rect_(x, y, xs, ys, 0);
         }
     }        
@@ -526,7 +526,7 @@ struct gui : g3d_gui
             defaultshader->set();	
         }
         SETSHADER(rgbonly);
-        const vec &color = hit ? vec(1, 0.5f, 0.5f) : (overlaid ? vec(1, 1, 1) : light);
+        const vec &color = hit ? vec(1, 0.5f, 0.5f) : vec(1, 1, 1);
         float tc[4][2] = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
         int xoff = vslot.xoffset, yoff = vslot.yoffset;
         if(vslot.rotation)
@@ -576,7 +576,7 @@ struct gui : g3d_gui
         {
             if(!overlaytex) overlaytex = textureload("data/guioverlay.png", 3);
             glBindTexture(GL_TEXTURE_2D, overlaytex->id);
-            glColor3fv(light.v);
+            glColor3f(1, 1, 1);
             rect_(x, y, xs, ys, 0);
         }
     }
@@ -589,13 +589,13 @@ struct gui : g3d_gui
             glBindTexture(GL_TEXTURE_2D, slidertex->id);
             if(percent < 0.99f) 
             {
-                glColor4f(light.x, light.y, light.z, 0.375f);
+                glColor4f(1, 1, 1, 0.375f);
                 if(ishorizontal()) 
                     rect_(curx + FONTH/2 - size/2, cury, size, ysize, 0);
                 else
                     rect_(curx, cury + FONTH/2 - size/2, xsize, size, 1);
             }
-            glColor3fv(light.v);
+            glColor3f(1, 1, 1);
             if(ishorizontal()) 
                 rect_(curx + FONTH/2 - size/2, cury + ysize*(1-percent), size, ysize*percent, 0);
             else 
@@ -650,95 +650,86 @@ struct gui : g3d_gui
     static const int skinx[], skiny[];
     static const struct patch { ushort left, right, top, bottom; uchar flags; } patches[];
 
-    static void drawskin(int x, int y, int gapw, int gaph, int start, int n, int passes = 1, const vec &light = vec(1, 1, 1), float alpha = 0.80f)//int vleft, int vright, int vtop, int vbottom, int start, int n) 
+    static void drawskin(int x, int y, int gapw, int gaph, int start, int n, float alpha = 0.80f)//int vleft, int vright, int vtop, int vbottom, int start, int n) 
     {
         if(!skintex) skintex = textureload("data/guiskin.png", 3);
         glBindTexture(GL_TEXTURE_2D, skintex->id);
         int gapx1 = INT_MAX, gapy1 = INT_MAX, gapx2 = INT_MAX, gapy2 = INT_MAX;
         float wscale = 1.0f/(SKIN_W*SKIN_SCALE), hscale = 1.0f/(SKIN_H*SKIN_SCALE);
-        
-        loopj(passes)
-        {	
-            bool quads = false;
-            if(passes>1) glDepthFunc(j ? GL_LEQUAL : GL_GREATER);
-            glColor4f(j ? light.x : 1.0f, j ? light.y : 1.0f, j ? light.z : 1.0f, passes<=1 || j ? alpha : alpha/2); //ghost when its behind something in depth
-            loopi(n)
+        bool quads = false;
+        glColor4f(1, 1, 1, alpha);
+        loopi(n)
+        {
+            const patch &p = patches[start+i];
+            int left = skinx[p.left]*SKIN_SCALE, right = skinx[p.right]*SKIN_SCALE,
+                top = skiny[p.top]*SKIN_SCALE, bottom = skiny[p.bottom]*SKIN_SCALE;
+            float tleft = left*wscale, tright = right*wscale,
+                  ttop = top*hscale, tbottom = bottom*hscale;
+            if(p.flags&0x1)
             {
-                const patch &p = patches[start+i];
-                int left = skinx[p.left]*SKIN_SCALE, right = skinx[p.right]*SKIN_SCALE,
-                    top = skiny[p.top]*SKIN_SCALE, bottom = skiny[p.bottom]*SKIN_SCALE;
-                float tleft = left*wscale, tright = right*wscale,
-                      ttop = top*hscale, tbottom = bottom*hscale;
-                if(p.flags&0x1)
-                {
-                    gapx1 = left;
-                    gapx2 = right;
-                }
-                else if(left >= gapx2)
-                {
-                    left += gapw - (gapx2-gapx1);
-                    right += gapw - (gapx2-gapx1);
-                }
-                if(p.flags&0x10)
-                {
-                    gapy1 = top;
-                    gapy2 = bottom;
-                }
-                else if(top >= gapy2)
-                {
-                    top += gaph - (gapy2-gapy1);
-                    bottom += gaph - (gapy2-gapy1);
-                }
-               
-                //multiple tiled quads if necessary rather than a single stretched one
-                int ystep = bottom-top;
-                int yo = y+top;
-                while(ystep > 0) 
-                {
-                    if(p.flags&0x10 && yo+ystep-(y+top) > gaph) 
-                    {
-                        ystep = gaph+y+top-yo;
-                        tbottom = ttop+ystep*hscale;
-                    }
-                    int xstep = right-left;
-                    int xo = x+left;
-                    float tright2 = tright;
-                    while(xstep > 0) 
-                    {
-                        if(p.flags&0x01 && xo+xstep-(x+left) > gapw) 
-                        {
-                            xstep = gapw+x+left-xo; 
-                            tright = tleft+xstep*wscale;
-                        }
-                        if(!quads) { quads = true; glBegin(GL_QUADS); }
-                        glTexCoord2f(tleft,  ttop);    glVertex2f(xo,       yo);
-                        glTexCoord2f(tright, ttop);    glVertex2f(xo+xstep, yo);
-                        glTexCoord2f(tright, tbottom); glVertex2f(xo+xstep, yo+ystep);
-                        glTexCoord2f(tleft,  tbottom); glVertex2f(xo,       yo+ystep);
-                        xtraverts += 4;
-                        if(!(p.flags&0x01)) break;
-                        xo += xstep;
-                    }
-                    tright = tright2;
-                    if(!(p.flags&0x10)) break;
-                    yo += ystep;
-                }
+                gapx1 = left;
+                gapx2 = right;
             }
-            if(quads) glEnd();
-            else break; //if it didn't happen on the first pass, it won't happen on the second..
+            else if(left >= gapx2)
+            {
+                left += gapw - (gapx2-gapx1);
+                right += gapw - (gapx2-gapx1);
+            }
+            if(p.flags&0x10)
+            {
+                gapy1 = top;
+                gapy2 = bottom;
+            }
+            else if(top >= gapy2)
+            {
+                top += gaph - (gapy2-gapy1);
+                bottom += gaph - (gapy2-gapy1);
+            }
+           
+            //multiple tiled quads if necessary rather than a single stretched one
+            int ystep = bottom-top;
+            int yo = y+top;
+            while(ystep > 0) 
+            {
+                if(p.flags&0x10 && yo+ystep-(y+top) > gaph) 
+                {
+                    ystep = gaph+y+top-yo;
+                    tbottom = ttop+ystep*hscale;
+                }
+                int xstep = right-left;
+                int xo = x+left;
+                float tright2 = tright;
+                while(xstep > 0) 
+                {
+                    if(p.flags&0x01 && xo+xstep-(x+left) > gapw) 
+                    {
+                        xstep = gapw+x+left-xo; 
+                        tright = tleft+xstep*wscale;
+                    }
+                    if(!quads) { quads = true; glBegin(GL_QUADS); }
+                    glTexCoord2f(tleft,  ttop);    glVertex2f(xo,       yo);
+                    glTexCoord2f(tright, ttop);    glVertex2f(xo+xstep, yo);
+                    glTexCoord2f(tright, tbottom); glVertex2f(xo+xstep, yo+ystep);
+                    glTexCoord2f(tleft,  tbottom); glVertex2f(xo,       yo+ystep);
+                    xtraverts += 4;
+                    if(!(p.flags&0x01)) break;
+                    xo += xstep;
+                }
+                tright = tright2;
+                if(!(p.flags&0x10)) break;
+                yo += ystep;
+            }
         }
-        if(passes>1) glDepthFunc(GL_ALWAYS);
+        if(quads) glEnd();
     } 
 
     vec origin, scale, *savedorigin;
     float dist;
     g3d_callback *cb;
-    bool gui2d;
 
     static float basescale, maxscale;
     static bool passthrough;
     static float alpha;
-    static vec light;
 
     void adjustscale()
     {
@@ -755,11 +746,8 @@ struct gui : g3d_gui
 
     void start(int starttime, float initscale, int *tab, bool allowinput)
     {	
-        if(gui2d) 
-        {
-            initscale *= 0.025f; 
-            if(allowinput) hascursor = true;
-        }
+        initscale *= 0.025f; 
+        if(allowinput) hascursor = true;
         basescale = initscale;
         if(layoutpass) scale.x = scale.y = scale.z = min(basescale*(totalmillis-starttime)/300.0f, basescale);
         alpha = allowinput ? 0.80f : 0.60f;
@@ -780,28 +768,11 @@ struct gui : g3d_gui
             curx = -xsize/2;
             
             glPushMatrix();
-            if(gui2d)
-            {
-                glTranslatef(origin.x, origin.y, origin.z);
-                glScalef(scale.x, scale.y, scale.z);
-                light = vec(1, 1, 1);
-            }
-            else
-            {
-                float yaw = atan2f(origin.y-camera1->o.y, origin.x-camera1->o.x);
-                glTranslatef(origin.x, origin.y, origin.z);
-                glRotatef(yaw/RAD-90, 0, 0, 1); 
-                glRotatef(-90, 1, 0, 0);
-                glScalef(-scale.x, scale.y, scale.z);
-            
-                vec dir;
-                lightreaching(origin, light, dir, false, 0, 0.5f); 
-                float intensity = vec(yaw, 0.0f).dot(dir);
-                light.mul(1.0f + max(intensity, 0.0f));
-            }
+            glTranslatef(origin.x, origin.y, origin.z);
+            glScalef(scale.x, scale.y, scale.z);
 
-            drawskin(curx-skinx[2]*SKIN_SCALE, cury-skiny[6]*SKIN_SCALE, xsize, ysize, 0, 9, gui2d ? 1 : 2, light, alpha);
-            if(!tcurrent) drawskin(curx-skinx[5]*SKIN_SCALE, cury-skiny[6]*SKIN_SCALE, xsize, 0, 9, 1, gui2d ? 1 : 2, light, alpha);
+            drawskin(curx-skinx[2]*SKIN_SCALE, cury-skiny[6]*SKIN_SCALE, xsize, ysize, 0, 9, alpha);
+            if(!tcurrent) drawskin(curx-skinx[5]*SKIN_SCALE, cury-skiny[6]*SKIN_SCALE, xsize, 0, 9, 1, alpha);
         }
     }
 
@@ -813,29 +784,13 @@ struct gui : g3d_gui
             ysize = max(ty, ysize);
             ysize = max(ysize, (skiny[7]-skiny[6])*SKIN_SCALE);
             if(tcurrent) *tcurrent = max(1, min(*tcurrent, tpos));
-            if(gui2d) adjustscale();
+            adjustscale();
             if(!windowhit && !passthrough)
             {
-                float dist = 0;
-                if(gui2d)
-                {
-                    hitx = (cursorx - origin.x)/scale.x;
-                    hity = (cursory - origin.y)/scale.y;
-                }
-                else
-                {
-                    plane p;
-                    p.toplane(vec(origin).sub(camera1->o).set(2, 0).normalize(), origin);
-                    if(p.rayintersect(camera1->o, camdir, dist) && dist>=0)
-                    {
-                        vec hitpos(camdir);
-                        hitpos.mul(dist).add(camera1->o).sub(origin);
-                        hitx = vec(-p.y, p.x, 0).dot(hitpos)/scale.x;
-                        hity = -hitpos.z/scale.y;
-                    }
-                }
+                hitx = (cursorx - origin.x)/scale.x;
+                hity = (cursory - origin.y)/scale.y;
                 if((mousebuttons & G3D_PRESSED) && (fabs(hitx-firstx) > 2 || fabs(hity - firsty) > 2)) mousebuttons |= G3D_DRAGGED;
-                if(dist>=0 && hitx>=-xsize/2 && hitx<=xsize/2 && hity<=0)
+                if(hitx>=-xsize/2 && hitx<=xsize/2 && hity<=0)
                 {
                     if(hity>=-ysize || (tcurrent && hity>=-ysize-(FONTH-2*INSERT)-((skiny[6]-skiny[1])-(skiny[3]-skiny[2]))*SKIN_SCALE && hitx<=tx-xsize/2))
                         windowhit = this;
@@ -844,7 +799,7 @@ struct gui : g3d_gui
         }
         else
         {
-            if(tcurrent && tx<xsize) drawskin(curx+tx-skinx[5]*SKIN_SCALE, -ysize-skiny[6]*SKIN_SCALE, xsize-tx, FONTH, 9, 1, gui2d ? 1 : 2, light, alpha);
+            if(tcurrent && tx<xsize) drawskin(curx+tx-skinx[5]*SKIN_SCALE, -ysize-skiny[6]*SKIN_SCALE, xsize-tx, FONTH, 9, 1, alpha);
             glPopMatrix();
         }
         poplist();
@@ -898,10 +853,9 @@ const gui::patch gui::patches[] =
 vector<gui::list> gui::lists;
 float gui::basescale, gui::maxscale = 1, gui::hitx, gui::hity, gui::alpha;
 bool gui::passthrough, gui::shouldmergehits = false, gui::shouldautotab = true;
-vec gui::light;
 int gui::curdepth, gui::curlist, gui::xsize, gui::ysize, gui::curx, gui::cury;
 int gui::ty, gui::tx, gui::tpos, *gui::tcurrent, gui::tcolor;
-static vector<gui> guis2d, guis3d;
+static vector<gui> guis2d;
 
 VARP(guipushdist, 1, 4, 64);
 
@@ -935,36 +889,28 @@ bool menukey(int code, bool isdown, int cooked)
             case -4: // window "management" 
                 if(isdown)
                 {
-                    if(windowhit->gui2d) 
+                    vec origin = *guis2d.last().savedorigin;
+                    int i = windowhit - &guis2d[0];
+                    for(int j = guis2d.length()-1; j > i; j--) *guis2d[j].savedorigin = *guis2d[j-1].savedorigin;
+                    *windowhit->savedorigin = origin;
+                    if(guis2d.length() > 1)
                     {
-                        vec origin = *guis2d.last().savedorigin;
-                        int i = windowhit - &guis2d[0];
-                        for(int j = guis2d.length()-1; j > i; j--) *guis2d[j].savedorigin = *guis2d[j-1].savedorigin;
-                        *windowhit->savedorigin = origin;
-                        if(guis2d.length() > 1)
-                        {
-                            if(camera1->o.dist(*windowhit->savedorigin) <= camera1->o.dist(*guis2d.last().savedorigin))
-                                windowhit->savedorigin->add(camdir);
-                        }
+                        if(camera1->o.dist(*windowhit->savedorigin) <= camera1->o.dist(*guis2d.last().savedorigin))
+                            windowhit->savedorigin->add(camdir);
                     }
-                    else windowhit->savedorigin->add(vec(camdir).mul(guipushdist));
                 }
                 return true;
             case -5:
                 if(isdown)
                 {
-                    if(windowhit->gui2d)
+                    vec origin = *guis2d[0].savedorigin;
+                    loopj(guis2d.length()-1) *guis2d[j].savedorigin = *guis2d[j + 1].savedorigin;
+                    *guis2d.last().savedorigin = origin;
+                    if(guis2d.length() > 1)
                     {
-                        vec origin = *guis2d[0].savedorigin;
-                        loopj(guis2d.length()-1) *guis2d[j].savedorigin = *guis2d[j + 1].savedorigin;
-                        *guis2d.last().savedorigin = origin;
-                        if(guis2d.length() > 1)
-                        {
-                            if(camera1->o.dist(*guis2d.last().savedorigin) >= camera1->o.dist(*guis2d[0].savedorigin))
-                                guis2d.last().savedorigin->sub(camdir);
-                        }
+                        if(camera1->o.dist(*guis2d.last().savedorigin) >= camera1->o.dist(*guis2d[0].savedorigin))
+                            guis2d.last().savedorigin->sub(camdir);
                     }
-                    else windowhit->savedorigin->sub(vec(camdir).mul(guipushdist));
                 }
                 return true;
         }
@@ -1028,19 +974,13 @@ bool g3d_movecursor(int dx, int dy)
     return true;
 }
 
-VARNP(guifollow, useguifollow, 0, 1, 1);
-VARNP(gui2d, usegui2d, 0, 1, 1);
-
 void g3d_addgui(g3d_callback *cb, vec &origin, int flags)
 {
-    bool gui2d = flags&GUI_FORCE_2D || (flags&GUI_2D && usegui2d) || mainmenu;
-    if(!gui2d && flags&GUI_FOLLOW && useguifollow) origin.z = player->o.z-(player->eyeheight-1);
-    gui &g = (gui2d ? guis2d : guis3d).add();
+    gui &g = guis2d.add();
     g.cb = cb;
     g.origin = origin;
     g.savedorigin = &origin;
-    g.dist = flags&GUI_BOTTOM && gui2d ? 1e16f : camera1->o.dist(g.origin);
-    g.gui2d = gui2d;
+    g.dist = flags&GUI_BOTTOM ? 1e16f : camera1->o.dist(g.origin);
 }
 
 void g3d_limitscale(float scale)
@@ -1061,7 +1001,7 @@ bool g3d_windowhit(bool on, bool act)
             mousebuttons |= (actionon=on) ? G3D_DOWN : G3D_UP;
         }
     } else if(!on && windowhit) cleargui(1);
-    return (guis2d.length() && hascursor) || (windowhit && !windowhit->gui2d);
+    return guis2d.length() && hascursor;
 }
 
 void g3d_render()   
@@ -1071,7 +1011,6 @@ void g3d_render()
     
     gui::reset();
     guis2d.shrink(0);
-    guis3d.shrink(0);
  
     // call all places in the engine that may want to render a gui from here, they call g3d_addgui()
     extern void g3d_texturemenu();
@@ -1081,7 +1020,6 @@ void g3d_render()
     if(!mainmenu) game::g3d_gamemenus();
 
     guis2d.sort(g3d_sort);
-    guis3d.sort(g3d_sort);
     
     readyeditors();
     bool wasfocused = (fieldmode!=FIELDSHOW);
@@ -1091,30 +1029,13 @@ void g3d_render()
 
     layoutpass = true;
     loopv(guis2d) guis2d[i].cb->gui(guis2d[i], true);
-    loopv(guis3d) guis3d[i].cb->gui(guis3d[i], true);
     layoutpass = false;
-
-    if(guis2d.length() || guis3d.length())
-    {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    }
-
-    if(guis3d.length())
-    {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_ALWAYS);
-        glDepthMask(GL_FALSE);
-
-        loopvrev(guis3d) guis3d[i].cb->gui(guis3d[i], false);
-
-        glDepthFunc(GL_LESS);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_DEPTH_TEST);
-    }
 
     if(guis2d.length())
     {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadIdentity();
@@ -1130,10 +1051,7 @@ void g3d_render()
         glPopMatrix();
         glMatrixMode(GL_MODELVIEW);
         glPopMatrix();
-    }
 
-    if(guis2d.length() || guis3d.length())
-    {
         glDisable(GL_BLEND);
     }
 
@@ -1159,8 +1077,8 @@ void consolebox(int x1, int y1, int x2, int y2)
     sw /= bw + (gui::skinx[2]-gui::skinx[1] + gui::skinx[10]-gui::skinx[9])*SKIN_SCALE;
     sh /= bh + (gui::skiny[9]-gui::skiny[7] + gui::skiny[6]-gui::skiny[4])*SKIN_SCALE;
     glScalef(sw, sh, 1);
-    gui::drawskin(-gui::skinx[1]*SKIN_SCALE, -gui::skiny[4]*SKIN_SCALE, int(bw), int(bh), 0, 9, 1, vec(1, 1, 1), 0.60f);
-    gui::drawskin((-gui::skinx[1] + gui::skinx[2] - gui::skinx[5])*SKIN_SCALE, -gui::skiny[4]*SKIN_SCALE, int(bw), 0, 9, 1, 1, vec(1, 1, 1), 0.60f);
+    gui::drawskin(-gui::skinx[1]*SKIN_SCALE, -gui::skiny[4]*SKIN_SCALE, int(bw), int(bh), 0, 9, 0.60f);
+    gui::drawskin((-gui::skinx[1] + gui::skinx[2] - gui::skinx[5])*SKIN_SCALE, -gui::skiny[4]*SKIN_SCALE, int(bw), 0, 9, 1, 0.60f);
     glPopMatrix();
 }
 

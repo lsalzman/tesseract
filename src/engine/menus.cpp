@@ -111,7 +111,6 @@ static vector<delayedupdate> updatelater;
 static bool shouldclearmenu = true, clearlater = false;
 
 VARP(menudistance,  16, 40,  256);
-VARP(menuautoclose, 32, 120, 4096);
 
 vec menuinfrontofplayer()
 { 
@@ -685,11 +684,6 @@ void clearmainmenu()
 
 void g3d_mainmenu()
 {
-    if(!guistack.empty()) 
-    {   
-        extern int usegui2d;
-        if(!mainmenu && !usegui2d && camera1->o.dist(menupos) > menuautoclose) cleargui();
-        else g3d_addgui(guistack.last(), menupos, GUI_2D | GUI_FOLLOW);
-    }
+    if(!guistack.empty()) g3d_addgui(guistack.last(), menupos);
 }
 
