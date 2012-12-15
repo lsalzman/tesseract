@@ -65,6 +65,8 @@ FVARR(spinclouds, -720, 0, 720);
 VARR(yawclouds, 0, 0, 360);
 FVARR(cloudclip, 0, 0.5f, 1);
 SVARFR(cloudlayer, "", { if(cloudlayer[0]) cloudoverlay = loadskyoverlay(cloudlayer); });
+FVARR(cloudoffsetx, 0, 0, 1);
+FVARR(cloudoffsety, 0, 0, 1);
 FVARR(cloudscrollx, -16, 0, 16);
 FVARR(cloudscrolly, -16, 0, 16);
 FVARR(cloudscale, 0.001, 1, 64);
@@ -460,7 +462,7 @@ void drawskybox(int farplane)
         glRotatef(camera1->roll, 0, 1, 0);
         glRotatef(camera1->pitch, -1, 0, 0);
         glRotatef(camera1->yaw+spincloudlayer*lastmillis/1000.0f+yawcloudlayer, 0, 0, -1);
-        draw_env_overlay(farplane/2, cloudoverlay, cloudscrollx * lastmillis/1000.0f, cloudscrolly * lastmillis/1000.0f);
+        draw_env_overlay(farplane/2, cloudoverlay, cloudoffsetx + cloudscrollx * lastmillis/1000.0f, cloudoffsety + cloudscrolly * lastmillis/1000.0f);
         glPopMatrix();
 
         glDisable(GL_BLEND);
