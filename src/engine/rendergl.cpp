@@ -1324,6 +1324,20 @@ bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, fl
           mvmatrix.transformy(center),
           mvmatrix.transformz(center));
     if(e.z > 2*size) { sx1 = sy1 = sz1 = 1; sx2 = sy2 = sz2 = -1; return false; }
+    if(minimapping)
+    {
+        vec dir(size, size, size);
+        if(projmatrix.v[0] < 0) dir.x = -dir.x;
+        if(projmatrix.v[5] < 0) dir.y = -dir.y;
+        if(projmatrix.v[10] < 0) dir.z = -dir.z;
+        sx1 = max(projmatrix.v[0]*(e.x - dir.x) + projmatrix.v[12], -1.0f);
+        sx2 = min(projmatrix.v[0]*(e.x + dir.x) + projmatrix.v[12], 1.0f);
+        sy1 = max(projmatrix.v[5]*(e.y - dir.y) + projmatrix.v[13], -1.0f);
+        sy2 = min(projmatrix.v[5]*(e.y + dir.y) + projmatrix.v[13], 1.0f);
+        sz1 = max(projmatrix.v[10]*(e.z - dir.z) + projmatrix.v[14], -1.0f);
+        sz2 = min(projmatrix.v[10]*(e.z + dir.z) + projmatrix.v[14], 1.0f);
+        return sx1 < sx2 && sy1 < sy2 && sz1 < sz2;
+    }
     float zzrr = e.z*e.z - size*size,
           dx = e.x*e.x + zzrr, dy = e.y*e.y + zzrr,
           focaldist = 1.0f/tan(fovy*0.5f*RAD);
