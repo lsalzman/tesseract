@@ -49,15 +49,6 @@ enum                            // static entity types
     MAXENTTYPES
 };
 
-enum
-{
-    TRIGGER_RESET = 0,
-    TRIGGERING,
-    TRIGGERED,
-    TRIGGER_RESETTING,
-    TRIGGER_DISAPPEARED
-};
-
 struct fpsentity : extentity
 {
 };
