@@ -388,7 +388,7 @@ void gl_checkextensions()
 
 #ifdef __APPLE__
     // Intel HD3000 broke occlusion queries - either causing software fallback, or returning wrong results
-    if(!intel)
+    if(osversion >= 0x1080 || !intel)
 #endif	   
     if(hasext(exts, "GL_ARB_occlusion_query"))
     {
