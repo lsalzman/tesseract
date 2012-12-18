@@ -1348,11 +1348,12 @@ namespace game
 
             case N_DIED:
             {
-                int vcn = getint(p), acn = getint(p), frags = getint(p);
+                int vcn = getint(p), acn = getint(p), frags = getint(p), tfrags = getint(p);
                 fpsent *victim = getclient(vcn),
                        *actor = getclient(acn);
                 if(!actor) break;
                 actor->frags = frags;
+                if(m_teammode) setteaminfo(actor->team, tfrags);
                 if(actor!=player1 && (!cmode || !cmode->hidefrags()))
                 {
                     defformatstring(ds)("%d", actor->frags);
@@ -1362,6 +1363,17 @@ namespace game
                 killed(victim, actor);
                 break;
             }
+
+            case N_TEAMINFO:
+                for(;;)
+                {
+                    getstring(text, p);
+                    if(p.overread() || !text[0]) break;
+                    int frags = getint(p);
+                    if(p.overread()) break;
+                    if(m_teammode) setteaminfo(text, frags);
+                }
+                break;
 
             case N_GUNSELECT:
             {

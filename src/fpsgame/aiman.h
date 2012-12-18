@@ -7,7 +7,7 @@ namespace aiman
 
     void calcteams(vector<teamscore> &teams)
     {
-        const char *defaults[2] = { "good", "evil" };
+        static const char * const defaults[2] = { "good", "evil" };
         loopv(clients)
         {
             clientinfo *ci = clients[i];
@@ -20,12 +20,7 @@ namespace aiman
         teams.sort(teamscore::compare);
         if(teams.length() < int(sizeof(defaults)/sizeof(defaults[0])))
         {
-            loopi(sizeof(defaults)/sizeof(defaults[0]))
-            {
-                loopvj(teams) if(!strcmp(teams[j].team, defaults[i])) goto nextteam;
-                teams.add(teamscore(defaults[i], 0));
-            nextteam:;
-            }
+            loopi(sizeof(defaults)/sizeof(defaults[0])) if(teams.htfind(defaults[i]) < 0) teams.add(teamscore(defaults[i], 0));
         }
     }
 

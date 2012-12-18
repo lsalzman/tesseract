@@ -11,6 +11,20 @@ namespace game
     VARP(highlightscore, 0, 1, 1);
     VARP(showconnecting, 0, 0, 1);
 
+    static hashset<teaminfo> teaminfos;
+
+    void clearteaminfo()
+    {
+        teaminfos.clear();
+    }
+
+    void setteaminfo(const char *team, int frags)
+    {
+        teaminfo *t = teaminfos.access(team);
+        if(!t) { t = &teaminfos[team]; copystring(t->team, team, sizeof(t->team)); }
+        t->frags = frags;
+    }
+            
     static inline bool playersort(const fpsent *a, const fpsent *b)
     {
         if(a->state==CS_SPECTATOR)
@@ -37,30 +51,30 @@ namespace game
             if(o->state!=CS_SPECTATOR) best.add(o);
         }
         best.sort(playersort);
-        while(best.length()>1 && best.last()->frags < best[0]->frags) best.drop();
-    }
-
-    void sortteams(vector<teamscore> &teamscores)
-    {
-        if(cmode && cmode->hidefrags()) cmode->getteamscores(teamscores);
-
-        loopv(players)
-        {
-            fpsent *o = players[i];
-            teamscore *ts = NULL;
-            loopv(teamscores) if(!strcmp(teamscores[i].team, o->team)) { ts = &teamscores[i]; break; }
-            if(!ts) teamscores.add(teamscore(o->team, cmode && cmode->hidefrags() ? 0 : o->frags));
-            else if(!cmode || !cmode->hidefrags()) ts->score += o->frags;
-        }
-        teamscores.sort(teamscore::compare);
+        while(best.length() > 1 && best.last()->frags < best[0]->frags) best.drop();
     }
 
     void getbestteams(vector<const char *> &best)
     {
-        vector<teamscore> teamscores;
-        sortteams(teamscores);
-        while(teamscores.length()>1 && teamscores.last().score < teamscores[0].score) teamscores.drop();
-        loopv(teamscores) best.add(teamscores[i].team);
+        if(cmode && cmode->hidefrags()) 
+        {
+            vector<teamscore> teamscores;
+            cmode->getteamscores(teamscores);
+            teamscores.sort(teamscore::compare);
+            while(teamscores.length() > 1 && teamscores.last().score < teamscores[0].score) teamscores.drop();
+            loopv(teamscores) best.add(teamscores[i].team);
+        }
+        else 
+        {
+            int bestfrags = INT_MIN;
+            enumerates(teaminfos, teaminfo, t, bestfrags = max(bestfrags, t.frags));
+            if(bestfrags <= 0) loopv(players)
+            {
+                fpsent *o = players[i];
+                if(o->state!=CS_SPECTATOR && !teaminfos.access(o->team) && best.htfind(o->team) < 0) { bestfrags = 0; best.add(o->team); } 
+            }
+            enumerates(teaminfos, teaminfo, t, if(t.frags >= bestfrags) best.add(t.team));
+        }
     }
 
     struct scoregroup : teamscore
@@ -87,7 +101,7 @@ namespace game
     static int groupplayers()
     {
         int numgroups = 0;
-        spectators.shrink(0);
+        spectators.setsize(0);
         loopv(players)
         {
             fpsent *o = players[i];
@@ -99,7 +113,6 @@ namespace game
             {
                 scoregroup &g = *groups[j];
                 if(team!=g.team && (!team || !g.team || strcmp(team, g.team))) continue;
-                if(team && (!cmode || !cmode->hidefrags())) g.score += o->frags;
                 g.players.add(o);
                 found = true;
             }
@@ -109,8 +122,8 @@ namespace game
             g.team = team;
             if(!team) g.score = 0;
             else if(cmode && cmode->hidefrags()) g.score = cmode->getteamscore(o->team);
-            else g.score = o->frags;
-            g.players.shrink(0);
+            else { teaminfo *ti = teaminfos.access(team); g.score = ti ? ti->frags : 0; }
+            g.players.setsize(0);
             g.players.add(o);
         }
         loopi(numgroups) groups[i]->players.sort(playersort);
