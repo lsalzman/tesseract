@@ -375,7 +375,7 @@ static const char *getsval(char *var)
 void guislider(char *var, int *min, int *max, char *onchange)
 {
 	if(!cgui) return;
-    int oldval = getval(var), val = oldval, vmin = *max ? *min : getvarmin(var), vmax = *max ? *max : getvarmax(var);
+    int oldval = getval(var), val = oldval, vmin = *max != -1 ? *min : getvarmin(var), vmax = *max != -1 ? *max : getvarmax(var);
     cgui->slider(val, vmin, vmax, GUI_TITLE_COLOR);
     if(val != oldval) updateval(var, val, onchange);
 }
@@ -576,7 +576,7 @@ COMMAND(guibar,"");
 COMMAND(guistrut,"fi");
 COMMAND(guispring, "i");
 COMMAND(guiimage,"ssfis");
-COMMAND(guislider,"siis");
+COMMAND(guislider,"sbbs");
 COMMAND(guilistslider, "sss");
 COMMAND(guinameslider, "ssss");
 COMMAND(guiradio,"ssfs");
