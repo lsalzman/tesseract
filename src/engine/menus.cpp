@@ -375,7 +375,7 @@ static const char *getsval(char *var)
 void guislider(char *var, int *min, int *max, char *onchange)
 {
 	if(!cgui) return;
-    int oldval = getval(var), val = oldval, vmin = *max != -1 ? *min : getvarmin(var), vmax = *max != -1 ? *max : getvarmax(var);
+    int oldval = getval(var), val = oldval, vmin = *max > INT_MIN ? *min : getvarmin(var), vmax = *max > INT_MIN ? *max : getvarmax(var);
     cgui->slider(val, vmin, vmax, GUI_TITLE_COLOR);
     if(val != oldval) updateval(var, val, onchange);
 }
