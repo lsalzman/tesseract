@@ -410,6 +410,7 @@ model *loadmodel(const char *name, int i, bool msg)
     if(mm) m = *mm;
     else
     { 
+        if(loadingmodel) return NULL;
         if(msg)
         {
             defformatstring(filename)("packages/models/%s", name);
@@ -793,6 +794,7 @@ void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, int
     if(!mapmodels.inrange(idx)) return;
     mapmodelinfo &mmi = mapmodels[idx];
     model *m = mmi.m ? mmi.m : loadmodel(mmi.name);
+    if(!m) return;
 
     vec center, bbradius;
     m->boundbox(center, bbradius);
