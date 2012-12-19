@@ -4,6 +4,7 @@ namespace game
 {
     VARP(minradarscale, 0, 384, 10000);
     VARP(maxradarscale, 1, 1024, 10000);
+    VARP(radarteammates, 0, 1, 1);
     FVARP(minimapalpha, 0, 1, 1);
 
     float calcradarscale()
@@ -37,6 +38,59 @@ namespace game
         glEnd();
     }
 
+    void drawteammate(fpsent *d, float x, float y, float s, fpsent *o, float scale)
+    {
+        vec dir = d->o;
+        dir.sub(o->o).div(scale);
+        float dist = dir.magnitude2(), maxdist = 1 - 0.05f - 0.05f;
+        if(dist >= maxdist) dir.mul(maxdist/dist);
+        dir.rotate_around_z(-camera1->yaw*RAD);
+        float bs = 0.06f*s,
+              bx = x + s*0.5f*(1.0f + dir.x),
+              by = y + s*0.5f*(1.0f + dir.y);
+        vec v(-0.5f, -0.5f, 0);
+        v.rotate_around_z((90+o->yaw-camera1->yaw)*RAD);
+        glTexCoord2f(0.0f, 0.0f); glVertex2f(bx + bs*v.x, by + bs*v.y);
+        glTexCoord2f(1.0f, 0.0f); glVertex2f(bx + bs*v.y, by - bs*v.x);
+        glTexCoord2f(1.0f, 1.0f); glVertex2f(bx - bs*v.x, by - bs*v.y);
+        glTexCoord2f(0.0f, 1.0f); glVertex2f(bx - bs*v.y, by + bs*v.x);
+    }
+
+    void drawteammates(fpsent *d, float x, float y, float s)
+    {
+        if(!radarteammates) return;
+        float scale = calcradarscale();
+        int alive = 0, dead = 0;
+        loopv(players) 
+        {
+            fpsent *o = players[i];
+            if(o != d && o->state == CS_ALIVE && isteam(o->team, d->team))
+            {
+                if(!alive++) 
+                {
+                    settexture(isteam(d->team, player1->team) ? "packages/hud/blip_blue_alive.png" : "packages/hud/blip_red_alive.png");
+                    glBegin(GL_QUADS);
+                }
+                drawteammate(d, x, y, s, o, scale);
+            }
+        }
+        if(alive) glEnd();
+        loopv(players) 
+        {
+            fpsent *o = players[i];
+            if(o != d && o->state == CS_DEAD && isteam(o->team, d->team))
+            {
+                if(!dead++) 
+                {
+                    settexture(isteam(d->team, player1->team) ? "packages/hud/blip_blue_dead.png" : "packages/hud/blip_red_dead.png");
+                    glBegin(GL_QUADS);
+                }
+                drawteammate(d, x, y, s, o, scale);
+            }
+        }
+        if(dead) glEnd();
+    }
+        
     #include "capture.h"
     #include "ctf.h"
     #include "collect.h"

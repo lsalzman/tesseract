@@ -473,6 +473,7 @@ struct collectclientmode : clientmode
             if(!collectbaseteam(b.team)) continue;
             drawblip(d, x, y, s, i);
         }
+        drawteammates(d, x, y, s);
         if(d->state == CS_DEAD)
         {
             int wait = respawnwait(d);

@@ -503,6 +503,7 @@ struct captureclientmode : clientmode
         if(showenemies) drawblips(d, blipsize, fw, fh, -2);
         glPopMatrix();
         if(basenumbers) popfont();
+        drawteammates(d, x, y, s);
         if(d->state == CS_DEAD)
         {
             int wait = respawnwait(d);
