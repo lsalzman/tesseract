@@ -475,6 +475,8 @@ struct fpsstate
         }
         else
         {
+            armourtype = A_BLUE;
+            armour = 50;
             ammo[GUN_PISTOL] = 40;
             ammo[GUN_GL] = 1;
         }
