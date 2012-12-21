@@ -807,8 +807,8 @@ static inline void compilestr(vector<uint> &code, const char *word = NULL)
 
 static inline void compileint(vector<uint> &code, int i)
 {
-    if(abs(i) <= 0x7FFFFF)
-        code.add(CODE_VALI|RET_INT|int(i)<<8);
+    if(i >= -0x800000 && i <= 0x7FFFFF)
+        code.add(CODE_VALI|RET_INT|(i<<8));
     else
     {
         code.add(CODE_VAL|RET_INT);
@@ -843,16 +843,12 @@ static inline void compileint(vector<uint> &code, const char *word = NULL)
 
 static inline void compilefloat(vector<uint> &code, float f)
 {
-    union
-    {
-        float f;
-        uint u;
-    } conv;
-    conv.f = f;
-    if(floor(conv.f) == conv.f && fabs(conv.f) <= 0x7FFFFF)
-        code.add(CODE_VALI|RET_FLOAT|int(conv.f)<<8);
+    if(int(f) == f && f >= -0x800000 && f <= 0x7FFFFF) 
+        code.add(CODE_VALI|RET_FLOAT|(int(f)<<8));
     else
     {
+        union { float f; uint u; } conv;
+        conv.f = f;
         code.add(CODE_VAL|RET_FLOAT);
         code.add(conv.u);
     }
