@@ -595,7 +595,7 @@ struct teamscore
 static inline uint hthash(const teamscore &t) { return hthash(t.team); }
 static inline bool htcmp(const char *key, const teamscore &t) { return htcmp(key, t.team); }
 
-#define MAXTEAMS 100
+#define MAXTEAMS 128
 
 struct teaminfo
 {
