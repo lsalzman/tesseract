@@ -817,8 +817,8 @@ namespace server
             case I_HEALTH: sec = np*5; break;
             case I_GREENARMOUR: sec = 20; break;
             case I_YELLOWARMOUR: sec = 30; break;
-            case I_BOOST:
-            case I_QUAD: sec = 60; break;
+            case I_BOOST: sec = 60; break;
+            case I_QUAD: sec = 70; break;
         }
         return sec*1000;
     }
