@@ -491,6 +491,8 @@ struct g3d_gui
 	virtual void tab(const char *name = NULL, int color = 0) = 0;
     virtual int image(Texture *t, float scale, bool overlaid = false) = 0;
     virtual int texture(VSlot &vslot, float scale, bool overlaid = true) = 0;
+    virtual int playerpreview(int model, int team, int weap, float scale, bool overlaid = false) { return 0; }
+    virtual int modelpreview(const char *name, int anim, float scale, bool overlaid = false) { return 0; }
     virtual void slider(int &val, int vmin, int vmax, int color, const char *label = NULL) = 0;
     virtual void separator() = 0;
 	virtual void progress(float percent) = 0;

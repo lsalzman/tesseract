@@ -2877,8 +2877,6 @@ void radiancehints::renderslices()
             glEnd();
         }
     }
-
-    glClearColor(0, 0, 0, 0);
 }
 
 VAR(rhinoq, 0, 0, 1);
@@ -3457,11 +3455,8 @@ void rendertransparent()
 VAR(gdepthclear, 0, 1, 1);
 VAR(gcolorclear, 0, 1, 1);
 
-void rendergbuffer()
+void preparegbuffer()
 {
-    timer *gcputimer = begintimer("g-buffer", false);
-    timer *gtimer = begintimer("g-buffer");
-
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
     glViewport(0, 0, vieww, viewh);
 
@@ -3471,9 +3466,9 @@ void rendergbuffer()
         if(gdepthformat == 1) glClearColor(1, 1, 1, 1);
         else glClearColor(-farplane, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
         maskgbuffer("cng");
     }
+    if(gcolorclear) glClearColor(0, 0, 0, 0);
     glClear((minimapping < 2 ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(minimapping < 2 && ((gdepthstencil && hasDS) || gstencil) ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
 
@@ -3509,6 +3504,15 @@ void rendergbuffer()
     GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
 
     GLERROR;
+}
+
+void rendergbuffer()
+{
+    timer *gcputimer = envmapping ? begintimer("g-buffer", false) : NULL;
+    timer *gtimer = envmapping ? begintimer("g-buffer") : NULL;
+
+    preparegbuffer();
+
     if(limitsky())
     {
         renderexplicitsky();
@@ -3519,7 +3523,8 @@ void rendergbuffer()
     resetmodelbatches();
     rendermapmodels();
     GLERROR;
-    if(minimapping)
+
+    if(minimapping) 
     {
         renderminimapmaterials();
     }
@@ -3555,6 +3560,64 @@ void shademinimap(const vec &color)
 
     renderlights();
     GLERROR;
+}
+
+void shademodelpreview(int x, int y, int w, int h, bool background)
+{
+    GLERROR;
+
+    GLuint outfbo = w > vieww || h > viewh ? scalefbo : 0;
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+    glViewport(outfbo ? 0 : x, outfbo ? 0 : y, vieww, viewh);
+
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+    glActiveTexture_(GL_TEXTURE1_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    glActiveTexture_(GL_TEXTURE2_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+    glActiveTexture_(GL_TEXTURE3_ARB);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    glActiveTexture_(GL_TEXTURE0_ARB);
+
+    glMatrixMode(GL_TEXTURE);
+    glLoadMatrixf(worldmatrix.v);
+    glMatrixMode(GL_MODELVIEW);
+
+    SETSHADER(modelpreview);
+
+    float lightscale = 2.0f*ldrscale;
+    LOCALPARAM(lightscale, (0.1f*lightscale, 0.1f*lightscale, 0.1f*lightscale, lightscale));
+    LOCALPARAM(sunlightdir, (vec(0, -1, 2).normalize()));
+    LOCALPARAM(sunlightcolor, (0.6f*lightscale, 0.6f*lightscale, 0.6f*lightscale));
+
+    if(background || outfbo)
+    {
+        screenquad(vieww, viewh);
+
+        if(outfbo)
+        {
+           glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0); 
+           glViewport(x, y, w, h);
+           glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex);
+           SETSHADER(scale);
+        }
+    }
+    
+    if(!background)
+    {
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_BLEND);
+        screenquad(vieww, viewh);
+        glDisable(GL_BLEND);
+    }
+
+    glMatrixMode(GL_TEXTURE);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+
+    GLERROR;
+    
+    glViewport(0, 0, screen->w, screen->h);
 }
  
 void shadegbuffer()

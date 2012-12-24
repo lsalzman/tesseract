@@ -129,7 +129,7 @@ namespace game
     VAR(testarmour, 0, 0, 1);
     VAR(testteam, 0, 0, 3);
 
-    void renderplayer(fpsent *d, const playermodelinfo &mdl, int team, float fade)
+    void renderplayer(fpsent *d, const playermodelinfo &mdl, int team, float fade, bool mainpass = true)
     {
         int lastaction = d->lastaction, hold = mdl.vwep || d->gunselect==GUN_PISTOL ? 0 : (ANIM_HOLD1+d->gunselect)|ANIM_LOOP, attack = ANIM_ATTACK1+d->gunselect, delay = mdl.vwep ? 300 : guns[d->gunselect].attackdelay+50;
         if(intermission && d->state!=CS_DEAD)
@@ -169,8 +169,11 @@ namespace game
                     a[ai++] = modelattach("tag_shield", mdl.armour[type], ANIM_SHIELD|ANIM_LOOP, 0);
             }
         }
-        d->muzzle = vec(-1, -1, -1);
-        a[ai++] = modelattach("tag_muzzle", &d->muzzle);
+        if(mainpass)
+        {
+            d->muzzle = vec(-1, -1, -1);
+            a[ai++] = modelattach("tag_muzzle", &d->muzzle);
+        }
         const char *mdlname = mdl.ffa;
         switch(testteam ? testteam-1 : team)
         {
@@ -338,6 +341,22 @@ namespace game
     void renderavatar()
     {
         drawhudgun();
+    }
+
+    void renderplayerpreview(int model, int team, int weap)
+    {
+        static fpsent *previewent = NULL;
+        if(!previewent)
+        {
+            previewent = new fpsent;
+            previewent->o = vec(0, 0.9f*(previewent->eyeheight + previewent->aboveeye), previewent->eyeheight - (previewent->eyeheight + previewent->aboveeye)/2);
+            loopi(GUN_PISTOL-GUN_FIST) previewent->ammo[GUN_FIST+1+i] = 1;
+        }
+        previewent->gunselect = clamp(weap, int(GUN_FIST), int(GUN_PISTOL));
+        previewent->yaw = fmod(lastmillis/10000.0f*360.0f, 360.0f);
+        const playermodelinfo *mdlinfo = getplayermodelinfo(model);
+        if(!mdlinfo) return;
+        renderplayer(previewent, *mdlinfo, team >= 0 && team <= 2 ? team : 0, 1, false);
     }
 
     vec hudgunorigin(int gun, const vec &from, const vec &to, fpsent *d)

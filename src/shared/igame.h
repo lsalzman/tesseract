@@ -70,6 +70,7 @@ namespace game
     extern int numdynents();
     extern void rendergame();
     extern void renderavatar();
+    extern void renderplayerpreview(int model, int team, int weap);
     extern void writegamedata(vector<char> &extras);
     extern void readgamedata(vector<char> &extras);
     extern int clipconsole(int w, int h);
