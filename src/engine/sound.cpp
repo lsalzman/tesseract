@@ -450,6 +450,45 @@ static Mix_Chunk *loadwav(const char *name)
     return c;
 }
 
+static bool loadsoundslot(soundslot &slot, bool msg = false)
+{
+    if(slot.sample->chunk) return true;
+    if(!slot.sample->name[0]) return false;
+
+    static const char * const exts[] = { "", ".wav", ".ogg" };
+    string filename;
+    loopi(sizeof(exts)/sizeof(exts[0]))
+    {
+        formatstring(filename)("packages/sounds/%s%s", slot.sample->name, exts[i]);
+        if(msg && !i) renderprogress(0, filename);
+        path(filename);
+        slot.sample->chunk = loadwav(filename);
+        if(slot.sample->chunk) return true;
+    }
+
+    conoutf(CON_ERROR, "failed to load sample: packages/sounds/%s", slot.sample->name); 
+    return false;
+}
+   
+void preloadsound(int n)
+{
+    if(!gamesounds.inrange(n)) return;
+    soundconfig &config = gamesounds[n];
+    loopk(config.numslots) loadsoundslot(gameslots[config.slots+k], true);
+}
+
+void preloadmapsounds()
+{
+    const vector<extentity *> &ents = entities::getents();
+    loopv(ents)
+    {
+        extentity &e = *ents[i];
+        if(e.type!=ET_SOUND || !mapsounds.inrange(e.attr1)) continue;
+        soundconfig &config = mapsounds[e.attr1];
+        loopk(config.numslots) loadsoundslot(mapslots[config.slots+k], true);
+    }
+}
+ 
 int playsound(int n, const vec *loc, extentity *ent, int loops, int fade, int chanid, int radius, int expire)
 {
     if(nosound || !soundvol) return -1;
@@ -502,23 +541,8 @@ int playsound(int n, const vec *loc, extentity *ent, int loops, int fade, int ch
     if(fade < 0) return -1;
 
     soundslot &slot = slots[config.chooseslot()];
-    if(!slot.sample->chunk)
-    {
-        if(!slot.sample->name[0]) return -1;
+    if(!slot.sample->chunk && !loadsoundslot(slot)) return -1;
 
-        const char *exts[] = { "", ".wav", ".ogg" };
-        string buf;
-        loopi(sizeof(exts)/sizeof(exts[0]))
-        {
-            formatstring(buf)("packages/sounds/%s%s", slot.sample->name, exts[i]);
-            path(buf);
-            slot.sample->chunk = loadwav(buf);
-            if(slot.sample->chunk) break;
-        }
-
-        if(!slot.sample->chunk) { conoutf(CON_ERROR, "failed to load sample: %s", buf); return -1; }
-    }
-           
     if(dbgsound) conoutf("sound: %s", slot.sample->name);
  
     chanid = -1;

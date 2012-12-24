@@ -452,6 +452,8 @@ struct ctfclientmode : clientmode
             preloadmodel("flags/red");
             preloadmodel("flags/blue");
         }
+        static const int sounds[] = { S_FLAGPICKUP, S_FLAGDROP, S_FLAGRETURN, S_FLAGSCORE, S_FLAGRESET };
+        loopi(sizeof(sounds)/sizeof(sounds[0])) preloadsound(sounds[i]);
     }
 
     void drawblip(fpsent *d, float x, float y, float s, const vec &pos, bool flagblip)
