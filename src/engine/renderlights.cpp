@@ -3508,8 +3508,8 @@ void preparegbuffer()
 
 void rendergbuffer()
 {
-    timer *gcputimer = envmapping ? begintimer("g-buffer", false) : NULL;
-    timer *gtimer = envmapping ? begintimer("g-buffer") : NULL;
+    timer *gcputimer = envmapping ? NULL : begintimer("g-buffer", false);
+    timer *gtimer = envmapping ? NULL : begintimer("g-buffer");
 
     preparegbuffer();
 
