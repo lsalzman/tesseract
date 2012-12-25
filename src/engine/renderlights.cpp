@@ -3583,12 +3583,12 @@ void shademodelpreview(int x, int y, int w, int h, bool background)
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    SETSHADER(modelpreview);
-
     float lightscale = 2.0f*ldrscale;
-    LOCALPARAM(lightscale, (0.1f*lightscale, 0.1f*lightscale, 0.1f*lightscale, lightscale));
-    LOCALPARAM(sunlightdir, (vec(0, -1, 2).normalize()));
-    LOCALPARAM(sunlightcolor, (0.6f*lightscale, 0.6f*lightscale, 0.6f*lightscale));
+    GLOBALPARAM(lightscale, (0.1f*lightscale, 0.1f*lightscale, 0.1f*lightscale, lightscale));
+    GLOBALPARAM(sunlightdir, (vec(0, -1, 2).normalize()));
+    GLOBALPARAM(sunlightcolor, (0.6f*lightscale, 0.6f*lightscale, 0.6f*lightscale));
+
+    SETSHADER(modelpreview);
 
     if(background || outfbo)
     {
