@@ -386,10 +386,6 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_color_buffer_float extension.");
     }
 
-#ifdef __APPLE__
-    // Intel HD3000 broke occlusion queries - either causing software fallback, or returning wrong results
-    if(!intel)
-#endif	   
     if(hasext(exts, "GL_ARB_occlusion_query"))
     {
         GLint bits;
@@ -454,6 +450,9 @@ void gl_checkextensions()
     }
     else if(intel)
     {
+#ifdef __APPLE__
+        intel_immediate_bug = 1;
+#endif
 #ifdef WIN32
         intel_immediate_bug = 1;
         intel_vertexarray_bug = 1;
