@@ -1172,7 +1172,7 @@ void readmatrices()
     invprojmatrix.invert(projmatrix);
 }
 
-FVAR(nearplane, 1e-3f, 0.54f, 1e3f);
+FVAR(nearplane, 0.01f, 0.54f, 2.0f);
 
 void project(float fovy, float aspect, int farplane, float zscale = 1)
 {
