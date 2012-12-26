@@ -3562,7 +3562,7 @@ void shademinimap(const vec &color)
     GLERROR;
 }
 
-void shademodelpreview(int x, int y, int w, int h, bool background)
+void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor)
 {
     GLERROR;
 
@@ -3592,7 +3592,9 @@ void shademodelpreview(int x, int y, int w, int h, bool background)
 
     if(background || outfbo)
     {
+        if(!outfbo && scissor) glEnable(GL_SCISSOR_TEST);
         screenquad(vieww, viewh);
+        if(!outfbo && scissor) glDisable(GL_SCISSOR_TEST);
 
         if(outfbo)
         {
@@ -3607,7 +3609,9 @@ void shademodelpreview(int x, int y, int w, int h, bool background)
     {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
+        if(scissor) glEnable(GL_SCISSOR_TEST);
         screenquad(vieww, viewh);
+        if(scissor) glDisable(GL_SCISSOR_TEST);
         glDisable(GL_BLEND);
     }
 

@@ -1959,15 +1959,16 @@ namespace modelpreview
     int oldfarplane, oldvieww, oldviewh;
 
     int x, y, w, h;
-    bool background;
+    bool background, scissor;
 
-    void start(int x, int y, int w, int h, bool background)
+    void start(int x, int y, int w, int h, bool background, bool scissor)
     {
         modelpreview::x = x;
         modelpreview::y = y;
         modelpreview::w = w;
         modelpreview::h = h;
         modelpreview::background = background;
+        modelpreview::scissor = scissor;
 
         setupgbuffer(screen->w, screen->h);
 
@@ -2032,7 +2033,7 @@ namespace modelpreview
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);
 
-        shademodelpreview(x, y, w, h, background);
+        shademodelpreview(x, y, w, h, background, scissor);
 
         defaultshader->set();
 

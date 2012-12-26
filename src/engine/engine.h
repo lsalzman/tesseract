@@ -335,7 +335,7 @@ extern void writecrosshairs(stream *f);
 
 namespace modelpreview
 {
-    extern void start(int x, int y, int w, int h, bool background = true);
+    extern void start(int x, int y, int w, int h, bool background = true, bool scissor = false);
     extern void end();
 }
 
@@ -502,7 +502,7 @@ extern void preparegbuffer();
 extern void rendergbuffer();
 extern void shadegbuffer();
 extern void shademinimap(const vec &color = vec(0, 0, 0));
-extern void shademodelpreview(int x, int y, int w, int h, bool background = true);
+extern void shademodelpreview(int x, int y, int w, int h, bool background = true, bool scissor = false);
 extern void rendertransparent();
 extern void renderao();
 extern void loadhdrshaders(bool luma = false);
