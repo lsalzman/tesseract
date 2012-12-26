@@ -1101,6 +1101,8 @@ int main(int argc, char **argv)
     }
     initing = NOT_INITING;
 
+    if(numcpus < 0) numcpus = clamp(guessnumcpus(), 1, 16);
+
     if(dedicated <= 1)
     {
         logoutf("init: sdl");

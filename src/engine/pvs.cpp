@@ -845,7 +845,7 @@ struct viewcellnode
     }
 };
 
-VARP(pvsthreads, 1, 1, 16);
+VARP(pvsthreads, 0, 0, 16);
 static vector<pvsworker *> pvsworkers;
 
 static volatile bool check_genpvs_progress = false;
@@ -943,7 +943,7 @@ static void genviewcells(viewcellnode &p, cube *c, const ivec &co, int size, int
             if(isallclip(h.children)) continue;
         }
         else if(isentirelysolid(h) || (h.material&MATF_CLIP)==MAT_CLIP) continue;
-        if(pvsthreads<=1)
+        if(pvsworkers.length())
         {
             if(genpvs_canceled) return;
             p.children[i].pvs = pvsworkers[0]->genviewcell(o, size);
@@ -1141,14 +1141,15 @@ void genpvs(int *viewcellsize)
     genpvs_canceled = false;
     check_genpvs_progress = false;
     SDL_TimerID timer = NULL;
-    if(pvsthreads<=1) 
+    int numthreads = pvsthreads > 0 ? pvsthreads : numcpus;
+    if(numthreads<=1) 
     {
         pvsworkers.add(new pvsworker);
         timer = SDL_AddTimer(500, genpvs_timer, NULL);
     }
     viewcells = new viewcellnode;
     genviewcells(*viewcells, worldroot, ivec(0, 0, 0), worldsize>>1, *viewcellsize>0 ? *viewcellsize : 32);
-    if(pvsthreads<=1)
+    if(numthreads<=1)
     {
         SDL_RemoveTimer(timer);
     }
@@ -1157,7 +1158,7 @@ void genpvs(int *viewcellsize)
         renderprogress(0, "creating threads");
         if(!pvsmutex) pvsmutex = SDL_CreateMutex();
         if(!viewcellmutex) viewcellmutex = SDL_CreateMutex();
-        loopi(pvsthreads)
+        loopi(numthreads)
         {
             pvsworker *w = pvsworkers.add(new pvsworker);
             w->thread = SDL_CreateThread(pvsworker::run, w);

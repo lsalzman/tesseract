@@ -1179,7 +1179,8 @@ extern bool listdir(const char *dir, bool rel, const char *ext, vector<char *> &
 extern int listfiles(const char *dir, const char *ext, vector<char *> &files);
 extern int listzipfiles(const char *dir, const char *ext, vector<char *> &files);
 extern void seedMT(uint seed);
-extern uint randomMT(void);
+extern uint randomMT();
+extern int guessnumcpus();
 
 #endif
 
