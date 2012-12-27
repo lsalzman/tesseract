@@ -373,20 +373,28 @@ namespace game
         if(!h) h = player1;
         int contype = d==h || actor==h ? CON_FRAG_SELF : CON_FRAG_OTHER;
         string dname, aname;
-        copystring(dname, d==player1 ? "you" : colorname(d));
-        copystring(aname, actor==player1 ? "you" : colorname(actor));
+        if(m_teammode)
+        {
+            formatstring(dname)(isteam(d->team, player1->team) ? "\fs\f1%s\fr" : "\fs\f3%s\fr", d==player1 ? "you" : colorname(d));
+            formatstring(aname)(isteam(actor->team, player1->team) ? "\fs\f1%s\fr" : "\fs\f3%s\fr", actor==player1 ? "you" : colorname(actor));
+        }
+        else
+        {
+            copystring(dname, d==player1 ? "you" : colorname(d));
+            copystring(aname, actor==player1 ? "you" : colorname(actor));
+        }
         if(d==actor)
             conoutf(contype, "\f2%s suicided%s", dname, d==player1 ? "!" : "");
         else if(isteam(d->team, actor->team))
         {
             contype |= CON_TEAMKILL;
-            if(actor==player1) conoutf(contype, "\f3you fragged a teammate (%s)", dname);
-            else if(d==player1) conoutf(contype, "\f3you got fragged by a teammate (%s)", aname);
+            if(actor==player1) conoutf(contype, "\f6%s fragged a teammate (%s)", aname, dname);
+            else if(d==player1) conoutf(contype, "\f6%s got fragged by a teammate (%s)", dname, aname);
             else conoutf(contype, "\f2%s fragged a teammate (%s)", aname, dname);
         }
         else
         {
-            if(d==player1) conoutf(contype, "\f2you got fragged by %s", aname);
+            if(d==player1) conoutf(contype, "\f2%s got fragged by %s", dname, aname);
             else conoutf(contype, "\f2%s fragged %s", aname, dname);
         }
         deathstate(d);
