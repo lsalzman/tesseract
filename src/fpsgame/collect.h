@@ -684,7 +684,7 @@ struct collectclientmode : clientmode
             base &b = bases[basenum];
             if(!n)
             {
-                conoutf(CON_GAMEINFO, "%s stole a skull from %s team", d==player1 ? "you" : colorname(d), enemyteam==collectteambase(player1->team) ? "your" : "the enemy");
+                conoutf(CON_GAMEINFO, "%s stole a skull from \fs%s team\fr", teamcolorname(d), enemyteam==collectteambase(player1->team) ? "\f1your" : "\f3the enemy");
                 playsound(S_FLAGDROP, &b.tokenpos);
             }
             if(t) particle_flare(b.tokenpos, vec(t->o.x, t->o.y, t->o.z + 0.5f*(TOKENHEIGHT + 1)), 500, PART_LIGHTNING, team==collectteambase(player1->team) ? 0x2222FF : 0xFF2222, 1.0f);
@@ -708,10 +708,10 @@ struct collectclientmode : clientmode
         d->flags = flags;
         setscore(team, score);
 
-        conoutf(CON_GAMEINFO, "%s collected %d %s for %s team", d==player1 ? "you" : colorname(d), deposited, deposited==1 ? "skull" : "skulls", team==collectteambase(player1->team) ? "your" : "the enemy");
+        conoutf(CON_GAMEINFO, "%s collected %d %s for \fs%s team\fr", teamcolorname(d), deposited, deposited==1 ? "skull" : "skulls", team==collectteambase(player1->team) ? "\f1your" : "\f3the enemy");
         playsound(team==collectteambase(player1->team) ? S_FLAGSCORE : S_FLAGFAIL);
 
-        if(score >= SCORELIMIT) conoutf(CON_GAMEINFO, "%s team collected %d skulls", team==collectteambase(player1->team) ? "your" : "the enemy", score);
+        if(score >= SCORELIMIT) conoutf(CON_GAMEINFO, "\fs%s team\fr collected %d skulls", team==collectteambase(player1->team) ? "\f1your" : "\f3the enemy", score);
     }
 
     void checkitems(fpsent *d)

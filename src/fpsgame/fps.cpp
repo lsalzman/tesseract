@@ -598,22 +598,33 @@ namespace game
         return NULL;
     }
 
-    bool duplicatename(fpsent *d, const char *name = NULL)
+    bool duplicatename(fpsent *d, const char *name = NULL, const char *alt = NULL)
     {
         if(!name) name = d->name;
+        if(alt && d != player1 && !strcmp(name, alt)) return true;
         loopv(players) if(d!=players[i] && !strcmp(name, players[i]->name)) return true;
         return false;
     }
 
-    const char *colorname(fpsent *d, const char *name, const char *prefix)
+    const char *colorname(fpsent *d, const char *name, const char *prefix, const char *suffix, const char *alt)
     {
-        if(!name) name = d->name;
-        if(name[0] && !duplicatename(d, name) && d->aitype == AI_NONE) return name;
         static string cname[3];
         static int cidx = 0;
-        cidx = (cidx+1)%3;
-        formatstring(cname[cidx])(d->aitype == AI_NONE ? "%s%s \fs\f5(%d)\fr" : "%s%s \fs\f5[%d]\fr", prefix, name, d->clientnum);
-        return cname[cidx];
+        if(!name) name = alt && d == player1 ? alt : d->name; 
+        bool dup = !name[0] || duplicatename(d, name, alt) || d->aitype != AI_NONE;
+        if(dup || prefix[0] || suffix[0])
+        {
+            cidx = (cidx+1)%3;
+            if(dup) formatstring(cname[cidx])(d->aitype == AI_NONE ? "%s%s \fs\f5(%d)\fr%s" : "%s%s \fs\f5[%d]\fr%s", prefix, name, d->clientnum, suffix);
+            else formatstring(cname[cidx])("%s%s%s", prefix, name, suffix);
+            return cname[cidx];
+        }
+        return name;
+    }
+
+    const char *teamcolorname(fpsent *d, const char *alt)
+    {
+        return colorname(d, NULL, isteam(d->team, player1->team) ? "\fs\f1" : "\fs\f3", "\fr", alt); 
     }
 
     void suicide(physent *d)

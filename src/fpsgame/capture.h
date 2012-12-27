@@ -559,19 +559,21 @@ struct captureclientmode : clientmode
         baseinfo &b = bases[i];
         if(owner[0])
         {
+            const char *ocol = isteam(owner, player1->team) ? "\f1" : "\f3";
             if(strcmp(b.owner, owner))
             {
-                if(!b.name[0]) conoutf(CON_GAMEINFO, "%s captured base %d", owner, i+1);
-                else if(basenumbers) conoutf(CON_GAMEINFO, "%s captured %s (%d)", owner, b.name, i+1);
-                else conoutf(CON_GAMEINFO, "%s captured %s", owner, b.name);
+                if(!b.name[0]) conoutf(CON_GAMEINFO, "\fs%s%s\fr captured base %d", ocol, owner, i+1);
+                else if(basenumbers) conoutf(CON_GAMEINFO, "\fs%s%s\fr captured %s (%d)", ocol, owner, b.name, i+1);
+                else conoutf(CON_GAMEINFO, "\fs%s%s\fr captured %s", ocol, owner, b.name);
                 if(!strcmp(owner, player1->team)) playsound(S_V_BASECAP);
             }
         }
         else if(b.owner[0])
         {
-            if(!b.name[0]) conoutf(CON_GAMEINFO, "%s lost base %d", b.owner, i+1);
-            else if(basenumbers) conoutf(CON_GAMEINFO, "%s lost %s (%d)", b.owner, b.name, i+1);
-            else conoutf(CON_GAMEINFO, "%s lost %s", b.owner, b.name);
+            const char *ocol = isteam(b.owner, player1->team) ? "\f1" : "\f3";
+            if(!b.name[0]) conoutf(CON_GAMEINFO, "\fs%s%s\fr lost base %d", ocol, b.owner, i+1);
+            else if(basenumbers) conoutf(CON_GAMEINFO, "\fs%s%s\fr lost %s (%d)", ocol, b.owner, b.name, i+1);
+            else conoutf(CON_GAMEINFO, "\fs%s%s\fr lost %s", ocol, b.owner, b.name);
             if(!strcmp(b.owner, player1->team)) playsound(S_V_BASELOST);
         }
         if(strcmp(b.owner, owner)) particle_splash(PART_SPARK, 200, 250, b.ammopos, owner[0] ? (strcmp(owner, player1->team) ? 0x802020 : 0x2020FF) : 0x208020, 0.24f);
@@ -590,7 +592,7 @@ struct captureclientmode : clientmode
     void setscore(int base, const char *team, int total)
     {
         findscore(team).total = total;
-        if(total>=10000) conoutf(CON_GAMEINFO, "team %s captured all bases", team);
+        if(total>=10000) conoutf(CON_GAMEINFO, "\fs%steam %s\fr captured all bases", isteam(team, player1->team) ? "\f1" : "\f3", team);
         else if(bases.inrange(base))
         {
             baseinfo &b = bases[base];
