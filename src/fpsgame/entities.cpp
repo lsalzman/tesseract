@@ -88,6 +88,17 @@ namespace entities
             if(!mdl) continue;
             preloadmodel(mdl);
         }
+        loopv(ents)
+        {
+            extentity &e = *ents[i];
+            switch(e.type)
+            {
+                case TELEPORT:
+                case JUMPPAD:
+                    if(e.attr4 > 0) preloadmapsound(e.attr4);
+                    break;
+            }
+        }
     }
 
     void renderentities()

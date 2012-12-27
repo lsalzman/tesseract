@@ -119,10 +119,6 @@ namespace game
             if(mdl->quad) preloadmodel(mdl->quad);
             loopj(3) if(mdl->armour[j]) preloadmodel(mdl->armour[j]);
         }
-        for(int i = S_JUMP; i <= S_SPLASH2; i++) preloadsound(i);
-        for(int i = S_JUMPPAD; i <= S_PISTOL; i++) preloadsound(i);
-        for(int i = S_V_BOOST; i <= S_V_QUAD10; i++) preloadsound(i);
-        for(int i = S_BURN; i <= S_HIT; i++) preloadsound(i);
     }
     
     VAR(testquad, 0, 0, 1);
@@ -407,11 +403,20 @@ namespace game
         }
     }
 
+    void preloadsounds()
+    {
+        for(int i = S_JUMP; i <= S_SPLASH2; i++) preloadsound(i);
+        for(int i = S_JUMPPAD; i <= S_PISTOL; i++) preloadsound(i);
+        for(int i = S_V_BOOST; i <= S_V_QUAD10; i++) preloadsound(i);
+        for(int i = S_BURN; i <= S_HIT; i++) preloadsound(i);
+    }
+
     void preload()
     {
         if(hudgun) preloadweapons();
         preloadbouncers();
         preloadplayermodel();
+        preloadsounds();
         entities::preloadentities();
     }
 

@@ -471,12 +471,22 @@ static bool loadsoundslot(soundslot &slot, bool msg = false)
     conoutf(CON_ERROR, "failed to load sample: packages/sounds/%s", slot.sample->name); 
     return false;
 }
-   
+
+static inline void preloadsound(vector<soundconfig> &sounds, vector<soundslot> &slots, int n)
+{
+    if(!sounds.inrange(n)) return;
+    soundconfig &config = sounds[n];
+    loopk(config.numslots) loadsoundslot(slots[config.slots+k], true);
+}
+
 void preloadsound(int n)
 {
-    if(!gamesounds.inrange(n)) return;
-    soundconfig &config = gamesounds[n];
-    loopk(config.numslots) loadsoundslot(gameslots[config.slots+k], true);
+    preloadsound(gamesounds, gameslots, n);
+}
+
+void preloadmapsound(int n)
+{
+    preloadsound(mapsounds, mapslots, n);
 }
 
 void preloadmapsounds()
@@ -485,9 +495,7 @@ void preloadmapsounds()
     loopv(ents)
     {
         extentity &e = *ents[i];
-        if(e.type!=ET_SOUND || !mapsounds.inrange(e.attr1)) continue;
-        soundconfig &config = mapsounds[e.attr1];
-        loopk(config.numslots) loadsoundslot(mapslots[config.slots+k], true);
+        if(e.type==ET_SOUND) preloadsound(mapsounds, mapslots, e.attr1);
     }
 }
  
