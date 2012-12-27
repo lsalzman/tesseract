@@ -144,18 +144,18 @@ namespace entities
             //particle_text(d->abovehead(), is.name, PART_TEXT, 2000, 0xFFC864, 4.0f, -8);
             particle_icon(d->abovehead(), is.icon%4, is.icon/4, PART_HUD_ICON_GREY, 2000, 0xFFFFFF, 2.0f, -8);
         }
-        playsound(itemstats[type-I_SHELLS].sound, d!=player1 ? &d->o : NULL, NULL, 0, 0, -1, 0, 1500);
+        playsound(itemstats[type-I_SHELLS].sound, d!=player1 ? &d->o : NULL, NULL, 0, 0, 0, -1, 0, 1500);
         d->pickup(type);
         if(d==player1) switch(type)
         {
             case I_BOOST:
                 conoutf(CON_GAMEINFO, "\f2you have a permanent +10 health bonus! (%d)", d->maxhealth);
-                playsound(S_V_BOOST, NULL, NULL, 0, 0, -1, 0, 3000);
+                playsound(S_V_BOOST, NULL, NULL, 0, 0, 0, -1, 0, 3000);
                 break;
 
             case I_QUAD:
                 conoutf(CON_GAMEINFO, "\f2you got the quad!");
-                playsound(S_V_QUAD, NULL, NULL, 0, 0, -1, 0, 3000);
+                playsound(S_V_QUAD, NULL, NULL, 0, 0, 0, -1, 0, 3000);
                 break;
         }
     }
@@ -164,11 +164,20 @@ namespace entities
 
     void teleporteffects(fpsent *d, int tp, int td, bool local)
     {
-        if(d == player1) playsound(S_TELEPORT);
-        else
+        if(ents.inrange(tp))
         {
-            if(ents.inrange(tp)) playsound(S_TELEPORT, &ents[tp]->o);
-            if(ents.inrange(td)) playsound(S_TELEPORT, &ents[td]->o);
+            extentity &e = *ents[tp];
+            if(e.attr4 >= 0) 
+            {
+                int snd = S_TELEPORT, flags = 0;
+                if(e.attr4 > 0) { snd = e.attr4; flags = SND_MAP; }
+                if(d == player1) playsound(snd, NULL, NULL, flags);
+                else
+                {
+                    playsound(snd, &e.o, NULL, flags);
+                    if(ents.inrange(td)) playsound(snd, &ents[td]->o, NULL, flags);
+                }
+            }
         }
         if(local && d->clientnum >= 0)
         {
@@ -185,8 +194,17 @@ namespace entities
 
     void jumppadeffects(fpsent *d, int jp, bool local)
     {
-        if(d == player1) playsound(S_JUMPPAD);
-        else if(ents.inrange(jp)) playsound(S_JUMPPAD, &ents[jp]->o);
+        if(ents.inrange(jp))
+        {
+            extentity &e = *ents[jp];
+            if(e.attr4 >= 0)
+            {
+                int snd = S_JUMPPAD, flags = 0;
+                if(e.attr4 > 0) { snd = e.attr4; flags = SND_MAP; }
+                if(d == player1) playsound(snd, NULL, NULL, flags);
+                else playsound(snd, &e.o, NULL, flags);
+            }
+        }
         if(local && d->clientnum >= 0)
         {
             sendposition(d);
