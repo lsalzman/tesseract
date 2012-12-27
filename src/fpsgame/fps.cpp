@@ -852,8 +852,8 @@ namespace game
 
     bool serverinfostartcolumn(g3d_gui *g, int i)
     {
-        static const char *names[] = { "ping ", "players ", "map ", "mode ", "master ", "host ", "port ", "description " };
-        static const int struts[] =  { 7,       7,          14,     13,      8,         14,      7,       24 };
+        static const char *names[] = { "ping ", "players ", "mode ", "map ", "master ", "host ", "port ", "description " };
+        static const int struts[] =  { 7,       7,          13,     14,      8,         14,      7,       24 };
         if(size_t(i) >= sizeof(names)/sizeof(names[0])) return false;
         g->pushlist();
         g->text(names[i], 0xFFFF80, !i ? " " : NULL);
@@ -932,11 +932,11 @@ namespace game
                 break;
 
             case 2:
-                if(g->buttonf("%.25s ", 0xFFFFDD, NULL, map)&G3D_UP) return true;
+                if(g->buttonf("%s ", 0xFFFFDD, NULL, attr.length()>=2 ? server::modename(attr[1], "") : "")&G3D_UP) return true;
                 break;
 
             case 3:
-                if(g->buttonf("%s ", 0xFFFFDD, NULL, attr.length()>=2 ? server::modename(attr[1], "") : "")&G3D_UP) return true;
+                if(g->buttonf("%.25s ", 0xFFFFDD, NULL, map)&G3D_UP) return true;
                 break;
 
             case 4:
