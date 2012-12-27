@@ -190,7 +190,9 @@ enum
     S_CHAINSAW_ATTACK,
     S_CHAINSAW_IDLE,
 
-    S_HIT
+    S_HIT,
+    
+    S_FLAGFAIL
 };
 
 // network messages codes, c2s, c2c, s2c

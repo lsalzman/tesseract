@@ -408,17 +408,16 @@ struct collectclientmode : clientmode
         preloadmodel("base/blue");
         preloadmodel("skull/red");
         preloadmodel("skull/blue");
-        preloadsound(S_FLAGDROP);
-        preloadsound(S_FLAGSCORE);
+        static const int sounds[] = { S_FLAGDROP, S_FLAGSCORE, S_FLAGFAIL };
+        loopi(sizeof(sounds)/sizeof(sounds[0])) preloadsound(sounds[i]);
     }
 
-    void drawblip(fpsent *d, float x, float y, float s, const vec &pos)
+    void drawblip(fpsent *d, float x, float y, float s, const vec &pos, float size = 0.05f)
     {
         float scale = calcradarscale();
         vec dir = d->o;
         dir.sub(pos).div(scale);
-        float size = 0.05f,
-              xoffset = -size,
+        float xoffset = -size,
               yoffset = -size,
               dist = dir.magnitude2(), maxdist = 1 - 0.05f - 0.05f;
         if(dist >= maxdist) dir.mul(maxdist/dist);
@@ -426,7 +425,7 @@ struct collectclientmode : clientmode
         drawradar(x + s*0.5f*(1.0f + dir.x + xoffset), y + s*0.5f*(1.0f + dir.y + yoffset), size*s);
     }
 
-    void drawblip(fpsent *d, float x, float y, float s, int i)
+    void drawbaseblip(fpsent *d, float x, float y, float s, int i)
     {
         base &b = bases[i];
         settexture(b.team==collectteambase(player1->team) ? "packages/hud/blip_blue.png" : "packages/hud/blip_red.png", 3);
@@ -473,7 +472,15 @@ struct collectclientmode : clientmode
         {
             base &b = bases[i];
             if(!collectbaseteam(b.team)) continue;
-            drawblip(d, x, y, s, i);
+            drawbaseblip(d, x, y, s, i);
+        }
+        int team = collectteambase(d->team);
+        settexture(team == collectteambase(player1->team) ? "packages/hud/blip_red_skull.png" : "packages/hud/blip_blue_skull.png", 3);
+        loopv(players)
+        {
+            fpsent *o = players[i];
+            if(o != d && o->state == CS_ALIVE && o->tokens > 0 && collectteambase(o->team) != team)
+                drawblip(d, x, y, s, o->o, 0.07f);
         }
         drawteammates(d, x, y, s);
         if(d->state == CS_DEAD)
@@ -702,7 +709,7 @@ struct collectclientmode : clientmode
         setscore(team, score);
 
         conoutf(CON_GAMEINFO, "%s collected %d %s for %s team", d==player1 ? "you" : colorname(d), deposited, deposited==1 ? "skull" : "skulls", team==collectteambase(player1->team) ? "your" : "the enemy");
-        playsound(S_FLAGSCORE);
+        playsound(team==collectteambase(player1->team) ? S_FLAGSCORE : S_FLAGFAIL);
 
         if(score >= SCORELIMIT) conoutf(CON_GAMEINFO, "%s team collected %d skulls", team==collectteambase(player1->team) ? "your" : "the enemy", score);
     }
