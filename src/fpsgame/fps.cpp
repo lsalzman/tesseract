@@ -852,8 +852,8 @@ namespace game
 
     bool serverinfostartcolumn(g3d_gui *g, int i)
     {
-        static const char *names[] = { "ping ", "players ", "mode ", "map ", "master ", "host ", "port ", "description " };
-        static const int struts[] =  { 7,       7,          13,     14,      8,         14,      7,       24 };
+        static const char *names[] = { "ping ", "players ", "mode ", "map ", "time ", "master ", "host ", "port ", "description " };
+        static const int struts[] =  { 7,       7,          13,     14,      7,      8,         14,      7,       24 };
         if(size_t(i) >= sizeof(names)/sizeof(names[0])) return false;
         g->pushlist();
         g->text(names[i], 0xFFFF80, !i ? " " : NULL);
@@ -892,18 +892,19 @@ namespace game
                 case 2:
                 case 3:
                 case 4:
+                case 5:
                     if(g->button(" ", 0xFFFFDD)&G3D_UP) return true;
                     break;
 
-                case 5:
+                case 6:
                     if(g->buttonf("%s ", 0xFFFFDD, NULL, name)&G3D_UP) return true;
                     break;
 
-                case 6:
+                case 7:
                     if(g->buttonf("%d ", 0xFFFFDD, NULL, port)&G3D_UP) return true;
                     break;
 
-                case 7:
+                case 8:
                     if(ping < 0)
                     {
                         if(g->button(sdesc, 0xFFFFDD)&G3D_UP) return true;
@@ -940,18 +941,28 @@ namespace game
                 break;
 
             case 4:
+                if(attr.length()>=3 && attr[2] > 0)
+                {
+                    int secs = clamp(attr[2], 0, 59*60+59),
+                        mins = secs/60;
+                    secs %= 60;
+                    if(g->buttonf("%d:%02d ", 0xFFFFDD, NULL, mins, secs)&G3D_UP) return true;
+                }
+                else if(g->buttonf(" ", 0xFFFFDD)&G3D_UP) return true;
+                break;
+            case 5:
                 if(g->buttonf("%s%s ", 0xFFFFDD, NULL, attr.length()>=5 ? mastermodecolor(attr[4], "") : "", attr.length()>=5 ? server::mastermodename(attr[4], "") : "")&G3D_UP) return true;
                 break;
 
-            case 5:
+            case 6:
                 if(g->buttonf("%s ", 0xFFFFDD, NULL, name)&G3D_UP) return true;
                 break;
 
-            case 6:
+            case 7:
                 if(g->buttonf("%d ", 0xFFFFDD, NULL, port)&G3D_UP) return true;
                 break;
 
-            case 7:
+            case 8:
                 if(g->buttonf("%.25s", 0xFFFFDD, NULL, sdesc)&G3D_UP) return true;
                 break;
         }
