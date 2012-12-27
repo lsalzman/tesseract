@@ -1158,6 +1158,11 @@ struct ctfclientmode : clientmode
 			{
 				if(f.droptime) return ai::makeroute(d, b, f.pos());
 				if(f.owner) return ai::violence(d, b, f.owner, 4);
+                loopv(flags)
+                {
+                    flag &g = flags[i];
+                    if(g.owner == d) return ai::makeroute(d, b, f.pos());
+                }
 			}
 			else
 			{
