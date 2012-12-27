@@ -882,9 +882,9 @@ ICOMMAND(insidebases, "", (),
                     ci->state.health = min(ci->state.health + ticks*REGENHEALTH, ci->state.maxhealth);
                     notify = true;
                 }
-                if(ci->state.armour < itemstats[I_GREENARMOUR-I_SHELLS].max)
+                if(ci->state.armourtype != A_GREEN || ci->state.armour < itemstats[I_GREENARMOUR-I_SHELLS].max)
                 {
-                    ci->state.armour = min(ci->state.armour + ticks*REGENARMOUR, itemstats[I_GREENARMOUR-I_SHELLS].max);
+                    ci->state.armour = min((ci->state.armourtype != A_GREEN ? 0 : ci->state.armour) + ticks*REGENARMOUR, itemstats[I_GREENARMOUR-I_SHELLS].max);
                     notify = true;
                 }
                 if(b.ammotype>0)
@@ -1105,6 +1105,7 @@ case N_BASEREGEN:
     if(regen && m_capture)
     {
         regen->health = health;
+        regen->armourtype = A_GREEN;
         regen->armour = armour;
         if(ammotype>=GUN_SG && ammotype<=GUN_PISTOL) regen->ammo[ammotype] = ammo;
     }
