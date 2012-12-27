@@ -1166,9 +1166,12 @@ namespace game
 
             case N_PAUSEGAME:
             {
-                int val = getint(p);
+                int val = getint(p), cn = getint(p);
+                fpsent *a = cn >= 0 ? getclient(cn) : NULL;
                 gamepaused = val > 0;
-                conoutf("game is %s", gamepaused ? "paused" : "resumed");
+                if(a) conoutf("%s %s the game", colorname(a), gamepaused ? "paused" : "resumed"); 
+                else conoutf("game is %s", gamepaused ? "paused" : "resumed");
+                player1->attacking = false;
                 break;
             }
 
