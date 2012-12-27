@@ -1033,6 +1033,8 @@ int getclockmillis()
     return max(millis, totalmillis);
 }
 
+VAR(numcpus, 1, 1, 16);
+
 int main(int argc, char **argv)
 {
     #ifdef WIN32
@@ -1101,7 +1103,7 @@ int main(int argc, char **argv)
     }
     initing = NOT_INITING;
 
-    if(numcpus < 0) numcpus = clamp(guessnumcpus(), 1, 16);
+    numcpus = clamp(guessnumcpus(), 1, 16);
 
     if(dedicated <= 1)
     {
