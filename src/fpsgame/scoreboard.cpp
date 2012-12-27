@@ -232,37 +232,6 @@ namespace game
                 g.poplist();
             }
 
-            if(multiplayer(false) || demoplayback)
-            {
-                if(showpj)
-                {
-                    g.pushlist();
-                    g.strut(6);
-                    g.text("pj", fgcolor);
-                    loopscoregroup(o,
-                    {
-                        if(o->state==CS_LAGGED) g.text("LAG", 0xFFFFDD);
-                        else g.textf("%d", 0xFFFFDD, NULL, o->plag);
-                    });
-                    g.poplist();
-                }
-        
-                if(showping)
-                {
-                    g.pushlist();
-                    g.text("ping", fgcolor);
-                    g.strut(6);
-                    loopscoregroup(o, 
-                    {
-                        fpsent *p = o->ownernum >= 0 ? getclient(o->ownernum) : o;
-                        if(!p) p = o;
-                        if(!showpj && p->state==CS_LAGGED) g.text("LAG", 0xFFFFDD);
-                        else g.textf("%d", 0xFFFFDD, NULL, p->ping);
-                    });
-                    g.poplist();
-                }
-            }
-
             g.pushlist();
             g.text("name", fgcolor);
             g.strut(13);
@@ -277,6 +246,37 @@ namespace game
                 g.text(colorname(o), status);
             });
             g.poplist();
+
+            if(multiplayer(false) || demoplayback)
+            {
+                if(showpj)
+                {
+                    g.pushlist();
+                    g.strut(6);
+                    g.text("pj", fgcolor);
+                    loopscoregroup(o,
+                    {
+                        if(o->state==CS_LAGGED) g.text("LAG", 0xFFFFDD);
+                        else g.textf("%d", 0xFFFFDD, NULL, o->plag);
+                    });
+                    g.poplist();
+                }
+
+                if(showping)
+                {
+                    g.pushlist();
+                    g.text("ping", fgcolor);
+                    g.strut(6);
+                    loopscoregroup(o,
+                    {
+                        fpsent *p = o->ownernum >= 0 ? getclient(o->ownernum) : o;
+                        if(!p) p = o;
+                        if(!showpj && p->state==CS_LAGGED) g.text("LAG", 0xFFFFDD);
+                        else g.textf("%d", 0xFFFFDD, NULL, p->ping);
+                    });
+                    g.poplist();
+                }
+            }
 
             if(showclientnum || player1->privilege>=PRIV_MASTER)
             {
