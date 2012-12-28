@@ -83,7 +83,7 @@ namespace game
 
     void respawnself()
     {
-        if(paused || ispaused()) return;
+        if(ispaused()) return;
         if(m_mp(gamemode))
         {
             if(player1->respawned!=player1->lifesequence)

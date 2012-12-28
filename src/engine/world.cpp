@@ -1149,7 +1149,6 @@ void resetmap()
     clearmapcrc();
 
     setvar("gamespeed", 100, false);
-    setvar("paused", 0, false);
 
     entities::clearents();
     outsideents.setsize(0);

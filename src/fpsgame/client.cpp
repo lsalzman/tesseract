@@ -691,9 +691,17 @@ namespace game
 
     void pausegame(int *val)
     {
-        addmsg(N_PAUSEGAME, "ri", *val > 0 ? 1 : 0);
+        if(!connected) return;
+        if(!remote) server::forcepaused(*val > 0);
+        else addmsg(N_PAUSEGAME, "ri", *val > 0 ? 1 : 0);
     }
     COMMAND(pausegame, "i");
+    ICOMMAND(paused, "iN$", (int *val, int *numargs, ident *id),
+    { 
+        if(*numargs > 0) pausegame(val); 
+        else if(*numargs < 0) intret(gamepaused ? 1 : 0);
+        else printvar(id, gamepaused ? 1 : 0); 
+    });
 
     bool ispaused() { return gamepaused; }
 

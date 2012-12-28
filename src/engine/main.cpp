@@ -883,8 +883,6 @@ void swapbuffers()
  
 VARF(gamespeed, 10, 100, 1000, if(multiplayer()) gamespeed = 100);
 
-VARF(paused, 0, 0, 1, if(multiplayer()) paused = 0);
-
 VAR(menufps, 0, 60, 1000);
 VARP(maxfps, 0, 200, 1000);
 
@@ -1240,7 +1238,7 @@ int main(int argc, char **argv)
             curtime = scaledtime/100;
             timeerr = scaledtime%100;
             if(curtime>200) curtime = 200;
-            if(paused || game::ispaused()) curtime = 0;
+            if(game::ispaused()) curtime = 0;
         }
         lastmillis += curtime;
         totalmillis = millis;

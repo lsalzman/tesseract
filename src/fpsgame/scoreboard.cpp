@@ -165,7 +165,7 @@ namespace game
                 g.poplist();
             }
         }
-        if(paused || ispaused()) { g.separator(); g.text("paused", 0xFFFF80); }
+        if(ispaused()) { g.separator(); g.text("paused", 0xFFFF80); }
         g.spring();
         g.poplist();
 

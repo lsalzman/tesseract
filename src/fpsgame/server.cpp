@@ -1212,6 +1212,11 @@ namespace server
         if(!admins) pausegame(false);
     }
 
+    void forcepaused(bool paused)
+    {
+        pausegame(paused);
+    }
+
     SVAR(serverauth, "");
 
     struct userkey
