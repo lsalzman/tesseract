@@ -386,7 +386,7 @@ namespace server
     bool notgotitems = true;        // true when map has changed and waiting for clients to send item
     int gamemode = 0;
     int gamemillis = 0, gamelimit = 0, nextexceeded = 0;
-    bool gamepaused = false;
+    bool gamepaused = false, shouldstep = true;
 
     string smapname = "";
     int interm = 0;
@@ -1159,7 +1159,7 @@ namespace server
 
     void readdemo()
     {
-        if(!demoplayback || gamepaused) return;
+        if(!demoplayback) return;
         demomillis += curtime;
         while(demomillis>=nextplayback)
         {
@@ -2226,32 +2226,35 @@ namespace server
 
     void serverupdate()
     {
-        if(!gamepaused) gamemillis += curtime;
-
-        if(m_demo) readdemo();
-        else if(!gamepaused && (!m_timed || gamemillis < gamelimit))
+        if(shouldstep && !gamepaused)
         {
-            processevents();
-            if(curtime)
+            gamemillis += curtime;
+
+            if(m_demo) readdemo();
+            else if(!m_timed || gamemillis < gamelimit)
             {
-                loopv(sents) if(sents[i].spawntime) // spawn entities when timer reached
+                processevents();
+                if(curtime)
                 {
-                    int oldtime = sents[i].spawntime;
-                    sents[i].spawntime -= curtime;
-                    if(sents[i].spawntime<=0)
+                    loopv(sents) if(sents[i].spawntime) // spawn entities when timer reached
                     {
-                        sents[i].spawntime = 0;
-                        sents[i].spawned = true;
-                        sendf(-1, 1, "ri2", N_ITEMSPAWN, i);
-                    }
-                    else if(sents[i].spawntime<=10000 && oldtime>10000 && (sents[i].type==I_QUAD || sents[i].type==I_BOOST))
-                    {
-                        sendf(-1, 1, "ri2", N_ANNOUNCE, sents[i].type);
+                        int oldtime = sents[i].spawntime;
+                        sents[i].spawntime -= curtime;
+                        if(sents[i].spawntime<=0)
+                        {
+                            sents[i].spawntime = 0;
+                            sents[i].spawned = true;
+                            sendf(-1, 1, "ri2", N_ITEMSPAWN, i);
+                        }
+                        else if(sents[i].spawntime<=10000 && oldtime>10000 && (sents[i].type==I_QUAD || sents[i].type==I_BOOST))
+                        {
+                            sendf(-1, 1, "ri2", N_ANNOUNCE, sents[i].type);
+                        }
                     }
                 }
+                aiman::checkai();
+                if(smode) smode->update();
             }
-            aiman::checkai();
-            if(smode) smode->update();
         }
 
         while(bannedips.length() && bannedips[0].expire > totalmillis) bannedips.remove(0);
@@ -2269,13 +2272,18 @@ namespace server
             }
         }
 
-        if(!gamepaused && m_timed && smapname[0] && gamemillis-curtime>0) checkintermission();
-        if(interm > 0 && gamemillis>interm)
+        if(shouldstep && !gamepaused)
         {
-            if(demorecord) enddemorecord();
-            interm = -1;
-            checkvotes(true);
+            if(m_timed && smapname[0] && gamemillis-curtime>0) checkintermission();
+            if(interm > 0 && gamemillis>interm)
+            {
+                if(demorecord) enddemorecord();
+                interm = -1;
+                checkvotes(true);
+            }
         }
+
+        shouldstep = clients.length() > 0;
     }
 
     struct crcinfo
@@ -2622,6 +2630,8 @@ namespace server
         if(m_demo) enddemoplayback();
 
         if(!hasmap(ci)) rotatemap(false);
+
+        shouldstep = true;
 
         connects.removeobj(ci);
         clients.add(ci);
