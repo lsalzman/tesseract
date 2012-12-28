@@ -1527,8 +1527,8 @@ static inline void callcommand(ident *id, tagval *args, int numargs)
 #ifndef STANDALONE
         case 'D': if(++i < numargs) freearg(args[i]); args[i].setint(addreleaseaction(conc(args, i, true, id->name)) ? 1 : 0); fakeargs++; break;
 #endif
-        case 'C': { ++i; vector<char> buf; ((comfun1)id->fun)(conc(buf, args, i, true)); goto cleanup; }
-        case 'V': ++i; ((comfunv)id->fun)(args, i); goto cleanup;
+        case 'C': { i = max(i+1, numargs); vector<char> buf; ((comfun1)id->fun)(conc(buf, args, i, true)); goto cleanup; }
+        case 'V': i = max(i+1, numargs); ((comfunv)id->fun)(args, i); goto cleanup;
         case '1': case '2': case '3': case '4': fmt -= *fmt-'0'+1; rep = true; break;
     }
     #define ARG(n) (id->argmask&(1<<n) ? (void *)args[n].s : (void *)&args[n].i)
