@@ -39,6 +39,7 @@ namespace game
     extern void forceedit(const char *name);
     extern bool ispaused();
     extern int scaletime(int t);
+    extern bool allowmouselook();
 
     extern const char *gameident();
     extern const char *savedconfig();
