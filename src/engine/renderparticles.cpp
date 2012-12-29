@@ -1126,7 +1126,7 @@ void particle_fireball(const vec &dest, float maxsize, int type, int fade, int c
 {
     if(!canaddparticles()) return;
     float growth = maxsize - size;
-    if(fade < 0) fade = int(growth*25);
+    if(fade < 0) fade = int(growth*20);
     newparticle(dest, vec(0, 0, 1), fade, type, color, size)->val = growth;
 }
 
