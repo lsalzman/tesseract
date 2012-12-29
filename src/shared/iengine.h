@@ -152,6 +152,8 @@ extern void printvar(ident *id);
 extern void printvar(ident *id, int i);
 extern void printfvar(ident *id, float f);
 extern void printsvar(ident *id, const char *s);
+extern int clampvar(ident *id, int i, int minval, int maxval);
+extern float clampfvar(ident *id, float f, float minval, float maxval);
 
 // console
 

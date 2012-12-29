@@ -38,6 +38,7 @@ namespace game
     extern void changemap(const char *name);
     extern void forceedit(const char *name);
     extern bool ispaused();
+    extern int scaletime(int t);
 
     extern const char *gameident();
     extern const char *savedconfig();
@@ -116,5 +117,6 @@ namespace server
     extern int masterport();
     extern void processmasterinput(const char *cmd, int cmdlen, const char *args);
     extern bool ispaused();
+    extern int scaletime(int t);
 }
 

@@ -566,6 +566,18 @@ const char *getalias(const char *name)
     return i && i->type==ID_ALIAS && (i->index >= MAXARGS || aliasstack->usedargs&(1<<i->index)) ? i->getstr() : "";
 }
 
+int clampvar(ident *id, int val, int minval, int maxval)
+{
+    if(val < minval) val = minval;
+    else if(val > maxval) val = maxval;
+    else return val;
+    debugcode(id->flags&IDF_HEX ?
+            (minval <= 255 ? "valid range for %s is %d..0x%X" : "valid range for %s is 0x%X..0x%X") :
+            "valid range for %s is %d..%d",
+        id->name, minval, maxval);
+    return val;
+}
+
 void setvarchecked(ident *id, int val)
 {
     if(id->flags&IDF_READONLY) debugcode("variable %s is read-only", id->name);
@@ -576,20 +588,22 @@ void setvarchecked(ident *id, int val)
 #endif
     {
         OVERRIDEVAR(return, id->overrideval.i = *id->storage.i, , )
-        if(val<id->minval || val>id->maxval)
-        {
-            val = val<id->minval ? id->minval : id->maxval;                // clamp to valid range
-            debugcode(id->flags&IDF_HEX ?
-                    (id->minval <= 255 ? "valid range for %s is %d..0x%X" : "valid range for %s is 0x%X..0x%X") :
-                    "valid range for %s is %d..%d",
-                id->name, id->minval, id->maxval);
-        }
+        if(val < id->minval || val > id->maxval) val = clampvar(id, val, id->minval, id->maxval);
         *id->storage.i = val;
         id->changed();                                             // call trigger function if available
 #ifndef STANDALONE
         if(id->flags&IDF_OVERRIDE && !(identflags&IDF_OVERRIDDEN)) game::vartrigger(id);
 #endif
     }
+}
+
+float clampfvar(ident *id, float val, float minval, float maxval)
+{
+    if(val < minval) val = minval;
+    else if(val > maxval) val = maxval;
+    else return val;
+    debugcode("valid range for %s is %s..%s", id->name, floatstr(minval), floatstr(maxval));
+    return val;
 }
 
 void setfvarchecked(ident *id, float val)
@@ -602,11 +616,7 @@ void setfvarchecked(ident *id, float val)
 #endif
     {
         OVERRIDEVAR(return, id->overrideval.f = *id->storage.f, , );
-        if(val<id->minvalf || val>id->maxvalf)
-        {
-            val = val<id->minvalf ? id->minvalf : id->maxvalf;                // clamp to valid range
-            debugcode("valid range for %s is %s..%s", id->name, floatstr(id->minvalf), floatstr(id->maxvalf));
-        }
+        if(val < id->minvalf || val > id->maxvalf) val = clampfvar(id, val, id->minvalf, id->maxvalf);
         *id->storage.f = val;
         id->changed();
 #ifndef STANDALONE

@@ -714,10 +714,14 @@ void serverslice(bool dedicated, uint timeout)   // main server update, called f
 
     if(dedicated) 
     {
-        int millis = (int)enet_time_get();
-        curtime = server::ispaused() ? 0 : millis - totalmillis;
-        totalmillis = millis;
+        int millis = (int)enet_time_get(), elapsed = millis - totalmillis;
+        static int timeerr = 0;
+        int scaledtime = server::scaletime(elapsed) + timeerr;
+        curtime = scaledtime/100;
+        timeerr = scaledtime%100;
+        if(server::ispaused()) curtime = 0;
         lastmillis += curtime;
+        totalmillis = millis;
         updatetime();
     }
     server::serverupdate();

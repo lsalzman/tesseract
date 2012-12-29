@@ -385,7 +385,7 @@ namespace server
 
     bool notgotitems = true;        // true when map has changed and waiting for clients to send item
     int gamemode = 0;
-    int gamemillis = 0, gamelimit = 0, nextexceeded = 0;
+    int gamemillis = 0, gamelimit = 0, nextexceeded = 0, gamespeed = 100;
     bool gamepaused = false, shouldstep = true;
 
     string smapname = "";
@@ -577,6 +577,7 @@ namespace server
     VAR(restrictdemos, 0, 1, 1);
 
     VAR(restrictpausegame, 0, 1, 1);
+    VAR(restrictgamespeed, 0, 1, 1);
 
     SVAR(serverdesc, "");
     SVAR(serverpass, "");
@@ -1217,6 +1218,23 @@ namespace server
         pausegame(paused);
     }
 
+    bool ispaused() { return gamepaused; }
+
+    void changegamespeed(int val, clientinfo *ci = NULL)
+    {
+        val = clamp(val, 10, 1000);
+        if(gamespeed==val) return;
+        gamespeed = val;
+        sendf(-1, 1, "riii", N_GAMESPEED, gamespeed, ci ? ci->clientnum : -1);
+    }
+
+    void forcegamespeed(int speed)
+    {
+        changegamespeed(speed);
+    }
+
+    int scaletime(int t) { return t*gamespeed; }
+
     SVAR(serverauth, "");
 
     struct userkey
@@ -1735,6 +1753,12 @@ namespace server
             putint(p, 1);
             putint(p, -1);
         }
+        if(gamespeed != 100)
+        {
+            putint(p, N_GAMESPEED);
+            putint(p, gamespeed);
+            putint(p, -1);
+        }
         if(m_teammode)
         {
             putint(p, N_TEAMINFO);
@@ -1848,6 +1872,7 @@ namespace server
     {
         stopdemo();
         pausegame(false);
+        changegamespeed(100);
         if(smode) smode->cleanup();
         aiman::clearai();
 
@@ -2229,8 +2254,6 @@ namespace server
         while(ci->events.length() > keep) delete ci->events.pop();
         ci->timesync = false;
     }
-
-    bool ispaused() { return gamepaused; }
 
     void serverupdate()
     {
@@ -3368,6 +3391,14 @@ namespace server
                 int val = getint(p);
                 if(ci->privilege < (restrictpausegame ? PRIV_ADMIN : PRIV_MASTER) && !ci->local) break;
                 pausegame(val > 0, ci);
+                break;
+            }
+
+            case N_GAMESPEED:
+            {
+                int val = getint(p);
+                if(ci->privilege < (restrictgamespeed ? PRIV_ADMIN : PRIV_MASTER) && !ci->local) break;
+                changegamespeed(val, ci);
                 break;
             }
 

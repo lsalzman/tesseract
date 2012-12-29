@@ -881,8 +881,6 @@ void swapbuffers()
     SDL_GL_SwapBuffers();
 }
  
-VARF(gamespeed, 10, 100, 1000, if(multiplayer()) gamespeed = 100);
-
 VAR(menufps, 0, 60, 1000);
 VARP(maxfps, 0, 200, 1000);
 
@@ -1230,19 +1228,14 @@ int main(int argc, char **argv)
         int millis = getclockmillis();
         limitfps(millis, totalmillis);
         int elapsed = millis-totalmillis;
-        if(multiplayer(false)) curtime = game::ispaused() ? 0 : elapsed;
-        else
-        {
-            static int timeerr = 0;
-            int scaledtime = elapsed*gamespeed + timeerr;
-            curtime = scaledtime/100;
-            timeerr = scaledtime%100;
-            if(curtime>200) curtime = 200;
-            if(game::ispaused()) curtime = 0;
-        }
+        static int timeerr = 0;
+        int scaledtime = game::scaletime(elapsed) + timeerr;
+        curtime = scaledtime/100;
+        timeerr = scaledtime%100;
+        if(multiplayer(false) && curtime>200) curtime = 200;
+        if(game::ispaused()) curtime = 0;
         lastmillis += curtime;
         totalmillis = millis;
-        extern void updatetime();
         updatetime();
  
         checkinput();

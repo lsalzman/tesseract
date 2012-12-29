@@ -1148,8 +1148,6 @@ void resetmap()
     pruneundos();
     clearmapcrc();
 
-    setvar("gamespeed", 100, false);
-
     entities::clearents();
     outsideents.setsize(0);
 }
