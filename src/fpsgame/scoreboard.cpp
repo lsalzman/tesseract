@@ -243,7 +243,7 @@ namespace game
                     status = o->privilege>=PRIV_ADMIN ? 0xFF8000 : 0x40FF80;
                     if(o->state==CS_DEAD) status = (status>>1)&0x7F7F7F;
                 }
-                g.text(colorname(o), status);
+                g.textf("%s ", status, NULL, colorname(o));
             });
             g.poplist();
 

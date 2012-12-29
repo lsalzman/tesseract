@@ -40,7 +40,7 @@ namespace ai
 
     float weapmindist(int weap)
     {
-        return guns[weap].projspeed ? RL_DAMRAD : 2;
+        return max(int(guns[weap].exprad), 2);
     }
 
     float weapmaxdist(int weap)
