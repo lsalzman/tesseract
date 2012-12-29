@@ -350,7 +350,7 @@ namespace game
         vector<char> buf;
         string cn;
         int numclients = 0;
-        if(local)
+        if(local && connected)
         {
             formatstring(cn)("%d", player1->clientnum);
             buf.put(cn, strlen(cn));

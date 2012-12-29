@@ -86,8 +86,8 @@ namespace game
         if(ispaused()) return;
         if(m_mp(gamemode))
         {
-            int seq = (pl->lifesequence<<16)|((lastmillis/1000)&0xFFFF);
-            if(pl->respawned!=seq) { addmsg(N_TRYSPAWN, "rc", player1); pl->respawned = seq; }
+            int seq = (player1->lifesequence<<16)|((lastmillis/1000)&0xFFFF);
+            if(player1->respawned!=seq) { addmsg(N_TRYSPAWN, "rc", player1); player1->respawned = seq; }
         }
         else
         {
