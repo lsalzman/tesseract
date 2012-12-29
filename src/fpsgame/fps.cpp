@@ -86,11 +86,8 @@ namespace game
         if(ispaused()) return;
         if(m_mp(gamemode))
         {
-            if(player1->respawned!=player1->lifesequence)
-            {
-                addmsg(N_TRYSPAWN, "rc", player1);
-                player1->respawned = player1->lifesequence;
-            }
+            int seq = (pl->lifesequence<<16)|((lastmillis/1000)&0xFFFF);
+            if(pl->respawned!=seq) { addmsg(N_TRYSPAWN, "rc", player1); pl->respawned = seq; }
         }
         else
         {
@@ -634,10 +631,10 @@ namespace game
             if(d->state!=CS_ALIVE) return;
             fpsent *pl = (fpsent *)d;
             if(!m_mp(gamemode)) killed(pl, pl);
-            else if(pl->suicided!=pl->lifesequence)
+            else 
             {
-                addmsg(N_SUICIDE, "rc", pl);
-                pl->suicided = pl->lifesequence;
+                int seq = (pl->lifesequence<<16)|((lastmillis/1000)&0xFFFF);
+                if(pl->suicided!=seq) { addmsg(N_SUICIDE, "rc", pl); pl->suicided = seq; }
             }
         }
     }
