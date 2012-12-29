@@ -19,6 +19,7 @@ struct ctfclientmode : clientmode
     static const int MAXHOLDSPAWNS = 100;
     static const int HOLDSECS = 20;
     static const int HOLDFLAGS = 1;
+    static const int RESPAWNSECS = 5;
 
     struct flag
     {
@@ -305,6 +306,11 @@ struct ctfclientmode : clientmode
         loopv(flags) if(flags[i].dropper == ci->clientnum) { flags[i].dropper = -1; flags[i].dropcount = 0; }
     }
 
+    bool canspawn(clientinfo *ci, bool connecting) 
+    { 
+        return connecting || !ci->state.lastdeath || lastmillis-ci->state.lastdeath >= RESPAWNSECS*1000;
+    }
+
     bool canchangeteam(clientinfo *ci, const char *oldteam, const char *newteam)
     {
         return ctfteamflag(newteam) > 0;
@@ -442,8 +448,6 @@ struct ctfclientmode : clientmode
     }
 };
 #else
-    static const int RESPAWNSECS = 5;
-
     void preload()
     {
         if(m_hold) preloadmodel("flags/neutral");

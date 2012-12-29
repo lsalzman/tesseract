@@ -118,7 +118,7 @@ namespace server
     {
         vec o;
         int state, editstate;
-        int lastdeath, lastspawn, lifesequence;
+        int lastdeath, deadflush, lastspawn, lifesequence;
         int lastshot;
         projectilestate<8> rockets, grenades;
         int frags, flags, deaths, teamkills, shotdamage, damage, tokens;
@@ -148,6 +148,8 @@ namespace server
             effectiveness = 0;
             frags = flags = deaths = teamkills = shotdamage = damage = tokens = 0;
 
+            lastdeath = 0;
+
             respawn();
         }
 
@@ -155,7 +157,7 @@ namespace server
         {
             fpsstate::respawn();
             o = vec(-1e10f, -1e10f, -1e10f);
-            lastdeath = 0;
+            deadflush = 0;
             lastspawn = -1;
             lastshot = 0;
             tokens = 0;
@@ -2083,6 +2085,7 @@ namespace server
                 actor->state.teamkills++;
                 addteamkill(actor, 1);
             }
+            ts.deadflush = ts.lastdeath + DEATHMILLIS;
             // don't issue respawn yet until DEATHMILLIS has elapsed
             // ts.respawn();
         }
@@ -2900,9 +2903,9 @@ namespace server
                     ci->mapcrc = -1;
                     checkmaps();
                 }
-                if(cq->state.lastdeath)
+                if(cq->state.deadflush)
                 {
-                    flushevents(cq, cq->state.lastdeath + DEATHMILLIS);
+                    flushevents(cq, cq->state.deadflush);
                     cq->state.respawn();
                 }
                 cleartimedevents(cq);

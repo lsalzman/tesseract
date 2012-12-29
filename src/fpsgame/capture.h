@@ -1031,6 +1031,11 @@ ICOMMAND(insidebases, "", (),
         leavebases(ci->team, ci->state.o);
     }
 
+    bool canspawn(clientinfo *ci, bool connecting)
+    {
+        return connecting || !ci->state.lastdeath || lastmillis-ci->state.lastdeath >= RESPAWNSECS*1000;
+    }
+
     void moved(clientinfo *ci, const vec &oldpos, bool oldclip, const vec &newpos, bool newclip)
     {
         if(notgotbases) return;
