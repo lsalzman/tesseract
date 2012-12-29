@@ -1232,7 +1232,7 @@ int main(int argc, char **argv)
         int scaledtime = game::scaletime(elapsed) + timeerr;
         curtime = scaledtime/100;
         timeerr = scaledtime%100;
-        if(multiplayer(false) && curtime>200) curtime = 200;
+        if(!multiplayer(false) && curtime>200) curtime = 200;
         if(game::ispaused()) curtime = 0;
         lastmillis += curtime;
         totalmillis = millis;
