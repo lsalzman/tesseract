@@ -1200,7 +1200,7 @@ namespace game
                 fpsent *a = cn >= 0 ? getclient(cn) : NULL;
                 if(!demopacket)
                 {
-                    gamespeed = val;
+                    gamepaused = val;
                     player1->attacking = false;
                 }
                 if(a) conoutf("%s %s the game", colorname(a), val ? "paused" : "resumed");
