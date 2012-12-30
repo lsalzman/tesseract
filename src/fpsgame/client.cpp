@@ -1029,6 +1029,7 @@ namespace game
         int type;
         while(p.remaining()) switch(type = getint(p))
         {
+            case N_DEMOPACKET: break;
             case N_POS:                        // position of another client
             {
                 int cn = getuint(p), physstate = p.get(), flags = getuint(p);
@@ -1162,10 +1163,12 @@ namespace game
     {
         static char text[MAXTRANS];
         int type;
-        bool mapchanged = false;
+        bool mapchanged = false, demopacket = false;
 
         while(p.remaining()) switch(type = getint(p))
         {
+            case N_DEMOPACKET: demopacket = true; break;
+
             case N_SERVINFO:                   // welcome messsage from the server
             {
                 int mycn = getint(p), prot = getint(p);
@@ -1192,22 +1195,26 @@ namespace game
 
             case N_PAUSEGAME:
             {
-                int val = getint(p), cn = getint(p);
+                bool val = getint(p) > 0;
+                int cn = getint(p);
                 fpsent *a = cn >= 0 ? getclient(cn) : NULL;
-                gamepaused = val > 0;
-                if(a) conoutf("%s %s the game", colorname(a), gamepaused ? "paused" : "resumed"); 
-                else conoutf("game is %s", gamepaused ? "paused" : "resumed");
-                player1->attacking = false;
+                if(!demopacket)
+                {
+                    gamespeed = val;
+                    player1->attacking = false;
+                }
+                if(a) conoutf("%s %s the game", colorname(a), val ? "paused" : "resumed");
+                else conoutf("game is %s", val ? "paused" : "resumed");
                 break;
             }
 
             case N_GAMESPEED:
             {
-                int val = getint(p), cn = getint(p);
+                int val = clamp(getint(p), 10, 1000), cn = getint(p);
                 fpsent *a = cn >= 0 ? getclient(cn) : NULL;
-                gamespeed = clamp(val, 10, 1000);
-                if(a) conoutf("%s set gamespeed to %d", colorname(a), gamespeed);
-                else conoutf("gamespeed is %d", gamespeed);
+                if(!demopacket) gamespeed = val;
+                if(a) conoutf("%s set gamespeed to %d", colorname(a), val);
+                else conoutf("gamespeed is %d", val);
                 break;
             }
                 
@@ -1817,21 +1824,20 @@ namespace game
         }
     }
 
-    void receivefile(uchar *data, int len)
+    void receivefile(packetbuf &p)
     {
-        ucharbuf p(data, len);
-        int type = getint(p);
-        data += p.length();
-        len -= p.length();
-        switch(type)
+        int type;
+        while(p.remaining()) switch(type = getint(p))
         {
+            case N_DEMOPACKET: return;
             case N_SENDDEMO:
             {
                 defformatstring(fname)("%d.dmo", lastmillis);
                 stream *demo = openrawfile(fname, "wb");
                 if(!demo) return;
                 conoutf("received demo \"%s\"", fname);
-                demo->write(data, len);
+                ucharbuf b = p.subbuf(p.remaining());
+                demo->write(b.buf, b.maxlen);
                 delete demo;
                 break;
             }
@@ -1846,7 +1852,8 @@ namespace game
                 stream *map = openrawfile(path(fname), "wb");
                 if(!map) return;
                 conoutf("received map");
-                map->write(data, len);
+                ucharbuf b = p.subbuf(p.remaining());
+                map->write(b.buf, b.maxlen);
                 delete map;
                 if(load_world(mname, oldname[0] ? oldname : NULL))
                     entities::spawnitems(true);
@@ -1870,7 +1877,7 @@ namespace game
                 break;
 
             case 2:
-                receivefile(p.buf, p.maxlen);
+                receivefile(p);
                 break;
         }
     }

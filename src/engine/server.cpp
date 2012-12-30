@@ -421,7 +421,7 @@ const char *disconnectreason(int reason)
         case DISC_EOP: return "end of packet";
         case DISC_LOCAL: return "server is in local mode";
         case DISC_KICK: return "kicked/banned";
-        case DISC_TAGT: return "tag type";
+        case DISC_MSGERR: return "message error";
         case DISC_IPBAN: return "ip is banned";
         case DISC_PRIVATE: return "server is in private mode";
         case DISC_MAXCLIENTS: return "server FULL";

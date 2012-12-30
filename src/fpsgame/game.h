@@ -225,7 +225,8 @@ enum
     N_SWITCHNAME, N_SWITCHMODEL, N_SWITCHTEAM,
     N_INITTOKENS, N_TAKETOKEN, N_EXPIRETOKENS, N_DROPTOKENS, N_DEPOSITTOKENS, N_STEALTOKENS,
     N_SERVCMD,
-    NUMSV
+    N_DEMOPACKET,
+    NUMMSG
 };
 
 static const int msgsizes[] =               // size inclusive message token, 0 for variable or not-checked sizes
@@ -254,6 +255,7 @@ static const int msgsizes[] =               // size inclusive message token, 0 f
     N_SWITCHNAME, 0, N_SWITCHMODEL, 2, N_SWITCHTEAM, 0,
     N_INITTOKENS, 0, N_TAKETOKEN, 2, N_EXPIRETOKENS, 0, N_DROPTOKENS, 0, N_DEPOSITTOKENS, 2, N_STEALTOKENS, 0,
     N_SERVCMD, 0,
+    N_DEMOPACKET, 0,
     -1
 };
 
