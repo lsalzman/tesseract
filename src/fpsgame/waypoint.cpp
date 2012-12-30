@@ -763,5 +763,30 @@ namespace ai
         }
     }
     COMMAND(delselwaypoints, "");
+
+    void movewaypoints(const vec &d)
+    {
+        if(noedit(true)) return;
+        int worldsize = getworldsize();
+        if(d.x < -worldsize || d.x > worldsize || d.y < -worldsize || d.y > worldsize || d.z < -worldsize || d.z > worldsize)
+        {
+            clearwaypoints();
+            return;
+        }
+        int cleared = 0;
+        loopv(waypoints)
+        {
+            waypoint &w = waypoints[i];
+            w.o.add(d);
+            if(!insideworld(w.o)) { w.links[0] = 0; w.links[1] = 0xFFFF; cleared++; }
+        }
+        if(cleared)
+        {
+            player1->lastnode = -1;
+            remapwaypoints();
+        }
+        clearwpcache();
+    }
+    ICOMMAND(movewaypoints, "iii", (int *dx, int *dy, int *dz), movewaypoints(vec(*dx, *dy, *dz)));
 }
 

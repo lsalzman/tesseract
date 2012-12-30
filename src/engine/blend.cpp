@@ -359,20 +359,20 @@ VARF(blendpaintmode, 0, 0, 5,
     if(!blendpaintmode) stoppaintblendmap();
 });
 
-static void blitblendmap(uchar &type, BlendMapNode &node, int bmx, int bmy, int bmsize, uchar *src, int sx, int sy, int sw, int sh)
+static void blitblendmap(uchar &type, BlendMapNode &node, int bmx, int bmy, int bmsize, uchar *src, int sx, int sy, int sw, int sh, int smode)
 {
     if(type==BM_BRANCH)
     {
         bmsize /= 2;
         if(sy < bmy + bmsize)
         {
-            if(sx < bmx + bmsize) blitblendmap(node.branch->type[0], node.branch->children[0], bmx, bmy, bmsize, src, sx, sy, sw, sh);
-            if(sx + sw > bmx + bmsize) blitblendmap(node.branch->type[1], node.branch->children[1], bmx+bmsize, bmy, bmsize, src, sx, sy, sw, sh);
+            if(sx < bmx + bmsize) blitblendmap(node.branch->type[0], node.branch->children[0], bmx, bmy, bmsize, src, sx, sy, sw, sh, smode);
+            if(sx + sw > bmx + bmsize) blitblendmap(node.branch->type[1], node.branch->children[1], bmx+bmsize, bmy, bmsize, src, sx, sy, sw, sh, smode);
         }
         if(sy + sh > bmy + bmsize)
         {
-            if(sx < bmx + bmsize) blitblendmap(node.branch->type[2], node.branch->children[2], bmx, bmy+bmsize, bmsize, src, sx, sy, sw, sh);
-            if(sx + sw > bmx + bmsize) blitblendmap(node.branch->type[3], node.branch->children[3], bmx+bmsize, bmy+bmsize, bmsize, src, sx, sy, sw, sh);
+            if(sx < bmx + bmsize) blitblendmap(node.branch->type[2], node.branch->children[2], bmx, bmy+bmsize, bmsize, src, sx, sy, sw, sh, smode);
+            if(sx + sw > bmx + bmsize) blitblendmap(node.branch->type[3], node.branch->children[3], bmx+bmsize, bmy+bmsize, bmsize, src, sx, sy, sw, sh, smode);
         }
         return;
     }
@@ -382,7 +382,7 @@ static void blitblendmap(uchar &type, BlendMapNode &node, int bmx, int bmy, int 
         if(bmsize > BM_IMAGE_SIZE)
         {
             node.splitsolid(type, val);
-            blitblendmap(type, node, bmx, bmy, bmsize, src, sx, sy, sw, sh);
+            blitblendmap(type, node, bmx, bmy, bmsize, src, sx, sy, sw, sh, smode);
             return;
         }
 
@@ -397,7 +397,7 @@ static void blitblendmap(uchar &type, BlendMapNode &node, int bmx, int bmy, int 
     src += max(bmy - sy, 0)*sw + max(bmx - sx, 0);
     loopi(y2-y1)
     {
-        switch(blendpaintmode)
+        switch(smode)
         {
             case 1:
                 memcpy(dst, src, x2 - x1);
@@ -424,11 +424,11 @@ static void blitblendmap(uchar &type, BlendMapNode &node, int bmx, int bmy, int 
     } 
 }
 
-void blitblendmap(uchar *src, int sx, int sy, int sw, int sh)
+void blitblendmap(uchar *src, int sx, int sy, int sw, int sh, int smode)
 {
     int bmsize = worldsize>>BM_SCALE;
     if(max(sx, sy) >= bmsize || min(sx+sw, sy+sh) <= 0 || min(sw, sh) <= 0) return;
-    blitblendmap(blendmap.type, blendmap, 0, 0, bmsize, src, sx, sy, sw, sh);
+    blitblendmap(blendmap.type, blendmap, 0, 0, bmsize, src, sx, sy, sw, sh, smode);
 }
         
 void resetblendmap()
@@ -524,6 +524,36 @@ int calcblendlayer(int x1, int y1, int x2, int y2)
         uy2 = (min(y2, worldsize) + (1<<BM_SCALE)-1) >> BM_SCALE;
     if(ux1 >= ux2 || uy1 >= uy2) return LAYER_TOP;
     return calcblendlayer(blendmap.type, blendmap, 0, 0, bmsize, ux1, uy1, ux2-ux1, uy2-uy1);
+}
+
+void moveblendmap(uchar type, BlendMapNode &node, int size, int x, int y, int dx, int dy)
+{
+    if(type == BM_BRANCH)
+    {
+        size /= 2;
+        moveblendmap(node.branch->type[0], node.branch->children[0], size, x, y, dx, dy);
+        moveblendmap(node.branch->type[1], node.branch->children[1], size, x + size, y, dx, dy);
+        moveblendmap(node.branch->type[2], node.branch->children[2], size, x, y + size, dx, dy);
+        moveblendmap(node.branch->type[3], node.branch->children[3], size, x + size, y + size, dx, dy);
+        return;
+    }
+    else if(type == BM_SOLID)
+    {
+        fillblendmap(x+dx, y+dy, size, size, node.solid->val);
+    }
+    else if(type == BM_IMAGE)
+    {
+        blitblendmap(node.image->data, x+dx, y+dy, size, size, 1);
+    }
+}
+
+void moveblendmap(int dx, int dy)
+{
+    BlendMapRoot old = blendmap;
+    blendmap.type = BM_SOLID;
+    blendmap.solid = &bmsolids[0xFF];
+    moveblendmap(old.type, old, worldsize>>BM_SCALE, 0, 0, dx, dy);
+    old.cleanup();
 }
 
 struct BlendBrush
@@ -950,7 +980,7 @@ void paintblendmap(bool msg)
     BlendBrush *brush = brushes[curbrush];
     int x = (int)floor(clamp(worldpos.x, 0.0f, float(worldsize))/(1<<BM_SCALE) - 0.5f*brush->w),
         y = (int)floor(clamp(worldpos.y, 0.0f, float(worldsize))/(1<<BM_SCALE) - 0.5f*brush->h);
-    blitblendmap(brush->data, x, y, brush->w, brush->h);
+    blitblendmap(brush->data, x, y, brush->w, brush->h, blendpaintmode);
     previewblends(ivec((x-1)<<BM_SCALE, (y-1)<<BM_SCALE, 0),
                   ivec((brush->w+2)<<BM_SCALE, (brush->h+2)<<BM_SCALE, worldsize));
 }
@@ -1037,6 +1067,21 @@ ICOMMAND(clearblendmap, "", (),
 {
     if(noedit(true) || (nompedit && multiplayer())) return;
     resetblendmap();
+    showblendmap();
+});
+
+ICOMMAND(moveblendmap, "ii", (int *dx, int *dy),
+{
+    if(noedit(true) || (nompedit && multiplayer())) return;
+    if(*dx%(BM_IMAGE_SIZE<<BM_SCALE) || *dy%(BM_IMAGE_SIZE<<BM_SCALE)) 
+    {
+        conoutf(CON_ERROR, "blendmap movement must be in multiples of %d", BM_IMAGE_SIZE<<BM_SCALE);
+        return;
+    }
+    if(*dx <= -worldsize || *dx >= worldsize || *dy <= -worldsize || *dy >= worldsize)
+        resetblendmap();
+    else
+        moveblendmap(*dx>>BM_SCALE, *dy>>BM_SCALE);
     showblendmap();
 });
 
