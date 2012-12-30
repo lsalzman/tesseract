@@ -886,7 +886,12 @@ ICOMMAND(insidebases, "", (),
                 }
                 if(ci->state.armourtype != A_GREEN || ci->state.armour < itemstats[I_GREENARMOUR-I_SHELLS].max)
                 {
-                    ci->state.armour = min((ci->state.armourtype != A_GREEN ? 0 : ci->state.armour) + ticks*REGENARMOUR, itemstats[I_GREENARMOUR-I_SHELLS].max);
+                    if(ci->state.armourtype != A_GREEN)
+                    {
+                        ci->state.armourtype = A_GREEN;
+                        ci->state.armour = 0;
+                    }
+                    ci->state.armour = min(ci->state.armour + ticks*REGENARMOUR, itemstats[I_GREENARMOUR-I_SHELLS].max);
                     notify = true;
                 }
                 if(b.ammotype>0)
