@@ -492,7 +492,7 @@ namespace ai
         return !route.empty();
     }
 
-    VAR(dropwaypoints, 0, 0, 1);
+    VARF(dropwaypoints, 0, 0, 1, { player1->lastnode = -1; });
 
     int addwaypoint(const vec &o, int weight = -1)
     {
