@@ -185,7 +185,7 @@ namespace ai
     void buildwpcache()
     {
         loopi(NUMWPCACHES) if(wpcaches[i].maxdepth < 0)
-            wpcaches[i].build(i > 0 ? wpcaches[i-1].lastwp+1 : 0, i+1 >= NUMWPCACHES || wpcaches[i+1].maxdepth < 0 ? -1 : wpcaches[i+1].firstwp);
+            wpcaches[i].build(i > 0 ? wpcaches[i-1].lastwp+1 : 1, i+1 >= NUMWPCACHES || wpcaches[i+1].maxdepth < 0 ? -1 : wpcaches[i+1].firstwp);
         clearedwpcaches = 0;
         lastwpcache = waypoints.length();
 
