@@ -1515,7 +1515,7 @@ static const uint *skipcode(const uint *code, tagval &result)
     }
 }
 
-static inline void callcommand(ident *id, tagval *args, int numargs)
+static inline void callcommand(ident *id, tagval *args, int numargs, bool lookup = false)
 {
     int i = -1, fakeargs = 0;
     bool rep = false;
@@ -1546,7 +1546,7 @@ static inline void callcommand(ident *id, tagval *args, int numargs)
             break;
         case 'r': if(++i >= numargs) { if(rep) break; args[i].setident(dummyident); fakeargs++; } else forceident(args[i]); break;
         case '$': if(++i < numargs) freearg(args[i]); args[i].setident(id); break;
-        case 'N': if(++i < numargs) freearg(args[i]); args[i].setint(i-fakeargs); fakeargs++; break;
+        case 'N': if(++i < numargs) freearg(args[i]); args[i].setint(lookup ? -1 : i-fakeargs); break;
 #ifndef STANDALONE
         case 'D': if(++i < numargs) freearg(args[i]); args[i].setint(addreleaseaction(conc(args, i, true, id->name)) ? 1 : 0); fakeargs++; break;
 #endif
@@ -1734,7 +1734,7 @@ static const uint *runcode(const uint *code, tagval &result)
                             arg.setnull(); \
                             commandret = &arg; \
                             tagval buf[MAXARGS]; \
-                            callcommand(id, buf, 0); \
+                            callcommand(id, buf, 0, true); \
                             forcearg(arg, op&CODE_RET_MASK); \
                             commandret = &result; \
                             continue; \
