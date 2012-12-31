@@ -637,7 +637,7 @@ namespace ai
     bool cleanwaypoints()
     {
         int cleared = 0;
-        loopv(waypoints)
+        for(int i = 1; i < waypoints.length(); i++)
         {
             waypoint &w = waypoints[i];
             if(clipped(w.o))
@@ -745,7 +745,7 @@ namespace ai
         if(noedit(true)) return;
         vec o = sel.o.tovec().sub(0.1f), s = sel.s.tovec().mul(sel.grid).add(o).add(0.1f);
         int cleared = 0;
-        loopv(waypoints)
+        for(int i = 1; i < waypoints.length(); i++)
         {
             waypoint &w = waypoints[i];
             if(w.o.x >= o.x && w.o.x <= s.x && w.o.y >= o.y && w.o.y <= s.y && w.o.z >= o.z && w.o.z <= s.z)
@@ -774,7 +774,7 @@ namespace ai
             return;
         }
         int cleared = 0;
-        loopv(waypoints)
+        for(int i = 1; i < waypoints.length(); i++)
         {
             waypoint &w = waypoints[i];
             w.o.add(d);
