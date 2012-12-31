@@ -18,13 +18,15 @@ struct collectclientmode : clientmode
     static const int TOKENDIST = 16;
     static const int SCORELIMIT = 30;
     static const int RESPAWNSECS = 5;
+    static const int EXPIRETOKENTIME = 10000;
+    static const int STEALTOKENTIME = 5000;
 
     struct base
     {
         int id, team;
         vec o;
-#ifdef SERVMODE
         int laststeal;
+#ifdef SERVMODE
 #else
         vec tokenpos;
         string info;
@@ -36,9 +38,7 @@ struct collectclientmode : clientmode
         {
             o = vec(0, 0, 0);
             team = 0;
-#ifdef SERVMODE
             laststeal = 0;
-#endif
         }
     };
 
@@ -170,9 +170,6 @@ struct collectclientmode : clientmode
     }
 
 #ifdef SERVMODE
-    static const int EXPIRETOKENTIME = 10000;
-    static const int STEALTOKENTIME = 5000;
-
     bool notgotbases;
 
     collectservmode() : notgotbases(false) {}
@@ -516,7 +513,8 @@ struct collectclientmode : clientmode
             regular_particle_flame(PART_FLAME, vec(b.tokenpos.x, b.tokenpos.y, b.tokenpos.z - 4.5f), fradius, fheight, b.team==team ? 0x2020FF : 0x802020, 3, 2.0f);
             vec tokenpos(b.tokenpos);
             tokenpos.z -= theight.z/2 + sinf(lastmillis/100.0f)/20;
-            rendermodel(b.team==team ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, tokenpos, lastmillis/10.0f, 0, MDL_CULL_VFC | MDL_CULL_OCCLUDED);
+            float alpha = player1->state == CS_ALIVE && player1->tokens <= 0 && lastmillis < b.laststeal + STEALTOKENTIME ? 0.5f : 1.0f;
+            rendermodel(b.team==team ? "skull/blue" : "skull/red", ANIM_MAPMODEL|ANIM_LOOP, tokenpos, lastmillis/10.0f, 0, MDL_CULL_VFC | MDL_CULL_OCCLUDED, NULL, NULL, 0, 0, alpha);
             formatstring(b.info)("%d", totalscore(b.team));
             vec above(b.tokenpos);
             above.z += TOKENHEIGHT;
@@ -689,6 +687,7 @@ struct collectclientmode : clientmode
             base &b = bases[basenum];
             if(!n)
             {
+                b.laststeal = lastmillis;
                 conoutf(CON_GAMEINFO, "%s stole a skull from \fs%s team\fr", teamcolorname(d), enemyteam==collectteambase(player1->team) ? "\f1your" : "\f3the enemy");
                 playsound(S_FLAGDROP, &b.tokenpos);
             }
@@ -701,6 +700,7 @@ struct collectclientmode : clientmode
         if(bases.inrange(basenum))
         {
             base &b = bases[basenum];
+            b.laststeal = lastmillis;
             //playsound(S_FLAGSCORE, d != player1 ? &b.tokenpos : NULL);
             int n = 0;
             loopv(bases)
