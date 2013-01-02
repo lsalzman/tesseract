@@ -94,6 +94,7 @@ namespace entities
             switch(e.type)
             {
                 case TELEPORT:
+                    if(e.attr2 > 0) preloadmodel(mapmodelname(e.attr2));
                 case JUMPPAD:
                     if(e.attr4 > 0) preloadmapsound(e.attr4);
                     break;

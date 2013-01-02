@@ -359,16 +359,19 @@ vector<const char *> preloadmodels;
 
 void preloadmodel(const char *name)
 {
-    if(mdllookup.access(name)) return;
+    if(!name || mdllookup.access(name)) return;
     preloadmodels.add(newstring(name));
 }
 
-void flushpreloadedmodels()
+void flushpreloadedmodels(bool msg)
 {
     loopv(preloadmodels)
     {
         loadprogress = float(i+1)/preloadmodels.length();
-        loadmodel(preloadmodels[i], -1, true);
+        if(!loadmodel(preloadmodels[i], -1, msg))
+        {
+            if(msg) conoutf(CON_WARN, "could not load model: %s", preloadmodels[i]);
+        }
     }
     preloadmodels.deletearrays();
     loadprogress = 0;
