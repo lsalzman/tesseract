@@ -359,7 +359,7 @@ vector<const char *> preloadmodels;
 
 void preloadmodel(const char *name)
 {
-    if(!name || mdllookup.access(name)) return;
+    if(!name || !name[0] || mdllookup.access(name)) return;
     preloadmodels.add(newstring(name));
 }
 
@@ -393,7 +393,7 @@ void preloadusedmapmodels(bool msg, bool bih)
         int mmindex = mapmodels[i];
         mapmodelinfo *mmi = getmminfo(mmindex);
         if(!mmi) { if(msg) conoutf(CON_WARN, "could not find map model: %d", mmindex); }
-        else if(!loadmodel(NULL, mmindex, msg)) { if(msg) conoutf(CON_WARN, "could not load model: %s", mmi->name); }
+        else if(mmi->name[0] && !loadmodel(NULL, mmindex, msg)) { if(msg) conoutf(CON_WARN, "could not load model: %s", mmi->name); }
         else if(mmi->m && bih) mmi->m->preloadBIH();
     }
     loadprogress = 0;
@@ -413,7 +413,7 @@ model *loadmodel(const char *name, int i, bool msg)
     if(mm) m = *mm;
     else
     { 
-        if(loadingmodel) return NULL;
+        if(!name[0] || loadingmodel) return NULL;
         if(msg)
         {
             defformatstring(filename)("packages/models/%s", name);
