@@ -207,10 +207,10 @@ struct md2 : vertmodel, vertloader<md2>
         {
             //                      0              3              6   7   8   9   10   11  12  13   14  15  16  17
             //                      D    D    D    D    D    D    A   P   I   R,  E    J   T   W    FO  SA  GS  GI
-            static int _frame[] = { 178, 184, 190, 183, 189, 197, 46, 54, 0,  40, 162, 67, 95, 112, 72, 84, 7,  6 };
-            static int _range[] = { 6,   6,   8,   1,   1,   1,   8,  4,  40, 6,  1,   1,  17, 11,  12, 11, 18, 1 };
+            static const int _frame[] = { 178, 184, 190, 183, 189, 197, 46, 54, 0,  40, 162, 67, 95, 112, 72, 84, 7,  6 };
+            static const int _range[] = { 6,   6,   8,   1,   1,   1,   8,  4,  40, 6,  1,   1,  17, 11,  12, 11, 18, 1 };
             //                      DE DY I  F  B  L  R  H1 H2 H3 H4 H5 H6 H7 A1 A2 A3 A4 A5 A6 A7 PA J   SI SW ED  LA  T   WI  LO  GI  GS
-            static int animfr[] = { 5, 2, 8, 9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 8, 6, 6, 6, 6, 6, 6, 6, 7, 11, 8, 9, 10, 14, 12, 13, 15, 17, 16 };
+            static const int animfr[] = { 5, 2, 8, 9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 8, 6, 6, 6, 6, 6, 6, 6, 7, 11, 8, 9, 10, 14, 12, 13, 15, 17, 16 };
             
             anim &= ANIM_INDEX;
             if((size_t)anim >= sizeof(animfr)/sizeof(animfr[0]))
