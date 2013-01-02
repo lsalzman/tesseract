@@ -503,8 +503,8 @@ void checkpings()
         if(millis >= lastreset && rtt < servpingdecay) si->addping(rtt, millis);
         si->numplayers = getint(p);
         int numattr = getint(p);
-        si->attr.shrink(0);
-        loopj(numattr) si->attr.add(getint(p));
+        si->attr.setsize(0);
+        loopj(numattr) { int attr = getint(p); if(p.overread()) break; si->attr.add(attr); }
         getstring(text, p);
         filtertext(si->map, text, false);
         getstring(text, p);
