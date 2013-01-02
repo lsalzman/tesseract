@@ -511,7 +511,7 @@ struct animmodel : model
 
     meshgroup *sharemeshes(const char *name, ...)
     {
-        static hashset<meshgroup *> meshgroups;
+        static hashtable<const char *, meshgroup *> meshgroups;
         if(!meshgroups.access(name))
         {
             va_list args;
@@ -1626,6 +1626,4 @@ template<class MDL, class MESH> struct modelcommands
         if(MDL::multiparted()) modelcommand(setlink, "link", "iisfff");
     }
 };
-
-static inline bool htcmp(const char *key, const animmodel::meshgroup *g) { return !strcmp(key, g->name); }
 
