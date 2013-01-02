@@ -406,7 +406,7 @@ struct smd : skelmodel, skelloader<smd>
         }
     };            
 
-    meshgroup *loadmeshes(char *name, va_list args)
+    meshgroup *loadmeshes(const char *name, va_list args)
     {
         smdmeshgroup *group = new smdmeshgroup;
         group->shareskeleton(va_arg(args, char *));

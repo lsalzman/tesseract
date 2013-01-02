@@ -340,7 +340,7 @@ struct iqm : skelmodel, skelloader<iqm>
         }
     };            
 
-    meshgroup *loadmeshes(char *name, va_list args)
+    meshgroup *loadmeshes(const char *name, va_list args)
     {
         iqmmeshgroup *group = new iqmmeshgroup;
         group->shareskeleton(va_arg(args, char *));

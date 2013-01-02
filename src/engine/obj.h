@@ -22,7 +22,7 @@ struct obj : vertmodel, vertloader<obj>
             }
         }
 
-        bool load(char *filename, float smooth)
+        bool load(const char *filename, float smooth)
         {
             int len = strlen(filename);
             if(len < 4 || strcasecmp(&filename[len-4], ".obj")) return false;
@@ -160,7 +160,7 @@ struct obj : vertmodel, vertloader<obj>
         }
     };
 
-    meshgroup *loadmeshes(char *name, va_list args)
+    meshgroup *loadmeshes(const char *name, va_list args)
     {
         objmeshgroup *group = new objmeshgroup;
         if(!group->load(name, va_arg(args, double))) { delete group; return NULL; }
