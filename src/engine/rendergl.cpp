@@ -204,7 +204,7 @@ static bool checkseries(const char *s, const char *name, int low, int high)
     if(!*s) return false;
     int n = 0;
     while(isdigit(*s)) n = n*10 + (*s++ - '0');    
-    return n >= low && n < high;
+    return n >= low && n <= high;
 }
 
 VAR(dbgexts, 0, 0, 1);
@@ -444,7 +444,7 @@ void gl_checkextensions()
     {
         //conoutf(CON_WARN, "WARNING: ATI cards may show garbage in skybox. (use \"/ati_skybox_bug 1\" to fix)");
         gdepthstencil = 0; // some older ATI GPUs do not support reading from depth-stencil textures, so only use depth-stencil renderbuffer for now
-        if(checkseries(renderer, "Radeon HD", 4000, 5999)) ati_pf_bug = 1;  
+        if(checkseries(renderer, "Radeon HD", 4000, 4999)) ati_pf_bug = 1;  
     }
     else if(nvidia)
     {
