@@ -895,15 +895,15 @@ void gencubeedges(cube *c = worldroot, int x = 0, int y = 0, int z = 0, int size
 
 void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
 {
-    int tj = filltjoints && c.ext ? c.ext->tjoints : -1, vis, vismask = 0, collidemask = 0, checkmask = 0;
-    loopi(6) if((vis = visibletris(c, i, x, y, z, size)))
+    if(!(c.visible&0xC0)) return;
+
+    int vismask = ~c.merged & 0x3F;
+    if(!(c.visible&0x80)) vismask &= c.visible;
+    if(!vismask) return;
+    
+    int tj = filltjoints && c.ext ? c.ext->tjoints : -1, vis;
+    loopi(6) if(vismask&(1<<i) && (vis = visibletris(c, i, x, y, z, size)))
     {
-        // this is necessary for physics to work, even if the face is merged
-        vismask |= 1<<i;
-        if(collideface(c, i)) collidemask |= 1<<i;
-
-        if(c.merged&(1<<i)) continue;
-
         vec pos[MAXFACEVERTS];
         vertinfo *verts = NULL;
         int numverts = c.ext ? c.ext->surfaces[i].numverts&MAXFACEVERTS : 0, convex = 0;
@@ -916,7 +916,6 @@ void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
         }
         else
         {
-            if(c.texture[i] != DEFAULT_SKY) checkmask |= 1<<i;
             ivec v[4];
             genfaceverts(c, i, v);
             if(!flataxisface(c, i)) convex = faceconvexity(v);
@@ -946,12 +945,6 @@ void gencubeverts(cube &c, int x, int y, int z, int size, int csi)
                 addcubeverts(layer ? *layer : vslot, i, size, pos, convex, vslot.layer, verts, numverts, hastj, envmap2, 0, false, surf.numverts&LAYER_TOP ? LAYER_BOTTOM : LAYER_TOP);
         }
     }
-    else
-    {
-        if(c.material != MAT_NOCLIP && visibleface(c, i, x, y, z, size, MAT_AIR, MAT_NOCLIP, MATF_CLIP) && collideface(c, i)) collidemask |= 1<<i;
-    }
-
-    c.visible = collidemask | (vismask ? (vismask != collidemask ? (checkmask ? 0x80|0x40 : 0x80) : 0x40) : 0);
 }
 
 ////////// Vertex Arrays //////////////
@@ -1290,9 +1283,34 @@ void setva(cube &c, int cx, int cy, int cz, int size, int csi)
     vc.clear();
 }
 
-VARF(vacubemax, 64, 512, 256*256, allchanged());
+static inline int setcubevisibility(cube &c, int x, int y, int z, int size)
+{
+    int numvis = 0, vismask = 0, collidemask = 0, checkmask = 0;
+    loopi(6)
+    {
+        int facemask = classifyface(c, i, x, y, z, size);
+        if(facemask&1) 
+        {
+            vismask |= 1<<i;
+            if(c.merged&(1<<i))
+            {
+                if(c.ext && c.ext->surfaces[i].numverts&MAXFACEVERTS) numvis++;
+            }
+            else 
+            {
+                numvis++;
+                if(c.texture[i] != DEFAULT_SKY && !(c.ext && c.ext->surfaces[i].numverts&MAXFACEVERTS)) checkmask |= 1<<i;
+            }
+        } 
+        if(facemask&2 && collideface(c, i)) collidemask |= 1<<i;
+    }
+    c.visible = collidemask | (vismask ? (vismask != collidemask ? (checkmask ? 0x80|0x40 : 0x80) : 0x40) : 0);
+    return numvis;
+}
+
+VARF(vafacemax, 64, 384, 256*256, allchanged());
+VARF(vafacemin, 0, 96, 256*256, allchanged());
 VARF(vacubesize, 32, 128, 0x1000, allchanged());
-VARF(vacubemin, 0, 128, 256*256, allchanged());
 
 int updateva(cube *c, int cx, int cy, int cz, int size, int csi)
 {
@@ -1307,16 +1325,15 @@ int updateva(cube *c, int cx, int cy, int cz, int size, int csi)
         vahasmerges = 0;
         if(c[i].ext && c[i].ext->va) 
         {
-            //count += vacubemax+1;       // since must already have more then max cubes
             varoot.add(c[i].ext->va);
             if(c[i].ext->va->hasmerges&MERGE_ORIGIN) findmergedfaces(c[i], o, size, csi, csi);
         }
         else
         {
             if(c[i].children) count += updateva(c[i].children, o.x, o.y, o.z, size/2, csi-1);
-            else if(!isempty(c[i])) count++;
+            else if(!isempty(c[i])) count += setcubevisibility(c[i], o.x, o.y, o.z, size);
             int tcount = count + (csi <= MAXMERGELEVEL ? vamerges[csi].length() : 0);
-            if(tcount > vacubemax || (tcount >= vacubemin && size >= vacubesize) || size == min(0x1000, worldsize/2)) 
+            if(tcount > vafacemax || (tcount >= vafacemin && size >= vacubesize) || size == min(0x1000, worldsize/2)) 
             {
                 loadprogress = clamp(recalcprogress/float(allocnodes), 0.0f, 1.0f);
                 setva(c[i], o.x, o.y, o.z, size, csi);
