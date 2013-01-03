@@ -621,7 +621,7 @@ VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVARFP(hdrgamma, 1e-3f, 2, 1e3f, initwarning("HDR setup", INIT_LOAD, CHANGE_SHADERS));
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
 FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
-FVARFP(gscale, 1e-3f, 1, 1, cleanupgbuffer());
+FVARFP(gscale, 0.25f, 1, 1, cleanupgbuffer());
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
