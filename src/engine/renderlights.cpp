@@ -14,6 +14,7 @@ GLuint aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
 glmatrixf eyematrix, worldmatrix, linearworldmatrix;
 
 extern int bloomsize, bloomprec;
+extern int ati_pf_bug;
 
 void setupbloom(int w, int h)
 {
@@ -31,7 +32,7 @@ void setupbloom(int w, int h)
 
     loopi(5) if(!bloomfbo[i]) glGenFramebuffers_(1, &bloomfbo[i]);
 
-    bloomformat = bloomprec >= 3 && hasTF ? GL_RGB16F_ARB : (bloomprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
+    bloomformat = bloomprec >= 3 && hasTF ? GL_RGB16F_ARB : (bloomprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
     createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
@@ -315,7 +316,7 @@ void setupinferred(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, infbo);
 
-    GLenum infmt = inferprec >= 3 && hasTF ? GL_RGB16F_ARB : (inferprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (inferprec >= 1 ? GL_RGB10 : GL_RGB));
+    GLenum infmt = inferprec >= 3 && hasTF ? GL_RGB16F_ARB : (inferprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (inferprec >= 1 ? GL_RGB10 : GL_RGB));
 
     loopi(2)
     {
@@ -528,7 +529,7 @@ void setupgbuffer(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
-    hdrformat = hdr ? (hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB))) : GL_RGB;
+    hdrformat = hdr ? (hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB))) : GL_RGB;
     hdrfloat = floatformat(hdrformat);
     createtexture(hdrtex, gw, gh, NULL, 3, 1, hdrformat, GL_TEXTURE_RECTANGLE_ARB);
 
@@ -896,7 +897,7 @@ void setupradiancehints()
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
 
-    GLenum rsmformat = rsmprec >= 3 && hasTF ? GL_RGB16F_ARB : (rsmprec >= 2 && hasPF ? GL_R11F_G11F_B10F_EXT : (rsmprec >= 1 ? GL_RGB10 : GL_RGBA8));
+    GLenum rsmformat = rsmprec >= 3 && hasTF ? GL_RGB16F_ARB : (rsmprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (rsmprec >= 1 ? GL_RGB10 : GL_RGBA8));
 
     createtexture(rsmdepthtex, rsmsize, rsmsize, NULL, 3, 0, GL_DEPTH_COMPONENT16_ARB, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(rsmcolortex, rsmsize, rsmsize, NULL, 3, 0, rsmformat, GL_TEXTURE_RECTANGLE_ARB);

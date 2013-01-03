@@ -592,7 +592,7 @@ void gl_checkextensions()
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_packed_depth_stencil extension.");
     }
 
-    if(hasext(exts, "GL_EXT_packed_float") && !ati_pf_bug)
+    if(hasext(exts, "GL_EXT_packed_float"))
     {
         hasPF = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_packed_float extension.");
