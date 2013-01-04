@@ -11,7 +11,7 @@ static hashtable<const char *, int> localparams(256);
 static hashtable<const char *, Shader> shaders(256);
 static Shader *slotshader = NULL;
 static vector<SlotShaderParam> slotparams;
-static bool standardshader = false, forceshaders = true;
+static bool standardshader = false, forceshaders = true, loadedshaders = false;
 
 VAR(maxtexcoords, 1, 0, 0);
 VAR(maxvsuniforms, 1, 0, 0);
@@ -44,6 +44,8 @@ void loadshaders()
     rsmworldshader = lookupshaderbyname("rsmworld");
  
     defaultshader->set();
+
+    loadedshaders = true;
 }
 
 Shader *lookupshaderbyname(const char *name) 
@@ -54,6 +56,7 @@ Shader *lookupshaderbyname(const char *name)
 
 Shader *generateshader(const char *name, const char *fmt, ...)
 {
+    if(!loadedshaders) return NULL;
     Shader *s = name ? lookupshaderbyname(name) : NULL;
     if(!s)
     {
