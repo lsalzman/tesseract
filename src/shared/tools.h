@@ -1182,5 +1182,24 @@ extern void seedMT(uint seed);
 extern uint randomMT();
 extern int guessnumcpus();
 
+extern void putint(ucharbuf &p, int n);
+extern void putint(packetbuf &p, int n);
+extern void putint(vector<uchar> &p, int n);
+extern int getint(ucharbuf &p);
+extern void putuint(ucharbuf &p, int n);
+extern void putuint(packetbuf &p, int n);
+extern void putuint(vector<uchar> &p, int n);
+extern int getuint(ucharbuf &p);
+extern void putfloat(ucharbuf &p, float f);
+extern void putfloat(packetbuf &p, float f);
+extern void putfloat(vector<uchar> &p, float f);
+extern float getfloat(ucharbuf &p);
+extern void sendstring(const char *t, ucharbuf &p);
+extern void sendstring(const char *t, packetbuf &p);
+extern void sendstring(const char *t, vector<uchar> &p);
+extern void getstring(char *t, ucharbuf &p, int len);
+template<class T, size_t N> static inline void getstring(T (&t)[N], ucharbuf &p) { getstring(t, p, N); } 
+extern void filtertext(char *dst, const char *src, bool whitespace = true, int len = sizeof(string)-1);
+
 #endif
 
