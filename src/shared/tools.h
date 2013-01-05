@@ -1198,7 +1198,7 @@ extern void sendstring(const char *t, ucharbuf &p);
 extern void sendstring(const char *t, packetbuf &p);
 extern void sendstring(const char *t, vector<uchar> &p);
 extern void getstring(char *t, ucharbuf &p, int len);
-template<class T, size_t N> static inline void getstring(T (&t)[N], ucharbuf &p) { getstring(t, p, N); } 
+template<size_t N> static inline void getstring(char (&t)[N], ucharbuf &p) { getstring(t, p, int(N)); }
 extern void filtertext(char *dst, const char *src, bool whitespace = true, int len = sizeof(string)-1);
 
 #endif
