@@ -8,7 +8,7 @@
 
 const int MAXCLIPPLANES = 1024;
 static clipplanes clipcache[MAXCLIPPLANES];
-static int clipcacheversion = 0;
+static int clipcacheversion = -2;
 
 static inline clipplanes &getclipplanes(const cube &c, const ivec &o, int size, bool collide = true, int offset = 0)
 {
@@ -24,9 +24,12 @@ static inline clipplanes &getclipplanes(const cube &c, const ivec &o, int size, 
 
 void resetclipplanes()
 {
-    if(!clipcacheversion) memset(clipcache, 0, sizeof(clipcache));
     clipcacheversion += 2;
-    if(!clipcacheversion) clipcacheversion += 2;
+    if(!clipcacheversion)
+    {
+        memset(clipcache, 0, sizeof(clipcache));
+        clipcacheversion = 2;
+    }
 }
 
 /////////////////////////  ray - cube collision ///////////////////////////////////////////////
@@ -359,7 +362,7 @@ struct ShadowRayCache
     clipplanes clipcache[MAXCLIPPLANES];
     int version;
 
-    ShadowRayCache() : version(0) {}
+    ShadowRayCache() : version(-1) {}
 };
 
 ShadowRayCache *newshadowraycache() { return new ShadowRayCache; }
@@ -368,9 +371,12 @@ void freeshadowraycache(ShadowRayCache *&cache) { delete cache; cache = NULL; }
 
 void resetshadowraycache(ShadowRayCache *cache) 
 { 
-    if(!cache->version) memset(cache->clipcache, 0, sizeof(cache->clipcache));
     cache->version++;
-    if(!cache->version) cache->version++;
+    if(!cache->version)
+    {
+        memset(cache->clipcache, 0, sizeof(cache->clipcache));
+        cache->version = 1;
+    }
 }
 
 float shadowray(ShadowRayCache *cache, const vec &o, const vec &ray, float radius, int mode, extentity *t)
