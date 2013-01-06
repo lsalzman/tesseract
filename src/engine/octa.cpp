@@ -560,6 +560,7 @@ bool remip(cube &c, int x, int y, int z, int size)
     loopi(3) c.faces[i] = n.faces[i];
     c.material = mat;
     loopi(6) if(vis[i]) c.visible |= 1<<i;
+    if(c.visible) c.visible |= 0x40;
     brightencube(c);
     return true;
 }
