@@ -2294,7 +2294,7 @@ namespace server
             }
         }
 
-        while(bannedips.length() && bannedips[0].expire <= totalmillis) bannedips.remove(0);
+        while(bannedips.length() && bannedips[0].expire-totalmillis <= 0) bannedips.remove(0);
         loopv(connects) if(totalmillis-connects[i]->connectmillis>15000) disconnect_client(connects[i]->clientnum, DISC_TIMEOUT);
 
         if(nextexceeded && gamemillis > nextexceeded && (!m_timed || gamemillis < gamelimit))
