@@ -1228,7 +1228,7 @@ int genclipplane(const cube &c, int orient, vec *v, plane *clip)
     return planes;
 }
      
-void genclipplanes(const cube &c, int x, int y, int z, int size, clipplanes &p)
+void genclipplanes(const cube &c, int x, int y, int z, int size, clipplanes &p, bool collide)
 {
     // generate tight bounding box
     calcvert(c, x, y, z, size, p.v[0], 0);
@@ -1245,16 +1245,34 @@ void genclipplanes(const cube &c, int x, int y, int z, int size, clipplanes &p)
 
     p.size = 0;
     p.visible = 0;
-    loopi(6) if(c.visible&(1<<i))
+    if(collide || (c.visible&0xC0) == 0x40) 
+    {
+        loopi(6) if(c.visible&(1<<i))
+        {
+            int vis;
+            if(flataxisface(c, i)) p.visible |= 1<<i;
+            else if((vis = visibletris(c, i, x, y, z, size, MAT_NOCLIP, MATF_CLIP)))
+            {
+                int convex = faceconvexity(c, i), order = vis&4 || convex < 0 ? 1 : 0;
+                const vec &v0 = p.v[fv[i][order]], &v1 = p.v[fv[i][order+1]], &v2 = p.v[fv[i][order+2]], &v3 = p.v[fv[i][(order+3)&3]];
+                if(vis&1) { p.side[p.size] = i; p.p[p.size++].toplane(v0, v1, v2); }
+                if(vis&2 && (!(vis&1) || convex)) { p.side[p.size] = i; p.p[p.size++].toplane(v0, v2, v3); }
+            }
+        }
+    }
+    else if(c.visible&0x80)
     {
         int vis;
-        if(flataxisface(c, i)) p.visible |= 1<<i;
-        else if((vis = visibletris(c, i, x, y, z, size, MAT_NOCLIP, MATF_CLIP)))
+        loopi(6) if((vis = visibletris(c, i, x, y, z, size))) 
         {
-            int convex = faceconvexity(c, i), order = vis&4 || convex < 0 ? 1 : 0;
-            const vec &v0 = p.v[fv[i][order]], &v1 = p.v[fv[i][order+1]], &v2 = p.v[fv[i][order+2]], &v3 = p.v[fv[i][(order+3)&3]];
-            if(vis&1) { p.side[p.size] = i; p.p[p.size++].toplane(v0, v1, v2); }
-            if(vis&2 && (!(vis&1) || convex)) { p.side[p.size] = i; p.p[p.size++].toplane(v0, v2, v3); }
+            if(flataxisface(c, i)) p.visible |= 1<<i;
+            else
+            {
+                int convex = faceconvexity(c, i), order = vis&4 || convex < 0 ? 1 : 0;
+                const vec &v0 = p.v[fv[i][order]], &v1 = p.v[fv[i][order+1]], &v2 = p.v[fv[i][order+2]], &v3 = p.v[fv[i][(order+3)&3]];
+                if(vis&1) { p.side[p.size] = i; p.p[p.size++].toplane(v0, v1, v2); }
+                if(vis&2 && (!(vis&1) || convex)) { p.side[p.size] = i; p.p[p.size++].toplane(v0, v2, v3); }
+            }
         }
     }
 }

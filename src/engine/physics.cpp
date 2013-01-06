@@ -10,21 +10,23 @@ const int MAXCLIPPLANES = 1024;
 static clipplanes clipcache[MAXCLIPPLANES];
 static int clipcacheversion = 0;
 
-static inline clipplanes &getclipplanes(const cube &c, const ivec &o, int size)
+static inline clipplanes &getclipplanes(const cube &c, const ivec &o, int size, bool collide = true, int offset = 0)
 {
     clipplanes &p = clipcache[int(&c - worldroot)&(MAXCLIPPLANES-1)];
-    if(p.owner != &c || p.version != clipcacheversion) 
+    if(p.owner != &c || p.version != clipcacheversion+offset) 
     {
         p.owner = &c;
-        p.version = clipcacheversion;
-        genclipplanes(c, o.x, o.y, o.z, size, p);
+        p.version = clipcacheversion+offset;
+        genclipplanes(c, o.x, o.y, o.z, size, p, collide);
     }
     return p;
 }
 
 void resetclipplanes()
 {
-    if(!clipcacheversion++) memset(clipcache, 0, sizeof(clipcache));
+    if(!clipcacheversion) memset(clipcache, 0, sizeof(clipcache));
+    clipcacheversion += 2;
+    if(!clipcacheversion) clipcacheversion += 2;
 }
 
 /////////////////////////  ray - cube collision ///////////////////////////////////////////////
@@ -304,7 +306,7 @@ float raycube(const vec &o, const vec &ray, float radius, int mode, int size, ex
 
         if(!isempty(c))
         {
-            const clipplanes &p = getclipplanes(c, lo, lsize);
+            const clipplanes &p = getclipplanes(c, lo, lsize, false, 1);
             float f = 0;
             if(raycubeintersect(p, c, v, ray, invray, f) && (dist+f>0 || !(mode&RAY_SKIPFIRST)))
                 return min(dent, dist+f);
@@ -335,7 +337,7 @@ float shadowray(const vec &o, const vec &ray, float radius, int mode, extentity 
         if(!isempty(c) && !(c.material&MAT_ALPHA))
         {
             if(isentirelysolid(c)) return c.texture[side]==DEFAULT_SKY && mode&RAY_SKIPSKY ? radius : dist;
-            const clipplanes &p = getclipplanes(c, lo, 1<<lshift);
+            const clipplanes &p = getclipplanes(c, lo, 1<<lshift, false, 1);
             INTERSECTPLANES(side = p.side[i], goto nextcube);
             INTERSECTBOX(side = (i<<1) + 1 - lsizemask[i], goto nextcube);
             if(exitdist >= 0) return c.texture[side]==DEFAULT_SKY && mode&RAY_SKIPSKY ? radius : dist+max(enterdist+0.1f, 0.0f);
@@ -366,7 +368,9 @@ void freeshadowraycache(ShadowRayCache *&cache) { delete cache; cache = NULL; }
 
 void resetshadowraycache(ShadowRayCache *cache) 
 { 
-    if(!cache->version++) memset(cache->clipcache, 0, sizeof(cache->clipcache));
+    if(!cache->version) memset(cache->clipcache, 0, sizeof(cache->clipcache));
+    cache->version++;
+    if(!cache->version) cache->version++;
 }
 
 float shadowray(ShadowRayCache *cache, const vec &o, const vec &ray, float radius, int mode, extentity *t)
@@ -386,7 +390,7 @@ float shadowray(ShadowRayCache *cache, const vec &o, const vec &ray, float radiu
         {
             if(isentirelysolid(c)) return c.texture[side]==DEFAULT_SKY && mode&RAY_SKIPSKY ? radius : dist;
             clipplanes &p = cache->clipcache[int(&c - worldroot)&(MAXCLIPPLANES-1)];
-            if(p.owner != &c || p.version != cache->version) { p.owner = &c; p.version = cache->version; genclipplanes(c, lo.x, lo.y, lo.z, 1<<lshift, p); }
+            if(p.owner != &c || p.version != cache->version) { p.owner = &c; p.version = cache->version; genclipplanes(c, lo.x, lo.y, lo.z, 1<<lshift, p, false); }
             INTERSECTPLANES(side = p.side[i], goto nextcube);
             INTERSECTBOX(side = (i<<1) + 1 - lsizemask[i], goto nextcube);
             if(exitdist >= 0) return c.texture[side]==DEFAULT_SKY && mode&RAY_SKIPSKY ? radius : dist+max(enterdist+0.1f, 0.0f);
