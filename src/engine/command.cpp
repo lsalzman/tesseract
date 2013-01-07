@@ -2146,7 +2146,7 @@ const char *escapestring(const char *s)
 
 const char *escapeid(const char *s)
 {
-    const char *end = s + strcspn(s, "\"/;()[] \f\t\r\n\0");
+    const char *end = s + strcspn(s, "\"/;()[]@ \f\t\r\n\0");
     return *end ? escapestring(s) : s;
 }
 
@@ -2162,7 +2162,7 @@ bool validateblock(const char *s)
         case ')': if(brakdepth <= 0 || brakstack[--brakdepth] != '(') return false; break;
         case '"': s = parsestring(s + 1); if(*s != '"') return false; break;
         case '/': if(s[1] == '/') return false; break;
-        case '\f': return false;
+        case '@': case '\f': return false;
     }
     return brakdepth == 0;
 }
