@@ -399,7 +399,6 @@ struct iqm : skelmodel, skelloader<iqm>
             p->endanimparts();
             p->meshes->shared++;
         }
-        preloadshaders();
         return loaded = true;
     }
 };

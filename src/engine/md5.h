@@ -450,7 +450,6 @@ struct md5 : skelmodel, skelloader<md5>
             p->endanimparts();
             p->meshes->shared++;
         }
-        preloadshaders();
         return loaded = true;
     }
 };

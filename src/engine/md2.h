@@ -280,7 +280,6 @@ struct md2 : vertmodel, vertloader<md2>
         translate.y = -translate.y;
         parts[0]->translate = translate;
         loopv(parts) parts[i]->meshes->shared++;
-        preloadshaders();
         return loaded = true;
     }
 };

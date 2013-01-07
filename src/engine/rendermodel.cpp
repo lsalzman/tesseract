@@ -368,9 +368,12 @@ void flushpreloadedmodels(bool msg)
     loopv(preloadmodels)
     {
         loadprogress = float(i+1)/preloadmodels.length();
-        if(!loadmodel(preloadmodels[i], -1, msg))
+        model *m = loadmodel(preloadmodels[i], -1, msg);
+        if(!m) { if(msg) conoutf(CON_WARN, "could not load model: %s", preloadmodels[i]); }
+        else
         {
-            if(msg) conoutf(CON_WARN, "could not load model: %s", preloadmodels[i]);
+            m->preloadmeshes();
+            m->preloadshaders();
         }
     }
     preloadmodels.deletearrays();
@@ -394,7 +397,12 @@ void preloadusedmapmodels(bool msg, bool bih)
         mapmodelinfo *mmi = getmminfo(mmindex);
         if(!mmi) { if(msg) conoutf(CON_WARN, "could not find map model: %d", mmindex); }
         else if(mmi->name[0] && !loadmodel(NULL, mmindex, msg)) { if(msg) conoutf(CON_WARN, "could not load model: %s", mmi->name); }
-        else if(mmi->m && bih) mmi->m->preloadBIH();
+        else if(mmi->m)
+        {
+            if(bih) mmi->m->preloadBIH();
+            mmi->m->preloadmeshes();
+            mmi->m->preloadshaders();
+        }
     }
     loadprogress = 0;
 }
@@ -433,12 +441,6 @@ model *loadmodel(const char *name, int i, bool msg)
     }
     if(mapmodels.inrange(i) && !mapmodels[i].m) mapmodels[i].m = m;
     return m;
-}
-
-void preloadmodelshaders()
-{
-    if(initing) return;
-    enumerate(mdllookup, model *, m, m->preloadshaders());
 }
 
 void clear_mdls()

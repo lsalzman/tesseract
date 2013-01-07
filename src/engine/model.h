@@ -37,6 +37,7 @@ struct model
 
     virtual void preloadBIH() { if(!bih) setBIH(); }
     virtual void preloadshaders() {}
+    virtual void preloadmeshes() {}
     virtual void cleanup() {}
 
     virtual void startrender() {}

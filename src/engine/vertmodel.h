@@ -435,6 +435,19 @@ struct vertmodel : animmodel
             else DELETEA(vdata);
         }
 
+        void preload(part *p)
+        {
+            if(numframes > 1) return;
+            bool norms = false, tangents = false;
+            loopv(p->skins)
+            {
+                if(p->skins[i].normals()) norms = true;
+                if(p->skins[i].tangents()) tangents = true;
+            }
+            if(norms!=vnorms || tangents!=vtangents) cleanup();
+            if(hasVBO ? !vbocache->vbuf : !vbocache->vdata) genvbo(norms, tangents, *vbocache);
+        }
+
         void render(const animstate *as, float pitch, const vec &axis, const vec &forward, dynent *d, part *p)
         {
             if(as->cur.anim&ANIM_NORENDER)
