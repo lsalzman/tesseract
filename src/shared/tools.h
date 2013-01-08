@@ -128,6 +128,12 @@ static inline T clamp(T a, U b, U c)
 #define PATHDIV '/'
 #endif
 
+#ifdef __GNUC__
+#define PRINTFARGS(fmt, args) __attribute__((format(printf, fmt, args)))
+#else
+#define PRINTFARGS(fmt, args)
+#endif
+
 // easy safe strings
 
 #define MAXSTRLEN 260
@@ -141,7 +147,7 @@ struct stringformatter
 {
     char *buf;
     stringformatter(char *buf): buf((char *)buf) {}
-    void operator()(const char *fmt, ...)
+    void operator()(const char *fmt, ...) PRINTFARGS(2, 3)
     {
         va_list v;
         va_start(v, fmt);
@@ -1095,7 +1101,7 @@ struct stream
     virtual bool getline(char *str, int len);
     virtual bool putstring(const char *str) { int len = (int)strlen(str); return write(str, len) == len; }
     virtual bool putline(const char *str) { return putstring(str) && putchar('\n'); }
-    virtual int printf(const char *fmt, ...);
+    virtual int printf(const char *fmt, ...) PRINTFARGS(2, 3);
     virtual uint getcrc() { return 0; }
 
     template<class T> int put(const T *v, int n) { return write(v, n*sizeof(T))/sizeof(T); } 
