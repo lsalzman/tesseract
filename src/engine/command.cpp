@@ -258,7 +258,9 @@ VAR(dbgalias, 0, 4, 1000);
 
 static int nodebug = 0;
 
-static void debugcode(const char *fmt, ...) PRINTFARGS(1, 2)
+static void debugcode(const char *fmt, ...) PRINTFARGS(1, 2);
+
+static void debugcode(const char *fmt, ...)
 {
     if(nodebug) return;
 
