@@ -355,6 +355,8 @@ namespace game
         }
     }
 
+    VARP(teamcolorfrags, 0, 1, 1);
+
     void killed(fpsent *d, fpsent *actor)
     {
         if(d->state==CS_EDITING)
@@ -369,16 +371,16 @@ namespace game
         fpsent *h = followingplayer();
         if(!h) h = player1;
         int contype = d==h || actor==h ? CON_FRAG_SELF : CON_FRAG_OTHER;
-        string dname, aname;
-        if(m_teammode)
+        const char *dname = "", *aname = "";
+        if(m_teammode && teamcolorfrags)
         {
-            formatstring(dname)(isteam(d->team, player1->team) ? "\fs\f1%s\fr" : "\fs\f3%s\fr", d==player1 ? "you" : colorname(d));
-            formatstring(aname)(isteam(actor->team, player1->team) ? "\fs\f1%s\fr" : "\fs\f3%s\fr", actor==player1 ? "you" : colorname(actor));
+            dname = teamcolorname(d, "you");
+            aname = teamcolorname(actor, "you");
         }
         else
         {
-            copystring(dname, d==player1 ? "you" : colorname(d));
-            copystring(aname, actor==player1 ? "you" : colorname(actor));
+            dname = colorname(d, NULL, "", "", "you");
+            aname = colorname(actor, NULL, "", "", "you");
         }
         if(d==actor)
             conoutf(contype, "\f2%s suicided%s", dname, d==player1 ? "!" : "");
@@ -603,10 +605,11 @@ namespace game
         return false;
     }
 
+    static string cname[3];
+    static int cidx = 0;
+
     const char *colorname(fpsent *d, const char *name, const char *prefix, const char *suffix, const char *alt)
     {
-        static string cname[3];
-        static int cidx = 0;
         if(!name) name = alt && d == player1 ? alt : d->name; 
         bool dup = !name[0] || duplicatename(d, name, alt) || d->aitype != AI_NONE;
         if(dup || prefix[0] || suffix[0])
@@ -619,9 +622,25 @@ namespace game
         return name;
     }
 
+    VARP(teamcolortext, 0, 1, 1);
+
     const char *teamcolorname(fpsent *d, const char *alt)
     {
+        if(!teamcolortext || !m_teammode) return colorname(d, NULL, "", "", alt);
         return colorname(d, NULL, isteam(d->team, player1->team) ? "\fs\f1" : "\fs\f3", "\fr", alt); 
+    }
+
+    const char *teamcolor(const char *name, bool sameteam, const char *alt)
+    {
+        if(!teamcolortext || !m_teammode) return sameteam || !alt ? name : alt;
+        cidx = (cidx+1)%3;
+        formatstring(cname[cidx])(sameteam ? "\fs\f1%s\fr" : "\fs\f3%s\fr", sameteam || !alt ? name : alt);
+        return cname[cidx];
+    }    
+    
+    const char *teamcolor(const char *name, const char *team, const char *alt)
+    {
+        return teamcolor(name, team && isteam(team, player1->team), alt);
     }
 
     void suicide(physent *d)

@@ -681,6 +681,8 @@ namespace game
     extern fpsent *newclient(int cn);
     extern const char *colorname(fpsent *d, const char *name = NULL, const char *prefix = "", const char *suffix = "", const char *alt = NULL);
     extern const char *teamcolorname(fpsent *d, const char *alt = "you");
+    extern const char *teamcolor(const char *name, bool sameteam, const char *alt = NULL);
+    extern const char *teamcolor(const char *name, const char *team, const char *alt = NULL);
     extern fpsent *pointatplayer();
     extern fpsent *hudplayer();
     extern fpsent *followingplayer();
