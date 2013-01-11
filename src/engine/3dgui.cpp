@@ -27,6 +27,7 @@ static float cursorx = 0.5f, cursory = 0.5f;
 #define SKIN_H 128
 #define SKIN_SCALE 4
 #define INSERT (3*SKIN_SCALE)
+#define MAXCOLUMNS 16
 
 VARP(guiautotab, 6, 16, 40);
 VARP(guiclicktab, 0, 0, 1);
@@ -36,10 +37,11 @@ struct gui : g3d_gui
 {
     struct list
     {
-        int parent, w, h, springs, curspring;
+        int parent, w, h, springs, curspring, column;
     };
 
-    int nextlist;
+    int firstlist, nextlist;
+    int columns[MAXCOLUMNS];
 
     static vector<list> lists;
     static float hitx, hity;
@@ -48,7 +50,7 @@ struct gui : g3d_gui
 
     static void reset()
     {
-        lists.shrink(0);
+        lists.setsize(0);
     }
 
     static int ty, tx, tpos, *tcurrent, tcolor; //tracking tab size and position since uses different layout method...
@@ -146,6 +148,7 @@ struct gui : g3d_gui
             list &l = lists.add();
             l.parent = curlist;
             l.springs = 0;
+            l.column = -1;
             curlist = lists.length()-1;
             xsize = ysize = 0;
         }
@@ -157,6 +160,7 @@ struct gui : g3d_gui
                 list &l = lists.add();
                 l.parent = curlist;
                 l.springs = 0;
+                l.column = -1;
                 l.w = l.h = 0;
             }
             list &l = lists[curlist];
@@ -182,6 +186,7 @@ struct gui : g3d_gui
         {
             l.w = xsize;
             l.h = ysize;
+            if(l.column >= 0) columns[l.column] = max(columns[l.column], ishorizontal() ? ysize : xsize);
         }
         curlist = l.parent;
         curdepth--;
@@ -231,6 +236,13 @@ struct gui : g3d_gui
             layout(0, (h*nextspring)/l.springs - (h*l.curspring)/l.springs);
         }
         l.curspring = nextspring;
+    }
+
+    void column(int col)
+    {
+        if(curlist < 0 || !layoutpass || col < 0 || col >= MAXCOLUMNS) return;
+        list &l = lists[curlist];
+        l.column = col;
     }
 
     int layout(int w, int h)
@@ -866,7 +878,11 @@ struct gui : g3d_gui
         tcurrent = tab;
         tcolor = 0xFFFFFF;
         pushlist();
-        if(layoutpass) nextlist = curlist;
+        if(layoutpass) 
+        {
+            firstlist = nextlist = curlist;
+            memset(columns, 0, sizeof(columns));
+        }
         else
         {
             if(tcurrent && !*tcurrent) tcurrent = NULL;
@@ -882,10 +898,58 @@ struct gui : g3d_gui
         }
     }
 
+    void adjusthorizontalcolumn(int col, int i)
+    {
+        int h = columns[col], dh = 0;
+        for(int d = 1; i >= 0; d ^= 1)
+        {
+            list &p = lists[i];
+            if(d&1) { dh = h - p.h; if(dh <= 0) break; p.h = h; }
+            else { p.h += dh; h = p.h; }
+            i = p.parent;
+        }
+        ysize += max(dh, 0);
+    }
+
+    void adjustverticalcolumn(int col, int i)
+    {
+        int w = columns[col], dw = 0;
+        for(int d = 0; i >= 0; d ^= 1)
+        {
+            list &p = lists[i];
+            if(d&1) { p.w += dw; w = p.w; }
+            else { dw = w - p.w; if(dw <= 0) break; p.w = w; }
+            i = p.parent;
+        }
+        xsize = max(xsize, w);
+    }
+        
+    void adjustcolumns()
+    {
+        if(lists.inrange(curlist))
+        {
+            list &l = lists[curlist];
+            if(l.column >= 0) columns[l.column] = max(columns[l.column], ishorizontal() ? ysize : xsize);
+        }
+        int parent = -1, depth = 0;
+        for(int i = firstlist; i < lists.length(); i++)
+        {
+            list &l = lists[i];
+            if(l.parent > parent) { parent = l.parent; depth++; }
+            else if(l.parent < parent) { parent = l.parent; depth--; }
+            if(l.column >= 0)
+            {
+                if(depth&1) adjusthorizontalcolumn(l.column, i); 
+                else adjustverticalcolumn(l.column, i);
+            }
+        }
+    }
+
     void end()
     {
         if(layoutpass)
         {	
+            adjustcolumns();
             xsize = max(tx, xsize);
             ysize = max(ty, ysize);
             ysize = max(ysize, (skiny[7]-skiny[6])*SKIN_SCALE);
@@ -909,6 +973,11 @@ struct gui : g3d_gui
             glPopMatrix();
         }
         poplist();
+    }
+
+    void draw()
+    {
+        cb->gui(*this, layoutpass);
     }
 };
 
@@ -1114,8 +1183,8 @@ void g3d_render()
 {
     windowhit = NULL;    
     if(actionon) mousebuttons |= G3D_PRESSED;
-    
-    gui::reset();
+   
+    gui::reset(); 
     guis2d.shrink(0);
  
     // call all places in the engine that may want to render a gui from here, they call g3d_addgui()
@@ -1134,7 +1203,7 @@ void g3d_render()
     hascursor = false;
 
     layoutpass = true;
-    loopv(guis2d) guis2d[i].cb->gui(guis2d[i], true);
+    loopv(guis2d) guis2d[i].draw();
     layoutpass = false;
 
     if(guis2d.length())
@@ -1151,7 +1220,7 @@ void g3d_render()
         glPushMatrix();
         glLoadIdentity();
 
-        loopvrev(guis2d) guis2d[i].cb->gui(guis2d[i], false);
+        loopvrev(guis2d) guis2d[i].draw();
 
         glMatrixMode(GL_PROJECTION);
         glPopMatrix();

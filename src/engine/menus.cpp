@@ -323,6 +323,11 @@ void guispring(int *weight)
     if(cgui) cgui->spring(max(*weight, 1));
 }
 
+void guicolumn(int *col)
+{
+    if(cgui) cgui->column(*col);
+}
+
 template<class T> static void updateval(char *var, T val, char *onchange)
 {
     ident *id = writeident(var);
@@ -575,6 +580,7 @@ COMMAND(guititle, "s");
 COMMAND(guibar,"");
 COMMAND(guistrut,"fi");
 COMMAND(guispring, "i");
+COMMAND(guicolumn, "i");
 COMMAND(guiimage,"ssfis");
 COMMAND(guislider,"sbbs");
 COMMAND(guilistslider, "sss");
