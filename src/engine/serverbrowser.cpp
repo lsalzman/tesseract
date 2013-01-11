@@ -540,7 +540,7 @@ void refreshservers()
 
 serverinfo *selectedserver = NULL;
 
-char *showservers(g3d_gui *cgui, uint *header)
+char *showservers(g3d_gui *cgui, uint *header, int pagemin, int pagemax)
 {
     refreshservers();
     if(servers.empty())
@@ -560,7 +560,7 @@ char *showservers(g3d_gui *cgui, uint *header)
             if(!game::serverinfostartcolumn(cgui, i)) break;
             for(int j = start; j < end; j++)
             {
-                if(!i && cgui->shouldtab()) { end = j; break; }
+                if(!i && j+1 - start >= pagemin && (j+1 - start >= pagemax || cgui->shouldtab())) { end = j; break; }
                 serverinfo &si = *servers[j];
                 const char *sdesc = si.sdesc;
                 if(si.address.host == ENET_HOST_ANY) sdesc = "[unknown host]";
