@@ -541,10 +541,10 @@ menu *guiserversmenu = NULL;
 
 void guiservers(uint *header, int *pagemin, int *pagemax)
 {
-    extern char *showservers(g3d_gui *cgui, uint *header, int pagemin, int pagemax);
+    extern const char *showservers(g3d_gui *cgui, uint *header, int pagemin, int pagemax);
     if(cgui) 
     {
-        char *command = showservers(cgui, header, *pagemin, *pagemax > 0 ? *pagemax : INT_MAX);
+        const char *command = showservers(cgui, header, *pagemin, *pagemax > 0 ? *pagemax : INT_MAX);
         if(command)
         {
             updatelater.add().schedule(command);

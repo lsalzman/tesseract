@@ -175,7 +175,7 @@ void optiface(uchar *p, cube &c)
 void printcube()
 {
     cube &c = lookupcube(lu.x, lu.y, lu.z); // assume this is cube being pointed at
-    conoutf(CON_DEBUG, "= %p = (%d, %d, %d) @ %d", &c, lu.x, lu.y, lu.z, lusize);
+    conoutf(CON_DEBUG, "= %p = (%d, %d, %d) @ %d", (void *)&c, lu.x, lu.y, lu.z, lusize);
     conoutf(CON_DEBUG, " x  %.8x", c.faces[0]);
     conoutf(CON_DEBUG, " y  %.8x", c.faces[1]);
     conoutf(CON_DEBUG, " z  %.8x", c.faces[2]);

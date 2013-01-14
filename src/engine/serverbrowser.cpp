@@ -540,7 +540,7 @@ void refreshservers()
 
 serverinfo *selectedserver = NULL;
 
-char *showservers(g3d_gui *cgui, uint *header, int pagemin, int pagemax)
+const char *showservers(g3d_gui *cgui, uint *header, int pagemin, int pagemax)
 {
     refreshservers();
     if(servers.empty())
@@ -575,7 +575,7 @@ char *showservers(g3d_gui *cgui, uint *header, int pagemin, int pagemax)
     }
     if(selectedserver || !sc) return NULL;
     selectedserver = sc;
-    return newstring("connectselected");
+    return "connectselected";
 }
 
 void connectselected()
