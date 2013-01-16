@@ -68,7 +68,7 @@ void cleanupbloom()
     lasthdraccum = 0;
 }
 
-extern int ao, aotaps, aoreduce, aoreducedepth, aonoise, aobilateral, aopackdepth;
+extern int ao, aotaps, aoreduce, aoreducedepth, aonoise, aobilateral, aopackdepth, aodepthformat;
 
 static Shader *bilateralshader[2] = { NULL, NULL };
 
@@ -80,7 +80,7 @@ Shader *loadbilateralshader(int pass)
     int optslen = 0;
 
     if(aoreduce) opts[optslen++] = 'r';
-    bool linear = hasTRG && hasTF && (aopackdepth || (aoreducedepth && (aoreduce || aoreducedepth > 1)));
+    bool linear = aopackdepth || (aoreducedepth && (aoreduce || aoreducedepth > 1));
     if(linear)
     {
         opts[optslen++] = 'l';
@@ -118,8 +118,10 @@ Shader *loadambientobscuranceshader()
     int optslen = 0;
 
     if(aoreduce) opts[optslen++] = 'r';
-    bool linear = hasTRG && hasTF && (aoreducedepth && (aoreduce || aoreducedepth > 1));
+    bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1);
     if(linear) opts[optslen++] = 'l';
+    if(aobilateral && aopackdepth) opts[optslen++] = 'p';
+
     opts[optslen] = '\0';
 
     defformatstring(name)("ambientobscurance%s%d", opts, aotaps);
@@ -156,18 +158,18 @@ void setupao(int w, int h)
     {
         if(!aotex[i]) glGenTextures(1, &aotex[i]);
         if(!aofbo[i]) glGenFramebuffers_(1, &aofbo[i]);
-        createtexture(aotex[i], w, h, NULL, 3, 1, aobilateral && aopackdepth && hasTRG && hasTF ? GL_RG16F : GL_RGBA8 , GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(aotex[i], w, h, NULL, 3, 1, aobilateral && aopackdepth && aodepthformat ? GL_RG16F : GL_RGBA8 , GL_TEXTURE_RECTANGLE_ARB);
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[i]);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[i], 0);
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
             fatal("failed allocating AO buffer!");
     }
 
-    if(hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1))
+    if(aoreducedepth && (aoreduce || aoreducedepth > 1))
     {
         if(!aotex[2]) glGenTextures(1, &aotex[2]);
         if(!aofbo[2]) glGenFramebuffers_(1, &aofbo[2]);
-        createtexture(aotex[2], w, h, NULL, 3, 0, GL_R16F, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(aotex[2], w, h, NULL, 3, 0, aodepthformat ? GL_R16F : GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[2], 0);
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -204,6 +206,8 @@ FVARP(aosigma, 0.005f, 0.5f, 2.0f);
 VARP(aoiter, 0, 0, 4);
 VARFP(aoreduce, 0, 1, 2, cleanupao());
 VARF(aoreducedepth, 0, 1, 2, cleanupao());
+VARFP(aofloatdepth, 0, 1, 1, initwarning("AO setup", INIT_LOAD, CHANGE_SHADERS));
+VAR(aodepthformat, 1, 0, 0);
 VARF(aonoise, 0, 5, 8, cleanupao());
 VARFP(aobilateral, 0, 7, 10, cleanupao());
 FVARP(aobilateralsigma, 0, 0.5f, 1e3f);
@@ -211,6 +215,11 @@ FVARP(aobilateraldepth, 0, 4, 1e3f);
 VARF(aopackdepth, 0, 1, 1, cleanupao());
 VARFP(aotaps, 1, 5, 12, cleanupao());
 VAR(debugao, 0, 0, 1);
+
+void initao()
+{
+    aodepthformat = aofloatdepth && hasTRG && hasTF ? 1 : 0;
+}
 
 void viewao()
 {
@@ -236,7 +245,7 @@ void renderao()
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
 
-    bool linear = hasTRG && hasTF && aoreducedepth && (aoreduce || aoreducedepth > 1);
+    bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1);
     float xscale = eyematrix.v[0], yscale = eyematrix.v[5];
     if(linear)
     {
@@ -268,7 +277,7 @@ void renderao()
 
     if(aobilateral)
     {
-        if(!linear && aopackdepth && hasTRG && hasTF) linear = true;
+        if(!linear && aopackdepth) linear = true;
         loopi(2 + 2*aoiter)
         {
             setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear, linear && aopackdepth);
@@ -436,6 +445,8 @@ void initgbuffer()
 {
     if(glineardepth >= 2 && (!hasAFBO || !hasTF || !hasTRG)) gdepthformat = 1;
     else gdepthformat = glineardepth;
+
+    initao();
 }
 
 void maskgbuffer(const char *mask)
