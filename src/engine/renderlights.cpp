@@ -1762,7 +1762,7 @@ Shader *loaddeferredlightshader(const char *type = NULL)
 void loaddeferredlightshaders()
 {
     deferredlightshader = loaddeferredlightshader();
-    if(inferlights)
+    if(inferlights && ((gdepthstencil && hasDS) || gstencil))
     {
         inferredprelightshader = loaddeferredlightshader("i");
         inferredlightshader = useshaderbyname("inferredlight");
@@ -3683,7 +3683,7 @@ void setupframe(int w, int h)
     setupgbuffer(w, h);
     if(hdr && (bloomw < 0 || bloomh < 0)) setupbloom(gw, gh);
     if(ao && (aow < 0 || aoh < 0)) setupao(gw, gh);
-    if(inferlights && !infbo) setupinferred(gw, gh);
+    if(inferlights && ((gdepthstencil && hasDS) || gstencil) && !infbo) setupinferred(gw, gh);
     if(!shadowatlasfbo) setupshadowatlas();
     if(sunlight && csmshadowmap && gi && giscale && gidist && !rhfbo) setupradiancehints();
     if(!deferredlightshader) loaddeferredlightshaders();
