@@ -125,7 +125,7 @@ namespace server
         int lasttimeplayed, timeplayed;
         float effectiveness;
 
-        gamestate() : state(CS_DEAD), editstate(CS_DEAD) {}
+        gamestate() : state(CS_DEAD), editstate(CS_DEAD), lifesequence(0) {}
 
         bool isalive(int gamemillis)
         {
@@ -637,9 +637,9 @@ namespace server
     vector<teamkillinfo> teamkills;
     bool shouldcheckteamkills = false;
 
-    void addteamkill(clientinfo *actor, int n)
+    void addteamkill(clientinfo *actor, clientinfo *victim, int n)
     {
-        if(!m_timed || actor->state.aitype != AI_NONE || actor->local || actor->privilege) return;
+        if(!m_timed || actor->state.aitype != AI_NONE || actor->local || actor->privilege || (victim && victim->state.aitype != AI_NONE)) return;
         shouldcheckteamkills = true;
         uint ip = getclientip(actor->clientnum);
         loopv(teamkills) if(teamkills[i].ip == ip) 
@@ -2104,7 +2104,7 @@ namespace server
             if(actor!=target && isteam(actor->team, target->team)) 
             {
                 actor->state.teamkills++;
-                addteamkill(actor, 1);
+                addteamkill(actor, target, 1);
             }
             ts.deadflush = ts.lastdeath + DEATHMILLIS;
             // don't issue respawn yet until DEATHMILLIS has elapsed
