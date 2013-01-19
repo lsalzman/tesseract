@@ -594,13 +594,6 @@ namespace server
 	});
     SVAR(servermotd, "");
 
-    struct teamkillinfo
-    {
-        uint ip;
-        int teamkills;
-    };
-    vector<teamkillinfo> teamkills;
-
     struct teamkillkick
     {
         int modes, limit, ban;
@@ -616,22 +609,6 @@ namespace server
         }
     };
     vector<teamkillkick> teamkillkicks;
-
-    void addteamkill(clientinfo *actor, int n)
-    {
-        if(!m_timed || actor->state.aitype != AI_NONE) return;
-        uint ip = getclientip(actor->clientnum);
-        teamkillkick *kick = NULL;
-        loopv(teamkillkicks) if(teamkillkicks[i].match(gamemode) && (!kick || kick->includes(teamkillkicks[i])))
-            kick = &teamkillkicks[i];
-        if(!kick) return;
-        teamkillinfo *tk = NULL;
-        loopv(teamkills) if(teamkills[i].ip == ip) { tk = &teamkills[i]; tk->teamkills += n; break; }
-        if(!tk) { tk = &teamkills.add(); tk->ip = ip; tk->teamkills = n; }
-        if(actor->local || actor->privilege || tk->teamkills < kick->limit) return;
-        if(kick->ban > 0) addban(ip, kick->ban);
-        kickclients(ip);
-    }
 
     void teamkillkickreset()
     {
@@ -651,7 +628,48 @@ namespace server
 
     COMMAND(teamkillkickreset, "");
     COMMANDN(teamkillkick, addteamkillkick, "sii");
- 
+
+    struct teamkillinfo
+    {
+        uint ip;
+        int teamkills;
+    };
+    vector<teamkillinfo> teamkills;
+    bool shouldcheckteamkills = false;
+
+    void addteamkill(clientinfo *actor, int n)
+    {
+        if(!m_timed || actor->state.aitype != AI_NONE || actor->local || actor->privilege) return;
+        shouldcheckteamkills = true;
+        uint ip = getclientip(actor->clientnum);
+        loopv(teamkills) if(teamkills[i].ip == ip) 
+        { 
+            teamkills[i].teamkills += n;
+            return;
+        }
+        teamkillinfo &tk = teamkills.add();
+        tk.ip = ip;
+        tk.teamkills = n;
+    }
+
+    void checkteamkills()
+    {
+        teamkillkick *kick = NULL;
+        if(m_timed) loopv(teamkillkicks) if(teamkillkicks[i].match(gamemode) && (!kick || kick->includes(teamkillkicks[i])))
+            kick = &teamkillkicks[i];
+        if(kick) loopvrev(teamkills)
+        {
+            teamkillinfo &tk = teamkills[i];
+            if(tk.teamkills >= kick->limit)
+            {
+                if(kick->ban > 0) addban(tk.ip, kick->ban);
+                kickclients(tk.ip);
+                teamkills.removeunordered(i);
+            }
+        }
+        shouldcheckteamkills = false;
+    }
+
     void *newclientinfo() { return new clientinfo; }
     void deleteclientinfo(void *ci) { delete (clientinfo *)ci; }
 
@@ -1887,6 +1905,7 @@ namespace server
         copystring(smapname, s);
         loaditems();
         scores.shrink(0);
+        shouldcheckteamkills = false;
         teamkills.shrink(0);
         loopv(clients)
         {
@@ -2308,6 +2327,8 @@ namespace server
                 else c.scheduleexceeded();
             }
         }
+
+        if(shouldcheckteamkills) checkteamkills();
 
         if(shouldstep && !gamepaused)
         {
