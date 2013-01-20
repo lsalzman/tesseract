@@ -268,7 +268,7 @@ struct vertmodel : animmodel
         int vlen, vertsize;
         uchar *vdata;
 
-        vertmeshgroup() : numframes(0), tags(NULL), numtags(0), edata(NULL), ebuf(0), vdata(NULL) 
+        vertmeshgroup() : numframes(0), tags(NULL), numtags(0), edata(NULL), ebuf(0), vnorms(false), vtangents(false), vlen(0), vertsize(0), vdata(NULL) 
         {
         }
 

@@ -1269,7 +1269,7 @@ struct skelmodel : animmodel
 
         skelhitdata *hitdata;
 
-        skelmeshgroup() : skel(NULL), edata(NULL), ebuf(0), vdata(NULL), hitdata(NULL)
+        skelmeshgroup() : skel(NULL), edata(NULL), ebuf(0), vnorms(0), vtangents(false), vlen(0), vertsize(0), vblends(0), vweights(0), vdata(NULL), hitdata(NULL)
         {
             memset(numblends, 0, sizeof(numblends));
         }
