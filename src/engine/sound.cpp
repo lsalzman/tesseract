@@ -324,13 +324,18 @@ void clear_sound()
     samples.clear();
 }
 
-void clearmapsounds()
+void stopmapsounds()
 {
     loopv(channels) if(channels[i].inuse && channels[i].ent)
     {
         Mix_HaltChannel(i);
         freechannel(i);
     }
+}
+
+void clearmapsounds()
+{
+    stopmapsounds();
     mapslots.setsize(0);
     mapsounds.setsize(0);
 }
@@ -348,16 +353,6 @@ void stopmapsound(extentity *e)
     }
 }
 
-void stopmapsounds()
-{
-    const vector<extentity *> &ents = entities::getents();
-    loopv(ents)
-    {
-        extentity &e = *ents[i];
-        if(e.type==ET_SOUND && e.visible) stopmapsound(&e);
-    }
-}
-                
 void checkmapsounds()
 {
     if(!isconnected()) { stopmapsounds(); return; }
