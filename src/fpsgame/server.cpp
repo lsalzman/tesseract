@@ -516,7 +516,7 @@ namespace server
             }
             int modenum = INT_MAX;
             if(isdigit(mode[0])) modenum = atoi(mode);
-            else loopk(NUMGAMEMODES) if(!strstr(mode, gamemodes[k].name)) { modenum = k+STARTGAMEMODE; break; }
+            else loopk(NUMGAMEMODES) if(strstr(mode, gamemodes[k].name)) { modenum = k+STARTGAMEMODE; break; }
             if(!m_valid(modenum)) continue;
             switch(op)
             {
