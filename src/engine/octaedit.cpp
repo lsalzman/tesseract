@@ -1184,7 +1184,7 @@ namespace hmap
     {
         if(!(flags[x][y] & MAPPED))
           map[x][y] = v + (z*8);
-      flags[x][y] |= MAPPED;
+        flags[x][y] |= MAPPED;
     }
     
     void select(int x, int y, int z)
@@ -1280,7 +1280,7 @@ namespace hmap
         if(biasup)
             pullhmap(0, >, <, 1, 0, -);
         else
-            pullhmap(worldsize, <, >, 0, 8, +);     
+            pullhmap(worldsize*8, <, >, 0, 8, +);     
    
         cube **c  = cmap[x][y];
         int e[2][2];
@@ -1426,7 +1426,7 @@ namespace hmap
 }
 
 void edithmap(int dir, int mode) {    
-    if((nompedit && multiplayer()) || !hmapsel || gridsize < 8) return;    
+    if((nompedit && multiplayer()) || !hmapsel) return;    
     hmap::run(dir, mode);        
 }
 
