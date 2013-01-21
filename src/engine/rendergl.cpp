@@ -655,10 +655,15 @@ void gl_checkextensions()
 #endif
             if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture_compression_s3tc extension.");
         }
+        else if(hasext(exts, "GL_EXT_texture_compression_dxt1") && hasext(exts, "GL_ANGLE_texture_compression_dxt3") && hasext(exts, "GL_ANGLE_texture_compression_dxt5"))
+        {
+            hasS3TC = true;
+            if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture_compression_dxt1 extension.");
+        }
         if(hasext(exts, "GL_3DFX_texture_compression_FXT1"))
         {
             hasFXT1 = true;
-            if(mesa) usetexcompress = 1;
+            if(mesa) usetexcompress = max(usetexcompress, 1);
             if(dbgexts) conoutf(CON_INIT, "Using GL_3DFX_texture_compression_FXT1.");
         }
     }
