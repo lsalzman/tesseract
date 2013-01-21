@@ -274,7 +274,7 @@ void renderao()
     LOCALPARAM(tapparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, aoradius*aoradius*aocutoff*aocutoff));
     LOCALPARAM(contrastparams, ((2.0f*aodark)/aotaps, aosharp));
     LOCALPARAM(offsetscale, (xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]));
-    LOCALPARAM(prefilterdepth, (2*aoprefilterdepth));
+    LOCALPARAM(prefilterdepth, (aoprefilterdepth));
     screenquad(vieww, viewh, aow/float(1<<aonoise), aoh/float(1<<aonoise));
 
     if(aobilateral)
