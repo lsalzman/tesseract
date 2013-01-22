@@ -85,16 +85,6 @@ static inline void reorienttexture(uchar *src, int sw, int sh, int bpp, int stri
     }
 }
 
-#ifndef GL_RGB_S3TC
-#define GL_RGB_S3TC 0x83A0
-#endif
-#ifndef GL_RGBA_S3TC
-#define GL_RGBA_S3TC 0x83A2
-#endif
-#ifndef GL_RGBA_DXT5_S3TC
-#define GL_RGBA_DXT5_S3TC 0x83A4
-#endif
-
 static void reorients3tc(GLenum format, int blocksize, int w, int h, uchar *src, uchar *dst, bool flipx, bool flipy, bool swapxy, bool normals = false)
 {
     int bx1 = 0, by1 = 0, bx2 = min(w, 4), by2 = min(h, 4), bw = (w+3)/4, bh = (h+3)/4, stridex = blocksize, stridey = blocksize;
@@ -105,7 +95,7 @@ static void reorients3tc(GLenum format, int blocksize, int w, int h, uchar *src,
     {
         for(uchar *curdst = dst, *end = &src[bw*blocksize]; src < end; src += blocksize, curdst += stridex)
         {
-            if(format == GL_COMPRESSED_RGBA_S3TC_DXT3_EXT || format == GL_RGBA_S3TC)
+            if(format == GL_COMPRESSED_RGBA_S3TC_DXT3_EXT)
             {
                 ullong salpha = lilswap(*(ullong *)src), dalpha = 0;
                 uint xmask = flipx ? 15 : 0, ymask = flipy ? 15 : 0, xshift = 2, yshift = 4;
@@ -119,7 +109,7 @@ static void reorients3tc(GLenum format, int blocksize, int w, int h, uchar *src,
                 src += 8;
                 curdst += 8;
             }
-            else if(format == GL_COMPRESSED_RGBA_S3TC_DXT5_EXT || format == GL_RGBA_DXT5_S3TC)
+            else if(format == GL_COMPRESSED_RGBA_S3TC_DXT5_EXT)
             {
                 uchar alpha1 = src[0], alpha2 = src[1];
                 ullong salpha = lilswap(*(ushort *)&src[2]) + ((ullong)lilswap(*(ushort *)&src[4])<<16) + ((ullong)lilswap(*(ushort *)&src[6])<<32), dalpha = 0;
@@ -230,9 +220,6 @@ void texreorient(ImageData &s, bool flipx, bool flipy, bool swapxy, int type = T
     case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
     case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
     case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-    case GL_RGB_S3TC:
-    case GL_RGBA_S3TC:
-    case GL_RGBA_DXT5_S3TC:
         {
             uchar *dst = d.data, *src = s.data;
             loopi(s.levels)
@@ -575,14 +562,11 @@ GLenum uncompressedformat(GLenum format)
     {
         case GL_COMPRESSED_RGB_ARB:
         case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-        case GL_RGB_S3TC:
             return GL_RGB;
         case GL_COMPRESSED_RGBA_ARB:
         case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
         case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
         case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-        case GL_RGBA_S3TC:
-        case GL_RGBA_DXT5_S3TC:
             return GL_RGBA;
     }
     return GL_FALSE;
@@ -648,7 +632,6 @@ static GLenum textype(GLenum component, GLenum &format)
         case GL_RGB10:
         case GL_COMPRESSED_RGB_ARB:
         case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-        case GL_RGB_S3TC:
             if(!format) format = GL_RGB;
             break;
 
@@ -659,8 +642,6 @@ static GLenum textype(GLenum component, GLenum &format)
         case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
         case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
         case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-        case GL_RGBA_S3TC:
-        case GL_RGBA_DXT5_S3TC:
             if(!format) format = GL_RGBA;
             break;
 
@@ -1224,7 +1205,7 @@ static bool texturedata(ImageData &d, const char *tname, Slot::Tex *tex = NULL, 
         string dfile;
         copystring(dfile, file);
         memcpy(dfile + flen - 4, ".dds", 4);
-        if(!raw && (hasS3TC || hasS3TC0) && loaddds(dfile, d)) return true;
+        if(!raw && hasS3TC && loaddds(dfile, d)) return true;
         if(!dds || dbgdds) { if(msg) conoutf(CON_ERROR, "could not load texture %s", dfile); return false; }
     }
         
@@ -2595,17 +2576,11 @@ bool loaddds(const char *filename, ImageData &image)
     {
         switch(d.ddpfPixelFormat.dwFourCC)
         {
-            case FOURCC_DXT1: 
-                if(d.ddpfPixelFormat.dwFlags & DDPF_ALPHAPIXELS)
-                {
-                    if(hasS3TC) format = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-                }
-                else format = hasS3TC ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT : GL_RGB_S3TC; 
-                break;
+            case FOURCC_DXT1: format = d.ddpfPixelFormat.dwFlags & DDPF_ALPHAPIXELS ? GL_COMPRESSED_RGBA_S3TC_DXT1_EXT : GL_COMPRESSED_RGB_S3TC_DXT1_EXT; break;
             case FOURCC_DXT2:
-            case FOURCC_DXT3: format = hasS3TC ? GL_COMPRESSED_RGBA_S3TC_DXT3_EXT : GL_RGBA_S3TC; break;
+            case FOURCC_DXT3: format = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT; break;
             case FOURCC_DXT4:
-            case FOURCC_DXT5: format = hasS3TC ? GL_COMPRESSED_RGBA_S3TC_DXT5_EXT : GL_RGBA_DXT5_S3TC; break;
+            case FOURCC_DXT5: format = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT; break;
         }        
     }
     if(!format) { delete f; return false; }
