@@ -396,10 +396,8 @@ struct animmodel : model
         int shared;
         char *name;
         vector<mesh *> meshes;
-        float scale;
-        vec translate;
 
-        meshgroup() : next(NULL), shared(0), name(NULL), scale(1), translate(0, 0, 0)
+        meshgroup() : next(NULL), shared(0), name(NULL)
         {
         }
 
