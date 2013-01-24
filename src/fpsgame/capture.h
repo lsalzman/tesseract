@@ -40,6 +40,8 @@ struct captureclientmode : clientmode
 
         baseinfo() { reset(); }
 
+        bool valid() const { return ammotype>0 && ammotype<=I_CARTRIDGES-I_SHELLS+1; }
+
         void noenemy()
         {
             enemy[0] = '\0';
@@ -180,7 +182,7 @@ struct captureclientmode : clientmode
         if(bases.length() >= MAXBASES) return;
         baseinfo &b = bases.add();
         b.ammogroup = min(ammotype, 0);
-        b.ammotype = ammotype > 0 ? ammotype : rnd(5)+1;
+        b.ammotype = ammotype > 0 ? ammotype : rnd(I_GRENADES-I_SHELLS+1)+1;
         b.o = o;
 
         if(b.ammogroup)
@@ -190,7 +192,8 @@ struct captureclientmode : clientmode
                 b.ammotype = bases[i].ammotype;
                 return;
             }
-            int uses[5] = { 0, 0, 0, 0, 0 };
+            int uses[I_GRENADES-I_SHELLS+1];
+            memset(uses, 0, sizeof(uses));
             loopi(bases.length()-1) if(bases[i].ammogroup)
             {
                 loopj(i) if(bases[j].ammogroup == bases[i].ammogroup) goto nextbase;
@@ -198,9 +201,9 @@ struct captureclientmode : clientmode
                 nextbase:;
             }
             int mintype = 0;
-            loopi(5) if(uses[i] < uses[mintype]) mintype = i;
-            int numavail = 0, avail[5];
-            loopi(5) if(uses[i] == uses[mintype]) avail[numavail++] = i+1;
+            loopi(I_GRENADES-I_SHELLS+1) if(uses[i] < uses[mintype]) mintype = i;
+            int numavail = 0, avail[I_GRENADES-I_SHELLS+1];
+            loopi(I_GRENADES-I_SHELLS+1) if(uses[i] == uses[mintype]) avail[numavail++] = i+1;
             b.ammotype = avail[rnd(numavail)];
         }
     }
@@ -261,7 +264,7 @@ struct captureclientmode : clientmode
         loopv(bases)
         {
             baseinfo &b = bases[i];
-            if(b.ammotype>0 && b.ammotype<=I_CARTRIDGES-I_SHELLS+1 && insidebase(b, player1->feetpos()) && player1->hasmaxammo(b.ammotype-1+I_SHELLS)) return;
+            if(b.valid() && insidebase(b, player1->feetpos()) && player1->hasmaxammo(b.ammotype-1+I_SHELLS)) return;
         }
         addmsg(N_REPAMMO, "rc", player1);
     }
@@ -282,7 +285,7 @@ struct captureclientmode : clientmode
         loopv(bases)
         {
             baseinfo &b = bases[i];
-            if(b.ammotype>0 && b.ammotype<=I_CARTRIDGES-I_SHELLS+1 && insidebase(b, d->feetpos()) && !strcmp(b.owner, d->team) && b.o.dist(o) < 12)
+            if(b.valid() && insidebase(b, d->feetpos()) && !strcmp(b.owner, d->team) && b.o.dist(o) < 12)
             {
                 if(d->lastrepammo!=i)
                 {
@@ -305,7 +308,7 @@ struct captureclientmode : clientmode
             loopv(bases)
             {
                 baseinfo &b = bases[i];
-                if(!insidebase(b, d->feetpos()) || (strcmp(b.owner, d->team) && strcmp(b.enemy, d->team))) continue;
+                if(!b.valid() || !insidebase(b, d->feetpos()) || (strcmp(b.owner, d->team) && strcmp(b.enemy, d->team))) continue;
                 if(d->lastbase < 0 && (lookupmaterial(d->feetpos())&MATF_CLIP) == MAT_GAMECLIP) break;
                 particle_flare(pos, vec(b.ammopos.x, b.ammopos.y, b.ammopos.z - AMMOHEIGHT - 4.4f), 0, PART_LIGHTNING, strcmp(d->team, player1->team) ? 0xFF2222 : 0x2222FF, 1.0f);
                 if(oldbase < 0)
@@ -345,6 +348,7 @@ struct captureclientmode : clientmode
         loopv(bases)
         {
             baseinfo &b = bases[i];
+            if(!b.valid()) continue;
             const char *basename = b.owner[0] ? (strcmp(b.owner, player1->team) ? "base/red" : "base/blue") : "base/neutral";
             rendermodel(basename, ANIM_MAPMODEL|ANIM_LOOP, b.o, 0, 0, MDL_CULL_VFC | MDL_CULL_OCCLUDED);
             float fradius = 1.0f, fheight = 0.5f;
@@ -353,26 +357,23 @@ struct captureclientmode : clientmode
 
 //            particle_fireball(b.ammopos, 4.8f, PART_EXPLOSION, 0, b.owner[0] ? (strcmp(b.owner, player1->team) ? 0x802020 : 0x2020FF) : 0x208020, 4.8f);
 
-            if(b.ammotype>0 && b.ammotype<=I_CARTRIDGES-I_SHELLS+1)
+            const char *ammoname = entities::entmdlname(I_SHELLS+b.ammotype-1);
+            if(m_regencapture)
             {
-                const char *ammoname = entities::entmdlname(I_SHELLS+b.ammotype-1);
-                if(m_regencapture)
-                {
-                    vec height(0, 0, 0);
-                    abovemodel(height, ammoname);
-                    vec ammopos(b.ammopos);
-                    ammopos.z -= height.z/2 + sinf(lastmillis/100.0f)/20;
-                    rendermodel(ammoname, ANIM_MAPMODEL|ANIM_LOOP, ammopos, lastmillis/10.0f, 0, MDL_CULL_VFC | MDL_CULL_OCCLUDED);
-                }
-                else loopj(b.ammo)
-                {
-                    float angle = 2*M_PI*(lastmillis/4000.0f + j/float(MAXAMMO));
-                    vec ammopos(b.o);
-                    ammopos.x += 10*cosf(angle);
-                    ammopos.y += 10*sinf(angle);
-                    ammopos.z += 4;
-                    rendermodel(entities::entmdlname(I_SHELLS+b.ammotype-1), ANIM_MAPMODEL|ANIM_LOOP, ammopos, 0, 0, MDL_CULL_VFC | MDL_CULL_OCCLUDED);
-                }
+                vec height(0, 0, 0);
+                abovemodel(height, ammoname);
+                vec ammopos(b.ammopos);
+                ammopos.z -= height.z/2 + sinf(lastmillis/100.0f)/20;
+                rendermodel(ammoname, ANIM_MAPMODEL|ANIM_LOOP, ammopos, lastmillis/10.0f, 0, MDL_CULL_VFC | MDL_CULL_OCCLUDED);
+            }
+            else loopj(b.ammo)
+            {
+                float angle = 2*M_PI*(lastmillis/4000.0f + j/float(MAXAMMO));
+                vec ammopos(b.o);
+                ammopos.x += 10*cosf(angle);
+                ammopos.y += 10*sinf(angle);
+                ammopos.z += 4;
+                rendermodel(entities::entmdlname(I_SHELLS+b.ammotype-1), ANIM_MAPMODEL|ANIM_LOOP, ammopos, 0, 0, MDL_CULL_VFC | MDL_CULL_OCCLUDED);
             }
 
             int tcolor = 0x1EC850, mtype = -1, mcolor = 0xFFFFFF, mcolor2 = 0;
@@ -415,6 +416,7 @@ struct captureclientmode : clientmode
         loopv(bases)
         {
             baseinfo &b = bases[i];
+            if(!b.valid()) continue;
             if(skipenemy && b.enemy[0]) continue;
             switch(type)
             {
@@ -581,7 +583,7 @@ struct captureclientmode : clientmode
         if(ammo>b.ammo)
         {
             playsound(S_ITEMSPAWN, &b.o);
-            int icon = b.ammotype>0 && b.ammotype<=I_CARTRIDGES-I_SHELLS+1 ? itemstats[b.ammotype-1].icon : -1;
+            int icon = b.valid() ? itemstats[b.ammotype-1].icon : -1;
             if(icon >= 0) particle_icon(vec(b.ammopos.x, b.ammopos.y, b.ammopos.z + AMMOHEIGHT + 1.0f), icon%4, icon/4, PART_HUD_ICON, 2000, 0xFFFFFF, 2.0f, -8);
         }
         b.ammo = ammo;
@@ -676,6 +678,7 @@ struct captureclientmode : clientmode
 		loopvj(bases)
 		{
 			baseinfo &f = bases[j];
+            if(!f.valid()) continue;
 			static vector<int> targets; // build a list of others who are interested in this
 			targets.setsize(0);
 			ai::checkothers(targets, d, ai::AI_S_DEFEND, ai::AI_T_AFFINITY, j, true);
@@ -684,7 +687,7 @@ struct captureclientmode : clientmode
 			if(m_regencapture)
 			{
 				int gun = f.ammotype-1+I_SHELLS;
-				if(f.ammo > 0 && f.ammotype > 0 && f.ammotype <= I_CARTRIDGES-I_SHELLS+1 && !d->hasmaxammo(gun))
+				if(f.ammo > 0 && !d->hasmaxammo(gun))
 					regen = gun != d->ai->weappref ? 2 : 4;
 			}
 			loopi(numdynents()) if((e = (fpsent *)iterdynents(i)) && !e->ai && e->state == CS_ALIVE && isteam(d->team, e->team))
@@ -707,44 +710,42 @@ struct captureclientmode : clientmode
 
 	bool aidefend(fpsent *d, ai::aistate &b)
 	{
-		if(bases.inrange(b.target))
+        if(!bases.inrange(b.target)) return false;
+        baseinfo &f = bases[b.target];
+        if(!f.valid()) return false;
+		bool regen = !m_regencapture || d->health >= 100 ? false : true;
+		if(!regen && m_regencapture)
 		{
-			baseinfo &f = bases[b.target];
-			bool regen = !m_regencapture || d->health >= 100 ? false : true;
-			if(!regen && m_regencapture)
-			{
-				int gun = f.ammotype-1+I_SHELLS;
-				if(f.ammo > 0 && f.ammotype > 0 && f.ammotype <= I_CARTRIDGES-I_SHELLS+1 && !d->hasmaxammo(gun))
-					regen = true;
-			}
-			int walk = 0;
-			if(!regen && !f.enemy[0] && f.owner[0] && !strcmp(f.owner, d->team))
-			{
-				static vector<int> targets; // build a list of others who are interested in this
-				targets.setsize(0);
-				ai::checkothers(targets, d, ai::AI_S_DEFEND, ai::AI_T_AFFINITY, b.target, true);
-				fpsent *e = NULL;
-				loopi(numdynents()) if((e = (fpsent *)iterdynents(i)) && !e->ai && e->state == CS_ALIVE && isteam(d->team, e->team))
-				{ // try to guess what non ai are doing
-					vec ep = e->feetpos();
-					if(targets.find(e->clientnum) < 0 && (ep.squaredist(f.o) <= (CAPTURERADIUS*CAPTURERADIUS*4)))
-						targets.add(e->clientnum);
-				}
-				if(!targets.empty())
-				{
-					if(lastmillis-b.millis >= (201-d->skill)*33)
-					{
-						d->ai->trywipe = true; // re-evaluate so as not to herd
-						return true;
-					}
-					else walk = 2;
-				}
-				else walk = 1;
-				b.millis = lastmillis;
-			}
-			return ai::defend(d, b, f.o, float(CAPTURERADIUS), float(CAPTURERADIUS*(2+(walk*2))), walk); // less wander than ctf
+			int gun = f.ammotype-1+I_SHELLS;
+			if(f.ammo > 0 && !d->hasmaxammo(gun))
+				regen = true;
 		}
-		return false;
+		int walk = 0;
+		if(!regen && !f.enemy[0] && f.owner[0] && !strcmp(f.owner, d->team))
+		{
+			static vector<int> targets; // build a list of others who are interested in this
+			targets.setsize(0);
+			ai::checkothers(targets, d, ai::AI_S_DEFEND, ai::AI_T_AFFINITY, b.target, true);
+			fpsent *e = NULL;
+			loopi(numdynents()) if((e = (fpsent *)iterdynents(i)) && !e->ai && e->state == CS_ALIVE && isteam(d->team, e->team))
+			{ // try to guess what non ai are doing
+				vec ep = e->feetpos();
+				if(targets.find(e->clientnum) < 0 && (ep.squaredist(f.o) <= (CAPTURERADIUS*CAPTURERADIUS*4)))
+					targets.add(e->clientnum);
+			}
+			if(!targets.empty())
+			{
+				if(lastmillis-b.millis >= (201-d->skill)*33)
+				{
+					d->ai->trywipe = true; // re-evaluate so as not to herd
+					return true;
+				}
+				else walk = 2;
+			}
+			else walk = 1;
+			b.millis = lastmillis;
+		}
+		return ai::defend(d, b, f.o, float(CAPTURERADIUS), float(CAPTURERADIUS*(2+(walk*2))), walk); // less wander than ctf
 	}
 
 	bool aipursue(fpsent *d, ai::aistate &b)
@@ -761,7 +762,8 @@ ICOMMAND(insidebases, "", (),
     vector<char> buf;
     if(m_capture && player1->state == CS_ALIVE) loopv(capturemode.bases)
     {
-        if(capturemode.insidebase(capturemode.bases[i], player1->feetpos()))
+        captureclientmode::baseinfo &b = capturemode.bases[i];
+        if(b.valid() && capturemode.insidebase(b, player1->feetpos()))
         {
             if(buf.length()) buf.add(' ');
             defformatstring(basenum)("%d", i+1);
@@ -797,7 +799,7 @@ ICOMMAND(insidebases, "", (),
             entity &e = ments[i];
             if(e.type != BASE) continue;
             int ammotype = e.attr1;
-            addbase(ammotype>=GUN_SG && ammotype<=GUN_PISTOL ? ammotype : min(ammotype, 0), e.o); 
+            addbase(ammotype, e.o); 
         }
         notgotbases = false;
         sendbases();
@@ -827,7 +829,7 @@ ICOMMAND(insidebases, "", (),
         loopv(bases)
         {
             baseinfo &b = bases[i];
-            if(b.ammotype>0 && b.ammotype<=I_CARTRIDGES-I_SHELLS+1 && insidebase(b, ci->state.o) && !ci->state.hasmaxammo(b.ammotype-1+I_SHELLS) && b.takeammo(ci->team))
+            if(b.valid() && insidebase(b, ci->state.o) && !ci->state.hasmaxammo(b.ammotype-1+I_SHELLS) && b.takeammo(ci->team))
             {
                 sendbaseinfo(i);
                 sendf(-1, 1, "riii", N_REPAMMO, ci->clientnum, b.ammotype);
@@ -843,6 +845,7 @@ ICOMMAND(insidebases, "", (),
         loopv(bases)
         {
             baseinfo &b = bases[i];
+            if(!b.valid()) continue;
             bool leave = !oldclip && insidebase(b, oldpos),
                  enter = !newclip && insidebase(b, newpos);
             if(leave && !enter && b.leave(team)) sendbaseinfo(i);
@@ -892,17 +895,17 @@ ICOMMAND(insidebases, "", (),
                     ci->state.armour = min(ci->state.armour + ticks*REGENARMOUR, itemstats[I_GREENARMOUR-I_SHELLS].max);
                     notify = true;
                 }
-                if(b.ammotype>0)
+                if(b.valid())
                 {
                     int ammotype = b.ammotype-1+I_SHELLS;
-                    if(ammotype<=I_CARTRIDGES && !ci->state.hasmaxammo(ammotype))
+                    if(!ci->state.hasmaxammo(ammotype))
                     {
                         ci->state.addammo(b.ammotype, ticks*REGENAMMO, 100);
                         notify = true;
                     }
                 }
                 if(notify)
-                    sendf(-1, 1, "ri6", N_BASEREGEN, ci->clientnum, ci->state.health, ci->state.armour, b.ammotype, b.ammotype>0 ? ci->state.ammo[b.ammotype] : 0);
+                    sendf(-1, 1, "ri6", N_BASEREGEN, ci->clientnum, ci->state.health, ci->state.armour, b.ammotype, b.valid() ? ci->state.ammo[b.ammotype] : 0);
             }
         }
     }
@@ -916,6 +919,7 @@ ICOMMAND(insidebases, "", (),
         loopv(bases)
         {
             baseinfo &b = bases[i];
+            if(!b.valid()) continue;
             if(b.enemy[0])
             {
                 if(!b.owners || !b.enemies) b.occupy(b.enemy, OCCUPYBONUS*(b.enemies ? 1 : -1) + OCCUPYPOINTS*(b.enemies ? b.enemies : -(1+b.owners))*t);
@@ -973,7 +977,7 @@ ICOMMAND(insidebases, "", (),
         loopv(bases)
         {
             baseinfo &b = bases[i];
-            putint(p, min(max(b.ammotype, 1), I_CARTRIDGES+1));
+            putint(p, b.ammotype);
             sendstring(b.owner, p);
             sendstring(b.enemy, p);
             putint(p, b.converted);
@@ -988,6 +992,7 @@ ICOMMAND(insidebases, "", (),
         loopv(bases)
         {
             baseinfo &b = bases[i];
+            if(!b.valid()) continue;
             if(b.owner[0])
             {
                 if(!lastteam) lastteam = b.owner;
