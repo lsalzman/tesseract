@@ -499,16 +499,23 @@ namespace server
     bool searchmodename(const char *haystack, const char *needle)
     {
         if(!needle[0]) return true;
-        while((haystack = strchr(haystack, needle[0])))
+        do
         {
-            const char *h = ++haystack, *n = needle+1;
+            if(needle[0] != '.')
+            {
+                haystack = strchr(haystack, needle[0]);
+                if(!haystack) break;
+                haystack++;
+            }
+            const char *h = haystack, *n = needle+1;
             for(; *h && *n; h++)
             {
                 if(*h == *n) n++;
                 else if(*h != ' ') break; 
             }
             if(!*n) return true;
-        }
+            if(*n == '.') return !*h;
+        } while(needle[0] != '.');
         return false;
     }
 
@@ -2039,11 +2046,8 @@ namespace server
         {
             int idx = findmaprotation(mode, smapname);
             if(idx < 0 && smapname[0]) idx = findmaprotation(mode, "");
-            if(idx >= 0) 
-            {
-                curmaprotation = idx;
-                map = maprotations[curmaprotation].map;
-            }
+            if(idx < 0) return;
+            map = maprotations[idx].map;
         }
         if(hasnonlocalclients()) sendservmsgf("local player forced %s on map %s", modename(mode), map[0] ? map : "[new map]");
         changemap(map, mode);
@@ -2058,7 +2062,8 @@ namespace server
         {
             int idx = findmaprotation(reqmode, smapname);
             if(idx < 0 && smapname[0]) idx = findmaprotation(reqmode, "");
-            if(idx >= 0) map = maprotations[idx].map;
+            if(idx < 0) return;
+            map = maprotations[idx].map;
         }
         if(lockmaprotation && !ci->privilege && !ci->local && findmaprotation(reqmode, map) < 0) 
         {
