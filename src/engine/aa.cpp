@@ -178,7 +178,7 @@ VARP(smaacoloredge, 0, 0, 1);
 VAR(smaadepthmask, 0, 1, 1);
 VAR(smaastencil, 0, 1, 1);
 VARFP(smaatemp, 0, 0, 1, cleanupsmaa());
-FVAR(smaareproject, 0, 128, 1e6f);
+FVAR(smaareproject, 0, 170, 1e6f);
 VAR(debugsmaa, 0, 0, 5);
 
 void viewsmaa()
