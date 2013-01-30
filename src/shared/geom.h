@@ -1260,6 +1260,14 @@ struct glmatrixf
         v[12] *= x; v[13] *= y; v[14] *= z;
     }
 
+    void scalez(float k)
+    {
+        v[2] *= k;
+        v[6] *= k;
+        v[10] *= k;
+        v[14] *= k;
+    }
+
     void reflectz(float z)
     {
         v[12] += 2*z*v[8];
@@ -1273,6 +1281,15 @@ struct glmatrixf
     {
         loopi(2) loopj(4) v[i + j*4] = 0.5f*(v[i + j*4] + v[3 + j*4]); 
         loopj(4) v[2 + j*4] = zscale*v[2 + j*4] + zoffset*v[3 + j*4];
+    }
+
+    void jitter(float x, float y)
+    {
+        loopj(4) 
+        {
+            v[    j*4] += x * v[3 + j*4];
+            v[1 + j*4] += y * v[3 + j*4];
+        }
     }
 
     void transpose()
@@ -1424,9 +1441,7 @@ struct glmatrixf
     vec4 getrow(int i) const { return vec4(v[i], v[i+4], v[i+8], v[i+12]); }
     vec4 getcolumn(int i) const { i *= 4; return vec4(v[i], v[i+1], v[i+2], v[i+3]); }
 
-    float determinant() const;
-    void adjoint(const glmatrixf &m);
-    bool invert(const glmatrixf &m, float mindet = 1.0e-10f);
+    bool invert(const glmatrixf &m, double mindet = 1.0e-10);
 };
 
 extern bool raysphereintersect(const vec &center, float radius, const vec &o, const vec &ray, float &dist);

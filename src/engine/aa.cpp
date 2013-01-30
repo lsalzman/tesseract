@@ -57,9 +57,11 @@ void dofxaa(GLuint outfbo = 0)
     endtimer(fxaatimer);
 }
 
-GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[3] = { 0, 0, 0 };
+GLuint smaaareatex = 0, smaasearchtex = 0, smaaprevtex = 0, smaacurtex = 0, smaafbo[5] = { 0, 0, 0 };
+int smaatempframe = 0;
+glmatrixf smaaprevmvp;
 
-extern int smaaquality;
+extern int smaaquality, smaatemp;
 
 static Shader *smaalumaedgeshader = NULL, *smaacoloredgeshader = NULL, *smaablendweightshader = NULL, *smaaneighborhoodshader = NULL;
 
@@ -74,16 +76,25 @@ void loadsmaashaders()
     smaacoloredgeshader = lookupshaderbyname(coloredgename);
     smaablendweightshader = lookupshaderbyname(blendweightname);
     smaaneighborhoodshader = lookupshaderbyname(neighborhoodname);
-    if(smaalumaedgeshader && smaacoloredgeshader && smaablendweightshader && smaaneighborhoodshader) return;
-    generateshader(NULL, "smaashaders %d", smaaquality);
-    smaalumaedgeshader = lookupshaderbyname(lumaedgename);
-    if(!smaalumaedgeshader) smaalumaedgeshader = nullshader;
-    smaacoloredgeshader = lookupshaderbyname(coloredgename);
-    if(!smaacoloredgeshader) smaacoloredgeshader = nullshader;
-    smaablendweightshader = lookupshaderbyname(blendweightname);
-    if(!smaablendweightshader) smaablendweightshader = nullshader;
-    smaaneighborhoodshader = lookupshaderbyname(neighborhoodname);
-    if(!smaaneighborhoodshader) smaaneighborhoodshader = nullshader;
+
+    if(!smaalumaedgeshader || !smaacoloredgeshader || !smaablendweightshader || !smaaneighborhoodshader)
+    {
+        generateshader(NULL, "smaashaders %d", smaaquality);
+        smaalumaedgeshader = lookupshaderbyname(lumaedgename);
+        if(!smaalumaedgeshader) smaalumaedgeshader = nullshader;
+        smaacoloredgeshader = lookupshaderbyname(coloredgename);
+        if(!smaacoloredgeshader) smaacoloredgeshader = nullshader;
+        smaablendweightshader = lookupshaderbyname(blendweightname);
+        if(!smaablendweightshader) smaablendweightshader = nullshader;
+        smaaneighborhoodshader = lookupshaderbyname(neighborhoodname);
+        if(!smaaneighborhoodshader) smaaneighborhoodshader = nullshader;
+    }
+
+    if(smaatemp)
+    {
+        useshaderbyname("SMAAPackVelocity");
+        useshaderbyname("SMAATemporalResolve");
+    }
 }
 
 void clearsmaashaders()
@@ -103,7 +114,14 @@ void setupsmaa(int w, int h)
     if(!smaasearchtex) glGenTextures(1, &smaasearchtex);
     createtexture(smaaareatex, AREATEX_WIDTH, AREATEX_HEIGHT, areaTexBytes, 3, 1, GL_LUMINANCE_ALPHA, GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, false);
     createtexture(smaasearchtex, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, searchTexBytes, 3, 0, GL_LUMINANCE, GL_TEXTURE_RECTANGLE_ARB, 0, 0, 0, false);
-    loopi(3)
+    if(smaatemp)
+    {
+        if(!smaaprevtex) glGenTextures(1, &smaaprevtex);
+        if(!smaacurtex) glGenTextures(1, &smaacurtex);
+        createtexture(smaaprevtex, w, h, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(smaacurtex, w, h, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+    }
+    loopi(smaatemp ? 5 : 3)
     {
         if(!smaafbo[i]) glGenFramebuffers_(1, &smaafbo[i]);
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[i]);
@@ -113,9 +131,11 @@ void setupsmaa(int w, int h)
             case 0: tex = gcolortex; break;
             case 1: tex = gnormaltex; break;
             case 2: tex = gglowtex; break;
+            case 3: tex = smaacurtex; break;
+            case 4: tex = smaaprevtex; break;
         }
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, tex, 0);
-        if(i > 0)
+        if(i > 0 && i < 3)
         {
             if(gdepthformat)
             {
@@ -134,6 +154,8 @@ void setupsmaa(int w, int h)
     }
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 
+    smaaprevmvp.identity();
+
     loadsmaashaders();
 }
 
@@ -141,9 +163,13 @@ void cleanupsmaa()
 {
     if(smaaareatex) { glDeleteTextures(1, &smaaareatex); smaaareatex = 0; }
     if(smaasearchtex) { glDeleteTextures(1, &smaasearchtex); smaasearchtex = 0; }
-    loopi(3) if(smaafbo[i]) { glDeleteFramebuffers_(1, &smaafbo[i]); smaafbo[i] = 0; }
+    if(smaaprevtex) { glDeleteTextures(1, &smaaprevtex); smaaprevtex = 0; }
+    if(smaacurtex) { glDeleteTextures(1, &smaacurtex); smaacurtex = 0; }
+    loopi(5) if(smaafbo[i]) { glDeleteFramebuffers_(1, &smaafbo[i]); smaafbo[i] = 0; }
 
     clearsmaashaders();
+
+    smaatempframe = 0;
 }
 
 VARFP(smaa, 0, 0, 1, cleanupsmaa());
@@ -151,6 +177,8 @@ VARFP(smaaquality, 0, 2, 3, cleanupsmaa());
 VARP(smaacoloredge, 0, 0, 1);
 VAR(smaadepthmask, 0, 1, 1);
 VAR(smaastencil, 0, 1, 1);
+VARFP(smaatemp, 0, 0, 1, cleanupsmaa());
+FVAR(smaareproject, 0, 128, 1e6f);
 VAR(debugsmaa, 0, 0, 5);
 
 void viewsmaa()
@@ -200,6 +228,24 @@ void dosmaa(GLuint outfbo = 0)
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     screenquad(vieww, viewh);
 
+    if(smaatemp)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[0]);
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+        glMatrixMode(GL_TEXTURE);
+        glmatrixf reproject; 
+        reproject.mul(smaatempframe ? smaaprevmvp : screenmatrix, worldmatrix); 
+        if(smaatempframe) reproject.jitter(smaatempframe&1 ? 0.5f : -0.5f, smaatempframe&1 ? 0.5f : -0.5f); 
+        glLoadMatrixf(reproject.v);
+        glMatrixMode(GL_MODELVIEW);
+        SETSHADER(SMAAPackVelocity);
+        float maxvel = sqrtf(vieww*vieww + viewh*viewh)/smaareproject;
+        LOCALPARAM(maxvelocity, (maxvel, 1/maxvel));
+        screenquad(vieww, viewh);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    }
+
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2]);
     if(smaadepthmask)
     {
@@ -213,6 +259,7 @@ void dosmaa(GLuint outfbo = 0)
     }
     glClear(GL_COLOR_BUFFER_BIT);
     smaablendweightshader->set();
+    LOCALPARAM(subsamples, (smaatemp ? (smaatempframe&1) + 1 : 0)); 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -233,7 +280,7 @@ void dosmaa(GLuint outfbo = 0)
     }
     else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaatemp ? smaafbo[3] : outfbo);
     smaaneighborhoodshader->set();
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -245,6 +292,26 @@ void dosmaa(GLuint outfbo = 0)
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
+    if(smaatemp)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaacurtex);
+        glActiveTexture_(GL_TEXTURE1_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatempframe ? smaaprevtex : smaacurtex);
+        glActiveTexture_(GL_TEXTURE2_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+        SETSHADER(SMAATemporalResolve);
+        float maxvel = sqrtf(vieww*vieww + viewh*viewh)/smaareproject;
+        LOCALPARAM(maxvelocity, (maxvel, 1/maxvel));
+        screenquad(vieww, viewh);
+
+        swap(smaafbo[3], smaafbo[4]);
+        swap(smaacurtex, smaaprevtex);
+        smaaprevmvp = screenmatrix;
+        smaatempframe++;
+    }
+
     endtimer(smaatimer);
 }
 
@@ -254,6 +321,12 @@ void setupaa(int w, int h)
     else if(fxaa) { if(!fxaafbo) setupfxaa(w, h); }
 }
 
+void jitteraa()
+{
+    if(smaa && smaatemp)
+        projmatrix.jitter((smaatempframe&1 ? 0.25f : -0.25f)*2.0f/vieww, (smaatempframe&1 ? 0.25f : -0.25f)*2.0f/viewh);
+}
+        
 void doaa(GLuint outfbo, void (*resolve)(GLuint, bool))
 {
     if(smaa) { resolve(smaafbo[0], !smaacoloredge); dosmaa(outfbo); }

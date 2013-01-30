@@ -491,7 +491,7 @@ static inline bool bbinsidespot(const vec &origin, const vec &dir, int spot, con
     return sphereinsidespot(dir, spot, center.sub(origin), radius.magnitude());
 }
 
-extern glmatrixf worldmatrix;
+extern glmatrixf worldmatrix, screenmatrix;
 
 extern int gw, gh, gdepthformat, gstencil, gdepthstencil;
 extern GLuint gdepthtex, gcolortex, gnormaltex, gglowtex, gdepthrb, gstencilrb;
@@ -519,6 +519,7 @@ extern void cleanuplights();
 // aa
 
 extern void setupaa(int w, int h);
+extern void jitteraa();
 extern void doaa(GLuint outfbo, void (*resolve)(GLuint, bool));
 extern bool debugaa();
 extern void cleanupaa();
