@@ -193,6 +193,7 @@ VAR(smaastencil, 0, 1, 1);
 VARFP(smaatemp, 0, 0, 1, cleanupsmaa());
 FVAR(smaareproject, 0, 170, 1e6f);
 VARF(smaamovemask, 0, 1, 1, cleanupsmaa());
+VAR(smaaquincunx, 0, 1, 1);
 VAR(debugsmaa, 0, 0, 5);
 
 void viewsmaa()
@@ -336,6 +337,9 @@ void dosmaa(GLuint outfbo = 0)
         if(smaamovemask) SETSHADER(SMAATemporalResolveMasked); else SETSHADER(SMAATemporalResolve);
         float maxvel = sqrtf(vieww*vieww + viewh*viewh)/smaareproject;
         LOCALPARAM(maxvelocity, (maxvel, 1/maxvel));
+        if(!smaaquincunx) LOCALPARAM(quincunx, (0.0f, 0.0f, 0.0f, 0.0f));
+        else if(smaatempframe&1) LOCALPARAM(quincunx, (0.5f, 0.5f, 0.0f, 0.0f));
+        else LOCALPARAM(quincunx, (0.0f, 0.0f, 0.5f, 0.5f)); 
         screenquad(vieww, viewh, 0.25f*vieww, 0.25f*viewh);
 
         swap(smaafbo[3], smaafbo[4]);
@@ -361,7 +365,11 @@ void setupaa(int w, int h)
 void jitteraa()
 {
     if(smaa && smaatemp)
-        projmatrix.jitter((smaatempframe&1 ? 0.25f : -0.25f)*2.0f/vieww, (smaatempframe&1 ? 0.25f : -0.25f)*2.0f/viewh);
+    {
+        float x = smaatempframe&1 ? 0.25f : -0.25f, y = smaatempframe&1 ? 0.25f : -0.25f;
+        if(smaaquincunx) { x += 0.25f; y += 0.25f; }
+        projmatrix.jitter(x*2.0f/vieww, y*2.0f/viewh);
+    }
 }
      
 bool maskedaa()
