@@ -666,22 +666,40 @@ void readhdr(int w, int h, GLenum format, GLenum type, void *dst, GLenum target,
     hdrclear = 3;
 }
 
-void loadhdrshaders(bool luma)
+void loadhdrshaders(int aa)
 {
-    if(luma)
+    switch(aa)
     {
-        useshaderbyname("hdrtonemapluma");
-        useshaderbyname("hdrnopluma");
+        case AA_LUMA:
+            useshaderbyname("hdrtonemapluma");
+            useshaderbyname("hdrnopluma");
+            break;
+        case AA_VELOCITY:
+            useshaderbyname("hdrtonemapvelocity");
+            useshaderbyname("hdrnopvelocity");
+            break;
+        default:
+            break;
     }
 }
 
-void processhdr(GLuint outfbo, bool luma)
+void processhdr(GLuint outfbo, int aa)
 {
     if(!hdr)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
         glViewport(0, 0, vieww, viewh);
-        if(luma) SETSHADER(hdrnopluma); else SETSHADER(hdrnop);
+        switch(aa)
+        {
+            case AA_LUMA: SETSHADER(hdrnopluma); break;
+            case AA_VELOCITY:
+                SETSHADER(hdrnopvelocity);
+                glActiveTexture_(GL_TEXTURE3_ARB);
+                setaavelocityparams();
+                glActiveTexture_(GL_TEXTURE0_ARB);
+                break;
+            default: SETSHADER(hdrnop); break;
+        }
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
         screenquad(vieww, viewh);
         return;
@@ -801,7 +819,17 @@ void processhdr(GLuint outfbo, bool luma)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
     glViewport(0, 0, vieww, viewh);
-    if(luma) SETSHADER(hdrtonemapluma); else SETSHADER(hdrtonemap);
+    switch(aa)
+    {
+        case AA_LUMA: SETSHADER(hdrtonemapluma); break;
+        case AA_VELOCITY:
+            SETSHADER(hdrtonemapvelocity);
+            glActiveTexture_(GL_TEXTURE3_ARB);
+            setaavelocityparams();
+            glActiveTexture_(GL_TEXTURE0_ARB);
+            break;
+        default: SETSHADER(hdrtonemap); break;
+    }       
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);

@@ -1,6 +1,6 @@
 #include "engine.h"
 
-extern int tqaamovemask;
+extern int tqaamovemask, tqaapack;
 
 int tqaaframe = 0;
 GLuint tqaaprevtex = 0, tqaacurtex = 0, tqaaprevmask = 0, tqaacurmask = 0, tqaafbo[4] = { 0, 0, 0, 0 };
@@ -8,8 +8,10 @@ glmatrixf tqaaprevmvp;
 
 void loadtqaashaders()
 {
+    loadhdrshaders(!tqaapack ? AA_VELOCITY : AA_UNUSED);
+
     if(tqaamovemask) useshaderbyname("tqaamaskmovement");
-    useshaderbyname("tqaapackvelocity");
+    if(tqaapack) useshaderbyname("tqaapackvelocity");
     useshaderbyname(tqaamovemask ? "tqaaresolvemasked" : "tqaaresolve");
 }
 
@@ -62,11 +64,25 @@ void cleanuptqaa()
 }
 
 VARFP(tqaa, 0, 0, 1, cleanupaa());
+VARF(tqaapack, 0, 0, 1, cleanupaa());
 FVAR(tqaareproject, 0, 170, 1e6f);
 VARF(tqaamovemask, 0, 1, 1, cleanuptqaa());
 VAR(tqaaquincunx, 0, 1, 1);
 
-void packtqaa(GLuint outfbo)
+void setaavelocityparams()
+{
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    glMatrixMode(GL_TEXTURE);
+    glmatrixf reproject;
+    reproject.mul(tqaaframe ? tqaaprevmvp : screenmatrix, worldmatrix);
+    if(tqaaframe) reproject.jitter(tqaaframe&1 ? 0.5f : -0.5f, tqaaframe&1 ? 0.5f : -0.5f);
+    glLoadMatrixf(reproject.v);
+    glMatrixMode(GL_MODELVIEW);
+    float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
+    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel));
+}
+
+void packtqaa(GLuint packfbo)
 {
     if(tqaamovemask)
     {
@@ -79,20 +95,15 @@ void packtqaa(GLuint outfbo)
         glViewport(0, 0, vieww, viewh);
     }
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-    glMatrixMode(GL_TEXTURE);
-    glmatrixf reproject;
-    reproject.mul(tqaaframe ? tqaaprevmvp : screenmatrix, worldmatrix);
-    if(tqaaframe) reproject.jitter(tqaaframe&1 ? 0.5f : -0.5f, tqaaframe&1 ? 0.5f : -0.5f);
-    glLoadMatrixf(reproject.v);
-    glMatrixMode(GL_MODELVIEW);
-    SETSHADER(tqaapackvelocity);
-    float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
-    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel));
-    screenquad(vieww, viewh);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    if(tqaapack)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, packfbo);
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+        SETSHADER(tqaapackvelocity);
+        setaavelocityparams();
+        screenquad(vieww, viewh);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    }
 }
 
 void resolvetqaa(GLuint outfbo)
@@ -148,11 +159,11 @@ static Shader *fxaashader = NULL;
 
 void loadfxaashaders()
 {
-    loadhdrshaders(true);
+    loadhdrshaders(tqaa && !tqaapack ? AA_VELOCITY : (!fxaagreenluma ? AA_LUMA : AA_UNUSED));
 
     string opts;
     int optslen = 0;
-    if(fxaagreenluma || tqaa) opts[optslen++] = 'g';
+    if(fxaagreenluma || (tqaa && !tqaapack)) opts[optslen++] = 'g';
     opts[optslen] = '\0';
 
     defformatstring(fxaaname)("fxaa%d%s", fxaaquality, opts);
@@ -210,16 +221,17 @@ void dofxaa(GLuint outfbo = 0)
  
 GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[3] = { 0, 0, 0 };
 
-extern int smaaquality;
+extern int smaaquality, smaagreenluma, smaacoloredge;
 
 static Shader *smaalumaedgeshader = NULL, *smaacoloredgeshader = NULL, *smaablendweightshader = NULL, *smaaneighborhoodshader = NULL;
 
 void loadsmaashaders()
 {
-    loadhdrshaders(true);
+    loadhdrshaders(tqaa && !tqaapack ? AA_VELOCITY : (!smaagreenluma && !smaacoloredge ? AA_LUMA : AA_UNUSED));
 
     string opts;
     int optslen = 0;
+    if(smaagreenluma || (tqaa && !tqaapack)) opts[optslen++] = 'g';
     if(tqaa) opts[optslen++] = 't';
     opts[optslen] = '\0';
 
@@ -308,6 +320,7 @@ void cleanupsmaa()
 VARFP(smaa, 0, 0, 1, cleanupsmaa());
 VARFP(smaaquality, 0, 2, 3, cleanupsmaa());
 VARP(smaacoloredge, 0, 0, 1);
+VARFP(smaagreenluma, 0, 0, 1, cleanupsmaa());
 VAR(smaadepthmask, 0, 1, 1);
 VAR(smaastencil, 0, 1, 1);
 VAR(debugsmaa, 0, 0, 5);
@@ -435,12 +448,12 @@ bool maskedaa()
     return tqaa && tqaamovemask;
 }
    
-void doaa(GLuint outfbo, void (*resolve)(GLuint, bool))
+void doaa(GLuint outfbo, void (*resolve)(GLuint, int))
 {
-    if(smaa) { resolve(smaafbo[0], !smaacoloredge); dosmaa(outfbo); }
-    else if(fxaa) { resolve(fxaafbo, !fxaagreenluma && !tqaa); dofxaa(outfbo); }
-    else if(tqaa) { resolve(tqaafbo[0], false); dotqaa(outfbo); }
-    else resolve(outfbo, false);
+    if(smaa) { resolve(smaafbo[0], tqaa && !tqaapack ? AA_VELOCITY : (!smaagreenluma && !smaacoloredge ? AA_LUMA : AA_UNUSED)); dosmaa(outfbo); }
+    else if(fxaa) { resolve(fxaafbo, tqaa && !tqaapack ? AA_VELOCITY : (!fxaagreenluma ? AA_LUMA : AA_UNUSED)); dofxaa(outfbo); }
+    else if(tqaa) { resolve(tqaafbo[0], !tqaapack ? AA_VELOCITY : AA_UNUSED); dotqaa(outfbo); }
+    else resolve(outfbo, AA_UNUSED);
 }
 
 bool debugaa()
