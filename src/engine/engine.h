@@ -520,6 +520,7 @@ extern void cleanuplights();
 
 extern void setupaa(int w, int h);
 extern void jitteraa();
+extern bool maskedaa();
 extern void doaa(GLuint outfbo, void (*resolve)(GLuint, bool));
 extern bool debugaa();
 extern void cleanupaa();
