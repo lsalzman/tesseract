@@ -24,6 +24,16 @@ struct PackNode
         available = min(w, h);
     }
 
+    bool resize(int nw, int nh)
+    {
+        if(w == nw && h == nw) return false;
+        discardchildren();
+        w = nw;
+        h = nh;
+        available = min(w, h);
+        return true;
+    }
+
     ~PackNode()
     {
         discardchildren();
