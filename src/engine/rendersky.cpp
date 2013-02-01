@@ -226,8 +226,6 @@ static void initdome(const bvec &color, float minalpha = 0.0f, float maxalpha = 
 {
     const int tris = hres << (2*depth);
     domenumverts = domenumindices = domecapindices = 0;
-    DELETEA(domeverts);
-    DELETEA(domeindices);
     domeverts = new domevert[tris+1 + (capsize >= 0 ? 1 : 0)];
     domeindices = new GLushort[(tris + (capsize >= 0 ? hres<<depth : 0))*3];
     if(clipz >= 1)
@@ -276,18 +274,15 @@ static void initdome(const bvec &color, float minalpha = 0.0f, float maxalpha = 
         }
     }
 
-    if(hasVBO)
-    {
-        if(!domevbuf) glGenBuffers_(1, &domevbuf);
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, domevbuf);
-        glBufferData_(GL_ARRAY_BUFFER_ARB, domenumverts*sizeof(domevert), domeverts, GL_STATIC_DRAW_ARB);
-        DELETEA(domeverts);
+    if(!domevbuf) glGenBuffers_(1, &domevbuf);
+    glBindBuffer_(GL_ARRAY_BUFFER_ARB, domevbuf);
+    glBufferData_(GL_ARRAY_BUFFER_ARB, domenumverts*sizeof(domevert), domeverts, GL_STATIC_DRAW_ARB);
+    DELETEA(domeverts);
 
-        if(!domeebuf) glGenBuffers_(1, &domeebuf);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, domeebuf);
-        glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, (domenumindices + domecapindices)*sizeof(GLushort), domeindices, GL_STATIC_DRAW_ARB);
-        DELETEA(domeindices);
-    }
+    if(!domeebuf) glGenBuffers_(1, &domeebuf);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, domeebuf);
+    glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, (domenumindices + domecapindices)*sizeof(GLushort), domeindices, GL_STATIC_DRAW_ARB);
+    DELETEA(domeindices);
 }
 
 static void deletedome()
@@ -295,8 +290,6 @@ static void deletedome()
 	domenumverts = domenumindices = 0;
     if(domevbuf) { glDeleteBuffers_(1, &domevbuf); domevbuf = 0; }
     if(domeebuf) { glDeleteBuffers_(1, &domeebuf); domeebuf = 0; }
-    DELETEA(domeverts);
-    DELETEA(domeindices);
 }
 
 FVARR(fogdomeheight, -1, -0.5f, 1); 
@@ -324,11 +317,8 @@ static void drawdome()
         domeclipz = fogdomeclip;
     }
 
-    if(hasVBO)
-    {
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, domevbuf);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, domeebuf);
-    }
+    glBindBuffer_(GL_ARRAY_BUFFER_ARB, domevbuf);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, domeebuf);
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
@@ -343,11 +333,8 @@ static void drawdome()
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
 
-    if(hasVBO)
-    {
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-    }
+    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
 }
 
 void cleanupsky()

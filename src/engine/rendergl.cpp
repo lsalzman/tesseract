@@ -274,7 +274,8 @@ void gl_checkextensions()
         hasVBO = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_vertex_buffer_object extension.");
     }
-    else conoutf(CON_WARN, "WARNING: No vertex_buffer_object extension! (geometry heavy maps will be SLOW)");
+    //else conoutf(CON_WARN, "WARNING: No vertex buffer support! (geometry heavy maps will be SLOW)");
+    else fatal("Vertex buffer object support is required!");
 #ifdef __APPLE__
     /* VBOs over 256KB seem to destroy performance on 10.5, but not in 10.6 */
     extern int maxvbosize;

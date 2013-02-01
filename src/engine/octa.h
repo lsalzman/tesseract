@@ -127,7 +127,7 @@ struct vtxarray
     vector<vtxarray *> children;
     vtxarray *next, *rnext;  // linked list of visible VOBs
     vertex *vdata;           // vertex data
-    ushort voffset;          // offset into vertex data
+    ushort voffset, eoffset, skyoffset; // offset into vertex data
     ushort *edata, *skydata; // vertex indices
     GLuint vbuf, ebuf, skybuf; // VBOs
     ushort minvert, maxvert; // DRE info

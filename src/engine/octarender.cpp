@@ -34,8 +34,8 @@ void destroyvbo(GLuint vbo)
     vbi.uses--;
     if(!vbi.uses) 
     {
-        if(hasVBO) glDeleteBuffers_(1, &vbo);
-        else if(vbi.data) delete[] vbi.data;
+        glDeleteBuffers_(1, &vbo);
+        if(vbi.data) delete[] vbi.data;
         vbos.remove(vbo);
     }
 }
@@ -43,26 +43,16 @@ void destroyvbo(GLuint vbo)
 void genvbo(int type, void *buf, int len, vtxarray **vas, int numva)
 {
     GLuint vbo;
-    uchar *data = NULL;
-    if(hasVBO)
-    {
-        glGenBuffers_(1, &vbo);
-        GLenum target = type==VBO_VBUF ? GL_ARRAY_BUFFER_ARB : GL_ELEMENT_ARRAY_BUFFER_ARB;
-        glBindBuffer_(target, vbo);
-        glBufferData_(target, len, buf, GL_STATIC_DRAW_ARB);
-        glBindBuffer_(target, 0);
-    }
-    else
-    {
-        static GLuint nextvbo = 0;
-        if(!nextvbo) nextvbo++; // just in case it ever wraps around
-        vbo = nextvbo++;
-        data = new uchar[len];
-        memcpy(data, buf, len);
-    }
+    glGenBuffers_(1, &vbo);
+    GLenum target = type==VBO_VBUF ? GL_ARRAY_BUFFER_ARB : GL_ELEMENT_ARRAY_BUFFER_ARB;
+    glBindBuffer_(target, vbo);
+    glBufferData_(target, len, buf, GL_STATIC_DRAW_ARB);
+    glBindBuffer_(target, 0);
+
     vboinfo &vbi = vbos[vbo]; 
     vbi.uses = numva;
-    vbi.data = data;
+    vbi.data = new uchar[len];
+    memcpy(vbi.data, buf, len); 
  
     if(printvbo) conoutf(CON_DEBUG, "vbo %d: type %d, size %d, %d uses", vbo, type, len, numva);
 
@@ -73,43 +63,17 @@ void genvbo(int type, void *buf, int len, vtxarray **vas, int numva)
         {
             case VBO_VBUF: 
                 va->vbuf = vbo; 
-                if(!hasVBO) va->vdata = (vertex *)(data + (size_t)va->vdata);
+                va->vdata = (vertex *)vbi.data;
                 break;
             case VBO_EBUF: 
                 va->ebuf = vbo; 
-                if(!hasVBO) va->edata = (ushort *)(data + (size_t)va->edata);
+                va->edata = (ushort *)vbi.data;
                 break;
             case VBO_SKYBUF:
                 va->skybuf = vbo;
-                if(!hasVBO) va->skydata = (ushort *)(data + (size_t)va->skydata);
+                va->skydata = (ushort *)vbi.data;
                 break;
         }
-    }
-}
-
-bool readva(vtxarray *va, ushort *&edata, uchar *&vdata)
-{
-    if(!va->vbuf || !va->ebuf) return false;
-
-    edata = new ushort[3*va->tris];
-    vdata = new uchar[va->verts*VTXSIZE];
-
-    if(hasVBO)
-    {
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
-        glGetBufferSubData_(GL_ELEMENT_ARRAY_BUFFER_ARB, (size_t)va->edata, 3*va->tris*sizeof(ushort), edata);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-        glGetBufferSubData_(GL_ARRAY_BUFFER_ARB, va->voffset*VTXSIZE, va->verts*VTXSIZE, vdata);
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-        return true;
-    }
-    else
-    {
-        memcpy(edata, va->edata, 3*va->tris*sizeof(ushort));
-        memcpy(vdata, (uchar *)va->vdata + va->voffset*VTXSIZE, va->verts*VTXSIZE);
-        return true;
     }
 }
 
@@ -132,6 +96,13 @@ void flushvbo(int type = -1)
 
 uchar *addvbo(vtxarray *va, int type, int numelems, int elemsize)
 {
+    switch(type)
+    {
+        case VBO_VBUF: va->voffset = vbosize[type]; break;
+        case VBO_EBUF: va->eoffset = vbosize[type]; break;
+        case VBO_SKYBUF: va->skyoffset = vbosize[type]; break;
+    }
+
     vbosize[type] += numelems;
 
     vector<uchar> &data = vbodata[type];
@@ -325,8 +296,7 @@ struct vacollect : verthash
                vbosize[VBO_SKYBUF] + skytris > USHRT_MAX)
                 flushvbo();
 
-            va->voffset = vbosize[VBO_VBUF];
-            uchar *vdata = addvbo(va, VBO_VBUF, va->verts, VTXSIZE);
+            uchar *vdata = addvbo(va, VBO_VBUF, va->verts, sizeof(vertex));
             genverts(vdata);
             va->minvert += va->voffset;
             va->maxvert += va->voffset;
@@ -354,10 +324,10 @@ struct vacollect : verthash
 
         va->skybuf = 0;
         va->skydata = 0;
+        va->skyoffset = 0;
         va->sky = skyindices.length();
         if(va->sky)
         {
-            va->skydata += vbosize[VBO_SKYBUF];
             ushort *skydata = (ushort *)addvbo(va, VBO_SKYBUF, va->sky, sizeof(ushort));
             memcpy(skydata, skyindices.getbuf(), va->sky*sizeof(ushort));
             if(va->voffset) loopi(va->sky) skydata[i] += va->voffset;
@@ -375,10 +345,10 @@ struct vacollect : verthash
         va->refract = 0;
         va->ebuf = 0;
         va->edata = 0;
+        va->eoffset = 0;
         if(va->texs)
         {
             va->eslist = new elementset[va->texs];
-            va->edata += vbosize[VBO_EBUF];
             ushort *edata = (ushort *)addvbo(va, VBO_EBUF, worldtris, sizeof(ushort)), *curbuf = edata;
             loopv(texs)
             {
@@ -1496,6 +1466,7 @@ void allchanged(bool load)
     updatevabbs(true);
     if(load) 
     {
+        genshadowmeshes();
         updateblendtextures();
         seedparticles();
         genenvmaps();

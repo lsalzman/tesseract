@@ -472,6 +472,8 @@ extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightp
 extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcspheresidemask(const vec &p, float radius, float bias);
 extern int calcspheretetramask(const vec &p, float radius, float bias);
+extern int calctrisidemask(const vec &p1, const vec &p2, const vec &p3, float bias);
+extern int calctritetramask(const vec &p1, const vec &p2, const vec &p3, float bias);
 extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
 extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
 extern int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax);
@@ -555,7 +557,6 @@ extern void allchanged(bool load = false);
 extern void clearvas(cube *c);
 extern vtxarray *newva(int x, int y, int z, int size);
 extern void destroyva(vtxarray *va, bool reparent = true);
-extern bool readva(vtxarray *va, ushort *&edata, uchar *&vdata);
 extern void updatevabb(vtxarray *va, bool force = false);
 extern void updatevabbs(bool force = false);
 
@@ -595,6 +596,12 @@ extern void drawbb(const ivec &bo, const ivec &br, const vec &camera = camera1->
         extern int ati_oq_bug; \
         if(ati_oq_bug) glFlush(); \
     } while(0)
+
+struct shadowmesh;
+extern void clearshadowmeshes();
+extern void genshadowmeshes();
+extern shadowmesh *findshadowmesh(int idx, extentity &e);
+extern void rendershadowmesh(shadowmesh *m);
 
 // dynlight
 

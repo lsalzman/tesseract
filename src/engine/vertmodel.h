@@ -10,12 +10,11 @@ struct vertmodel : animmodel
 
     struct vbocacheentry
     {
-        uchar *vdata;
         GLuint vbuf;
         animstate as;
         int millis;
  
-        vbocacheentry() : vdata(NULL), vbuf(0) { as.cur.fr1 = as.prev.fr1 = -1; }
+        vbocacheentry() : vbuf(0) { as.cur.fr1 = as.prev.fr1 = -1; }
     };
 
     struct vertmesh : mesh
@@ -278,7 +277,6 @@ struct vertmodel : animmodel
             if(ebuf) glDeleteBuffers_(1, &ebuf);
             loopi(MAXVBOCACHE) 
             {
-                DELETEA(vbocache[i].vdata);
                 if(vbocache[i].vbuf) glDeleteBuffers_(1, &vbocache[i].vbuf);
             }
             DELETEA(vdata);
@@ -321,23 +319,8 @@ struct vertmodel : animmodel
 
         void genvbo(bool norms, bool tangents, vbocacheentry &vc)
         {
-            if(hasVBO) 
-            {
-                if(!vc.vbuf) glGenBuffers_(1, &vc.vbuf);
-                if(ebuf) return;
-            }
-            else if(edata) 
-            {
-                #define ALLOCVDATA(vdata) \
-                    do \
-                    { \
-                        DELETEA(vdata); \
-                        vdata = new uchar[vlen*vertsize]; \
-                        loopv(meshes) ((vertmesh *)meshes[i])->filltc(vdata, vertsize); \
-                    } while(0)
-                if(!vc.vdata) ALLOCVDATA(vc.vdata);
-                return;
-            }
+            if(!vc.vbuf) glGenBuffers_(1, &vc.vbuf);
+            if(ebuf) return;
 
             vector<ushort> idxs;
 
@@ -349,24 +332,18 @@ struct vertmodel : animmodel
             {
                 loopv(meshes) vlen += ((vertmesh *)meshes[i])->genvbo(idxs, vlen);
                 DELETEA(vdata);
-                if(hasVBO) ALLOCVDATA(vdata); 
-                else ALLOCVDATA(vc.vdata);
+                vdata = new uchar[vlen*vertsize];
+                loopv(meshes) ((vertmesh *)meshes[i])->filltc(vdata, vertsize);
             } 
             else 
             {
-                if(hasVBO) glBindBuffer_(GL_ARRAY_BUFFER_ARB, vc.vbuf);
+                glBindBuffer_(GL_ARRAY_BUFFER_ARB, vc.vbuf);
                 #define GENVBO(type) \
                     do \
                     { \
                         vector<type> vverts; \
                         loopv(meshes) vlen += ((vertmesh *)meshes[i])->genvbo(idxs, vlen, vverts, htdata, htlen); \
-                        if(hasVBO) glBufferData_(GL_ARRAY_BUFFER_ARB, vverts.length()*sizeof(type), vverts.getbuf(), GL_STATIC_DRAW_ARB); \
-                        else \
-                        { \
-                            DELETEA(vc.vdata); \
-                            vc.vdata = new uchar[vverts.length()*sizeof(type)]; \
-                            memcpy(vc.vdata, vverts.getbuf(), vverts.length()*sizeof(type)); \
-                        } \
+                        glBufferData_(GL_ARRAY_BUFFER_ARB, vverts.length()*sizeof(type), vverts.getbuf(), GL_STATIC_DRAW_ARB); \
                     } while(0)
                 int numverts = 0, htlen = 128;
                 loopv(meshes) numverts += ((vertmesh *)meshes[i])->numverts;
@@ -378,28 +355,19 @@ struct vertmodel : animmodel
                 else if(norms) GENVBO(vvert);
                 else GENVBO(vvertff);
                 delete[] htdata;
-                if(hasVBO) glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+                #undef GENVBO
+                glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
             }
 
-            if(hasVBO)
-            {
-                glGenBuffers_(1, &ebuf);
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
-                glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, idxs.length()*sizeof(ushort), idxs.getbuf(), GL_STATIC_DRAW_ARB);
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-            }
-            else
-            {
-                edata = new ushort[idxs.length()];
-                memcpy(edata, idxs.getbuf(), idxs.length()*sizeof(ushort));
-            }
-            #undef GENVBO
-            #undef ALLOCVDATA
+            glGenBuffers_(1, &ebuf);
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
+            glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, idxs.length()*sizeof(ushort), idxs.getbuf(), GL_STATIC_DRAW_ARB);
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
         }
 
         void bindvbo(const animstate *as, part *p, vbocacheentry &vc)
         {
-            vvert *vverts = hasVBO ? 0 : (vvert *)vc.vdata;
+            vvert *vverts = 0;
             bindpos(ebuf, vc.vbuf, &vverts->pos, vertsize);
             if(as->cur.anim&ANIM_NOSKIN)
             {
@@ -428,11 +396,9 @@ struct vertmodel : animmodel
             {
                 vbocacheentry &c = vbocache[i];
                 if(c.vbuf) { glDeleteBuffers_(1, &c.vbuf); c.vbuf = 0; }
-                DELETEA(c.vdata);
                 c.as.cur.fr1 = -1;
             }
-            if(hasVBO) { if(ebuf) { glDeleteBuffers_(1, &ebuf); ebuf = 0; } }
-            else DELETEA(vdata);
+            if(ebuf) { glDeleteBuffers_(1, &ebuf); ebuf = 0; }
         }
 
         void preload(part *p)
@@ -445,7 +411,7 @@ struct vertmodel : animmodel
                 if(p->skins[i].tangents()) tangents = true;
             }
             if(norms!=vnorms || tangents!=vtangents) cleanup();
-            if(hasVBO ? !vbocache->vbuf : !vbocache->vdata) genvbo(norms, tangents, *vbocache);
+            if(!vbocache->vbuf) genvbo(norms, tangents, *vbocache);
         }
 
         void render(const animstate *as, float pitch, const vec &axis, const vec &forward, dynent *d, part *p)
@@ -465,12 +431,12 @@ struct vertmodel : animmodel
                 loopi(MAXVBOCACHE)
                 {
                     vbocacheentry &c = vbocache[i];
-                    if(hasVBO ? !c.vbuf : !c.vdata) continue;
+                    if(!c.vbuf) continue;
                     if(c.as==*as) { vc = &c; break; }
                 }
-                if(!vc) loopi(MAXVBOCACHE) { vc = &vbocache[i]; if((hasVBO ? !vc->vbuf : !vc->vdata) || vc->millis < lastmillis) break; }
+                if(!vc) loopi(MAXVBOCACHE) { vc = &vbocache[i]; if(!vc->vbuf || vc->millis < lastmillis) break; }
             }
-            if(hasVBO ? !vc->vbuf : !vc->vdata) genvbo(norms, tangents, *vc);
+            if(!vc->vbuf) genvbo(norms, tangents, *vc);
             if(numframes>1)
             {
                 if(vc->as!=*as)
@@ -480,13 +446,10 @@ struct vertmodel : animmodel
                     loopv(meshes) 
                     {
                         vertmesh &m = *(vertmesh *)meshes[i];
-                        m.interpverts(*as, norms, tangents, (hasVBO ? vdata : vc->vdata) + m.voffset*vertsize, p->skins[i]);
+                        m.interpverts(*as, norms, tangents, vdata + m.voffset*vertsize, p->skins[i]);
                     }
-                    if(hasVBO)
-                    {
-                        glBindBuffer_(GL_ARRAY_BUFFER_ARB, vc->vbuf);
-                        glBufferData_(GL_ARRAY_BUFFER_ARB, vlen*vertsize, vdata, GL_STREAM_DRAW_ARB);    
-                    }
+                    glBindBuffer_(GL_ARRAY_BUFFER_ARB, vc->vbuf);
+                    glBufferData_(GL_ARRAY_BUFFER_ARB, vlen*vertsize, vdata, GL_STREAM_DRAW_ARB);    
                 }
                 vc->millis = lastmillis;
             }

@@ -57,5 +57,3 @@ enum
 
 struct vertex { vec pos; bvec norm; uchar reserved; float u, v; bvec tangent; uchar bitangent; };
  
-#define VTXSIZE (sizeof(vertex))
-

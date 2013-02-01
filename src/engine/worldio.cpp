@@ -1235,10 +1235,9 @@ void writeobj(char *name)
     loopv(valist)
     {
         vtxarray &va = *valist[i];
-        ushort *edata = NULL;
-        uchar *vdata = NULL;
-        if(!readva(&va, edata, vdata)) continue;
-        int vtxsize = VTXSIZE;
+        if(!va.edata || !va.vdata) continue;
+        ushort *edata = va.edata + va.eoffset;
+        vertex *vdata = va.vdata;
         ushort *idx = edata;
         loopj(va.texs)
         {
@@ -1248,8 +1247,8 @@ void writeobj(char *name)
             loopk(es.length)
             {
                 int n = idx[k] - va.voffset;
-                const vec &pos = ((const vertex *)&vdata[n*vtxsize])->pos;
-                vec2 tc(((const vertex *)&vdata[n*vtxsize])->u, ((const vertex *)&vdata[n*vtxsize])->v);
+                const vec &pos = vdata[n].pos;
+                vec2 tc(vdata[n].u, vdata[n].v);
                 ivec &key = keys.add();
                 key.x = shareverts.access(pos, verts.length());
                 if(key.x == verts.length()) 
@@ -1266,8 +1265,6 @@ void writeobj(char *name)
             }
             idx += es.length;
         }
-        delete[] edata;
-        delete[] vdata;
     }
 
     vec center(-(bbmax.x + bbmin.x)/2, -(bbmax.y + bbmin.y)/2, -bbmin.z);

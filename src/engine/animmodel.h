@@ -433,17 +433,17 @@ struct animmodel : model
 
         void bindpos(GLuint ebuf, GLuint vbuf, void *v, int stride)
         {
-            if(hasVBO && lastebuf!=ebuf)
+            if(lastebuf!=ebuf)
             {
                 glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
                 lastebuf = ebuf;
             }
-            if(lastvbuf != (hasVBO ? (void *)(size_t)vbuf : v))
+            if(lastvbuf!=vbuf)
             {
-                if(hasVBO) glBindBuffer_(GL_ARRAY_BUFFER_ARB, vbuf);
+                glBindBuffer_(GL_ARRAY_BUFFER_ARB, vbuf);
                 if(!lastvbuf) glEnableClientState(GL_VERTEX_ARRAY);
                 glVertexPointer(3, GL_FLOAT, stride, v);
-                lastvbuf = (hasVBO ? (void *)(size_t)vbuf : v);
+                lastvbuf = vbuf;
             }
         }
 
@@ -1388,8 +1388,7 @@ struct animmodel : model
 
     static bool enabletc, enablealphablend, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
     static float sizescale;
-    static void *lastvbuf, *lasttcbuf, *lastnbuf, *lastxbuf, *lastbbuf, *lastsdata, *lastbdata;
-    static GLuint lastebuf, lastenvmaptex, closestenvmaptex;
+    static GLuint lastvbuf, lasttcbuf, lastnbuf, lastxbuf, lastbbuf, lastebuf, lastenvmaptex, closestenvmaptex;
     static Texture *lasttex, *lastdecal, *lastmasks, *lastnormalmap;
     static int envmaptmu, matrixpos;
     static glmatrixf matrixstack[64];
@@ -1398,8 +1397,7 @@ struct animmodel : model
     {
         enabletc = enablealphablend = enablenormals = enabletangents = enablebones = enabledepthoffset = false;
         enablecullface = true;
-        lastvbuf = lasttcbuf = lastxbuf = lastnbuf = lastbbuf = lastsdata = lastbdata = NULL;
-        lastebuf = lastenvmaptex = closestenvmaptex = 0;
+        lastvbuf = lasttcbuf = lastnbuf = lastxbuf = lastbbuf = lastebuf = lastenvmaptex = closestenvmaptex = 0;
         lasttex = lastdecal = lastmasks = lastnormalmap = NULL;
         envmaptmu = -1;
         sizescale = 1;
@@ -1432,18 +1430,14 @@ struct animmodel : model
 
     static void disablevbo()
     {
-        if(hasVBO)
-        {
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-        }
+        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
         glDisableClientState(GL_VERTEX_ARRAY);
         if(enabletc) disabletc();
         if(enablenormals) disablenormals();
         if(enabletangents) disabletangents();
         if(enablebones) disablebones();
-        lastvbuf = lasttcbuf = lastxbuf = lastnbuf = lastbbuf = NULL;
-        lastebuf = 0;
+        lastvbuf = lasttcbuf = lastnbuf = lastxbuf = lastbbuf = lastebuf = 0;
     }
 
     void endrender()
@@ -1462,8 +1456,8 @@ bool animmodel::enabletc = false, animmodel::enablealphablend = false,
      animmodel::enablenormals = false, animmodel::enabletangents = false, 
      animmodel::enablebones = false, animmodel::enabledepthoffset = false;
 float animmodel::sizescale = 1;
-void *animmodel::lastvbuf = NULL, *animmodel::lasttcbuf = NULL, *animmodel::lastnbuf = NULL, *animmodel::lastxbuf = NULL, *animmodel::lastbbuf = NULL, *animmodel::lastsdata = NULL, *animmodel::lastbdata = NULL;
-GLuint animmodel::lastebuf = 0, animmodel::lastenvmaptex = 0, animmodel::closestenvmaptex = 0;
+GLuint animmodel::lastvbuf = 0, animmodel::lasttcbuf = 0, animmodel::lastnbuf = 0, animmodel::lastxbuf = 0, animmodel::lastbbuf = 0, animmodel::lastebuf = 0, 
+       animmodel::lastenvmaptex = 0, animmodel::closestenvmaptex = 0;
 Texture *animmodel::lasttex = NULL, *animmodel::lastdecal = NULL, *animmodel::lastmasks = NULL, *animmodel::lastnormalmap = NULL;
 int animmodel::envmaptmu = -1, animmodel::matrixpos = 0;
 glmatrixf animmodel::matrixstack[64];
