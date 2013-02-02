@@ -153,14 +153,12 @@ struct skelmodel : animmodel
         dualquat *bdata;
         matrix3x4 *mdata;
         int version;
-        bool dirty;
  
-        skelcacheentry() : bdata(NULL), mdata(NULL), version(-1), dirty(false) {}
+        skelcacheentry() : bdata(NULL), mdata(NULL), version(-1) {}
         
         void nextversion()
         {
             version = Shader::uniformlocversion();
-            dirty = true;
         } 
     };
 
