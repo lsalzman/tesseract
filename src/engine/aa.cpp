@@ -89,9 +89,13 @@ void packtqaa(GLuint packfbo)
         int maskw = (vieww+3)/4, maskh = (viewh+3)/4;
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, tqaafbo[2]);
         glViewport(0, 0, maskw, maskh);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
         SETSHADER(tqaamaskmovement);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         screenquad(maskw*4, maskh*4);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glViewport(0, 0, vieww, viewh);
     }
 
