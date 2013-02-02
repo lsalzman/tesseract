@@ -45,18 +45,24 @@ void logoutf(const char *fmt, ...)
     va_end(args);
 }
 
-static void writelog(FILE *file, const char *fmt, va_list args)
+
+static void writelog(FILE *file, const char *buf)
 {
-    static char buf[LOGSTRLEN];
     static uchar ubuf[512];
-    vformatstring(buf, fmt, args, sizeof(buf));
     int len = strlen(buf), carry = 0;
     while(carry < len)
     {
-        int numu = encodeutf8(ubuf, sizeof(ubuf)-1, &((uchar *)buf)[carry], len - carry, &carry);
+        int numu = encodeutf8(ubuf, sizeof(ubuf)-1, &((const uchar *)buf)[carry], len - carry, &carry);
         if(carry >= len) ubuf[numu++] = '\n';
         fwrite(ubuf, 1, numu, file);
     }
+}
+
+static void writelogv(FILE *file, const char *fmt, va_list args)
+{
+    static char buf[LOGSTRLEN];
+    vformatstring(buf, fmt, args, sizeof(buf));
+    writelog(file, buf);
 }
  
 #ifdef STANDALONE
@@ -945,16 +951,17 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw)
 
 void logoutfv(const char *fmt, va_list args)
 {
-    if(logfile) writelog(logfile, fmt, args);
     if(appwindow)
     {
         logline &line = loglines.add();
         vformatstring(line.buf, fmt, args, sizeof(line.buf));
+        if(logfile) writelog(logfile, line.buf);
         line.len = min(strlen(line.buf), sizeof(line.buf)-2);
         line.buf[line.len++] = '\n';
         line.buf[line.len] = '\0';
         if(outhandle) writeline(line);
     }
+    else if(logfile) writelogv(logfile, fmt, args);
 }
 
 #else
@@ -962,7 +969,7 @@ void logoutfv(const char *fmt, va_list args)
 void logoutfv(const char *fmt, va_list args)
 {
     FILE *f = getlogfile();
-    if(f) writelog(f, fmt, args);
+    if(f) writelogv(f, fmt, args);
 }
 
 #endif
