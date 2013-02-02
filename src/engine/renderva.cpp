@@ -2218,9 +2218,9 @@ struct shadowdrawinfo
     void reset() { minvert = USHRT_MAX; maxvert = 0; }
 };
 
-static void flushshadowmeshdraws(shadowmesh &m, shadowdrawinfo draws[6])
+static void flushshadowmeshdraws(shadowmesh &m, int sides, shadowdrawinfo draws[6])
 {
-    int sides = m.type == SM_SPOT ? 1 : (m.type == SM_TETRA ? 4 : 6), numindexes = 0;
+    int numindexes = 0;
     loopi(sides) numindexes += shadowtris[i].length();
     if(!numindexes) return;
 
@@ -2265,23 +2265,27 @@ static void flushshadowmeshdraws(shadowmesh &m, shadowdrawinfo draws[6])
     shadowvbos.add(vbuf);
 }
 
-static void genshadowmeshtris(shadowmesh &m, shadowdrawinfo draws[6], ushort *edata, int numtris, vertex *vdata)
+static void genshadowmeshtris(shadowmesh &m, int sides, shadowdrawinfo draws[6], ushort *edata, int numtris, vertex *vdata)
 {
-    int sides = m.type == SM_SPOT ? 1 : (m.type == SM_TETRA ? 4 : 6);
+    extern int smcullside;
     loopj(numtris)
     {
         const vec &v0 = vdata[edata[3*j]].pos, &v1 = vdata[edata[3*j+1]].pos, &v2 = vdata[edata[3*j+2]].pos;
-        vec bbmin = vec(v0).min(v1).min(v2), bbmax = vec(v0).max(v1).max(v2);
-        if(shadoworigin.dist_to_bb(bbmin, bbmax) >= shadowradius) continue;
+        vec l0 = vec(v0).sub(shadoworigin);
+        float side = l0.scalartriple(vec(v1).sub(v0), vec(v2).sub(v0)); 
+        if(smcullside ? side > 0 : side < 0) continue;
+        vec l1 = vec(v1).sub(shadoworigin), l2 = vec(v2).sub(shadoworigin);
+        if(l0.squaredlen() > shadowradius*shadowradius && l1.squaredlen() > shadowradius*shadowradius && l2.squaredlen() > shadowradius*shadowradius)
+            continue;
         int sidemask = 0;
         switch(m.type)
         {
-            case SM_SPOT: sidemask = bbinsidespot(shadoworigin, shadowdir, shadowspot, bbmin, bbmax) ? 1 : 0; break;
-            case SM_TETRA: sidemask = calctritetramask(v0, v1, v2, shadoworigin, shadowradius, shadowbias); break;
-            case SM_CUBEMAP: sidemask = calctrisidemask(v0, v1, v2, shadoworigin, shadowradius, shadowbias); break;
+            case SM_SPOT: sidemask = bbinsidespot(shadoworigin, shadowdir, shadowspot, vec(v0).min(v1).min(v2), vec(v0).max(v1).max(v2).add(1)) ? 1 : 0; break;
+            case SM_TETRA: sidemask = calctritetramask(l0.div(shadowradius), l1.div(shadowradius), l2.div(shadowradius), shadowbias); break;
+            case SM_CUBEMAP: sidemask = calctrisidemask(l0.div(shadowradius), l1.div(shadowradius), l2.div(shadowradius), shadowbias); break;
         }
         if(!sidemask) continue;
-        if(shadowverts.verts.length() + 3 >= USHRT_MAX) flushshadowmeshdraws(m, draws);
+        if(shadowverts.verts.length() + 3 >= USHRT_MAX) flushshadowmeshdraws(m, sides, draws);
         int i0 = shadowverts.add(v0), i1 = shadowverts.add(v1), i2 = shadowverts.add(v2);
         ushort minvert = min(i0, min(i1, i2)), maxvert = max(i0, max(i1, i2));
         loopk(sides) if(sidemask&(1<<k))
@@ -2333,14 +2337,15 @@ static void genshadowmesh(int idx, extentity &e)
 
     findshadowvas();
 
+    int sides = m.type == SM_SPOT ? 1 : (m.type == SM_TETRA ? 4 : 6);
     shadowdrawinfo draws[6];
     for(vtxarray *va = shadowva; va; va = va->rnext)
     {
         if(!va->shadowmask) continue;
-        if(va->tris) genshadowmeshtris(m, draws, va->edata + va->eoffset, va->tris, va->vdata);
-        if(skyshadow && va->sky) genshadowmeshtris(m, draws, va->skydata + va->skyoffset, va->sky/3, va->vdata); 
+        if(va->tris) genshadowmeshtris(m, sides, draws, va->edata + va->eoffset, va->tris, va->vdata);
+        if(skyshadow && va->sky) genshadowmeshtris(m, sides, draws, va->skydata + va->skyoffset, va->sky/3, va->vdata); 
     }
-    flushshadowmeshdraws(m, draws);
+    flushshadowmeshdraws(m, sides, draws);
     
     shadowmeshes[idx] = m;
 
