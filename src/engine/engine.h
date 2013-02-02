@@ -441,6 +441,8 @@ static inline void masktiles(uint *tiles, float sx1, float sy1, float sx2, float
 }
 
 enum { SM_NONE = 0, SM_REFLECT, SM_CUBEMAP, SM_TETRA, SM_CASCADE, SM_SPOT };
+
+enum { L_NOSHADOW = 1<<0, L_NODYNSHADOW = 1<<1 };
  
 extern int shadowmapping;
 

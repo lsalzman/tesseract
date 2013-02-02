@@ -2298,6 +2298,9 @@ static void genshadowmeshtris(shadowmesh &m, shadowdrawinfo draws[6], ushort *ed
 
 static void genshadowmesh(int idx, extentity &e)
 {
+    extern int smminradius;
+    if(e.attr5&L_NOSHADOW || (e.attr1 > 0 && e.attr1 <= smminradius)) return;
+
     shadowmesh m;
     m.origin = e.o;
     m.radius = e.attr1 > 0 ? e.attr1 : 2*worldsize;

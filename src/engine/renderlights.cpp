@@ -1032,8 +1032,6 @@ void viewrh()
 
 PackNode shadowatlaspacker(0, 0, SHADOWATLAS_SIZE, SHADOWATLAS_SIZE);
 
-enum { L_NOSHADOW = 1<<0, L_NODYNSHADOW = 1<<1 };
-
 struct lightinfo
 {
     float sx1, sy1, sx2, sy2, sz1, sz2;
