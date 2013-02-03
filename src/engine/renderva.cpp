@@ -1419,7 +1419,7 @@ static void changevbuf(renderstate &cur, int pass, vtxarray *va)
 
     if(pass==RENDERPASS_GBUFFER || pass==RENDERPASS_RSM)
     {
-        glTexCoordPointer(2, GL_FLOAT, sizeof(vertex), &vdata->u);
+        glTexCoordPointer(2, GL_FLOAT, sizeof(vertex), vdata->tc.v);
         glNormalPointer(GL_BYTE, sizeof(vertex), vdata->norm.v);
         glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(vertex), vdata->tangent.v);
     }

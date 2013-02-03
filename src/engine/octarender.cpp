@@ -138,7 +138,7 @@ struct verthash
         for(int i = table[h]; i>=0; i = chain[i])
         {
             const vertex &c = verts[i];
-            if(c.pos==v.pos && c.u==v.u && c.v==v.v && c.norm==v.norm && c.tangent==v.tangent && c.bitangent==v.bitangent)
+            if(c.pos==v.pos && c.tc==v.tc && c.norm==v.norm && c.tangent==v.tangent && c.bitangent==v.bitangent)
                  return i; 
         }
         if(verts.length() >= USHRT_MAX) return -1;
@@ -147,12 +147,11 @@ struct verthash
         return table[h] = verts.length()-1;
     }
 
-    int addvert(const vec &pos, float u = 0, float v = 0, const bvec &norm = bvec(128, 128, 128), const bvec &tangent = bvec(128, 128, 128), uchar bitangent = 128)
+    int addvert(const vec &pos, const vec2 &tc = vec2(0, 0), const bvec &norm = bvec(128, 128, 128), const bvec &tangent = bvec(128, 128, 128), uchar bitangent = 128)
     {
         vertex vtx;
         vtx.pos = pos;
-        vtx.u = u;
-        vtx.v = v;
+        vtx.tc = tc;
         vtx.norm = norm;
         vtx.reserved = 0;
         vtx.tangent = tangent;
@@ -519,8 +518,7 @@ void addtris(const sortkey &key, int orient, vertex *verts, int *index, int numv
                     vertex vt;
                     vt.pos = d.tovec().mul(t.offset/8.0f).add(o);
                     vt.reserved = 0;
-                    vt.u = v1.u + (v2.u-v1.u)*offset;
-                    vt.v = v1.v + (v2.v-v1.v)*offset;
+                    vt.tc.lerp(v1.tc, v2.tc, offset);
                     vt.norm.lerp(v1.norm, v2.norm, offset);
                     vt.tangent.lerp(v1.tangent, v2.tangent, offset);
                     vt.bitangent = v1.bitangent;
@@ -657,8 +655,7 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
         vertex &v = verts[k];
         v.pos = pos[k];
         v.reserved = 0;
-        v.u = sgen.dot(v.pos);
-        v.v = tgen.dot(v.pos);
+        v.tc = vec2(sgen.dot(v.pos), tgen.dot(v.pos));
         if(vinfo && vinfo[k].norm)
         {
             vec n = decodenormal(vinfo[k].norm), t = orientation_tangent[vslot.rotation][dim];

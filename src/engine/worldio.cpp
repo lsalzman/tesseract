@@ -1246,9 +1246,9 @@ void writeobj(char *name)
             vector<ivec> &keys = mtls[es.texture];
             loopk(es.length)
             {
-                int n = idx[k] - va.voffset;
-                const vec &pos = vdata[n].pos;
-                vec2 tc(vdata[n].u, vdata[n].v);
+                const vertex &v = vdata[idx[k]];
+                const vec &pos = v.pos;
+                const vec2 &tc = v.tc;
                 ivec &key = keys.add();
                 key.x = shareverts.access(pos, verts.length());
                 if(key.x == verts.length()) 
