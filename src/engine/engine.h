@@ -292,6 +292,8 @@ extern bool hasVBO, hasDRE, hasOQ, hasTR, hasT3D, hasFBO, hasAFBO, hasDS, hasTF,
 extern int hasstencil;
 extern int glversion, glslversion;
 
+enum { DRAWTEX_NONE = 0, DRAWTEX_ENVMAP, DRAWTEX_MINIMAP, DRAWTEX_MODELPREVIEW };
+
 extern int vieww, viewh;
 extern int fov;
 extern float curfov, fovy, aspect, forceaspect;
@@ -300,8 +302,7 @@ extern int farplane;
 extern int hdr;
 extern bool hdrfloat;
 extern float ldrscale, ldrscaleb;
-extern bool envmapping, modelpreviewing;
-extern int minimapping;
+extern int drawtex;
 extern const glmatrixf viewmatrix;
 extern glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix;
 extern int fog;
@@ -506,10 +507,10 @@ enum { AA_UNUSED = 0, AA_LUMA, AA_VELOCITY };
 extern void cleanupgbuffer();
 extern void initgbuffer();
 extern void maskgbuffer(const char *mask);
-extern void preparegbuffer();
-extern void rendergbuffer();
+extern void preparegbuffer(bool depthclear = true);
+extern void rendergbuffer(bool depthclear = true);
 extern void shadegbuffer();
-extern void shademinimap(const vec &color = vec(0, 0, 0));
+extern void shademinimap(const vec &color = vec(-1, -1, -1));
 extern void shademodelpreview(int x, int y, int w, int h, bool background = true, bool scissor = false);
 extern void rendertransparent();
 extern void renderao();

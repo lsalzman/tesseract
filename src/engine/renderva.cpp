@@ -1734,8 +1734,7 @@ extern void renderradiancehints();
 
 void rendergeom()
 {
-    bool mainpass = !envmapping,
-         doOQ = hasOQ && oqfrags && oqgeom && mainpass,
+    bool doOQ = hasOQ && oqfrags && oqgeom && !drawtex,
          doZP = doOQ && zpass;
     renderstate cur;
     if(!doZP) 
@@ -1869,7 +1868,7 @@ void rendergeom()
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     glDisableClientState(GL_VERTEX_ARRAY);
 
-    if(!doZP && !minimapping)
+    if(!doZP && drawtex != DRAWTEX_MINIMAP)
     {
         glFlush();
         if(cur.colormask) { cur.colormask = false; glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); }
@@ -1877,7 +1876,7 @@ void rendergeom()
         collectlights();
         if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
         if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
-        if(mainpass && rhinoq) renderradiancehints();
+        if(!drawtex && rhinoq) renderradiancehints();
         glFlush();
     }
 }

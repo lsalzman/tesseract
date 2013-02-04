@@ -591,7 +591,7 @@ int findmaterials()
     for(vtxarray *va = visibleva; va; va = va->next)
     {
         if(!va->matsurfs || va->occluded >= OCCLUDE_BB || va->curvfc >= VFC_FOGGED) continue;
-        if(editmode && showmat && !envmapping) 
+        if(editmode && showmat && !drawtex) 
         {
             loopi(va->matsurfs) editsurfs.add(va->matbuf[i]);
             continue;
@@ -635,7 +635,7 @@ int findmaterials()
                 i += m.skip;
             }
         }
-        if(va->glassmin.x <= va->glassmax.x && calcbbscissor(va->glassmin, va->glassmax, sx1, sy1, sx2, sy2))
+        if(drawtex != DRAWTEX_ENVMAP && va->glassmin.x <= va->glassmax.x && calcbbscissor(va->glassmin, va->glassmax, sx1, sy1, sx2, sy2))
         {
             matsolidsx1 = min(matsolidsx1, sx1);
             matsolidsy1 = min(matsolidsy1, sy1);

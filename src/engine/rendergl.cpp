@@ -1145,7 +1145,7 @@ void recomputecamera()
 
 float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, const vec &view, vec &center)
 {
-    if(minimapping)
+    if(drawtex == DRAWTEX_MINIMAP)
     {
         center = minimapcenter;
         return minimapradius.magnitude();
@@ -1187,7 +1187,7 @@ void project(float fovy, float aspect, int farplane, float zscale = 1)
     glMatrixMode(GL_PROJECTION);
     projmatrix.perspective(fovy, aspect, nearplane, farplane);
     if(zscale!=1) projmatrix.scalez(zscale);
-    if(!envmapping) jitteraa();
+    if(!drawtex) jitteraa();
     glLoadMatrixf(projmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 }
@@ -1331,7 +1331,7 @@ bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, fl
           mvmatrix.transformy(center),
           mvmatrix.transformz(center));
     if(e.z > 2*size) { sx1 = sy1 = sz1 = 1; sx2 = sy2 = sz2 = -1; return false; }
-    if(minimapping)
+    if(drawtex == DRAWTEX_MINIMAP)
     {
         vec dir(size, size, size);
         if(projmatrix.v[0] < 0) dir.x = -dir.x;
@@ -1691,8 +1691,7 @@ void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
     defaultshader->set();
 }
 
-bool envmapping = false;
-int minimapping = 0;
+int drawtex = 0;
 
 GLuint minimaptex = 0;
 vec minimapcenter(0, 0, 0), minimapradius(0, 0, 0), minimapscale(0, 0, 0);
@@ -1736,8 +1735,7 @@ void drawminimap()
 
     renderprogress(0, "generating mini-map...", 0, !renderedframe);
 
-    envmapping = true;
-    minimapping = 1;
+    drawtex = DRAWTEX_MINIMAP;
 
     setupframe(screen->w, screen->h);
 
@@ -1822,7 +1820,6 @@ void drawminimap()
 
     if(minimapheight > 0 && minimapheight < minimapcenter.z + minimapradius.z)
     {
-        minimapping = 2;
         camera1->o.z = minimapcenter.z + minimapradius.z + 1;
         glMatrixMode(GL_PROJECTION);
         projmatrix.ortho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, -zscale, zscale);
@@ -1830,7 +1827,7 @@ void drawminimap()
         glMatrixMode(GL_MODELVIEW);
         transplayer();
         readmatrices();
-        rendergbuffer();
+        rendergbuffer(false);
         shademinimap();
     }
         
@@ -1843,8 +1840,7 @@ void drawminimap()
     ldrscaleb = oldldrscaleb;
 
     camera1 = oldcamera;
-    envmapping = false;
-    minimapping = 0;
+    drawtex = 0;
 
     readhdr(size, size, GL_RGB5, GL_UNSIGNED_BYTE, NULL, GL_TEXTURE_2D, minimaptex); 
     setuptexparameters(minimaptex, NULL, 3, 1, GL_RGB5, GL_TEXTURE_2D);
@@ -1860,7 +1856,7 @@ void drawminimap()
 
 void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapside &side)
 {
-    envmapping = true;
+    drawtex = DRAWTEX_ENVMAP;
 
     physent *oldcamera = camera1;
     static physent cmcamera;
@@ -1952,10 +1948,8 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     ldrscaleb = oldldrscaleb;
 
     camera1 = oldcamera;
-    envmapping = false;
+    drawtex = 0;
 }
-
-bool modelpreviewing = false;
 
 namespace modelpreview
 {
@@ -1981,7 +1975,7 @@ namespace modelpreview
 
         useshaderbyname("modelpreview");
 
-        envmapping = modelpreviewing = true;
+        drawtex = DRAWTEX_MODELPREVIEW;
 
         oldcamera = camera1;
         camera = *camera1;
@@ -2059,7 +2053,7 @@ namespace modelpreview
         ldrscaleb = oldldrscaleb;
 
         camera1 = oldcamera;
-        envmapping = modelpreviewing = false;
+        drawtex = 0;
     }
 }
 

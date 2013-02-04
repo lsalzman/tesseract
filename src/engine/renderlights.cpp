@@ -1953,7 +1953,7 @@ VAR(lighttilestripthreshold, 1, 8, 8);
 
 void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL, int stencilmask = 0)
 {
-    Shader *s = minimapping ? deferredminimapshader : (infer > 1 ? inferredprelightshader : deferredlightshader);
+    Shader *s = drawtex == DRAWTEX_MINIMAP ? deferredminimapshader : (infer > 1 ? inferredprelightshader : deferredlightshader);
     if(!s || s == nullshader) return;
 
     bool blend = false;
@@ -2017,7 +2017,7 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
     GLOBALPARAM(shadowatlasscale, (1.0f/shadowatlaspacker.w, 1.0f/shadowatlaspacker.h));
     if(ao)
     {
-        if((editmode && fullbright) || envmapping)
+        if((editmode && fullbright) || drawtex)
         {
             GLOBALPARAM(aoscale, (0.0f, 0.0f));
             GLOBALPARAM(aoparams, (1.0f, 0.0f, 1.0f, 0.0f));
@@ -2534,7 +2534,7 @@ void collectlights()
 
     lightorder.sort(sortlights);
 
-    if(!envmapping && smquery && hasOQ && oqfrags && oqlights) loopv(lightorder)
+    if(!drawtex && smquery && hasOQ && oqfrags && oqlights) loopv(lightorder)
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
@@ -3549,7 +3549,7 @@ void rendertransparent()
 VAR(gdepthclear, 0, 1, 1);
 VAR(gcolorclear, 0, 1, 1);
 
-void preparegbuffer()
+void preparegbuffer(bool depthclear)
 {
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
     glViewport(0, 0, vieww, viewh);
@@ -3563,7 +3563,7 @@ void preparegbuffer()
         maskgbuffer("cng");
     }
     if(gcolorclear) glClearColor(0, 0, 0, 0);
-    glClear((minimapping < 2 ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(minimapping < 2 && ((gdepthstencil && hasDS) || gstencil) ? GL_STENCIL_BUFFER_BIT : 0));
+    glClear((depthclear ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(depthclear && ((gdepthstencil && hasDS) || gstencil) ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
 
     glmatrixf invscreenmatrix;
@@ -3571,7 +3571,7 @@ void preparegbuffer()
     invscreenmatrix.scale(2.0f/vieww, 2.0f/viewh, 2.0f);
     invscreenmatrix.translate(-1.0f, -1.0f, -1.0f);
     eyematrix.mul(invprojmatrix, invscreenmatrix);
-    if(minimapping)
+    if(drawtex == DRAWTEX_MINIMAP)
     {
         linearworldmatrix.mul(invmvpmatrix, invscreenmatrix);
         worldmatrix = linearworldmatrix;
@@ -3605,12 +3605,12 @@ void preparegbuffer()
     GLERROR;
 }
 
-void rendergbuffer()
+void rendergbuffer(bool depthclear)
 {
-    timer *gcputimer = envmapping ? NULL : begintimer("g-buffer", false);
-    timer *gtimer = envmapping ? NULL : begintimer("g-buffer");
+    timer *gcputimer = drawtex ? NULL : begintimer("g-buffer", false);
+    timer *gtimer = drawtex ? NULL : begintimer("g-buffer");
 
-    preparegbuffer();
+    preparegbuffer(depthclear);
 
     if(limitsky())
     {
@@ -3623,11 +3623,11 @@ void rendergbuffer()
     rendermapmodels();
     GLERROR;
 
-    if(minimapping) 
+    if(drawtex == DRAWTEX_MINIMAP)
     {
         renderminimapmaterials();
     }
-    else if(!envmapping)
+    else if(!drawtex)
     {
         game::rendergame();
         rendermodelbatches();
@@ -3651,7 +3651,7 @@ void shademinimap(const vec &color)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
     glViewport(0, 0, vieww, viewh);
 
-    if(minimapping == 1)
+    if(color.x >= 0)
     {
         glClearColor(color.x, color.y, color.z, 0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -3785,7 +3785,7 @@ void setupframe(int w, int h)
     if(!shadowatlasfbo) setupshadowatlas();
     if(sunlight && csmshadowmap && gi && giscale && gidist && !rhfbo) setupradiancehints();
     if(!deferredlightshader) loaddeferredlightshaders();
-    if(minimapping && !deferredminimapshader) deferredminimapshader = loaddeferredlightshader("m");
+    if(drawtex == DRAWTEX_MINIMAP && !deferredminimapshader) deferredminimapshader = loaddeferredlightshader("m");
     setupaa(gw, gh);
     GLERROR;
 }

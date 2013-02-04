@@ -335,7 +335,7 @@ float loadprogress = 0;
 
 void renderprogress(float bar, const char *text, GLuint tex, bool background)   // also used during loading
 {
-    if(!inbetweenframes || envmapping) return;
+    if(!inbetweenframes || drawtex) return;
 
     clientkeepalive();      // make sure our connection doesn't time out while loading maps etc.
     
