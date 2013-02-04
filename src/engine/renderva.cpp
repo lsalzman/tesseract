@@ -2165,7 +2165,7 @@ struct shadowmesh
 {
     vec origin;
     float radius;
-    vec spotdir;
+    vec spotloc;
     int spotangle;
     int type;
     int draws[6];
@@ -2303,37 +2303,15 @@ static void genshadowmeshtris(shadowmesh &m, int sides, shadowdrawinfo draws[6],
 
 static void genshadowmesh(int idx, extentity &e)
 {
-    extern int smminradius;
-    if(e.attr5&L_NOSHADOW || (e.attr1 > 0 && e.attr1 <= smminradius)) return;
-
     shadowmesh m;
-    m.origin = e.o;
-    m.radius = e.attr1 > 0 ? e.attr1 : 2*worldsize;
-    if(e.attached && e.attached->type == ET_SPOTLIGHT)
-    {
-        m.type = SM_SPOT;
-        m.spotdir = e.attached->o;
-        m.spotangle = clamp(int(e.attached->attr1), 1, 89);
-    }
-    else
-    {
-        m.type = smtetra && glslversion >= 130 ? SM_TETRA : SM_CUBEMAP;
-        m.spotdir = e.o;
-        m.spotangle = 0;
-    }
+    m.type = calcshadowinfo(e, m.origin, m.radius, m.spotloc, m.spotangle, shadowbias);
+    if(!m.type) return;
     memset(m.draws, -1, sizeof(m.draws));
-
-    extern float smspotprec, smtetraprec, smcubeprec;
-    extern int smfilter, smborder, smborder2, smminsize;
-
-    float lod = m.type == SM_SPOT ? smspotprec : (m.type == SM_TETRA ? smtetraprec : smcubeprec);
-    int size = clamp(int(ceil(lod * smminsize)), 1, 1024), border = smfilter > 2 ? smborder2 : smborder;
 
     shadowmapping = m.type;
     shadoworigin = m.origin;
     shadowradius = m.radius;
-    shadowbias = border / float(size - border); 
-    shadowdir = m.type == SM_SPOT ? vec(m.spotdir).sub(m.origin).normalize() : vec(0, 0, 0);
+    shadowdir = m.type == SM_SPOT ? vec(m.spotloc).sub(m.origin).normalize() : vec(0, 0, 0);
     shadowspot = m.spotangle;
 
     findshadowvas();
@@ -2382,11 +2360,11 @@ void genshadowmeshes()
 shadowmesh *findshadowmesh(int idx, extentity &e)
 {
     shadowmesh *m = shadowmeshes.access(idx);
-    if(!m || m->type != shadowmapping || m->origin != shadoworigin || m->radius != shadowradius) return NULL;
+    if(!m || m->type != shadowmapping || m->origin != shadoworigin || m->radius < shadowradius) return NULL;
     switch(m->type)
     {
         case SM_SPOT: 
-            if(!e.attached || e.attached->type != ET_SPOTLIGHT || m->spotdir != e.attached->o || m->spotangle != clamp(int(e.attached->attr1), 1, 89))
+            if(!e.attached || e.attached->type != ET_SPOTLIGHT || m->spotloc != e.attached->o || m->spotangle < clamp(int(e.attached->attr1), 1, 89))
                 return NULL;
             break;
     } 

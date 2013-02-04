@@ -3039,6 +3039,48 @@ void rendercsmshadowmaps()
     shadowmapping = 0;
 }
 
+int calcshadowinfo(const extentity &e, vec &origin, float &radius, vec &spotloc, int &spotangle, float &bias)
+{
+    if(e.attr5&L_NOSHADOW || (e.attr1 > 0 && e.attr1 <= smminradius)) return SM_NONE;
+
+    origin = e.o;
+    radius = e.attr1 > 0 ? e.attr1 : 2*worldsize;
+    int type, w;
+    float lod;
+    if(e.attached && e.attached->type == ET_SPOTLIGHT)
+    {
+        type = SM_SPOT;
+        w = 1;
+        lod = smspotprec;
+        spotloc = e.attached->o;
+        spotangle = clamp(int(e.attached->attr1), 1, 89);
+    }
+    else
+    {
+        if(smtetra && glslversion >= 130)
+        {
+            type = SM_TETRA;
+            w = 2;
+            lod = smtetraprec;
+        }
+        else
+        {
+            type = SM_CUBEMAP;
+            w = 3;
+            lod = smcubeprec;
+        }
+        spotloc = e.o;
+        spotangle = 0;
+    }
+   
+    lod *= smminsize;
+    int size = clamp(int(ceil((lod * shadowatlaspacker.w) / SHADOWATLAS_SIZE)), 1, shadowatlaspacker.w / w),
+        border = smfilter > 2 ? smborder2 : smborder;
+    bias = border / float(size - border);
+
+    return type;
+}
+    
 void rendershadowmaps()
 {
     bool tetra = smtetra && glslversion >= 130;
