@@ -3045,12 +3045,13 @@ int calcshadowinfo(const extentity &e, vec &origin, float &radius, vec &spotloc,
 
     origin = e.o;
     radius = e.attr1 > 0 ? e.attr1 : 2*worldsize;
-    int type, w;
+    int type, w, border;
     float lod;
     if(e.attached && e.attached->type == ET_SPOTLIGHT)
     {
         type = SM_SPOT;
         w = 1;
+        border = 0;
         lod = smspotprec;
         spotloc = e.attached->o;
         spotangle = clamp(int(e.attached->attr1), 1, 89);
@@ -3069,13 +3070,13 @@ int calcshadowinfo(const extentity &e, vec &origin, float &radius, vec &spotloc,
             w = 3;
             lod = smcubeprec;
         }
+        border = smfilter > 2 ? smborder2 : smborder;
         spotloc = e.o;
         spotangle = 0;
     }
    
     lod *= smminsize;
-    int size = clamp(int(ceil((lod * shadowatlaspacker.w) / SHADOWATLAS_SIZE)), 1, shadowatlaspacker.w / w),
-        border = smfilter > 2 ? smborder2 : smborder;
+    int size = clamp(int(ceil((lod * shadowatlaspacker.w) / SHADOWATLAS_SIZE)), 1, shadowatlaspacker.w / w);
     bias = border / float(size - border);
 
     return type;
