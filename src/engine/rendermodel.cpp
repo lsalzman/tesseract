@@ -675,13 +675,13 @@ int batcheddynamicmodelbounds(int mask, vec &bbmin, vec &bbmax)
     return vis;
 }
 
-void rendermodelbatches()
+void rendermodelbatches(bool dynmodel)
 {
     float aamask = -1;
     loopv(batches)
     {
         modelbatch &b = batches[i];
-        if(b.batched < 0) continue;
+        if(b.batched < 0 || (!dynmodel && (!(b.flags&MDL_MAPMODEL) || b.m->animated()))) continue;
         bool rendered = false;
         occludequery *query = NULL;
         if(shadowmapping) for(int j = b.batched; j >= 0;)

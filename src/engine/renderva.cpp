@@ -1249,9 +1249,9 @@ struct renderstate
     Slot *slot, *texgenslot;
     VSlot *vslot, *texgenvslot;
     float texgenscrollS, texgenscrollT;
-    int texgendim;
+    int texgendim, texgenmillis;
 
-    renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1)
+    renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1), texgenmillis(lastmillis)
     {
         loopk(4) color[k] = 1;
         loopk(8) textures[k] = 0;
@@ -1527,8 +1527,8 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
                   ys = (vslot.rotation>=1 && vslot.rotation<=2) || vslot.rotation==5 ? -tex->ys : tex->ys,
                   scrollS = vslot.scrollS, scrollT = vslot.scrollT;
             if((vslot.rotation&5)==1) swap(scrollS, scrollT);
-            scrollS *= lastmillis*tex->xs/xs;
-            scrollT *= lastmillis*tex->ys/ys;
+            scrollS *= cur.texgenmillis*tex->xs/xs;
+            scrollT *= cur.texgenmillis*tex->ys/ys;
             if(cur.texgenscrollS != scrollS || cur.texgenscrollT != scrollT)
             {
                 cur.texgenscrollS = scrollS;
@@ -1897,9 +1897,10 @@ int dynamicshadowvabounds(int mask, vec &bbmin, vec &bbmax)
     return vis;
 }
  
-void renderrsmgeom()
+void renderrsmgeom(bool dyntex)
 {
     renderstate cur;
+    if(!dyntex) cur.texgenmillis = 0;
 
     glEnableClientState(GL_VERTEX_ARRAY);
 

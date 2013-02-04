@@ -991,6 +991,8 @@ VAR(rhclipgrid, 0, 1, 1);
 VARF(rhcache, 0, 1, 1, cleanupradiancehints());
 VAR(rsmcull, 0, 1, 1);
 VARFP(rhtaps, 0, 20, 32, cleanupradiancehints());
+VAR(rhdyntex, 0, 0, 1);
+VAR(rhdynmm, 0, 0, 1);
 VARFR(gidist, 0, 384, 1024, { cleardeferredlightshaders(); if(!gidist) cleanupradiancehints(); });
 FVARFR(giscale, 0, 1.5f, 1e3f, { cleardeferredlightshaders(); if(!giscale) cleanupradiancehints(); });
 VARFP(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
@@ -1297,7 +1299,7 @@ VARF(smcache, 0, 1, 2, cleanupshadowatlas());
 VARFP(smfilter, 0, 2, 3, { cleardeferredlightshaders(); cleanupshadowatlas(); });
 VARFP(smgather, 0, 0, 1, { cleardeferredlightshaders(); cleanupshadowatlas(); });
 VAR(smnoshadow, 0, 0, 1);
-VAR(smnodynshadow, 0, 0, 1);
+VAR(smdynshadow, 0, 1, 1);
 VAR(lighttilesused, 1, 0, 0);
 
 int shadowmapping = 0;
@@ -2944,8 +2946,8 @@ void renderradiancehints()
     rh.prevdynmax = rh.dynmax;
     rh.dynmin = vec(1e16f, 1e16f, 1e16f);
     rh.dynmax = vec(-1e16f, -1e16f, -1e16f);
-    dynamicshadowvabounds(1<<shadowside, rh.dynmin, rh.dynmax);
-    batcheddynamicmodelbounds(1<<shadowside, rh.dynmin, rh.dynmax);
+    if(rhdyntex) dynamicshadowvabounds(1<<shadowside, rh.dynmin, rh.dynmax);
+    if(rhdynmm) batcheddynamicmodelbounds(1<<shadowside, rh.dynmin, rh.dynmax);
 
     if(!rhcache || rh.prevdynmin.z < rh.prevdynmax.z || rh.dynmin.z < rh.dynmax.z || !rh.allcached())
     {
@@ -2966,8 +2968,8 @@ void renderradiancehints()
         glClearColor(0, 0, 0, 0);
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
 
-        renderrsmgeom();
-        rendermodelbatches();
+        renderrsmgeom(rhdyntex!=0);
+        rendermodelbatches(rhdynmm!=0);
 
         rh.renderslices();
 
@@ -3009,7 +3011,7 @@ void rendercsmshadowmaps()
     findshadowvas();
     findshadowmms();
 
-    shadowmaskbatchedmodels(!smnodynshadow);
+    shadowmaskbatchedmodels(smdynshadow!=0);
     batchshadowmapmodels();
 
     loopi(csmsplits) if(csm.splits[i].idx >= 0)
@@ -3092,7 +3094,7 @@ void rendershadowmaps()
         findshadowvas();
         findshadowmms();
 
-        shadowmaskbatchedmodels(!(l.flags&L_NODYNSHADOW) && !smnodynshadow);
+        shadowmaskbatchedmodels(!(l.flags&L_NODYNSHADOW) && smdynshadow);
         batchshadowmapmodels();
 
         shadowcacheval *cached = NULL;
