@@ -14,7 +14,7 @@ VARP(softparticleblend, 1, 8, 64);
 // Automatically stops particles being emitted when paused or in reflective drawing
 VARP(emitmillis, 1, 17, 1000);
 static int lastemitframe = 0, emitoffset = 0;
-static bool canemit = false, regenemitters = false, canstep = false;
+static bool canemit = false, regenemitters = false;
 
 static bool emit_particles()
 {
@@ -188,7 +188,7 @@ struct partrenderer
     }
 
     //blend = 0 => remove it
-    void calc(particle *p, int &blend, int &ts, vec &o, vec &d, bool step = true)
+    void calc(particle *p, int &blend, int &ts, vec &o, vec &d)
     {
         o = p->o;
         d = p->d;
@@ -209,7 +209,7 @@ struct partrenderer
                 o.add(vec(d).mul(t/5000.0f));
                 o.z -= t*t/(2.0f * 5000.0f * p->gravity);
             }
-            if(collide && o.z < p->val && step)
+            if(collide && o.z < p->val)
             {
                 if(collide >= 0)
                 {
@@ -344,12 +344,12 @@ struct listrenderer : partrenderer
         {   
             vec o, d;
             int blend, ts;
-            calc(p, blend, ts, o, d, canstep);
+            calc(p, blend, ts, o, d);
             if(blend > 0) 
             {
                 renderpart(p, o, d, blend, ts, p->color.v);
 
-                if(p->fade > 5 || !canstep) 
+                if(p->fade > 5)
                 {
                     prev = &p->next;
                     continue;
@@ -866,9 +866,8 @@ void removetrackedparticles(physent *owner)
 
 VAR(debugparticles, 0, 0, 1);
 
-void renderparticles(bool mainpass)
+void renderparticles()
 {
-    canstep = mainpass;
     //want to debug BEFORE the lastpass render (that would delete particles)
     if(debugparticles)
     {

@@ -2165,7 +2165,7 @@ void gl_drawframe(int w, int h)
     rendereditmaterials();
     GLERROR;
 
-    renderparticles(true);
+    renderparticles();
     GLERROR;
 
     extern int hidehud;

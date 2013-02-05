@@ -3633,7 +3633,7 @@ void rendergbuffer(bool depthclear)
         rendermodelbatches();
         GLERROR;
         maskgbuffer("c");
-        renderdecals(true);
+        renderdecals();
         maskgbuffer("cngd");
         GLERROR;
         renderavatar();

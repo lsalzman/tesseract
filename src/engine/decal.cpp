@@ -576,18 +576,15 @@ void cleardecals()
 
 VARNP(decals, showdecals, 0, 1, 1);
 
-void renderdecals(bool mainpass)
+void renderdecals()
 {
     bool rendered = false;
     loopi(sizeof(decals)/sizeof(decals[0]))
     {
         decalrenderer &d = decals[i];
-        if(mainpass)
-        {
-            d.clearfadeddecals();
-            d.fadeindecals();
-            d.fadeoutdecals();
-        }
+        d.clearfadeddecals();
+        d.fadeindecals();
+        d.fadeoutdecals();
         if(!showdecals || !d.hasdecals()) continue;
         if(!rendered)
         {
