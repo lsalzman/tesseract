@@ -1301,6 +1301,7 @@ VARFP(smgather, 0, 0, 1, { cleardeferredlightshaders(); cleanupshadowatlas(); })
 VAR(smnoshadow, 0, 0, 1);
 VAR(smdynshadow, 0, 1, 1);
 VAR(lighttilesused, 1, 0, 0);
+VAR(lightpassesused, 1, 0, 0);
 
 int shadowmapping = 0;
 
@@ -2106,6 +2107,7 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
         glVertex3f( 1,  1, -1);
         glVertex3f(-1,  1, -1);
         glEnd();
+        lightpassesused++;
     }
 
     if(depthtestlights && !depth) { glEnable(GL_DEPTH_TEST); depth = true; }
@@ -2226,6 +2228,8 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
             glde++;
 
             glPopMatrix();
+
+            lightpassesused++;
         }
 
         if(!outside)
@@ -2384,6 +2388,8 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
                     glVertex3f( 1,  1, sz1);
                     glVertex3f(-1,  1, sz1);
                     glEnd();
+
+                    lightpassesused++;
                 }
 
                 i += n;
@@ -2588,7 +2594,7 @@ VAR(lightsoccluded, 1, 0, 0);
 void packlights()
 {
     lightsvisible = lightsoccluded = 0;
-    lighttilesused = 0;
+    lighttilesused = lightpassesused = 0;
     smused = 0;
 
     bool tetra = smtetra && glslversion >= 130;
