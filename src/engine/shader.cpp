@@ -1173,6 +1173,9 @@ GLuint setuppostfx(int w, int h, GLuint outfbo)
      
 void renderpostfx(GLuint outfbo)
 {
+    if(postfxpasses.empty()) return;
+
+    timer *postfxtimer = begintimer("postfx");
     loopv(postfxpasses)
     {
         postfxpass &p = postfxpasses[i];
@@ -1225,6 +1228,7 @@ void renderpostfx(GLuint outfbo)
             postfxtexs[tex].used = p.outputbind;
         }
     }
+    endtimer(postfxtimer);
 }
 
 static bool addpostfx(const char *name, int outputbind, int outputscale, uint inputs, uint freeinputs, const vec4 &params)
