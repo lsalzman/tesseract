@@ -465,20 +465,19 @@ void maskgbuffer(const char *mask)
     glDrawBuffers_(numbufs, drawbufs);
 }
 
-extern int hdrprec;
-extern float gscale;
+extern int hdrprec, gscale;
 
 void setupgbuffer(int w, int h)
 {
-    if(gscale < 1)
+    if(gscale != 100)
     {
-        w = max(int(ceil(w*gscale)), 1);
-        h = max(int(ceil(h*gscale)), 1);
+        w = max((w*gscale + 99)/100, 1);
+        h = max((h*gscale + 99)/100, 1);
     }
 
-    if(gw == w && gh == h && (gscale < 1) == (scalefbo!=0)) return;
+    if(gw == w && gh == h && (gscale != 100) == (scalefbo!=0)) return;
 
-    if(gscale < 1) setupscale(w, h);
+    if(gscale != 100) setupscale(w, h);
     else cleanupscale();
 
     gw = w;
@@ -634,7 +633,7 @@ VARFP(hdrprec, 0, 2, 3, cleanupgbuffer());
 FVARFP(hdrgamma, 1e-3f, 2, 1e3f, initwarning("HDR setup", INIT_LOAD, CHANGE_SHADERS));
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
 FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
-FVARFP(gscale, 0.25f, 1, 1, cleanupgbuffer());
+VARFP(gscale, 25, 100, 100, cleanupgbuffer());
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
