@@ -3279,27 +3279,25 @@ void rendershadowmaps()
                     if(smtetraclip) glEnable(GL_CLIP_PLANE0);
                 }
 
+                if(smtetraclip)
+                {
+                    plane tetraclip(-tetrashadowviewmatrix[side][2]/smprojmatrix[0],
+                                    -tetrashadowviewmatrix[side][6]/smprojmatrix[5],
+                                    smtetraborder/(0.5f*sm.size)/smprojmatrix[14],
+                                    smtetraborder/(0.5f*sm.size)/smprojmatrix[14]*-smprojmatrix[10]/smprojmatrix[11]);
+                    if(glslversion >= 130) GLOBALPARAM(tetraclip, (tetraclip));
+                    else
+                    {
+                        glLoadIdentity();
+                        GLdouble clipplane[4] = { tetraclip.x, tetraclip.y, tetraclip.z, tetraclip.offset };
+                        glClipPlane(GL_CLIP_PLANE0, clipplane);
+                    }
+                }
+
                 smviewmatrix.mul(tetrashadowviewmatrix[side], lightmatrix);
                 glLoadMatrixf(smviewmatrix.v);
 
                 glCullFace((side>>1) ^ smcullside ? GL_BACK : GL_FRONT);
-
-                if(smtetraclip)
-                {
-                    if(glslversion >= 130)
-                    {
-                        plane tetraclip(-tetrashadowviewmatrix[side][2]/smprojmatrix[0],
-                                        -tetrashadowviewmatrix[side][6]/smprojmatrix[5],
-                                        smtetraborder/(0.5f*sm.size)/smprojmatrix[14],
-                                        smtetraborder/(0.5f*sm.size)/smprojmatrix[14]*-smprojmatrix[10]/smprojmatrix[11]);
-                        GLOBALPARAM(tetraclip, (tetraclip));
-                    }
-                    else
-                    {
-                        GLdouble tetraclip[4] = { -smviewmatrix.v[2], -smviewmatrix.v[6], 0, l.o.x*smviewmatrix.v[2] + l.o.y*smviewmatrix.v[6] + smtetraborder/(0.5f*smsize) };
-                        glClipPlane(GL_CLIP_PLANE0, tetraclip);
-                    }
-                }
 
                 shadowside = side;
 
