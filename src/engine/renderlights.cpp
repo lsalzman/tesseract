@@ -1335,8 +1335,6 @@ VAR(lightpassesused, 1, 0, 0);
 
 int shadowmapping = 0;
 
-plane smtetraclipplane;
-
 vector<lightinfo> lights;
 vector<int> lightorder;
 vector<int> lighttiles[LIGHTTILE_MAXH][LIGHTTILE_MAXW];
@@ -1812,7 +1810,7 @@ Shader *loaddeferredlightshader(const char *type = NULL)
     common[commonlen] = '\0';
 
     shadow[shadowlen++] = 'p';
-    if(smtetra && glslversion >= 130) shadow[shadowlen++] = 't';
+    if(smtetra) shadow[shadowlen++] = 't';
     shadow[shadowlen] = '\0';
 
     int usecsm = 0, userh = 0;
@@ -1884,7 +1882,6 @@ void resetlights()
             evicty = ((evictshadowcache/SHADOWCACHE_EVICT)*shadowatlaspacker.h)/SHADOWCACHE_EVICT,
             evictx2 = (((evictshadowcache%SHADOWCACHE_EVICT)+1)*shadowatlaspacker.w)/SHADOWCACHE_EVICT,
             evicty2 = (((evictshadowcache/SHADOWCACHE_EVICT)+1)*shadowatlaspacker.h)/SHADOWCACHE_EVICT;
-        bool tetra = smtetra && glslversion >= 130;
         loopv(shadowmaps)
         {
             shadowmapinfo &sm = shadowmaps[i];
@@ -1892,7 +1889,7 @@ void resetlights()
             lightinfo &l = lights[sm.light];
             if(sm.cached && shadowcachefull)
             {
-                int w = l.spot ? sm.size : (tetra ? sm.size*2 : sm.size*3), h = l.spot ? sm.size : (tetra ? sm.size : sm.size*2);
+                int w = l.spot ? sm.size : (smtetra ? sm.size*2 : sm.size*3), h = l.spot ? sm.size : (smtetra ? sm.size : sm.size*2);
                 if(sm.x < evictx2 && sm.x + w > evictx && sm.y < evicty2 && sm.y + h > evicty) continue;
             }
             shadowcache[l] = sm;
@@ -2627,7 +2624,6 @@ void packlights()
     lighttilesused = lightpassesused = 0;
     smused = 0;
 
-    bool tetra = smtetra && glslversion >= 130;
     if(smcache && !smnoshadow && shadowcache.numelems) loopv(lightorder)
     {
         int idx = lightorder[i];
@@ -2638,7 +2634,7 @@ void packlights()
         float prec = smprec, lod;
         int w, h;
         if(l.spot) { w = 1; h = 1; const vec2 &sc = sincos360[l.spot]; prec = sc.y/sc.x; lod = smspotprec; }
-        else if(tetra) { w = 2; h = 1; lod = smtetraprec; }
+        else if(smtetra) { w = 2; h = 1; lod = smtetraprec; }
         else { w = 3; h = 2; lod = smcubeprec; }
         lod *= clamp(l.radius * prec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
         int size = clamp(int(ceil((lod * shadowatlaspacker.w) / SHADOWATLAS_SIZE)), 1, shadowatlaspacker.w / w);
@@ -2672,7 +2668,7 @@ void packlights()
             float prec = smprec, lod;
             int w, h;
             if(l.spot) { w = 1; h = 1; const vec2 &sc = sincos360[l.spot]; prec = sc.y/sc.x; lod = smspotprec; }
-            else if(tetra) { w = 2; h = 1; lod = smtetraprec; }
+            else if(smtetra) { w = 2; h = 1; lod = smtetraprec; }
             else { w = 3; h = 2; lod = smcubeprec; }
             lod *= clamp(l.radius * prec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
             int size = clamp(int(ceil((lod * shadowatlaspacker.w) / SHADOWATLAS_SIZE)), 1, shadowatlaspacker.w / w);
@@ -3094,7 +3090,7 @@ int calcshadowinfo(const extentity &e, vec &origin, float &radius, vec &spotloc,
     }
     else
     {
-        if(smtetra && glslversion >= 130)
+        if(smtetra)
         {
             type = SM_TETRA;
             w = 2;
@@ -3120,7 +3116,6 @@ int calcshadowinfo(const extentity &e, vec &origin, float &radius, vec &spotloc,
     
 void rendershadowmaps()
 {
-    bool tetra = smtetra && glslversion >= 130;
     float polyfactor = smpolyfactor, polyoffset = smpolyoffset;
     if(smfilter > 2) { polyfactor = smpolyfactor2; polyoffset = smpolyoffset2; }
     if(polyfactor || polyoffset)
@@ -3146,7 +3141,7 @@ void rendershadowmaps()
             border = 0;
             sidemask = 1;
         }
-        else if(tetra)
+        else if(smtetra)
         {
             if(shadowmapping != SM_TETRA && smtetraclip) glEnable(GL_CLIP_PLANE0);
             shadowmapping = SM_TETRA;
@@ -3291,9 +3286,19 @@ void rendershadowmaps()
 
                 if(smtetraclip)
                 {
-                    smtetraclipplane.toplane(vec(-smviewmatrix.v[2], -smviewmatrix.v[6], 0), l.o);
-                    smtetraclipplane.offset += smtetraborder/(0.5f*sm.size);
-                    GLOBALPARAM(tetraclip, (smtetraclipplane));
+                    if(glslversion >= 130)
+                    {
+                        plane tetraclip(-tetrashadowviewmatrix[side][2]/smprojmatrix[0],
+                                        -tetrashadowviewmatrix[side][6]/smprojmatrix[5],
+                                        smtetraborder/(0.5f*sm.size)/smprojmatrix[14],
+                                        smtetraborder/(0.5f*sm.size)/smprojmatrix[14]*-smprojmatrix[10]/smprojmatrix[11]);
+                        GLOBALPARAM(tetraclip, (tetraclip));
+                    }
+                    else
+                    {
+                        GLdouble tetraclip[4] = { -smviewmatrix.v[2], -smviewmatrix.v[6], 0, l.o.x*smviewmatrix.v[2] + l.o.y*smviewmatrix.v[6] + smtetraborder/(0.5f*smsize) };
+                        glClipPlane(GL_CLIP_PLANE0, tetraclip);
+                    }
                 }
 
                 shadowside = side;

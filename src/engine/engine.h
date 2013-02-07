@@ -447,9 +447,6 @@ enum { L_NOSHADOW = 1<<0, L_NODYNSHADOW = 1<<1 };
  
 extern int shadowmapping;
 
-extern int smtetra, smtetraclip;
-extern plane smtetraclipplane;
-
 extern vec shadoworigin, shadowdir;
 extern float shadowradius, shadowbias;
 extern int shadowside, shadowspot;

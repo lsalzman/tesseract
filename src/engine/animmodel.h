@@ -886,18 +886,7 @@ struct animmodel : model
                 glMultMatrixf(matrixstack[matrixpos].v);
                 if(resize!=1) glScalef(resize, resize, resize);
                 if(!translate.iszero()) glTranslatef(translate.x, translate.y, translate.z);
-                if(anim&ANIM_NOSKIN)
-                {
-                    if(shadowmapping == SM_TETRA)
-                    {
-                        plane p;
-                        matrixstack[matrixpos].transposedtransform(smtetraclipplane, p);
-                        p.scale(model->scale);
-                        p.translate(translate);
-                        GLOBALPARAM(tetramodelclip, (p));
-                    }
-                }
-                else
+                if(!(anim&ANIM_NOSKIN))
                 {
                     glMatrixMode(GL_TEXTURE);
                     glLoadMatrixf(matrixstack[matrixpos].v);
