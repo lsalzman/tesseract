@@ -2,7 +2,8 @@
 
 int gw = -1, gh = -1, bloomw = -1, bloomh = -1, lasthdraccum = 0;
 GLuint gfbo = 0, gdepthtex = 0, gcolortex = 0, gnormaltex = 0, gglowtex = 0, gdepthrb = 0, gstencilrb = 0;
-GLuint scalefbo = 0, scaletex = 0;
+int scalew = -1, scaleh = -1;
+GLuint scalefbo[2] = { 0, 0 }, scaletex[2] = { 0, 0 };
 GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[6] = { 0, 0, 0, 0, 0, 0 }, bloomtex[6] = { 0, 0, 0, 0, 0, 0 };
 int hdrclear = 0;
 GLuint infbo = 0, intex[2] = { 0, 0 }, indepth = 0, inw = -1, inh = -1;
@@ -394,48 +395,75 @@ void viewinferred()
 
 void cleanupscale()
 {
-    if(scalefbo) { glDeleteFramebuffers_(1, &scalefbo); scalefbo = 0; }
-    if(scaletex) { glDeleteTextures(1, &scaletex); scaletex = 0; }
+    loopi(2) if(scalefbo[i]) { glDeleteFramebuffers_(1, &scalefbo[i]); scalefbo[i] = 0; }
+    loopi(2) if(scaletex[i]) { glDeleteTextures(1, &scaletex[i]); scaletex[i] = 0; }
+    scalew = scaleh = -1;
 }
 
-void setupscale(int w, int h)
+extern int gscalecubic;
+
+void setupscale(int sw, int sh, int w, int h)
 {
-    if(!scaletex) glGenTextures(1, &scaletex);
-    if(!scalefbo) glGenFramebuffers_(1, &scalefbo);
+    scalew = w;
+    scaleh = h;
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, scalefbo);
+    loopi(gscalecubic ? 2 : 1) 
+    {
+        if(!scaletex[i]) glGenTextures(1, &scaletex[i]);
+        if(!scalefbo[i]) glGenFramebuffers_(1, &scalefbo[i]);
 
-    createtexture(scaletex, w, h, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, scalefbo[i]);
 
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, scaletex, 0);
+        createtexture(scaletex[i], sw, i ? h : sh, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
 
-    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
-        fatal("failed allocating scale buffer!");
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, scaletex[i], 0);
+
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating scale buffer!");
+    }
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 
-    useshaderbyname("scale");
+    useshaderbyname("scalelinear");
+    if(gscalecubic) 
+    {
+        useshaderbyname("scalecubicx");
+        useshaderbyname("scalecubicy");
+    }
 }
 
 GLuint shouldscale()
 {
-    return scalefbo;
+    return scalefbo[0];
 }
      
 void doscale(int w, int h)
 {
-    if(!scaletex) return;
+    if(!scaletex[0]) return;
 
     timer *scaletimer = begintimer("scaling");
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
-    glViewport(0, 0, w, h);
-
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex);
-    
-    SETSHADER(scale);
-
-    screenquad(gw, gh);
+    if(gscalecubic)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, scalefbo[1]);
+        glViewport(0, 0, gw, h);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[0]);
+        SETSHADER(scalecubicy);
+        screenquad(gw, gh);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+        glViewport(0, 0, w, h);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[1]);
+        SETSHADER(scalecubicx);
+        screenquad(gw, h);
+    }
+    else
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+        glViewport(0, 0, w, h);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[0]);
+        SETSHADER(scalelinear);
+        screenquad(gw, gh);
+    }
 
     endtimer(scaletimer);
 }
@@ -469,19 +497,20 @@ extern int hdrprec, gscale;
 
 void setupgbuffer(int w, int h)
 {
+    int sw = w, sh = h;
     if(gscale != 100)
     {
-        w = max((w*gscale + 99)/100, 1);
-        h = max((h*gscale + 99)/100, 1);
+        sw = max((w*gscale + 99)/100, 1);
+        sh = max((h*gscale + 99)/100, 1);
     }
 
-    if(gw == w && gh == h && (gscale != 100) == (scalefbo!=0)) return;
+    if(gw == sw && gh == sh && (gscale == 100 || (scalew == w && scaleh == h))) return;
 
-    if(gscale != 100) setupscale(w, h);
+    if(gscale != 100) setupscale(sw, sh, w, h);
     else cleanupscale();
 
-    gw = w;
-    gh = h;
+    gw = sw;
+    gh = sh;
 
     if(!gdepthtex) glGenTextures(1, &gdepthtex);
     if(!gcolortex) glGenTextures(1, &gcolortex);
@@ -634,6 +663,8 @@ FVARFP(hdrgamma, 1e-3f, 2, 1e3f, initwarning("HDR setup", INIT_LOAD, CHANGE_SHAD
 FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
 FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
 VARFP(gscale, 25, 100, 100, cleanupgbuffer());
+VARFP(gscalecubic, 0, 0, 1, cleanupgbuffer());
+FVARFP(gscalecubicsoft, 0, 1.0f/3.0f, 1, initwarning("scaling setup", INIT_LOAD, CHANGE_SHADERS));
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
@@ -3670,7 +3701,7 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
 {
     GLERROR;
 
-    GLuint outfbo = w > vieww || h > viewh ? scalefbo : 0;
+    GLuint outfbo = w > vieww || h > viewh ? scalefbo[0] : 0;
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
     glViewport(outfbo ? 0 : x, outfbo ? 0 : y, vieww, viewh);
 
@@ -3704,8 +3735,8 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
         {
            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0); 
            glViewport(x, y, w, h);
-           glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex);
-           SETSHADER(scale);
+           glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[0]);
+           SETSHADER(scalelinear);
         }
     }
     
