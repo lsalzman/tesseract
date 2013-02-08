@@ -583,13 +583,6 @@ static inline int shadowmaskmodel(const vec &center, float radius)
     {
         case SM_REFLECT:
             return calcspherersmsplits(center, radius);
-        case SM_TETRA:
-        {
-            vec scenter = vec(center).sub(shadoworigin);
-            float sradius = radius + shadowradius;
-            if(scenter.squaredlen() >= sradius*sradius) return 0;
-            return calcspheretetramask(scenter, radius, shadowbias*shadowradius);
-        }
         case SM_CUBEMAP:
         {
             vec scenter = vec(center).sub(shadoworigin);

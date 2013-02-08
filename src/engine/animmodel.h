@@ -173,14 +173,12 @@ struct animmodel : model
                     }
                     setshaderparams(b, as, false, true, false);
                     /*if(as->cur.anim&ANIM_SHADOW)*/ 
-                    if(shadowmapping == SM_TETRA) SETMODELSHADER(b, alphashadowtetramodel);
-                    else SETMODELSHADER(b, alphashadowmodel); 
+                    SETMODELSHADER(b, alphashadowmodel); 
                 }
                 else
                 {
                     /*if(as->cur.anim&ANIM_SHADOW)*/ 
-                    if(shadowmapping == SM_TETRA) SETMODELSHADER(b, tetramodel);
-                    else SETMODELSHADER(b, shadowmodel);
+                    SETMODELSHADER(b, shadowmodel);
                 }
                 return;
             }

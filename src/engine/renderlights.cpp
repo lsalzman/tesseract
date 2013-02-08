@@ -1270,34 +1270,6 @@ const float cubeshadowviewmatrix[6][16] =
     },
 };
 
-const float tetrashadowviewmatrix[4][16] =
-{
-    { // +1, +1, +1
-        1, 0,-1, 0,
-        0, 1,-1, 0,
-        0, 0,-1, 0,
-        0, 0, 0, 1
-    },
-    { // -1, -1, +1
-        1, 0, 1, 0,
-        0, 1, 1, 0,
-        0, 0,-1, 0,
-        0, 0, 0, 1
-    },
-    { // +1, -1, -1
-        1, 0,-1, 0,
-        0, 1, 1, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    },
-    { // -1, +1, -1
-        1, 0, 1, 0,
-        0, 1,-1, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    }
-};
-
 FVAR(smpolyfactor, -1e3f, 1, 1e3f);
 FVAR(smpolyoffset, -1e3f, 0, 1e3f);
 FVAR(smbias, -1e6f, 0.01f, 1e6f);
@@ -1305,7 +1277,6 @@ FVAR(smpolyfactor2, -1e3f, 1.5f, 1e3f);
 FVAR(smpolyoffset2, -1e3f, 0, 1e3f);
 FVAR(smbias2, -1e6f, 0.02f, 1e6f);
 FVAR(smprec, 1e-3f, 1, 1e3f);
-FVAR(smtetraprec, 1e-3f, SQRT3, 1e3f);
 FVAR(smcubeprec, 1e-3f, 1, 1e3f);
 FVAR(smspotprec, 1e-3f, 1, 1e3f);
 
@@ -1320,10 +1291,6 @@ VAR(smmaxsize, 1, 384, 1024);
 //VAR(smmaxsize, 1, 4096, 4096);
 VAR(smused, 1, 0, 0);
 VAR(smquery, 0, 1, 1);
-VARFP(smtetra, 0, 0, 1, { cleardeferredlightshaders(); clearshadowcache(); });
-VAR(smtetraclip, 0, 1, 1);
-VAR(smtetraclear, 0, 1, 1);
-FVAR(smtetraborder, 0, 0, 1e3f);
 VARF(smcullside, 0, 1, 1, cleanupshadowatlas());
 VARF(smcache, 0, 1, 2, cleanupshadowatlas());
 VARFP(smfilter, 0, 2, 3, { cleardeferredlightshaders(); cleanupshadowatlas(); });
@@ -1810,7 +1777,6 @@ Shader *loaddeferredlightshader(const char *type = NULL)
     common[commonlen] = '\0';
 
     shadow[shadowlen++] = 'p';
-    if(smtetra) shadow[shadowlen++] = 't';
     shadow[shadowlen] = '\0';
 
     int usecsm = 0, userh = 0;
@@ -1889,7 +1855,7 @@ void resetlights()
             lightinfo &l = lights[sm.light];
             if(sm.cached && shadowcachefull)
             {
-                int w = l.spot ? sm.size : (smtetra ? sm.size*2 : sm.size*3), h = l.spot ? sm.size : (smtetra ? sm.size : sm.size*2);
+                int w = l.spot ? sm.size : sm.size*3, h = l.spot ? sm.size : sm.size*2;
                 if(sm.x < evictx2 && sm.x + w > evictx && sm.y < evicty2 && sm.y + h > evicty) continue;
             }
             shadowcache[l] = sm;
@@ -2634,7 +2600,6 @@ void packlights()
         float prec = smprec, lod;
         int w, h;
         if(l.spot) { w = 1; h = 1; const vec2 &sc = sincos360[l.spot]; prec = sc.y/sc.x; lod = smspotprec; }
-        else if(smtetra) { w = 2; h = 1; lod = smtetraprec; }
         else { w = 3; h = 2; lod = smcubeprec; }
         lod *= clamp(l.radius * prec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
         int size = clamp(int(ceil((lod * shadowatlaspacker.w) / SHADOWATLAS_SIZE)), 1, shadowatlaspacker.w / w);
@@ -2668,7 +2633,6 @@ void packlights()
             float prec = smprec, lod;
             int w, h;
             if(l.spot) { w = 1; h = 1; const vec2 &sc = sincos360[l.spot]; prec = sc.y/sc.x; lod = smspotprec; }
-            else if(smtetra) { w = 2; h = 1; lod = smtetraprec; }
             else { w = 3; h = 2; lod = smcubeprec; }
             lod *= clamp(l.radius * prec / sqrtf(max(1.0f, l.dist/l.radius)), float(smminsize), float(smmaxsize));
             int size = clamp(int(ceil((lod * shadowatlaspacker.w) / SHADOWATLAS_SIZE)), 1, shadowatlaspacker.w / w);
@@ -3090,18 +3054,9 @@ int calcshadowinfo(const extentity &e, vec &origin, float &radius, vec &spotloc,
     }
     else
     {
-        if(smtetra)
-        {
-            type = SM_TETRA;
-            w = 2;
-            lod = smtetraprec;
-        }
-        else
-        {
-            type = SM_CUBEMAP;
-            w = 3;
-            lod = smcubeprec;
-        }
+        type = SM_CUBEMAP;
+        w = 3;
+        lod = smcubeprec;
         border = smfilter > 2 ? smborder2 : smborder;
         spotloc = e.o;
         spotangle = 0;
@@ -3136,17 +3091,9 @@ void rendershadowmaps()
         int border, sidemask;
         if(l.spot)
         {
-            if(shadowmapping == SM_TETRA && smtetraclip) glDisable(GL_CLIP_PLANE0);
             shadowmapping = SM_SPOT;
             border = 0;
             sidemask = 1;
-        }
-        else if(smtetra)
-        {
-            if(shadowmapping != SM_TETRA && smtetraclip) glEnable(GL_CLIP_PLANE0);
-            shadowmapping = SM_TETRA;
-            border = smfilter > 2 ? smborder2 : smborder;
-            sidemask = smsidecull ? cullfrustumtetra(l.o, l.radius, sm.size, border) : 0xF;
         }
         else
         {
@@ -3176,11 +3123,6 @@ void rendershadowmaps()
         if(smcache)
         {
             int dynmask = smcache <= 1 ? batcheddynamicmodels() : 0;
-            if(shadowmapping == SM_TETRA && !smtetraclear)
-            {
-                if(dynmask&0x3) dynmask |= 0x3;
-                if(dynmask&0xC) dynmask |= 0xC;
-            }
             cached = sm.cached;
             if(cached)
             {
@@ -3238,73 +3180,6 @@ void rendershadowmaps()
             if(mesh) rendershadowmesh(mesh); else rendershadowmapworld();
             rendermodelbatches();
         }
-        else if(shadowmapping == SM_TETRA)
-        {
-            if(!cachemask)
-            {
-                glScissor(sm.x + (sidemask & 0x3 ? 0 : sm.size), sm.y, sidemask & 0x3 && sidemask & 0xC ? 2*sm.size : sm.size, sm.size);
-                glClear(GL_DEPTH_BUFFER_BIT);
-            }
-            loop(side, 4) if(sidemask&(1<<side))
-            {
-                int sidex = (side>>1)*sm.size;
-                if(!(side&1) || !(sidemask&(1<<(side-1))))
-                {
-                    glViewport(sm.x + sidex, sm.y, sm.size, sm.size);
-                    glScissor(sm.x + sidex, sm.y, sm.size, sm.size);
-                    if(cachemask && (!smtetraclear || (sidemask&(3<<(side&~1))) == (3<<(side&~1)))) glClear(GL_DEPTH_BUFFER_BIT);
-                }
-
-                if(cachemask && smtetraclear && (sidemask&(3<<(side&~1))) != (3<<(side&~1)))
-                {
-                    if(smtetraclip) glDisable(GL_CLIP_PLANE0);
-                    if(smpolyfactor || smpolyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
-                    glDisable(GL_CULL_FACE);
-                    glDepthFunc(GL_ALWAYS);
-
-                    SETSHADER(tetraclear);
-                    glBegin(GL_TRIANGLES);
-                    switch(side)
-                    {
-                    case 0: glVertex3f(1, 1, 1); glVertex3f(-1, 1, 1); glVertex3f(1, -1, 1); break;
-                    case 1: glVertex3f(-1, -1, 1); glVertex3f(-1, 1, 1); glVertex3f(1, -1, 1); break;
-                    case 2: glVertex3f(1, -1, 1); glVertex3f(-1, -1, 1); glVertex3f(1, 1, 1); break;
-                    case 3: glVertex3f(-1, 1, 1); glVertex3f(-1, -1, 1); glVertex3f(1, 1, 1); break;
-                    }
-                    glEnd();
-
-                    glDepthFunc(GL_LESS);
-                    glEnable(GL_CULL_FACE);
-                    if(smpolyfactor || smpolyoffset) glEnable(GL_POLYGON_OFFSET_FILL);
-                    if(smtetraclip) glEnable(GL_CLIP_PLANE0);
-                }
-
-                if(smtetraclip)
-                {
-                    plane tetraclip(-tetrashadowviewmatrix[side][2]/smprojmatrix[0],
-                                    -tetrashadowviewmatrix[side][6]/smprojmatrix[5],
-                                    smtetraborder/(0.5f*sm.size)/smprojmatrix[14],
-                                    smtetraborder/(0.5f*sm.size)/smprojmatrix[14]*-smprojmatrix[10]/smprojmatrix[11]);
-                    if(glslversion >= 130) GLOBALPARAM(tetraclip, (tetraclip));
-                    else
-                    {
-                        glLoadIdentity();
-                        GLdouble clipplane[4] = { tetraclip.x, tetraclip.y, tetraclip.z, tetraclip.offset };
-                        glClipPlane(GL_CLIP_PLANE0, clipplane);
-                    }
-                }
-
-                smviewmatrix.mul(tetrashadowviewmatrix[side], lightmatrix);
-                glLoadMatrixf(smviewmatrix.v);
-
-                glCullFace((side>>1) ^ smcullside ? GL_BACK : GL_FRONT);
-
-                shadowside = side;
-
-                if(mesh) rendershadowmesh(mesh); else rendershadowmapworld();
-                rendermodelbatches();
-            }
-        }
         else
         {
             if(!cachemask)
@@ -3338,7 +3213,6 @@ void rendershadowmaps()
         clearbatchedmapmodels();
     }
 
-    if(shadowmapping == SM_TETRA && smtetraclip) glDisable(GL_CLIP_PLANE0);
     if(polyfactor || polyoffset) glDisable(GL_POLYGON_OFFSET_FILL);
 
     shadowmapping = 0;

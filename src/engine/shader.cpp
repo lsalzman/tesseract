@@ -738,41 +738,6 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     }
 }
 
-static void gentetraclipshader(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps)
-{
-    const char *vspragma = strstr(vs, "#pragma CUBE2_tetraclip");
-    if(!vspragma) return;
-    static const int pragmalen = strlen("#pragma CUBE2_tetraclip");
-    if(glslversion >= 130)
-    {
-        const char *vsclipparams = "#version 130\nuniform vec4 tetraclip;\n";
-        vsbuf.put(vsclipparams, strlen(vsclipparams));
-    }
-    vsbuf.put(vs, vspragma - vs);
-    vspragma += pragmalen;
-    while(*vspragma && !iscubespace(*vspragma)) vspragma++;
-    vspragma += strspn(vspragma, " \t\v\f");
-    int clen = strcspn(vspragma, "\r\n");
-    const char *vsrest = vspragma + clen;
-    if(clen <= 0) { vspragma = "gl_Position"; clen = strlen(vspragma); }
-    const char *vsclipdef = "\n#define CLIP_VERTEX ";
-    const char *vsclipdist = glslversion >= 130 ?
-         "\ngl_ClipDistance[0] = dot(tetraclip, (CLIP_VERTEX));\n" :
-         "\ngl_ClipVertex = (CLIP_VERTEX);\n";
-    vsbuf.put(vsclipdef, strlen(vsclipdef));
-    vsbuf.put(vspragma, clen);
-    vsbuf.put(vsclipdist, strlen(vsclipdist));
-    vsbuf.put(vsrest, strlen(vsrest)+1); 
-
-    const char *psmain = findglslmain(ps);
-    if(psmain && glslversion >= 130)
-    {
-        const char *psclipparams = "#version 130\n";
-        psbuf.put(psclipparams, strlen(psclipparams));
-        psbuf.put(ps, strlen(ps)+1);
-    }
-}
-
 static void genuniformdefs(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps, Shader *variant = NULL)
 {
     if(variant ? variant->defaultparams.empty() : slotparams.empty()) return;
@@ -905,7 +870,6 @@ void shader(int *type, char *name, char *vs, char *ps)
     }
     GENSHADER(slotparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps));
     GENSHADER(strstr(vs, "#pragma CUBE2_fog") || strstr(ps, "#pragma CUBE2_fog"), genfogshader(vsbuf, psbuf, vs, ps));
-    GENSHADER(strstr(vs, "#pragma CUBE2_tetraclip"), gentetraclipshader(vsbuf, psbuf, vs, ps));
     Shader *s = newshader(*type, name, vs, ps);
     if(s)
     {
@@ -935,7 +899,6 @@ void variantshader(int *type, char *name, int *row, char *vs, char *ps, int *max
     vector<char> vsbuf, psbuf, vsbak, psbak;
     GENSHADER(s->defaultparams.length(), genuniformdefs(vsbuf, psbuf, vs, ps, s));
     GENSHADER(strstr(vs, "#pragma CUBE2_fog") || strstr(ps, "#pragma CUBE2_fog"), genfogshader(vsbuf, psbuf, vs, ps));
-    GENSHADER(strstr(vs, "#pragma CUBE2_tetraclip"), gentetraclipshader(vsbuf, psbuf, vs, ps));
     Shader *v = newshader(*type, varname, vs, ps, s, *row);
     if(v)
     {

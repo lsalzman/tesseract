@@ -441,7 +441,7 @@ static inline void masktiles(uint *tiles, float sx1, float sy1, float sx2, float
     for(int ty = ty1; ty < ty2; ty++) tiles[ty] |= ((1<<(tx2-tx1))-1)<<tx1;
 }
 
-enum { SM_NONE = 0, SM_REFLECT, SM_CUBEMAP, SM_TETRA, SM_CASCADE, SM_SPOT };
+enum { SM_NONE = 0, SM_REFLECT, SM_CUBEMAP, SM_CASCADE, SM_SPOT };
 
 enum { L_NOSHADOW = 1<<0, L_NODYNSHADOW = 1<<1 };
  
@@ -469,14 +469,10 @@ extern void renderrsmgeom(bool dyntex = false);
 extern void renderradiancehints();
 extern void clearradiancehintscache();
 
-extern int calcbbtetramask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcbbsidemask(const vec &bbmin, const vec &bbmax, const vec &lightpos, float lightradius, float bias);
 extern int calcspheresidemask(const vec &p, float radius, float bias);
-extern int calcspheretetramask(const vec &p, float radius, float bias);
 extern int calctrisidemask(const vec &p1, const vec &p2, const vec &p3, float bias);
-extern int calctritetramask(const vec &p1, const vec &p2, const vec &p3, float bias);
 extern int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border);
-extern int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border);
 extern int calcbbcsmsplits(const ivec &bbmin, const ivec &bbmax);
 extern int calcspherecsmsplits(const vec &center, float radius);
 extern int calcbbrsmsplits(const ivec &bbmin, const ivec &bbmax);

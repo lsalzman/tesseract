@@ -665,45 +665,6 @@ int calcbbsidemask(const ivec &bbmin, const ivec &bbmax, const vec &lightpos, fl
     return mask;
 }
 
-int calcbbtetramask(const ivec &bbmin, const ivec &bbmax, const vec &lightpos, float lightradius, float bias)
-{
-    // top 1: +1, +1, +1
-    // top 2: -1, -1, +1
-    // bot 1: +1, -1, -1,
-    // bot 2: -1, +1, -1
-
-    vec pmin = bbmin.tovec().sub(lightpos).div(lightradius), pmax = bbmax.tovec().sub(lightpos).div(lightradius);
-    int mask = 0xF;
-
-    bias *= 2;
-
-    // +x,+y top split, no bias
-    if(pmin.x + pmin.y > 0) mask &= ~(1<<1);
-    else if(pmax.x + pmax.y < 0) mask &= ~(1<<0);
-
-    // +x,-y bottom split, no bias
-    if(pmin.x - pmax.y > 0) mask &= ~(1<<3);
-    else if(pmax.x - pmin.y < 0) mask &= ~(1<<2);
-
-    // +x,-y,+z % +x,+y,-z = +y,+z top 1/bottom 1 split
-    if(pmin.y + pmin.z > bias) mask &= ~(1<<2);
-    else if(pmax.y + pmax.z < -bias) mask &= ~(1<<0);
-
-    // +x,+y,-z % -x,+y,+z = +x,+z top 1/bottom 2 split
-    if(pmin.x + pmin.z > bias) mask &= ~(1<<3);
-    else if(pmax.x + pmax.z < -bias) mask &= ~(1<<0);
-
-    // -x,-y,-z % +x,-y,+z = -x,+z top 2/bottom 1 split
-    if(pmin.z - pmax.x > bias) mask &= ~(1<<2);
-    else if(pmax.z - pmin.x < -bias) mask &= ~(1<<1);
-
-    // -x,+y,+z % -x,-y,-z = -y,+z top 2/bottom 2 split
-    if(pmin.z - pmax.y > bias) mask &= ~(1<<3);
-    else if(pmax.z - pmin.y < -bias) mask &= ~(1<<1);
-
-    return mask;
-}
-
 int calcspheresidemask(const vec &p, float radius, float bias)
 {
     // p is in the cubemap's local coordinate system
@@ -719,41 +680,6 @@ int calcspheresidemask(const vec &p, float radius, float bias)
     if(ayzn > bias*ayzp + radius) mask &= dyzn < 0 ? ~((1<<2)|(2<<4)) : ~((2<<2)|(1<<4));
     if(azxp > bias*azxn + radius) mask &= dzxp < 0 ? ~((1<<4)|(1<<0)) : ~((2<<4)|(2<<0));
     if(azxn > bias*azxp + radius) mask &= dzxn < 0 ? ~((1<<4)|(2<<0)) : ~((2<<4)|(1<<0));
-    return mask;
-}
-
-int calcspheretetramask(const vec &p, float radius, float bias)
-{
-    // p is in the cubemap's local coordinate system
-    // bias = border/(size - border)
-    int mask = 0xF;
-
-    bias *= 2;
-    radius *= SQRT2;
-
-    // +x,+y top split, no bias
-    float d = p.x + p.y;
-    if(fabs(d) > radius) mask &= d >= 0 ? ~(1<<1) : ~(1<<0);
-    // +x,-y bottom split, no bias
-    d = p.x - p.y;
-    if(fabs(d) > radius) mask &= d >= 0 ? ~(1<<3) : ~(1<<2);
-
-    // +x,-y,+z % +x,+y,-z = +y,+z top 1/bottom 1 split
-    d = p.y + p.z;
-    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<2) : ~(1<<0);
-
-    // +x,+y,-z % -x,+y,+z = +x,+z top 1/bottom 2 split
-    d = p.x + p.z;
-    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<3) : ~(1<<0);
-
-    // -x,-y,-z % +x,-y,+z = -x,+z top 2/bottom 1 split
-    d = p.z - p.x;
-    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<2) : ~(1<<1);
-
-    // -x,+y,+z % -x,-y,-z = -y,+z top 2/bottom 2 split
-    d = p.z - p.y;
-    if(fabs(d) > radius + bias) mask &= d >= 0 ? ~(1<<3) : ~(1<<1);
-
     return mask;
 }
 
@@ -807,80 +733,6 @@ int calctrisidemask(const vec &p1, const vec &p2, const vec &p3, float bias)
     return mask;
 }
 
-int calctritetramask(const vec &p1, const vec &p2, const vec &p3, float bias)
-{
-    // p1, p2, p3 are in the cubemap's local coordinate system
-    // bias = border/(size - border)
-    int mask = 0xF;
-
-    bias *= 2;
-
-    // +x,+y top split, no bias
-    float d1 = p1.x + p1.y, d2 = p2.x + p2.y, d3 = p3.x + p3.y;
-    if(d1 > 0)
-    {
-        if(d2 > 0 && d3 > 0) mask &= ~(1<<1);
-    }
-    else if(d1 < 0 && d2 < 0 && d3 < 0) mask &= ~(1<<0);
-
-    // +x,-y bottom split, no bias
-    d1 = p1.x - p1.y, d2 = p2.x - p2.y, d3 = p3.x - p3.y;
-    if(d1 > 0)
-    {
-        if(d2 > 0 && d3 > 0) mask &= ~(1<<3);
-    }
-    else if(d1 < 0 && d2 < 0 && d3 < 0) mask &= ~(1<<2);
-
-    // +x,-y,+z % +x,+y,-z = +y,+z top 1/bottom 1 split
-    d1 = p1.y + p1.z, d2 = p2.y + p2.z, d3 = p3.y + p3.z;
-    if(d1 > bias)
-    {
-         if(d2 > bias && d3 > bias) mask &= ~(1<<2);
-    }
-    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<0);
-
-    // +x,+y,-z % -x,+y,+z = +x,+z top 1/bottom 2 split
-    d1 = p1.x + p1.z, d2 = p2.x + p2.z, d3 = p3.x + p3.z;
-    if(d1 > bias)
-    {
-        if(d2 > bias && d3 > bias) mask &= ~(1<<3);
-    }
-    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<0);
-
-    // -x,-y,-z % +x,-y,+z = -x,+z top 2/bottom 1 split
-    d1 = p1.z - p1.x, d2 = p2.z - p2.x, d3 = p3.z - p3.x;
-    if(d1 > bias)
-    {
-        if(d2 > bias && d3 > bias) mask &= ~(1<<2);
-    }
-    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<1);
-
-    // -x,+y,+z % -x,-y,-z = -y,+z top 2/bottom 2 split
-    d1 = p1.z - p1.y, d2 = p2.z - p2.y, d3 = p3.z - p3.y;
-    if(d1 > bias)
-    {
-        if(d2 > bias && d3 > bias) mask &= ~(1<<3);
-    }
-    else if(d1 < -bias && d2 < -bias && d3 < -bias) mask &= ~(1<<1);
-
-    return mask;
-}
-
-static inline int calctrisidemask(const vec &v0, const vec &v1, const vec &v2, const vec &lightorigin, float lightradius, float bias)
-{
-    return calctrisidemask(vec(v0).sub(lightorigin).div(lightradius),
-                           vec(v1).sub(lightorigin).div(lightradius),
-                           vec(v2).sub(lightorigin).div(lightradius),
-                           bias);
-}
-
-static inline int calctritetramask(const vec &v0, const vec &v1, const vec &v2, const vec &lightorigin, float lightradius, float bias)
-{
-    return calctritetramask(vec(v0).sub(lightorigin).div(lightradius),
-                            vec(v1).sub(lightorigin).div(lightradius),
-                            vec(v2).sub(lightorigin).div(lightradius),
-                            bias);
-}
 
 int cullfrustumsides(const vec &lightpos, float lightradius, float size, float border)
 {
@@ -940,39 +792,6 @@ int cullfrustumsides(const vec &lightpos, float lightradius, float size, float b
     return sides & masks[0] & masks[1] & masks[2] & masks[3] & masks[4] & masks[5];
 }
 
-int cullfrustumtetra(const vec &lightpos, float lightradius, float size, float border)
-{
-    int outside[5] = { 0, 0, 0, 0 };
-    loopi(4) if(vfcP[i].dist(lightpos) < 0) outside[4] |= 1<<i;
-    float dist = vfcP[4].dist(lightpos);
-    if(dist < 0) outside[4] |= 1<<4; 
-    if(dist > vfcDfog) outside[4] |= 1<<5;
-    if(!outside[4]) return 0xF;
-
-    float pr = SQRT3*lightradius;
-    vec p[4] =
-    {
-        vec(lightpos).add(vec(-pr, pr, pr)),
-        vec(lightpos).add(vec(pr, -pr, pr)),
-        vec(lightpos).add(vec(pr, pr, -pr)),
-        vec(lightpos).add(vec(-pr, -pr, -pr))
-    }; 
-    loopk(4)
-    {
-        loopi(4) if(vfcP[i].dist(p[k]) < 0) outside[k] |= 1<<i;
-        float dist = vfcP[k].dist(p[k]);
-        if(dist < 0) outside[k] |= 1<<4; 
-        if(dist > vfcDfog) outside[k] |= 1<<5;
-    }
-
-    int mask = 0xF;
-    if(outside[4] & outside[0] & outside[1] & outside[2]) mask &= ~(1<<0);
-    if(outside[4] & outside[0] & outside[1] & outside[3]) mask &= ~(1<<1);
-    if(outside[4] & outside[1] & outside[2] & outside[3]) mask &= ~(1<<2);
-    if(outside[4] & outside[0] & outside[2] & outside[3]) mask &= ~(1<<3);
-    return mask;
-}
-
 VAR(smbbcull, 0, 1, 1);
 VAR(smdistcull, 0, 1, 1);
 VAR(smnodraw, 0, 0, 1);
@@ -1010,23 +829,6 @@ void sortshadowvas()
         *last = va;
         while(va->rnext) va = va->rnext;
         last = &va->rnext;
-    }
-}
-
-void findtetrashadowvas(vector<vtxarray *> &vas)
-{
-    loopv(vas)
-    {
-        vtxarray &v = *vas[i];
-        float dist = vadist(&v, shadoworigin);
-        if(dist < shadowradius || !smdistcull)
-        {
-            v.shadowmask = !smbbcull ? 0x3F : (v.children.length() || v.mapmodels.length() ? 
-                                calcbbtetramask(v.bbmin, v.bbmax, shadoworigin, shadowradius, shadowbias) :
-                                calcbbtetramask(v.geommin, v.geommax, shadoworigin, shadowradius, shadowbias));
-            addshadowva(&v, dist);
-            if(v.children.length()) findtetrashadowvas(v.children);
-        }
     }
 }
 
@@ -1107,7 +909,6 @@ void findshadowvas()
     {
         case SM_REFLECT: findrsmshadowvas(varoot); break;
         case SM_CUBEMAP: findshadowvas(varoot); break;
-        case SM_TETRA: findtetrashadowvas(varoot); break;
         case SM_CASCADE: findcsmshadowvas(varoot); break;
         case SM_SPOT: findspotshadowvas(varoot); break;
     }
@@ -1116,8 +917,7 @@ void findshadowvas()
 
 void rendershadowmapworld()
 {
-    if(shadowmapping == SM_TETRA) SETSHADER(tetraworld);
-    else SETSHADER(shadowmapworld);
+    SETSHADER(shadowmapworld);
 
     glEnableClientState(GL_VERTEX_ARRAY);
 
@@ -1184,7 +984,6 @@ void findshadowmms()
                     if(!calcbbcsmsplits(oe->bbmin, oe->bbmax))
                         continue;
                     break;
-                case SM_TETRA:
                 case SM_CUBEMAP: 
                     if(smdistcull && shadoworigin.dist_to_bb(oe->bbmin, oe->bbmax) >= shadowradius)
                         continue;
@@ -2281,7 +2080,6 @@ static void genshadowmeshtris(shadowmesh &m, int sides, shadowdrawinfo draws[6],
         switch(m.type)
         {
             case SM_SPOT: sidemask = bbinsidespot(shadoworigin, shadowdir, shadowspot, vec(v0).min(v1).min(v2), vec(v0).max(v1).max(v2).add(1)) ? 1 : 0; break;
-            case SM_TETRA: sidemask = calctritetramask(l0.div(shadowradius), l1.div(shadowradius), l2.div(shadowradius), shadowbias); break;
             case SM_CUBEMAP: sidemask = calctrisidemask(l0.div(shadowradius), l1.div(shadowradius), l2.div(shadowradius), shadowbias); break;
         }
         if(!sidemask) continue;
@@ -2315,7 +2113,7 @@ static void genshadowmesh(int idx, extentity &e)
 
     findshadowvas();
 
-    int sides = m.type == SM_SPOT ? 1 : (m.type == SM_TETRA ? 4 : 6);
+    int sides = m.type == SM_SPOT ? 1 : 6;
     shadowdrawinfo draws[6];
     for(vtxarray *va = shadowva; va; va = va->rnext)
     {
@@ -2375,8 +2173,7 @@ void rendershadowmesh(shadowmesh *m)
     int draw = m->draws[shadowside];
     if(draw < 0) return;
 
-    if(shadowmapping == SM_TETRA) SETSHADER(tetraworld);
-    else SETSHADER(shadowmapworld);
+    SETSHADER(shadowmapworld);
 
     glEnableClientState(GL_VERTEX_ARRAY);
 
