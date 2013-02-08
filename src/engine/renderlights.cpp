@@ -6,7 +6,6 @@ int scalew = -1, scaleh = -1;
 GLuint scalefbo[2] = { 0, 0 }, scaletex[2] = { 0, 0 };
 GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[6] = { 0, 0, 0, 0, 0, 0 }, bloomtex[6] = { 0, 0, 0, 0, 0, 0 };
 int hdrclear = 0;
-GLuint infbo = 0, intex[2] = { 0, 0 }, indepth = 0, inw = -1, inh = -1;
 GLuint refractfbo = 0, refracttex = 0;
 GLenum bloomformat = 0, hdrformat = 0;
 bool hdrfloat = false;
@@ -316,83 +315,6 @@ void renderao()
     endtimer(aotimer);
 }
 
-extern int inferprec, inferdepth;
-
-void setupinferred(int w, int h)
-{
-    inw = (w+1)/2;
-    inh = (h+1)/2;
-
-    loopi(2) if(!intex[i]) glGenTextures(1, &intex[i]);
-    if(!infbo) glGenFramebuffers_(1, &infbo);
-
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, infbo);
-
-    GLenum infmt = inferprec >= 3 && hasTF ? GL_RGB16F_ARB : (inferprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (inferprec >= 1 ? GL_RGB10 : GL_RGB));
-
-    loopi(2)
-    {
-        createtexture(intex[i], inw, inh, NULL, 3, 0, infmt, GL_TEXTURE_RECTANGLE_ARB);
-        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-        GLfloat border[4] = { 0, 0, 0, 0 };
-        glTexParameterfv(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_BORDER_COLOR, border);
-
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_TEXTURE_RECTANGLE_ARB, intex[i], 0);
-    }
-
-    static const GLenum drawbufs[2] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT };
-    glDrawBuffers_(2, drawbufs);
-
-    if(inferdepth)
-    {
-        if(!indepth) glGenRenderbuffers_(1, &indepth);
-        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, indepth);
-        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, inw, inh);
-        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
-        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, indepth);
-    }
-
-    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
-        fatal("failed allocating inferred lighting buffer!");
-
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
-
-}
-
-void cleanupinferred()
-{
-    if(infbo) { glDeleteFramebuffers_(1, &infbo); infbo = 0; }
-    loopi(2) if(intex[i]) { glDeleteTextures(1, &intex[i]); intex[i] = 0; }
-    if(indepth) { glDeleteRenderbuffers_(1, &indepth); indepth = 0; }
-    inw = inh = -1;
-}
-
-VARFP(inferlights, 0, 0, 1, { cleardeferredlightshaders(); cleanupinferred(); });
-FVAR(inferthreshold, -1e3f, 0.15f, 1e3f);
-FVAR(inferspecthreshold, 0, 0.25f, 1e3f);
-VAR(inferskiplights, 0, 0, 1);
-VARFP(inferprec, 0, 2, 3, cleanupinferred());
-VARF(inferdepth, 0, 1, 1, cleanupinferred());
-VAR(inferclear, 0, 0, 1);
-VAR(infertransparent, 0, 0, 1);
-VAR(debuginferred, 0, 0, 2);
-
-void viewinferred()
-{
-    int w = inw, h = inh;
-    rectshader->set();
-    glColor3f(1, 1, 1);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, intex[debuginferred > 1 ? 1 : 0]);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, inh); glVertex2i(0, 0);
-    glTexCoord2f(inw, inh); glVertex2i(w, 0);
-    glTexCoord2f(0, 0); glVertex2i(0, h);
-    glTexCoord2f(inw, 0); glVertex2i(w, h);
-    glEnd();
-    notextureshader->set();
-}
-
 void cleanupscale()
 {
     loopi(2) if(scalefbo[i]) { glDeleteFramebuffers_(1, &scalefbo[i]); scalefbo[i] = 0; }
@@ -623,7 +545,6 @@ void setupgbuffer(int w, int h)
 
     cleanupbloom();
     cleanupao();
-    cleanupinferred();
     cleanupaa();
 }
 
@@ -1752,14 +1673,12 @@ void radiancehints::bindparams()
     GLOBALPARAM(rhnudge, (rhnudge*step));
 }
 
-static Shader *deferredlightshader = NULL, *deferredminimapshader = NULL, *inferredprelightshader = NULL, *inferredlightshader = NULL;
+static Shader *deferredlightshader = NULL, *deferredminimapshader = NULL;
 
 void cleardeferredlightshaders()
 {
     deferredlightshader = NULL;
     deferredminimapshader = NULL;
-    inferredprelightshader = NULL;
-    inferredlightshader = NULL;
 }
 
 Shader *loaddeferredlightshader(const char *type = NULL)
@@ -1806,12 +1725,6 @@ Shader *loaddeferredlightshader(const char *type = NULL)
 void loaddeferredlightshaders()
 {
     deferredlightshader = loaddeferredlightshader();
-    if(inferlights && ((gdepthstencil && hasDS) || gstencil))
-    {
-        inferredprelightshader = loaddeferredlightshader("i");
-        inferredlightshader = useshaderbyname("inferredlight");
-    }
-    else inferredprelightshader = inferredlightshader = NULL;
 }
 
 static inline bool sortlights(int x, int y)
@@ -1945,27 +1858,13 @@ FVAR(lightradiustweak, 1, 1.11f, 2);
 VAR(lighttilestrip, 0, 1, 1);
 VAR(lighttilestripthreshold, 1, 8, 8);
 
-void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL, int stencilmask = 0)
+void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL, int stencilmask = 0)
 {
-    Shader *s = drawtex == DRAWTEX_MINIMAP ? deferredminimapshader : (infer > 1 ? inferredprelightshader : deferredlightshader);
+    Shader *s = drawtex == DRAWTEX_MINIMAP ? deferredminimapshader : deferredlightshader;
     if(!s || s == nullshader) return;
 
-    bool blend = false;
-    if(infer > 1)
-    {
-        glBlendFunc(GL_ONE, GL_ONE);
-        if(inferclear)
-        {
-            glEnable(GL_BLEND);
-            blend = true;
-        }
-    }
-    else
-    {
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_BLEND);
-        blend = true;
-    }
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
     glEnable(GL_SCISSOR_TEST);
 
     bool depth = true;
@@ -1992,15 +1891,6 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
         glActiveTexture_(GL_TEXTURE6_ARB + i);
         glBindTexture(GL_TEXTURE_3D_EXT, rhtex[i]);
     }
-    if(infer == 1)
-    {
-        loopi(2)
-        {
-            glActiveTexture_(GL_TEXTURE9_ARB + i);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, intex[i]);
-        }
-        GLOBALPARAM(inferthreshold, (inferthreshold*ldrscale, 1/inferspecthreshold));
-    }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
@@ -2022,7 +1912,7 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
             GLOBALPARAM(aoparams, (aomin, 1.0f-aomin, aosunmin, 1.0f-aosunmin));
         }
     }
-    float lightscale = (infer > 1 ? 1.0f : 2.0f)*ldrscaleb;
+    float lightscale = 2.0f*ldrscaleb;
     if(editmode && fullbright)
         GLOBALPARAM(lightscale, (fullbrightlevel*lightscale, fullbrightlevel*lightscale, fullbrightlevel*lightscale, 255*lightscale));
     else
@@ -2057,40 +1947,11 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
 
     int btx1, bty1, btx2, bty2;
     calctilebounds(bsx1, bsy1, bsx2, bsy2, btx1, bty1, btx2, bty2);
-    if(infer == 1)
-    {
-        int tx1 = max(int(floor((bsx1*0.5f+0.5f)*vieww)), 0), ty1 = max(int(floor((bsy1*0.5f+0.5f)*viewh)), 0),
-            tx2 = min(int(ceil((bsx2*0.5f+0.5f)*vieww)), vieww), ty2 = min(int(ceil((bsy2*0.5f+0.5f)*viewh)), viewh);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-        if(stencilmask)
-        {
-            glStencilFunc(GL_EQUAL, stencilmask|0x10, stencilmask);
-            glStencilMask(0x10);
-        }
-        else
-        {
-            glStencilFunc(GL_ALWAYS, 0x10, 0x10);
-            glEnable(GL_STENCIL_TEST);
-        }
-        if(depthtestlights && depth) { glDisable(GL_DEPTH_TEST); depth = false; }
-        glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
-        inferredlightshader->set();
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f((vieww+1)/2, 0); glVertex3f( 1, -1, -1);
-        glTexCoord2f(0, 0); glVertex3f(-1, -1, -1);
-        glTexCoord2f((vieww+1)/2, (viewh+1)/2); glVertex3f( 1,  1, -1);
-        glTexCoord2f(0, (viewh+1)/2); glVertex3f(-1,  1, -1);
-        glEnd();
-        glStencilFunc(GL_EQUAL, stencilmask, stencilmask|0x10);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-        if(stencilmask) glStencilMask(~0);
-    }
 
     if(sunpass)
     {
         int tx1 = max(int(floor((bsx1*0.5f+0.5f)*vieww)), 0), ty1 = max(int(floor((bsy1*0.5f+0.5f)*viewh)), 0),
             tx2 = min(int(ceil((bsx2*0.5f+0.5f)*vieww)), vieww), ty2 = min(int(ceil((bsy2*0.5f+0.5f)*viewh)), viewh);
-        if(infer > 1) { tx1 /= 2; ty1 /= 2; tx2 = (tx2+1)/2; ty2 = (ty2+1)/2; }
         s->set();
         glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
         if(depthtestlights && depth) { glDisable(GL_DEPTH_TEST); depth = false; }
@@ -2113,8 +1974,6 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
 
     if(!lighttilebatch)
     {
-        if(!blend) { glEnable(GL_BLEND); blend = true; }
-
         glMatrixMode(GL_PROJECTION);
         glPopMatrix();
         glMatrixMode(GL_MODELVIEW);
@@ -2190,7 +2049,6 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
 
             int tx1 = int(floor((sx1*0.5f+0.5f)*vieww)), ty1 = int(floor((sy1*0.5f+0.5f)*viewh)),
                 tx2 = int(ceil((sx2*0.5f+0.5f)*vieww)), ty2 = int(ceil((sy2*0.5f+0.5f)*viewh));
-            if(infer > 1) { tx1 /= 2; ty1 /= 2; tx2 = (tx2+1)/2; ty2 = (ty2+1)/2; }
             glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
 
             if(hasDBT && depthtestlights > 1) glDepthBounds_(l.sz1*0.5f + 0.5f, l.sz2*0.5f + 0.5f);
@@ -2238,7 +2096,7 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     }
-    else if(infer != 1 || !inferskiplights) for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y])
+    else for(int y = bty1; y < bty2; y++) if(!tilemask || tilemask[y])
     {
         int skips[LIGHTTILE_MAXW] = {0};
         for(int x = btx1; x < btx2; x++) if(!tilemask || tilemask[y]&(1<<x))
@@ -2331,15 +2189,6 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
                     continue;
                 }
 
-                if(infer > 1 && !inferclear)
-                {
-                    if(n && (i || sunpass))
-                    {
-                        if(!blend) { glEnable(GL_BLEND); blend = true; }
-                    }
-                    else if(blend) { glDisable(GL_BLEND); blend = false; }
-                }
-
                 if(n)
                 {
                     s->setvariant(n-1, (shadowmap ? 1 : 0) + (i || sunpass ? 2 : 0) + (spotlight ? 4 : 0));
@@ -2369,7 +2218,6 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
                         ty1 = max(int(floor((sy1*0.5f+0.5f)*viewh)), ((y*lighttileviewh)/lighttileh)*lighttilealignh),
                         tx2 = min(int(ceil((sx2*0.5f+0.5f)*vieww)), min((((x+striplength)*lighttilevieww)/lighttilew)*lighttilealignw, vieww)),
                         ty2 = min(int(ceil((sy2*0.5f+0.5f)*viewh)), min((((y+1)*lighttileviewh)/lighttileh)*lighttilealignh, viewh));
-                    if(infer > 1) { tx1 /= 2; ty1 /= 2; tx2 = (tx2+1)/2; ty2 = (ty2+1)/2; }
                     glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
 
                     if(hasDBT && depthtestlights > 1) glDepthBounds_(sz1*0.5f + 0.5f, sz2*0.5f + 0.5f);
@@ -2400,7 +2248,7 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
     }
 
     glDisable(GL_SCISSOR_TEST);
-    if(blend) glDisable(GL_BLEND);
+    glDisable(GL_BLEND);
 
     if(!depthtestlights) glEnable(GL_DEPTH_TEST);
     else
@@ -2412,8 +2260,6 @@ void renderlights(int infer = 0, float bsx1 = -1, float bsy1 = -1, float bsx2 = 
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     glMatrixMode(GL_MODELVIEW);
-
-    if(infer == 1 && !stencilmask) glDisable(GL_STENCIL_TEST);
 }
 
 VAR(oqlights, 0, 1, 1);
@@ -3410,48 +3256,14 @@ void rendertransparent()
 
         if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        if(inferredprelightshader && ((gdepthstencil && hasDS) || gstencil) && infertransparent)
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+        if((gdepthstencil && hasDS) || gstencil)
         {
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, infbo);
-            glViewport(0, 0, (vieww+1)/2, (viewh+1)/2);
-
-            glDisable(GL_STENCIL_TEST);
-
-            if(inferclear)
-            {
-                bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
-                if(scissor)
-                {
-                    int x1 = int(floor((sx1*0.5f+0.5f)*vieww)), y1 = int(floor((sy1*0.5f+0.5f)*viewh)),
-                        x2 = int(ceil((sx2*0.5f+0.5f)*vieww)), y2 = int(ceil((sy2*0.5f+0.5f)*viewh));
-                    x1 /= 2; y1 /= 2; x2 = (x2+1)/2; y2 = (y2+1)/2;
-                    glEnable(GL_SCISSOR_TEST);
-                    glScissor(x1, y1, x2 - x1, y2 - y1);
-                }
-                glClearColor(0, 0, 0, 0);
-                glClear(GL_COLOR_BUFFER_BIT);
-                if(scissor) glDisable(GL_SCISSOR_TEST);
-            }
-
-            renderlights(2, sx1, sy1, sx2, sy2, tiles, 1<<layer);
-
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
-            glViewport(0, 0, vieww, viewh);
-
-            glEnable(GL_STENCIL_TEST);
-            renderlights(1, sx1, sy1, sx2, sy2, tiles, 1<<layer);
+            glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
-        else
-        {
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
-            if((gdepthstencil && hasDS) || gstencil)
-            {
-                glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
-                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-            }
 
-            renderlights(0, sx1, sy1, sx2, sy2, tiles);
-        }
+        renderlights(sx1, sy1, sx2, sy2, tiles);
     }
 
     if((gdepthstencil && hasDS) || gstencil) glDisable(GL_STENCIL_TEST);
@@ -3639,35 +3451,6 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
 void shadegbuffer()
 {
     GLERROR;
-
-    bool shouldinfer = inferredprelightshader && ((gdepthstencil && hasDS) || gstencil);
-    if(shouldinfer)
-    {
-        timer *intimer = begintimer("inferred lighting");
-
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, infbo);
-        glViewport(0, 0, (vieww+1)/2, (viewh+1)/2);
-
-        if(inferclear)
-        {
-            glClearColor(0, 0, 0, 0);
-            glClear(GL_COLOR_BUFFER_BIT | (inferdepth ? GL_DEPTH_BUFFER_BIT : 0));
-        }
-
-        if(inferdepth)
-        {
-            if(!inferclear) glClear(GL_DEPTH_BUFFER_BIT);
-
-            extern void renderinferdepth();
-            renderinferdepth();
-        }
-
-        renderlights(2);
-
-        endtimer(intimer);
-    }
-
-    GLERROR;
     timer *shcputimer = begintimer("deferred shading", false);
     timer *shtimer = begintimer("deferred shading");
 
@@ -3682,7 +3465,7 @@ void shadegbuffer()
     }
     drawskybox(farplane);
 
-    renderlights(shouldinfer ? 1 : 0);
+    renderlights();
     GLERROR;
 
     endtimer(shtimer);
@@ -3694,7 +3477,6 @@ void setupframe(int w, int h)
     setupgbuffer(w, h);
     if(hdr && (bloomw < 0 || bloomh < 0)) setupbloom(gw, gh);
     if(ao && (aow < 0 || aoh < 0)) setupao(gw, gh);
-    if(inferlights && ((gdepthstencil && hasDS) || gstencil) && !infbo) setupinferred(gw, gh);
     if(!shadowatlasfbo) setupshadowatlas();
     if(sunlight && csmshadowmap && gi && giscale && gidist && !rhfbo) setupradiancehints();
     if(!deferredlightshader) loaddeferredlightshaders();
@@ -3712,7 +3494,6 @@ bool debuglights()
     else if(debuglightscissor) viewlightscissor();
     else if(debugrsm) viewrsm();
     else if(debugrh) viewrh();
-    else if(debuginferred) viewinferred();
     else if(!debugaa()) return false;
     return true;
 }
@@ -3722,7 +3503,6 @@ void cleanuplights()
     cleanupgbuffer();
     cleanupbloom();
     cleanupao();
-    cleanupinferred();
     cleanupshadowatlas();
     cleanupradiancehints();
     cleanuplightsphere();
