@@ -1085,8 +1085,9 @@ static inline void setsmcomparemode() // use embedded shadow cmp
     glTexParameteri(shadowatlastarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 }
 
-static inline bool usegatherforsm() { return smfilter > 1 && smgather && (hasTG || hasT4); }
-static inline bool usesmcomparemode() { return !usegatherforsm() || (hasTG && hasGPU5); }
+extern int usetexgather;
+static inline bool usegatherforsm() { return smfilter > 1 && smgather && (hasTG || hasT4) && usetexgather; }
+static inline bool usesmcomparemode() { return !usegatherforsm() || (hasTG && hasGPU5 && usetexgather > 1); }
 
 void viewshadowatlas()
 {
