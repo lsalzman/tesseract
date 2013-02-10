@@ -523,6 +523,7 @@ extern void setupaa(int w, int h);
 extern void jitteraa();
 extern bool maskedaa();
 extern void setaavelocityparams();
+extern void setaamask(bool val);
 extern void doaa(GLuint outfbo, void (*resolve)(GLuint, int));
 extern bool debugaa();
 extern void cleanupaa();

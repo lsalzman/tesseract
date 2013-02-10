@@ -3209,8 +3209,7 @@ void rendertransparent()
         }
         else
         {
-            bool aamask = maskedaa();
-            maskgbuffer(aamask ? "cn" : "cng");
+            maskgbuffer(maskedaa() ? "cg" : "cng");
             bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
             if(scissor)
             {
@@ -3221,13 +3220,6 @@ void rendertransparent()
             }
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT);
-            if(aamask)
-            {
-                maskgbuffer("g");
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            } 
             if(scissor) glDisable(GL_SCISSOR_TEST);
             maskgbuffer("cngd");
         }

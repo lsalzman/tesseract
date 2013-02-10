@@ -1,9 +1,9 @@
 #include "engine.h"
 
-extern int tqaamovemask, tqaapack;
+extern int tqaamovemask, tqaamovemaskreduce, tqaapack;
 
 int tqaaframe = 0;
-GLuint tqaaprevtex = 0, tqaacurtex = 0, tqaaprevmask = 0, tqaacurmask = 0, tqaafbo[4] = { 0, 0, 0, 0 };
+GLuint tqaaprevtex = 0, tqaacurtex = 0, tqaamasktex = 0, tqaafbo[3] = { 0, 0, 0 };
 glmatrixf tqaaprevmvp;
 
 void loadtqaashaders()
@@ -23,13 +23,11 @@ void setuptqaa(int w, int h)
     createtexture(tqaacurtex, w, h, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     if(tqaamovemask)
     {
-        if(!tqaaprevmask) glGenTextures(1, &tqaaprevmask);
-        if(!tqaacurmask) glGenTextures(1, &tqaacurmask);
-        int maskw = (w+3)/4, maskh = (h+3)/4;
-        createtexture(tqaaprevmask, maskw, maskh, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
-        createtexture(tqaacurmask, maskw, maskh, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        if(!tqaamasktex) glGenTextures(1, &tqaamasktex);
+        int maskw = (w + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce, maskh = (h + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce;
+        createtexture(tqaamasktex, maskw, maskh, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     }
-    loopi(tqaamovemask ? 4 : 2)
+    loopi(tqaamovemask ? 3 : 2)
     {
         if(!tqaafbo[i]) glGenFramebuffers_(1, &tqaafbo[i]);
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, tqaafbo[i]);
@@ -38,8 +36,7 @@ void setuptqaa(int w, int h)
         {
             case 0: tex = tqaacurtex; break;
             case 1: tex = tqaaprevtex; break;
-            case 2: tex = tqaacurmask; break;
-            case 3: tex = tqaaprevmask; break;
+            case 2: tex = tqaamasktex; break;
         }
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, tex, 0);
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -56,18 +53,20 @@ void cleanuptqaa()
 {
     if(tqaaprevtex) { glDeleteTextures(1, &tqaaprevtex); tqaaprevtex = 0; }
     if(tqaacurtex) { glDeleteTextures(1, &tqaacurtex); tqaacurtex = 0; }
-    if(tqaaprevmask) { glDeleteTextures(1, &tqaaprevmask); tqaaprevmask = 0; }
-    if(tqaacurmask) { glDeleteTextures(1, &tqaacurmask); tqaacurmask = 0; }
-    loopi(4) if(tqaafbo[i]) { glDeleteFramebuffers_(1, &tqaafbo[i]); tqaafbo[i] = 0; }
+    if(tqaamasktex) { glDeleteTextures(1, &tqaamasktex); tqaamasktex = 0; }
+    loopi(3) if(tqaafbo[i]) { glDeleteFramebuffers_(1, &tqaafbo[i]); tqaafbo[i] = 0; }
 
     tqaaframe = 0;
 }
 
 VARFP(tqaa, 0, 0, 1, cleanupaa());
 VARF(tqaapack, 0, 0, 1, cleanupaa());
-FVAR(tqaareproject, 0, 170, 1e6f);
-VARF(tqaamovemask, 0, 1, 1, cleanuptqaa());
-VAR(tqaaquincunx, 0, 1, 1);
+FVAR(tqaareproject, 0, 170, 1e3f);
+FVAR(tqaareprojectscale, 0, 4, 1e3f);
+VARFP(tqaamovemask, 0, 1, 1, cleanuptqaa());
+FVAR(tqaamovemaskscale, 0, 4, 1e3f);
+VARFP(tqaamovemaskreduce, 0, 1, 2, cleanuptqaa());
+VARP(tqaaquincunx, 0, 1, 1);
 
 void setaavelocityparams()
 {
@@ -75,28 +74,37 @@ void setaavelocityparams()
     glMatrixMode(GL_TEXTURE);
     glmatrixf reproject;
     reproject.mul(tqaaframe ? tqaaprevmvp : screenmatrix, worldmatrix);
-    if(tqaaframe) reproject.jitter(tqaaframe&1 ? 0.5f : -0.5f, tqaaframe&1 ? 0.5f : -0.5f);
+    vec2 jitter = tqaaframe&1 ? vec2(0.5f, 0.5f) : vec2(-0.5f, -0.5f);
+    if(tqaaframe) reproject.jitter(jitter.x, jitter.y);
     glLoadMatrixf(reproject.v);
     glMatrixMode(GL_MODELVIEW);
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
-    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel));
+    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
 }
 
 void packtqaa(GLuint packfbo)
 {
     if(tqaamovemask)
     {
-        int maskw = (vieww+3)/4, maskh = (viewh+3)/4;
+        int maskw = (vieww + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce, maskh = (viewh + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce;
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, tqaafbo[2]);
-        glViewport(0, 0, maskw, maskh);
+        glColorMask(~tqaaframe&1, tqaaframe&1, GL_FALSE, GL_FALSE);
         SETSHADER(tqaamaskmovement);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
-        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        screenquad(maskw*4, maskh*4);
-        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glViewport(0, 0, vieww, viewh);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+        if(tqaamovemaskreduce)
+        {
+            glViewport(0, 0, maskw, maskh);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        }
+        screenquad(maskw<<tqaamovemaskreduce, maskh<<tqaamovemaskreduce);
+        if(tqaamovemaskreduce)
+        {
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glViewport(0, 0, vieww, viewh);
+        }
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
 
     if(tqaapack)
@@ -121,28 +129,27 @@ void resolvetqaa(GLuint outfbo)
     if(tqaamovemask)
     {
        glActiveTexture_(GL_TEXTURE3_ARB);
-       glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaacurmask);
-       glActiveTexture_(GL_TEXTURE4_ARB);
-       glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaaframe ? tqaaprevmask : tqaacurmask);
+       glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaamasktex);
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
-    if(tqaamovemask) SETSHADER(tqaaresolvemasked); else SETSHADER(tqaaresolve);
+    if(tqaamovemask) 
+    {
+        SETSHADER(tqaaresolvemasked); 
+        vec2 movemask = vec2(~tqaaframe&1, tqaaframe&1).mul(tqaamovemaskscale);
+        LOCALPARAM(movemask, (movemask.x, movemask.y, 1/float(1<<tqaamovemaskreduce)));
+    }
+    else SETSHADER(tqaaresolve);
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
-    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel));
-    if(!tqaaquincunx) LOCALPARAM(quincunx, (0.0f, 0.0f, 0.0f, 0.0f));
-    else if(tqaaframe&1) LOCALPARAM(quincunx, (0.5f, 0.5f, 0.0f, 0.0f));
-    else LOCALPARAM(quincunx, (0.0f, 0.0f, 0.5f, 0.5f));
-    screenquad(vieww, viewh, 0.25f*vieww, 0.25f*viewh);
+    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
+    vec4 quincunx(0, 0, 0, 0);
+    if(tqaaquincunx) quincunx = tqaaframe&1 ? vec4(0.5f, 0.5f, 0, 0) : vec4(0, 0, 0.5f, 0.5f);
+    LOCALPARAM(quincunx, (quincunx));
+    screenquad(vieww, viewh, vieww/float(1<<tqaamovemaskreduce), viewh/float(1<<tqaamovemaskreduce));
 
     swap(tqaafbo[0], tqaafbo[1]);
     swap(tqaacurtex, tqaaprevtex);
     tqaaprevmvp = screenmatrix;
     tqaaframe++;
-    if(tqaamovemask)
-    {
-        swap(tqaafbo[2], tqaafbo[3]);
-        swap(tqaacurmask, tqaaprevmask);
-    }
 }
 
 void dotqaa(GLuint outfbo = 0)
@@ -286,8 +293,8 @@ void setupsmaa(int w, int h)
         switch(i)
         {
             case 0: tex = gcolortex; break;
-            case 1: tex = gnormaltex; break;
-            case 2: tex = gglowtex; break;
+            case 1: tex = gglowtex; break;
+            case 2: tex = gnormaltex; break;
         }
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, tex, 0);
         if(i > 0)
@@ -337,8 +344,8 @@ void viewsmaa()
     switch(debugsmaa)
     {
         case 1: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex); break;
-        case 2: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex); break;
-        case 3: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex); break;
+        case 2: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex); break;
+        case 3: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex); break;
         case 4: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex); tw = AREATEX_WIDTH; th = AREATEX_HEIGHT; break;
         case 5: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex); tw = SEARCHTEX_WIDTH; th = SEARCHTEX_HEIGHT; break;
 
@@ -374,6 +381,12 @@ void dosmaa(GLuint outfbo = 0)
     if(smaacoloredge) smaacoloredgeshader->set();
     else smaalumaedgeshader->set();
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+    if(tqaa)
+    {
+        glActiveTexture_(GL_TEXTURE1_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+    }
     screenquad(vieww, viewh);
 
     if(tqaa) packtqaa(smaafbo[0]);
@@ -392,7 +405,7 @@ void dosmaa(GLuint outfbo = 0)
     glClear(GL_COLOR_BUFFER_BIT);
     smaablendweightshader->set();
     LOCALPARAM(subsamples, (tqaa ? (tqaaframe&1) + 1 : 0)); 
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glActiveTexture_(GL_TEXTURE1_ARB);
@@ -418,7 +431,7 @@ void dosmaa(GLuint outfbo = 0)
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glActiveTexture_(GL_TEXTURE1_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glActiveTexture_(GL_TEXTURE0_ARB);
     screenquad(vieww, viewh);
     glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -437,16 +450,37 @@ void setupaa(int w, int h)
     if(tqaa && !tqaafbo[0]) setuptqaa(w, h);
 }
 
+glmatrixf nojittermatrix;
+bool aamask = false;
+
 void jitteraa()
 {
+    nojittermatrix = projmatrix;
+
     if(tqaa)
     {
-        float x = tqaaframe&1 ? 0.25f : -0.25f, y = tqaaframe&1 ? 0.25f : -0.25f;
-        if(tqaaquincunx) { x += 0.25f; y += 0.25f; }
-        projmatrix.jitter(x*2.0f/vieww, y*2.0f/viewh);
+        vec2 jitter = tqaaframe&1 ? vec2(0.25f, 0.25f) : vec2(-0.25f, -0.25f);
+        if(tqaaquincunx) jitter.add(0.25f);
+        projmatrix.jitter(jitter.x*2.0f/vieww, jitter.y*2.0f/viewh);
     }
+
+    aamask = false;
+    GLOBALPARAM(aamask, (0.0f));
 }
-     
+
+void setaamask(bool val)
+{
+    if(!tqaa || !tqaamovemask || aamask == val) return;
+    
+    aamask = val;
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixf(aamask ? nojittermatrix.v : projmatrix.v);
+    glMatrixMode(GL_MODELVIEW);
+
+    GLOBALPARAM(aamask, (aamask ? 1.0f : 0.0f));
+}
+ 
 bool maskedaa()
 {
     return tqaa && tqaamovemask;
