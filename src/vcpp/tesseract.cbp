@@ -114,6 +114,7 @@
 			<Option weight="0" />
 		</Unit>
 		<Unit filename="..\engine\explosion.h" />
+		<Unit filename="..\engine\glexts.h" />
 		<Unit filename="..\engine\grass.cpp" />
 		<Unit filename="..\engine\hitzone.h" />
 		<Unit filename="..\engine\iqm.h" />

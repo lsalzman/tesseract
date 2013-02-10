@@ -9,189 +9,9 @@
 #include "octa.h"
 #include "light.h"
 #include "bih.h"
+#include "glexts.h"
 #include "texture.h"
 #include "model.h"
-
-// GL_ARB_multitexture
-extern PFNGLACTIVETEXTUREARBPROC       glActiveTexture_;
-extern PFNGLCLIENTACTIVETEXTUREARBPROC glClientActiveTexture_;
-extern PFNGLMULTITEXCOORD2FARBPROC     glMultiTexCoord2f_;
-extern PFNGLMULTITEXCOORD3FARBPROC     glMultiTexCoord3f_;
-extern PFNGLMULTITEXCOORD4FARBPROC     glMultiTexCoord4f_;
-
-// GL_ARB_vertex_buffer_object
-extern PFNGLGENBUFFERSARBPROC       glGenBuffers_;
-extern PFNGLBINDBUFFERARBPROC       glBindBuffer_;
-extern PFNGLMAPBUFFERARBPROC        glMapBuffer_;
-extern PFNGLUNMAPBUFFERARBPROC      glUnmapBuffer_;
-extern PFNGLBUFFERDATAARBPROC       glBufferData_;
-extern PFNGLBUFFERSUBDATAARBPROC    glBufferSubData_;
-extern PFNGLDELETEBUFFERSARBPROC    glDeleteBuffers_;
-extern PFNGLGETBUFFERSUBDATAARBPROC glGetBufferSubData_;
-
-// GL_ARB_occlusion_query
-extern PFNGLGENQUERIESARBPROC        glGenQueries_;
-extern PFNGLDELETEQUERIESARBPROC     glDeleteQueries_;
-extern PFNGLBEGINQUERYARBPROC        glBeginQuery_;
-extern PFNGLENDQUERYARBPROC          glEndQuery_;
-extern PFNGLGETQUERYIVARBPROC        glGetQueryiv_;
-extern PFNGLGETQUERYOBJECTIVARBPROC  glGetQueryObjectiv_;
-extern PFNGLGETQUERYOBJECTUIVARBPROC glGetQueryObjectuiv_;
-
-// GL_EXT_timer_query
-#ifndef GL_EXT_timer_query
-#define GL_TIME_ELAPSED_EXT               0x88BF
-typedef llong GLint64EXT;
-typedef ullong GLuint64EXT;
-typedef void (APIENTRYP PFNGLGETQUERYOBJECTI64VEXTPROC) (GLuint id, GLenum pname, GLint64EXT *params);
-typedef void (APIENTRYP PFNGLGETQUERYOBJECTUI64VEXTPROC) (GLuint id, GLenum pname, GLuint64EXT *params);
-#endif
-extern PFNGLGETQUERYOBJECTI64VEXTPROC glGetQueryObjecti64v_;
-extern PFNGLGETQUERYOBJECTUI64VEXTPROC glGetQueryObjectui64v_;
-
-// GL_EXT_framebuffer_object
-extern PFNGLBINDRENDERBUFFEREXTPROC        glBindRenderbuffer_;
-extern PFNGLDELETERENDERBUFFERSEXTPROC     glDeleteRenderbuffers_;
-extern PFNGLGENFRAMEBUFFERSEXTPROC         glGenRenderbuffers_;
-extern PFNGLRENDERBUFFERSTORAGEEXTPROC     glRenderbufferStorage_;
-extern PFNGLCHECKFRAMEBUFFERSTATUSEXTPROC  glCheckFramebufferStatus_;
-extern PFNGLBINDFRAMEBUFFEREXTPROC         glBindFramebuffer_;
-extern PFNGLDELETEFRAMEBUFFERSEXTPROC      glDeleteFramebuffers_;
-extern PFNGLGENFRAMEBUFFERSEXTPROC         glGenFramebuffers_;
-extern PFNGLFRAMEBUFFERTEXTURE1DEXTPROC    glFramebufferTexture1D_;
-extern PFNGLFRAMEBUFFERTEXTURE2DEXTPROC    glFramebufferTexture2D_;
-extern PFNGLFRAMEBUFFERTEXTURE3DEXTPROC    glFramebufferTexture3D_;
-extern PFNGLFRAMEBUFFERRENDERBUFFEREXTPROC glFramebufferRenderbuffer_;
-extern PFNGLGENERATEMIPMAPEXTPROC          glGenerateMipmap_;
-
-// GL_ARB_draw_buffers
-extern PFNGLDRAWBUFFERSARBPROC glDrawBuffers_;
-
-// GL_EXT_framebuffer_blit
-#ifndef GL_EXT_framebuffer_blit
-#define GL_READ_FRAMEBUFFER_EXT           0x8CA8
-#define GL_DRAW_FRAMEBUFFER_EXT           0x8CA9
-#define GL_DRAW_FRAMEBUFFER_BINDING_EXT   0x8CA6
-#define GL_READ_FRAMEBUFFER_BINDING_EXT   0x8CAA
-typedef void (APIENTRYP PFNGLBLITFRAMEBUFFEREXTPROC) (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
-#endif
-extern PFNGLBLITFRAMEBUFFEREXTPROC         glBlitFramebuffer_;
-
-// GL_EXT_draw_range_elements
-extern PFNGLDRAWRANGEELEMENTSEXTPROC glDrawRangeElements_;
-
-// GL_EXT_blend_minmax
-extern PFNGLBLENDEQUATIONEXTPROC glBlendEquation_;
-
-// GL_EXT_blend_color
-extern PFNGLBLENDCOLOREXTPROC glBlendColor_;
-
-// GL_EXT_multi_draw_arrays
-extern PFNGLMULTIDRAWARRAYSEXTPROC   glMultiDrawArrays_;
-extern PFNGLMULTIDRAWELEMENTSEXTPROC glMultiDrawElements_;
-
-// GL_EXT_packed_depth_stencil
-#ifndef GL_DEPTH_STENCIL_EXT
-#define GL_DEPTH_STENCIL_EXT 0x84F9
-#endif
-#ifndef GL_DEPTH24_STENCIL8_EXT
-#define GL_DEPTH24_STENCIL8_EXT 0x88F0
-#endif
-#ifndef GL_UNSIGNED_INT_24_8_EXT
-#define GL_UNSIGNED_INT_24_8_EXT 0x84FA
-#endif
-
-// GL_EXT_packed_float
-#ifndef GL_R11F_G11F_B10F_EXT
-#define GL_R11F_G11F_B10F_EXT 0x8C3A
-#endif
-
-// GL_ARB_texture_compression
-extern PFNGLCOMPRESSEDTEXIMAGE3DARBPROC    glCompressedTexImage3D_;
-extern PFNGLCOMPRESSEDTEXIMAGE2DARBPROC    glCompressedTexImage2D_;
-extern PFNGLCOMPRESSEDTEXIMAGE1DARBPROC    glCompressedTexImage1D_;
-extern PFNGLCOMPRESSEDTEXSUBIMAGE3DARBPROC glCompressedTexSubImage3D_;
-extern PFNGLCOMPRESSEDTEXSUBIMAGE2DARBPROC glCompressedTexSubImage2D_;
-extern PFNGLCOMPRESSEDTEXSUBIMAGE1DARBPROC glCompressedTexSubImage1D_;
-extern PFNGLGETCOMPRESSEDTEXIMAGEARBPROC   glGetCompressedTexImage_;
-
-// GL_ARB_texture_rg
-#ifndef GL_ARB_texture_rg
-#define GL_RG                             0x8227
-#define GL_R8                             0x8229
-#define GL_R16                            0x822A
-#define GL_RG8                            0x822B
-#define GL_RG16                           0x822C
-#define GL_R16F                           0x822D
-#define GL_R32F                           0x822E
-#define GL_RG16F                          0x822F
-#define GL_RG32F                          0x8230
-#endif
-
-// GL_EXT_depth_bounds_test
-extern PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_;
-
-// GL_ARB_color_buffer_float
-extern PFNGLCLAMPCOLORARBPROC glClampColor_;
-
-// GL_EXT_texture3D
-extern PFNGLTEXIMAGE3DEXTPROC        glTexImage3D_;
-extern PFNGLTEXSUBIMAGE3DEXTPROC     glTexSubImage3D_;
-extern PFNGLCOPYTEXSUBIMAGE3DEXTPROC glCopyTexSubImage3D_;
-
-// GL_ARB_debug_output
-#ifndef GL_ARB_debug_output
-#define GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB   0x8242
-#define GL_DEBUG_NEXT_LOGGED_MESSAGE_LENGTH_ARB 0x8243
-#define GL_DEBUG_CALLBACK_FUNCTION_ARB    0x8244
-#define GL_DEBUG_CALLBACK_USER_PARAM_ARB  0x8245
-#define GL_DEBUG_SOURCE_API_ARB           0x8246
-#define GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB 0x8247
-#define GL_DEBUG_SOURCE_SHADER_COMPILER_ARB 0x8248
-#define GL_DEBUG_SOURCE_THIRD_PARTY_ARB   0x8249
-#define GL_DEBUG_SOURCE_APPLICATION_ARB   0x824A
-#define GL_DEBUG_SOURCE_OTHER_ARB         0x824B
-#define GL_DEBUG_TYPE_ERROR_ARB           0x824C
-#define GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB 0x824D
-#define GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB 0x824E
-#define GL_DEBUG_TYPE_PORTABILITY_ARB     0x824F
-#define GL_DEBUG_TYPE_PERFORMANCE_ARB     0x8250
-#define GL_DEBUG_TYPE_OTHER_ARB           0x8251
-#define GL_MAX_DEBUG_MESSAGE_LENGTH_ARB   0x9143
-#define GL_MAX_DEBUG_LOGGED_MESSAGES_ARB  0x9144
-#define GL_DEBUG_LOGGED_MESSAGES_ARB      0x9145
-#define GL_DEBUG_SEVERITY_HIGH_ARB        0x9146
-#define GL_DEBUG_SEVERITY_MEDIUM_ARB      0x9147
-#define GL_DEBUG_SEVERITY_LOW_ARB         0x9148
-typedef void (APIENTRY *GLDEBUGPROCARB)(GLenum source,GLenum type,GLuint id,GLenum severity,GLsizei length,const GLchar *message,GLvoid *userParam);
-typedef void (APIENTRYP PFNGLDEBUGMESSAGECONTROLARBPROC) (GLenum source, GLenum type, GLenum severity, GLsizei count, const GLuint *ids, GLboolean enabled);
-typedef void (APIENTRYP PFNGLDEBUGMESSAGEINSERTARBPROC) (GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *buf);
-typedef void (APIENTRYP PFNGLDEBUGMESSAGECALLBACKARBPROC) (GLDEBUGPROCARB callback, const GLvoid *userParam);
-typedef GLuint (APIENTRYP PFNGLGETDEBUGMESSAGELOGARBPROC) (GLuint count, GLsizei bufsize, GLenum *sources, GLenum *types, GLuint *ids, GLenum *severities, GLsizei *lengths, GLchar *messageLog);
-#endif
-extern PFNGLDEBUGMESSAGECONTROLARBPROC glDebugMessageControl_;
-extern PFNGLDEBUGMESSAGEINSERTARBPROC glDebugMessageInsert_;
-extern PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallback_;
-extern PFNGLGETDEBUGMESSAGELOGARBPROC glGetDebugMessageLog_;
-
-extern void glerror(const char *file, int line, GLenum error);
-
-#define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
-
-// GL_ARB_map_buffer_range
-#ifndef GL_ARB_map_buffer_range
-#define GL_MAP_READ_BIT                   0x0001
-#define GL_MAP_WRITE_BIT                  0x0002
-#define GL_MAP_INVALIDATE_RANGE_BIT       0x0004
-#define GL_MAP_INVALIDATE_BUFFER_BIT      0x0008
-#define GL_MAP_FLUSH_EXPLICIT_BIT         0x0010
-#define GL_MAP_UNSYNCHRONIZED_BIT         0x0020
-typedef GLvoid* (APIENTRYP PFNGLMAPBUFFERRANGEPROC) (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
-typedef void (APIENTRYP PFNGLFLUSHMAPPEDBUFFERRANGEPROC) (GLenum target, GLintptr offset, GLsizeiptr length);
-#endif
-extern PFNGLMAPBUFFERRANGEPROC         glMapBufferRange_;
-extern PFNGLFLUSHMAPPEDBUFFERRANGEPROC glFlushMappedBufferRange_;
-
 #include "varray.h"
 
 extern dynent *player;
@@ -288,7 +108,7 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 }
 
 // rendergl
-extern bool hasVBO, hasDRE, hasOQ, hasTR, hasT3D, hasFBO, hasAFBO, hasDS, hasTF, hasCBF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasS3TC, hasFXT1, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasUBO, hasBUE, hasMBR, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT, hasDC, hasDBGO, hasGPU4, hasGPU5;
+extern bool hasVBO, hasDRE, hasOQ, hasTR, hasT3D, hasFBO, hasAFBO, hasDS, hasTF, hasCBF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasS3TC, hasFXT1, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasFBMS, hasTMS, hasMSS, hasUBO, hasBUE, hasMBR, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT, hasDC, hasDBGO, hasGPU4, hasGPU5;
 extern int hasstencil;
 extern int glversion, glslversion;
 
@@ -309,6 +129,10 @@ extern int fog;
 extern bvec fogcolor;
 extern vec curfogcolor;
 extern int wireframe;
+
+extern void glerror(const char *file, int line, GLenum error);
+
+#define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
 
 extern void gl_checkextensions();
 extern void gl_init(int w, int h, int bpp, int depth, int fsaa);

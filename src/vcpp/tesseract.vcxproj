@@ -410,6 +410,7 @@
     <ClInclude Include="..\engine\animmodel.h" />
     <ClInclude Include="..\engine\bih.h" />
     <ClInclude Include="..\engine\explosion.h" />
+    <ClInclude Include="..\engine\glexts.h" />
     <ClInclude Include="..\engine\hitzone.h" />
     <ClInclude Include="..\engine\iqm.h" />
     <ClInclude Include="..\engine\lensflare.h" />

@@ -10,7 +10,7 @@ GLuint refractfbo = 0, refracttex = 0;
 GLenum bloomformat = 0, hdrformat = 0;
 bool hdrfloat = false;
 int aow = -1, aoh = -1;
-GLuint aofbo[3] = { 0, 0, 0 }, aotex[3] = { 0, 0, 0 }, aonoisetex = 0;
+GLuint aofbo[4] = { 0, 0, 0, 0 }, aotex[4] = { 0, 0, 0, 0 }, aonoisetex = 0;
 glmatrixf eyematrix, worldmatrix, linearworldmatrix, screenmatrix;
 
 extern int bloomsize, bloomprec;
@@ -68,7 +68,7 @@ void cleanupbloom()
     lasthdraccum = 0;
 }
 
-extern int ao, aotaps, aoreduce, aoreducedepth, aonoise, aobilateral, aopackdepth, aodepthformat;
+extern int ao, aotaps, aoreduce, aoreducedepth, aonoise, aobilateral, aobilateralupscale, aopackdepth, aodepthformat;
 
 static Shader *bilateralshader[2] = { NULL, NULL };
 
@@ -79,13 +79,11 @@ Shader *loadbilateralshader(int pass)
     string opts;
     int optslen = 0;
 
+    bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1), upscale = aoreduce && aobilateralupscale;
     if(aoreduce) opts[optslen++] = 'r';
-    bool linear = aopackdepth || (aoreducedepth && (aoreduce || aoreducedepth > 1));
-    if(linear)
-    {
-        opts[optslen++] = 'l';
-        if(aopackdepth) opts[optslen++] = 'p';
-    }
+    if(upscale) opts[optslen++] = 'u';
+    else if(linear) opts[optslen++] = 'l';
+    if(aopackdepth) opts[optslen++] = 'p';
     opts[optslen] = '\0';
 
     defformatstring(name)("bilateral%c%s%d", 'x' + pass, opts, aobilateral);
@@ -102,12 +100,12 @@ void clearbilateralshaders()
     loopk(2) bilateralshader[k] = NULL;
 }
 
-void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear, bool packed)
+void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear)
 {
-    float stepx = linear ? 1 : float(vieww)/aow, stepy = linear ? 1 : float(viewh)/aoh;
     bilateralshader[pass]->set();
     sigma *= 2*radius;
-    LOCALPARAM(bilateralparams, (1.0f/(2*sigma*sigma), 1.0f/(depth*depth), pass==0 ? stepx : 0, pass==1 ? stepy : 0));
+    float step = linear ? 1 : (pass ? float(vieww)/aoh : float(viewh)/aow);
+    LOCALPARAM(bilateralparams, (1.0f/(2*sigma*sigma), 1.0f/(depth*depth), step));
 }
 
 static Shader *ambientobscuranceshader = NULL;
@@ -121,7 +119,6 @@ Shader *loadambientobscuranceshader()
     bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1);
     if(linear) opts[optslen++] = 'l';
     if(aobilateral && aopackdepth) opts[optslen++] = 'p';
-
     opts[optslen] = '\0';
 
     defformatstring(name)("ambientobscurance%s%d", opts, aotaps);
@@ -140,13 +137,12 @@ void clearaoshaders()
 
 void setupao(int w, int h)
 {
-    w >>= aoreduce;
-    h >>= aoreduce;
+    int sw = w>>aoreduce, sh = h>>aoreduce;
 
-    if(w == aow && h == aoh) return;
+    if(sw == aow && sh == aoh) return;
 
-    aow = w;
-    aoh = h;
+    aow = sw;
+    aoh = sh;
 
     if(!aonoisetex) glGenTextures(1, &aonoisetex);
     bvec *noise = new bvec[(1<<aonoise)*(1<<aonoise)];
@@ -154,11 +150,13 @@ void setupao(int w, int h)
     createtexture(aonoisetex, 1<<aonoise, 1<<aonoise, noise, 0, 0, GL_RGB, GL_TEXTURE_2D);
     delete[] noise;
 
-    loopi(2)
+    bool upscale = aoreduce && aobilateral && aobilateralupscale;
+    GLenum format = aobilateral && aopackdepth && aodepthformat ? GL_RG16F : GL_RGBA8;
+    loopi(upscale ? 3 : 2)
     {
         if(!aotex[i]) glGenTextures(1, &aotex[i]);
         if(!aofbo[i]) glGenFramebuffers_(1, &aofbo[i]);
-        createtexture(aotex[i], w, h, NULL, 3, 1, aobilateral && aopackdepth && aodepthformat ? GL_RG16F : GL_RGBA8 , GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(aotex[i], upscale && i ? w : aow, upscale && i >= 2 ? h : aoh, NULL, 3, upscale && aopackdepth && i < 2 && format == GL_RGBA8 ? 0 : 1, i >= 2 ? GL_RGBA8 : format, GL_TEXTURE_RECTANGLE_ARB);
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[i]);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[i], 0);
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -167,11 +165,11 @@ void setupao(int w, int h)
 
     if(aoreducedepth && (aoreduce || aoreducedepth > 1))
     {
-        if(!aotex[2]) glGenTextures(1, &aotex[2]);
-        if(!aofbo[2]) glGenFramebuffers_(1, &aofbo[2]);
-        createtexture(aotex[2], w, h, NULL, 3, 0, aodepthformat ? GL_R16F : GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[2], 0);
+        if(!aotex[3]) glGenTextures(1, &aotex[3]);
+        if(!aofbo[3]) glGenFramebuffers_(1, &aofbo[3]);
+        createtexture(aotex[3], aow, aoh, NULL, 3, 0, aodepthformat ? GL_R16F : GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[3]);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, aotex[3], 0);
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
             fatal("failed allocating AO buffer!");
     }
@@ -184,8 +182,8 @@ void setupao(int w, int h)
 
 void cleanupao()
 {
-    loopi(3) if(aofbo[i]) { glDeleteFramebuffers_(1, &aofbo[i]); aofbo[i] = 0; }
-    loopi(3) if(aotex[i]) { glDeleteTextures(1, &aotex[i]); aotex[i] = 0; }
+    loopi(4) if(aofbo[i]) { glDeleteFramebuffers_(1, &aofbo[i]); aofbo[i] = 0; }
+    loopi(4) if(aotex[i]) { glDeleteTextures(1, &aotex[i]); aotex[i] = 0; }
     if(aonoisetex) { glDeleteTextures(1, &aonoisetex); aonoisetex = 0; }
     aow = bloomh = -1;
 
@@ -213,6 +211,7 @@ VARF(aonoise, 0, 5, 8, cleanupao());
 VARFP(aobilateral, 0, 3, 10, cleanupao());
 FVARP(aobilateralsigma, 0, 0.5f, 1e3f);
 FVARP(aobilateraldepth, 0, 4, 1e3f);
+VARFP(aobilateralupscale, 0, 0, 1, cleanupao());
 VARF(aopackdepth, 0, 1, 1, cleanupao());
 VARFP(aotaps, 1, 5, 12, cleanupao());
 VAR(debugao, 0, 0, 1);
@@ -228,12 +227,13 @@ void viewao()
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
     rectshader->set();
     glColor3f(1, 1, 1);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[0]);
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2] ? aotex[2] : aotex[0]);
+    int tw = aotex[2] ? gw : aow, th = aotex[2] ? gh : aoh;
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, aoh); glVertex2i(0, 0);
-    glTexCoord2f(aow, aoh); glVertex2i(w, 0);
+    glTexCoord2f(0, th); glVertex2i(0, 0);
+    glTexCoord2f(tw, th); glVertex2i(w, 0);
     glTexCoord2f(0, 0); glVertex2i(0, h);
-    glTexCoord2f(aow, 0); glVertex2i(w, h);
+    glTexCoord2f(tw, 0); glVertex2i(w, h);
     glEnd();
     notextureshader->set();
 }
@@ -250,7 +250,7 @@ void renderao()
     float xscale = eyematrix.v[0], yscale = eyematrix.v[5];
     if(linear)
     {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[2]);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[3]);
         glViewport(0, 0, aow, aoh);
         SETSHADER(linearizedepth);
         screenquad(vieww, viewh);
@@ -258,7 +258,7 @@ void renderao()
         xscale *= float(vieww)/aow;
         yscale *= float(viewh)/aoh;
 
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2]);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[3]);
     }
 
     ambientobscuranceshader->set();
@@ -279,17 +279,31 @@ void renderao()
 
     if(aobilateral)
     {
-        if(!linear && aopackdepth) linear = true;
-        loopi(2 + 2*aoiter)
+        if(aoreduce && aobilateralupscale) loopi(2)
         {
-            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear, linear && aopackdepth);
+            setbilateralshader(aobilateral, i, aobilateralsigma, aobilateraldepth, false);
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[i+1]);
+            glViewport(0, 0, vieww, i ? viewh : aoh);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i]);
+            glActiveTexture_(GL_TEXTURE1_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[3] : gdepthtex);
+            glActiveTexture_(GL_TEXTURE2_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+            glActiveTexture_(GL_TEXTURE0_ARB);
+            screenquad(vieww, viewh, i ? vieww : aow, aoh);
+        }
+        else loopi(2 + 2*aoiter)
+        {
+            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear);
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[(i+1)%2]);
             glViewport(0, 0, aow, aoh);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i%2]);
-            if(!linear || !aopackdepth)
+            if(!aopackdepth)
             {
                 glActiveTexture_(GL_TEXTURE1_ARB);
-                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[2] : gdepthtex);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[3] : gdepthtex);
+                glActiveTexture_(GL_TEXTURE2_ARB);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
                 glActiveTexture_(GL_TEXTURE0_ARB);
             }
             screenquad(vieww, viewh);
@@ -1885,7 +1899,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     if(ao)
     {
         glActiveTexture_(GL_TEXTURE5_ARB);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[0]);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2] ? aotex[2] : aotex[0]);
     }
     if(sunlight && csmshadowmap && gi && giscale && gidist) loopi(3)
     {
@@ -1909,7 +1923,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         }
         else
         {
-            GLOBALPARAM(aoscale, (float(aow)/vieww, float(aoh)/viewh));
+            GLOBALPARAM(aoscale, (aotex[2] ? vec2(1, 1) : vec2(float(aow)/vieww, float(aoh)/viewh)));
             GLOBALPARAM(aoparams, (aomin, 1.0f-aomin, aosunmin, 1.0f-aosunmin));
         }
     }
