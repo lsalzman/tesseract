@@ -80,7 +80,7 @@ Shader *loadbilateralshader(int pass)
     int optslen = 0;
 
     bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1), upscale = aoreduce && aobilateralupscale;
-    if(aoreduce && (upscale || !linear)) opts[optslen++] = 'r';
+    if(aoreduce && (upscale || (!linear && !aopackdepth))) opts[optslen++] = 'r';
     if(upscale) opts[optslen++] = 'u';
     else if(linear) opts[optslen++] = 'l';
     if(aopackdepth) opts[optslen++] = 'p';
