@@ -626,6 +626,12 @@ static GLenum textype(GLenum component, GLenum &format)
             type = GL_UNSIGNED_INT_24_8_EXT;
             break;
 
+        case GL_RED:
+        case GL_R8:
+        case GL_R16:
+        case GL_RG:
+        case GL_RG8:
+        case GL_RG16:
         case GL_RGB5:
         case GL_RGB8:
         case GL_RGB16:

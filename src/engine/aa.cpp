@@ -1,6 +1,6 @@
 #include "engine.h"
 
-extern int tqaamovemask, tqaamovemaskreduce, tqaapack;
+extern int tqaamovemask, tqaamovemaskreduce, tqaamovemaskprec, tqaapack;
 
 int tqaaframe = 0;
 GLuint tqaaprevtex = 0, tqaacurtex = 0, tqaamasktex = 0, tqaafbo[3] = { 0, 0, 0 };
@@ -25,7 +25,7 @@ void setuptqaa(int w, int h)
     {
         if(!tqaamasktex) glGenTextures(1, &tqaamasktex);
         int maskw = (w + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce, maskh = (h + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce;
-        createtexture(tqaamasktex, maskw, maskh, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(tqaamasktex, maskw, maskh, NULL, 3, 1, hasTRG && tqaamovemaskprec ? GL_R8 : GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
     }
     loopi(tqaamovemask ? 3 : 2)
     {
@@ -64,8 +64,8 @@ VARF(tqaapack, 0, 0, 1, cleanupaa());
 FVAR(tqaareproject, 0, 170, 1e3f);
 FVAR(tqaareprojectscale, 0, 4, 1e3f);
 VARFP(tqaamovemask, 0, 1, 1, cleanuptqaa());
-FVAR(tqaamovemaskscale, 0, 4, 1e3f);
-VARFP(tqaamovemaskreduce, 0, 1, 2, cleanuptqaa());
+VARFP(tqaamovemaskreduce, 0, 0, 2, cleanuptqaa());
+VARFP(tqaamovemaskprec, 0, 1, 1, cleanuptqaa());
 VARP(tqaaquincunx, 0, 1, 1);
 
 void setaavelocityparams()
@@ -88,7 +88,11 @@ void packtqaa(GLuint packfbo)
     {
         int maskw = (vieww + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce, maskh = (viewh + (1<<tqaamovemaskreduce) - 1) >> tqaamovemaskreduce;
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, tqaafbo[2]);
-        glColorMask(~tqaaframe&1, tqaaframe&1, GL_FALSE, GL_FALSE);
+        if(!tqaaframe)
+        {
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
         SETSHADER(tqaamaskmovement);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
         if(tqaamovemaskreduce)
@@ -97,14 +101,16 @@ void packtqaa(GLuint packfbo)
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         }
+        glBlendFunc(GL_ONE, GL_SRC_ALPHA);
+        glEnable(GL_BLEND);
         screenquad(maskw<<tqaamovemaskreduce, maskh<<tqaamovemaskreduce);
+        glDisable(GL_BLEND);
         if(tqaamovemaskreduce)
         {
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glViewport(0, 0, vieww, viewh);
         }
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
 
     if(tqaapack)
@@ -135,8 +141,7 @@ void resolvetqaa(GLuint outfbo)
     if(tqaamovemask) 
     {
         SETSHADER(tqaaresolvemasked); 
-        vec2 movemask = vec2(~tqaaframe&1, tqaaframe&1).mul(tqaamovemaskscale);
-        LOCALPARAM(movemask, (movemask.x, movemask.y, 1/float(1<<tqaamovemaskreduce)));
+        LOCALPARAM(movemaskscale, (1/float(1<<tqaamovemaskreduce)));
     }
     else SETSHADER(tqaaresolve);
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
