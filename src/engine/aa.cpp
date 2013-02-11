@@ -232,7 +232,7 @@ void dofxaa(GLuint outfbo = 0)
  
 GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[3] = { 0, 0, 0 };
 
-extern int smaaquality, smaagreenluma, smaacoloredge;
+extern int smaaquality, smaagreenluma, smaacoloredge, smaadepthmask, smaastencil;
 
 static Shader *smaalumaedgeshader = NULL, *smaacoloredgeshader = NULL, *smaablendweightshader = NULL, *smaaneighborhoodshader = NULL;
 
@@ -242,6 +242,7 @@ void loadsmaashaders()
 
     string opts;
     int optslen = 0;
+    if(smaadepthmask || smaastencil) opts[optslen++] = 'd';
     if(smaagreenluma || (tqaa && !tqaapack)) opts[optslen++] = 'g';
     if(tqaa) opts[optslen++] = 't';
     opts[optslen] = '\0';
@@ -297,7 +298,7 @@ void setupsmaa(int w, int h)
             case 2: tex = gnormaltex; break;
         }
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, tex, 0);
-        if(i > 0)
+        if(i > 0 && (smaadepthmask || smaastencil))
         {
             if(gdepthformat)
             {
@@ -332,8 +333,8 @@ VARFP(smaa, 0, 0, 1, cleanupsmaa());
 VARFP(smaaquality, 0, 2, 3, cleanupsmaa());
 VARP(smaacoloredge, 0, 0, 1);
 VARFP(smaagreenluma, 0, 0, 1, cleanupsmaa());
-VAR(smaadepthmask, 0, 1, 1);
-VAR(smaastencil, 0, 1, 1);
+VARF(smaadepthmask, 0, 1, 1, cleanupsmaa());
+VARF(smaastencil, 0, 1, 1, cleanupsmaa());
 VAR(debugsmaa, 0, 0, 5);
 
 void viewsmaa()
@@ -348,7 +349,6 @@ void viewsmaa()
         case 3: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex); break;
         case 4: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex); tw = AREATEX_WIDTH; th = AREATEX_HEIGHT; break;
         case 5: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex); tw = SEARCHTEX_WIDTH; th = SEARCHTEX_HEIGHT; break;
-
     }
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0, th); glVertex2i(0, 0);
@@ -364,8 +364,11 @@ void dosmaa(GLuint outfbo = 0)
     timer *smaatimer = begintimer("smaa");
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1]);
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    if(smaadepthmask || smaastencil)
+    {
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
     if(smaadepthmask)
     {
         glEnable(GL_DEPTH_TEST);
@@ -402,7 +405,7 @@ void dosmaa(GLuint outfbo = 0)
         glStencilFunc(GL_EQUAL, 8, 8);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     }
-    glClear(GL_COLOR_BUFFER_BIT);
+    if(smaadepthmask || smaastencil) glClear(GL_COLOR_BUFFER_BIT);
     smaablendweightshader->set();
     LOCALPARAM(subsamples, (tqaa ? (tqaaframe&1) + 1 : 0)); 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
