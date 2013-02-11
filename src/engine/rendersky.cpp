@@ -384,7 +384,6 @@ void drawskybox(int farplane)
 
     if(limitsky())
     {
-        renderexplicitsky();
         glDisable(GL_DEPTH_TEST);
     }
     else
