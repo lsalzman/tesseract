@@ -80,7 +80,7 @@ Shader *loadbilateralshader(int pass)
     int optslen = 0;
 
     bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1), upscale = aoreduce && aobilateralupscale;
-    if(aoreduce) opts[optslen++] = 'r';
+    if(aoreduce && (upscale || !linear)) opts[optslen++] = 'r';
     if(upscale) opts[optslen++] = 'u';
     else if(linear) opts[optslen++] = 'l';
     if(aopackdepth) opts[optslen++] = 'p';
@@ -100,11 +100,11 @@ void clearbilateralshaders()
     loopk(2) bilateralshader[k] = NULL;
 }
 
-void setbilateralshader(int radius, int pass, float sigma, float depth, bool linear)
+void setbilateralshader(int radius, int pass, float sigma, float depth)
 {
     bilateralshader[pass]->set();
     sigma *= 2*radius;
-    float step = linear ? 1 : (pass ? float(vieww)/aoh : float(viewh)/aow);
+    float step = pass ? float(viewh)/aoh : float(vieww)/aow;
     LOCALPARAM(bilateralparams, (1.0f/(2*sigma*sigma), 1.0f/(depth*depth), step));
 }
 
@@ -115,7 +115,6 @@ Shader *loadambientobscuranceshader()
     string opts;
     int optslen = 0;
 
-    if(aoreduce) opts[optslen++] = 'r';
     bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1);
     if(linear) opts[optslen++] = 'l';
     if(aobilateral && aopackdepth) opts[optslen++] = 'p';
@@ -281,7 +280,7 @@ void renderao()
     {
         if(aoreduce && aobilateralupscale) loopi(2)
         {
-            setbilateralshader(aobilateral, i, aobilateralsigma, aobilateraldepth, false);
+            setbilateralshader(aobilateral, i, aobilateralsigma, aobilateraldepth);
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[i+1]);
             glViewport(0, 0, vieww, i ? viewh : aoh);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i]);
@@ -294,7 +293,7 @@ void renderao()
         }
         else loopi(2 + 2*aoiter)
         {
-            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth, linear);
+            setbilateralshader(aobilateral, i%2, aobilateralsigma, aobilateraldepth);
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[(i+1)%2]);
             glViewport(0, 0, aow, aoh);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i%2]);
