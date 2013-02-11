@@ -147,7 +147,7 @@ void resolvetqaa(GLuint outfbo)
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
     LOCALPARAM(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
     vec4 quincunx(0, 0, 0, 0);
-    if(tqaaquincunx) quincunx = tqaaframe&1 ? vec4(0.5f, 0.5f, 0, 0) : vec4(0, 0, 0.5f, 0.5f);
+    if(tqaaquincunx) quincunx = tqaaframe&1 ? vec4(0.25f, 0.25f, -0.25f, -0.25f) : vec4(-0.25f, -0.25f, 0.25f, 0.25f);
     LOCALPARAM(quincunx, (quincunx));
     screenquad(vieww, viewh, vieww/float(1<<tqaamovemaskreduce), viewh/float(1<<tqaamovemaskreduce));
 
@@ -468,7 +468,6 @@ void jitteraa()
     if(tqaa)
     {
         vec2 jitter = tqaaframe&1 ? vec2(0.25f, 0.25f) : vec2(-0.25f, -0.25f);
-        if(tqaaquincunx) jitter.add(0.25f);
         projmatrix.jitter(jitter.x*2.0f/vieww, jitter.y*2.0f/viewh);
     }
 

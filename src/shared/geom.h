@@ -225,8 +225,12 @@ struct vec4
     vec4 &div(float f)       { div3(f); w /= f; return *this; }
     vec4 &div(const vec4 &o) { x /= o.x; y /= o.y; z /= o.z; w /= o.w; return *this; }
     vec4 &add(const vec4 &o) { x += o.x; y += o.y; z += o.z; w += o.w; return *this; }
+    vec4 &add3(float f)      { x += f; y += f; z += f; return *this; }
+    vec4 &add(float f)       { add3(f); w += f; return *this; }
     vec4 &addw(float f)      { w += f; return *this; }
     vec4 &sub(const vec4 &o) { x -= o.x; y -= o.y; z -= o.z; w -= o.w; return *this; }
+    vec4 &sub3(float f)      { x -= f; y -= f; z -= f; return *this; }
+    vec4 &sub(float f)       { sub3(f); w -= f; return *this; }
     vec4 &subw(float f)      { w -= f; return *this; }
     vec4 &neg3()             { x = -x; y = -y; z = -z; return *this; }
     vec4 &neg()              { neg3(); w = -w; return *this; }
