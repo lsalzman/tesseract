@@ -63,7 +63,7 @@ PFNGLDRAWBUFFERSARBPROC glDrawBuffers_ = NULL;
 PFNGLBLITFRAMEBUFFEREXTPROC         glBlitFramebuffer_         = NULL;
 
 // GL_EXT_framebuffer_multisample
-PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC glRenderBufferStorageMultisample_ = NULL;
+PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC glRenderbufferStorageMultisample_ = NULL;
 
 // GL_ARB_texture_multisample
 PFNGLTEXIMAGE2DMULTISAMPLEPROC glTexImage2DMultisample_ = NULL;
@@ -380,7 +380,7 @@ void gl_checkextensions()
         }
         if(hasext(exts, "GL_EXT_framebuffer_multisample"))
         {
-            glRenderBufferStorageMultisample_ = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)getprocaddress("glRenderBufferStorageMultisampleEXT");
+            glRenderbufferStorageMultisample_ = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)getprocaddress("glRenderbufferStorageMultisampleEXT");
             hasFBMS = true;
             if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_framebuffer_multisample extension.");
         }

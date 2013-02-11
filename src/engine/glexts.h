@@ -70,7 +70,7 @@ extern PFNGLBLITFRAMEBUFFEREXTPROC         glBlitFramebuffer_;
 #define GL_MAX_SAMPLES_EXT                        0x8D57
 typedef void (APIENTRYP PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC) (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
 #endif
-extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC glRenderBufferStorageMultisample_;
+extern PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC glRenderbufferStorageMultisample_;
 
 // GL_ARB_texture_multisample
 #ifndef GL_ARB_texture_multisample
