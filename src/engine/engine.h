@@ -631,6 +631,7 @@ extern void clearbatchedmapmodels();
 extern void preloadusedmapmodels(bool msg = false, bool bih = false);
 extern int batcheddynamicmodels();
 extern int batcheddynamicmodelbounds(int mask, vec &bbmin, vec &bbmax);
+extern void cleanupmodels();
 
 // renderparticles
 extern void particleinit();

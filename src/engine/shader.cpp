@@ -1326,6 +1326,7 @@ void resetshaders()
     clearchanges(CHANGE_SHADERS);
 
     cleanuplights();
+    cleanupmodels();
     cleanupshaders();
     setupshaders();
     initgbuffer();
