@@ -598,6 +598,7 @@ void setupscreen(int &usedcolorbits)
 #endif
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+    screen = SDL_SetVideoMode(scr_w, scr_h, hasbpp ? colorbits : 0, SDL_OPENGL|flags);
     if(!screen) fatal("Unable to create OpenGL screen: %s", SDL_GetError());
     else
     {
