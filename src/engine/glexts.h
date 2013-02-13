@@ -113,6 +113,12 @@ typedef void (APIENTRYP PFNGLMINSAMPLESHADINGARBPROC) (GLclampf value);
 #endif
 extern PFNGLMINSAMPLESHADINGARBPROC glMinSampleShading_;
 
+// GL_EXT_framebuffer_multisample_blit_scaled
+#ifndef GL_EXT_framebuffer_multisample_blit_scaled
+#define GL_SCALED_RESOLVE_FASTEST_EXT     0x90BA
+#define GL_SCALED_RESOLVE_NICEST_EXT      0x90BB
+#endif
+
 // GL_EXT_draw_range_elements
 extern PFNGLDRAWRANGEELEMENTSEXTPROC glDrawRangeElements_;
 

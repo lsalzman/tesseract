@@ -1528,7 +1528,6 @@ void cleanupTMUs(renderstate &cur)
 
 VAR(oqgeom, 0, 1, 1);
 
-extern int rhinoq;
 extern void renderradiancehints();
 
 void rendergeom()
@@ -1595,7 +1594,6 @@ void rendergeom()
         collectlights();
         if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
         if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
-        if(rhinoq) renderradiancehints();
         glFlush();
         glEnableClientState(GL_VERTEX_ARRAY);
         setupTMUs(cur);
@@ -1675,7 +1673,6 @@ void rendergeom()
         collectlights();
         if(!cur.colormask) { cur.colormask = true; glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); }
         if(!cur.depthmask) { cur.depthmask = true; glDepthMask(GL_TRUE); }
-        if(!drawtex && rhinoq) renderradiancehints();
         glFlush();
     }
 }

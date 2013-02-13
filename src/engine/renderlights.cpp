@@ -9,6 +9,7 @@ int hdrclear = 0;
 GLuint refractfbo = 0, refracttex = 0;
 GLenum bloomformat = 0, hdrformat = 0;
 bool hdrfloat = false;
+GLuint msfbo = 0, msdepthtex = 0, mscolortex = 0, msnormaltex = 0, msglowtex = 0, msdepthrb = 0, msstencilrb = 0, mshdrfbo = 0, mshdrtex = 0, msrefractfbo = 0, msrefracttex = 0;
 int aow = -1, aoh = -1;
 GLuint aofbo[4] = { 0, 0, 0, 0 }, aotex[4] = { 0, 0, 0, 0 }, aonoisetex = 0;
 glmatrixf eyematrix, worldmatrix, linearworldmatrix, screenmatrix;
@@ -246,7 +247,8 @@ void renderao()
 
     timer *aotimer = begintimer("ambient obscurance");
 
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
 
     bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1);
     float xscale = eyematrix.v[0], yscale = eyematrix.v[5];
@@ -268,7 +270,8 @@ void renderao()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[0]);
     glViewport(0, 0, aow, aoh);
     glActiveTexture_(GL_TEXTURE1_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glActiveTexture_(GL_TEXTURE2_ARB);
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
@@ -288,9 +291,8 @@ void renderao()
             glViewport(0, 0, vieww, i ? viewh : aoh);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i]);
             glActiveTexture_(GL_TEXTURE1_ARB);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[3] : gdepthtex);
-            glActiveTexture_(GL_TEXTURE2_ARB);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+            if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+            else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
             glActiveTexture_(GL_TEXTURE0_ARB);
             screenquad(vieww, viewh, i ? vieww : aow, aoh);
         }
@@ -303,9 +305,9 @@ void renderao()
             if(!aopackdepth)
             {
                 glActiveTexture_(GL_TEXTURE1_ARB);
-                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, linear ? aotex[3] : gdepthtex);
-                glActiveTexture_(GL_TEXTURE2_ARB);
-                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+                if(linear) glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[3]);
+                else if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+                else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
                 glActiveTexture_(GL_TEXTURE0_ARB);
             }
             screenquad(vieww, viewh);
@@ -325,7 +327,7 @@ void renderao()
         }
     }
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaasamples ? msfbo : gfbo);
     glViewport(0, 0, vieww, viewh);
 
     endtimer(aotimer);
@@ -352,7 +354,7 @@ void setupscale(int sw, int sh, int w, int h)
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, scalefbo[i]);
 
-        createtexture(scaletex[i], sw, i ? h : sh, NULL, 3, 1, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(scaletex[i], sw, i ? h : sh, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
 
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, scaletex[i], 0);
 
@@ -408,11 +410,34 @@ void doscale(int w, int h)
    
 VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD, CHANGE_SHADERS));
 VAR(gdepthformat, 1, 0, 0);
+VARFP(msaa, 0, 0, 16, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
+VARFP(msaahdr, 0, 1, 1, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
+VARP(msaatonemap, 0, 1, 1);
+VAR(msaamaxsamples, 1, 0, 0);
+VAR(msaasamples, 1, 0, 0);
+VAR(msaaresolvehdr, 1, 0, 0);
+
+extern int msaa;
 
 void initgbuffer()
 {
     if(glineardepth >= 2 && (!hasAFBO || !hasTF || !hasTRG)) gdepthformat = 1;
     else gdepthformat = glineardepth;
+
+    msaamaxsamples = msaasamples = msaaresolvehdr = 0;
+    if(hasFBMS && hasFBB && hasTMS)
+    {
+        GLint val;
+        glGetIntegerv(GL_MAX_SAMPLES_EXT, &val);
+        msaamaxsamples = val;
+    }
+
+    if(min(msaa, msaamaxsamples) >= 2 && ((hasMSS && msaahdr) || (gdepthstencil && hasDS) || gstencil))
+    {
+        msaasamples = 2;
+        while(msaasamples*2 <= min(msaa, msaamaxsamples)) msaasamples *= 2;
+        if(hasMSS) msaaresolvehdr = msaahdr;
+    }
 
     initao();
 }
@@ -433,6 +458,148 @@ void maskgbuffer(const char *mask)
 
 extern int hdrprec, gscale;
 
+void cleanupmsbuffer()
+{
+    if(msfbo) { glDeleteFramebuffers_(1, &msfbo); msfbo = 0; }
+    if(msdepthtex) { glDeleteTextures(1, &msdepthtex); msdepthtex = 0; }
+    if(mscolortex) { glDeleteTextures(1, &mscolortex); mscolortex = 0; }
+    if(msnormaltex) { glDeleteTextures(1, &msnormaltex); msnormaltex = 0; }
+    if(msglowtex) { glDeleteTextures(1, &msglowtex); msglowtex = 0; }
+    if(msstencilrb) { glDeleteRenderbuffers_(1, &msstencilrb); msstencilrb = 0; }
+    if(msdepthrb) { glDeleteRenderbuffers_(1, &msdepthrb); msdepthrb = 0; }
+    if(mshdrfbo) { glDeleteFramebuffers_(1, &mshdrfbo); mshdrfbo = 0; }
+    if(mshdrtex) { glDeleteTextures(1, &mshdrtex); mshdrtex = 0; }
+    if(msrefractfbo) { glDeleteFramebuffers_(1, &msrefractfbo); msrefractfbo = 0; }
+    if(msrefracttex) { glDeleteTextures(1, &msrefracttex); msrefracttex = 0; }
+}
+
+void setupmsbuffer(int w, int h)
+{
+    if(!msdepthtex) glGenTextures(1, &msdepthtex);
+    if(!mscolortex) glGenTextures(1, &mscolortex);
+    if(!msnormaltex) glGenTextures(1, &msnormaltex);
+    if(!msglowtex) glGenTextures(1, &msglowtex);
+    if(!msfbo) glGenFramebuffers_(1, &msfbo);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msfbo);
+
+    maskgbuffer("cngd");
+
+    static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
+    GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (msaaresolvehdr && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, depthformat, w, h, GL_FALSE);
+ 
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mscolortex);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, GL_FALSE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, GL_FALSE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msglowtex);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, GL_FALSE);
+
+    if(gdepthformat)
+    {
+        if(!msdepthrb) glGenRenderbuffers_(1, &msdepthrb);
+        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, msdepthrb);
+        glRenderbufferStorageMultisample_(GL_RENDERBUFFER_EXT, msaasamples, msaaresolvehdr && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, w, h);
+        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
+    }
+    if(msaaresolvehdr && !hasDS)
+    {
+        if(!msstencilrb) glGenRenderbuffers_(1, &msstencilrb);
+        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, msstencilrb);
+        glRenderbufferStorageMultisample_(GL_RENDERBUFFER_EXT, msaasamples, GL_STENCIL_INDEX8_EXT, w, h);
+        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
+    }
+
+    if(gdepthformat)
+    {
+        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msdepthrb);
+        if(msaaresolvehdr) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, hasDS ? msdepthrb : msstencilrb);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+    }
+    else
+    {
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+        if(msaaresolvehdr)
+        {
+            if(hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+            else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msstencilrb);
+        }
+    }
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, mscolortex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_2D_MULTISAMPLE, msnormaltex, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_2D_MULTISAMPLE, msglowtex, 0);
+
+    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        fatal("failed allocating MSAA g-buffer!");
+
+    if(msaaresolvehdr)
+    {
+        if(!mshdrtex) glGenTextures(1, &mshdrtex);
+        if(!mshdrfbo) glGenFramebuffers_(1, &mshdrfbo);
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, mshdrfbo);
+
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
+        glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, hdrformat, w, h, GL_FALSE);
+
+        if(gdepthformat)
+        {
+            glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msdepthrb);
+            if(msaaresolvehdr) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, hasDS ? msdepthrb : msstencilrb);
+        }
+        else
+        {
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+            if(msaaresolvehdr)
+            {
+                if(hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+                else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msstencilrb);
+            }
+        }
+
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, mshdrtex, 0);
+
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating MSAA HDR buffer!");
+
+        if(!msrefracttex) glGenTextures(1, &msrefracttex);
+        if(!msrefractfbo) glGenFramebuffers_(1, &msrefractfbo);
+
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msrefractfbo);
+
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msrefracttex);
+        glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, GL_FALSE);
+
+        if(gdepthformat)
+        {
+            glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msdepthrb);
+            if(msaaresolvehdr) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, hasDS ? msdepthrb : msstencilrb);
+        }
+        else
+        {
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+            if(msaaresolvehdr)
+            {
+                if(hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+                else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msstencilrb);
+            }
+        }
+
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, msrefracttex, 0);
+
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating MSAA refraction buffer!");
+    }
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
+
+    useshaderbyname("msaaedgedetect");
+    useshaderbyname("msaaresolve");
+    if(msaaresolvehdr) useshaderbyname("msaatonemap");
+}
+
 void setupgbuffer(int w, int h)
 {
     int sw = w, sh = h;
@@ -451,72 +618,75 @@ void setupgbuffer(int w, int h)
     gh = sh;
 
     if(!gdepthtex) glGenTextures(1, &gdepthtex);
-    if(!gcolortex) glGenTextures(1, &gcolortex);
-    if(!gnormaltex) glGenTextures(1, &gnormaltex);
-    if(!gglowtex) glGenTextures(1, &gglowtex);
-    if(!gfbo) glGenFramebuffers_(1, &gfbo);
-
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
-
-    maskgbuffer("cngd");
 
     static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
     GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
     createtexture(gdepthtex, gw, gh, NULL, 3, 0, depthformat, GL_TEXTURE_RECTANGLE_ARB);
 
-    createtexture(gcolortex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(gnormaltex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
-    createtexture(gglowtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+    if(!msaaresolvehdr)
+    {
+        if(!gcolortex) glGenTextures(1, &gcolortex);
+        if(!gnormaltex) glGenTextures(1, &gnormaltex);
+        if(!gglowtex) glGenTextures(1, &gglowtex);
+        if(!gfbo) glGenFramebuffers_(1, &gfbo);
 
-    if(gdepthformat)
-    {
-        if(!gdepthrb) glGenRenderbuffers_(1, &gdepthrb);
-        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gdepthrb);
-        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, gw, gh);
-        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
-    }
-    else if(gstencil && (!gdepthstencil || !hasDS))
-    {
-        if(!gstencilrb) glGenRenderbuffers_(1, &gstencilrb);
-        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gstencilrb);
-        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, gw, gh);
-        glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
-    }
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
-    if(gdepthformat)
-    {
-        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-    }
-    else
-    {
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-        if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-        else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
-    }
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gglowtex, 0);
+        maskgbuffer("cngd");
 
-    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
-        fatal("failed allocating g-buffer!");
+        createtexture(gcolortex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(gnormaltex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(gglowtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+
+        if(gdepthformat)
+        {
+            if(!gdepthrb) glGenRenderbuffers_(1, &gdepthrb);
+            glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gdepthrb);
+            glRenderbufferStorage_(GL_RENDERBUFFER_EXT, gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, gw, gh);
+            glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
+        }
+        else if(gstencil && (!gdepthstencil || !hasDS))
+        {
+            if(!gstencilrb) glGenRenderbuffers_(1, &gstencilrb);
+            glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gstencilrb);
+            glRenderbufferStorage_(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, gw, gh);
+            glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
+        }
+
+        if(gdepthformat)
+        {
+            glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+            if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+        }
+        else
+        {
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+            if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+            else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+        }
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gglowtex, 0);
+
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating g-buffer!");
+    }
 
     if(!hdrtex) glGenTextures(1, &hdrtex);
-
     if(!hdrfbo) glGenFramebuffers_(1, &hdrfbo);
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
     hdrformat = hdr ? (hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB))) : GL_RGB;
     hdrfloat = floatformat(hdrformat);
+    hdrclear = 3;
     createtexture(hdrtex, gw, gh, NULL, 3, 1, hdrformat, GL_TEXTURE_RECTANGLE_ARB);
 
     if(gdepthformat)
     {
         glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
         if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
     }
     else
     {
@@ -530,38 +700,40 @@ void setupgbuffer(int w, int h)
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
         fatal("failed allocating HDR buffer!");
 
-    hdrclear = 3;
-
-    if(!refracttex) glGenTextures(1, &refracttex);
-    if(!refractfbo) glGenFramebuffers_(1, &refractfbo);
-
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
-
-    createtexture(refracttex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
-
-    if(gdepthformat)
+    if(!msaasamples || !msaaresolvehdr)
     {
-        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-    }
-    else
-    {
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-        if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
-        else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
-    }
+        if(!refracttex) glGenTextures(1, &refracttex);
+        if(!refractfbo) glGenFramebuffers_(1, &refractfbo);
 
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, refracttex, 0);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
 
-    if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
-        fatal("failed allocating refraction buffer!");
+        createtexture(refracttex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
+
+        if(gdepthformat)
+        {
+            glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+            if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+        }
+        else
+        {
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+            if(gdepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+            else if(gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+        }
+
+        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, refracttex, 0);
+
+        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+            fatal("failed allocating refraction buffer!");
+    }
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 
     cleanupbloom();
     cleanupao();
     cleanupaa();
+
+    if(msaasamples) setupmsbuffer(gw, gh);
 }
 
 void cleanupgbuffer()
@@ -579,7 +751,54 @@ void cleanupgbuffer()
     if(refracttex) { glDeleteTextures(1, &refracttex); refracttex = 0; }
     gw = gh = -1;
     cleanupscale();
+    cleanupmsbuffer();
     cleardeferredlightshaders();
+}
+
+void resolvemsaadepth(int w = vieww, int h = viewh)
+{
+    if(!msaasamples || msaaresolvehdr) return;
+
+    timer *resolvetimer = drawtex ? NULL : begintimer("msaa depth resolve");
+
+    glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, msfbo);
+    glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, gfbo);
+    glBlitFramebuffer_(0, 0, w, h, 0, 0, w, h, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+    if(gdepthformat)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+        glViewport(0, 0, w, h);
+        glDisable(GL_DEPTH_TEST);
+        maskgbuffer("d");
+        SETSHADER(msaaresolve);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex3f( 1, -1, -1);
+        glVertex3f(-1, -1, -1);
+        glVertex3f( 1,  1, -1);
+        glVertex3f(-1,  1, -1);
+        glEnd();
+        maskgbuffer("cngd");
+        glEnable(GL_DEPTH_TEST);
+    }
+
+    endtimer(resolvetimer);
+}
+
+void resolvemsaacolor(int w = vieww, int h = viewh)
+{
+    if(!msaaresolvehdr) return;
+
+    timer *resolvetimer = drawtex ? NULL : begintimer("msaa resolve");
+
+    glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
+    glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, hdrfbo);
+    glBlitFramebuffer_(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+
+    endtimer(resolvetimer);
 }
 
 VARF(gstencil, 0, 0, 1, cleanupgbuffer());
@@ -607,6 +826,7 @@ float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
 
 void readhdr(int w, int h, GLenum format, GLenum type, void *dst, GLenum target, GLuint tex)
 {
+    if(msaaresolvehdr) resolvemsaacolor(w, h);
     GLERROR;
 
     if(hasCBF || !hdrfloat) glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
@@ -640,37 +860,48 @@ void loadhdrshaders(int aa)
         case AA_LUMA:
             useshaderbyname("hdrtonemapluma");
             useshaderbyname("hdrnopluma");
+            if(msaaresolvehdr) useshaderbyname("msaatonemapluma");
             break;
         case AA_VELOCITY:
             useshaderbyname("hdrtonemapvelocity");
             useshaderbyname("hdrnopvelocity");
+            if(msaaresolvehdr) useshaderbyname("msaatonemapvelocity");
             break;
         default:
             break;
     }
 }
 
+void processldr(GLuint outfbo, int aa)
+{
+    if(msaaresolvehdr)
+    {
+        glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
+        glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, outfbo && !aa ? outfbo : hdrfbo);
+        glBlitFramebuffer_(0, 0, vieww, viewh, 0, 0, vieww, viewh, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        if(outfbo && !aa) return;
+    }
+
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+    glViewport(0, 0, vieww, viewh);
+    switch(aa)
+    {
+        case AA_LUMA: SETSHADER(hdrnopluma); break;
+        case AA_VELOCITY:
+            SETSHADER(hdrnopvelocity);
+            glActiveTexture_(GL_TEXTURE3_ARB);
+            setaavelocityparams();
+            glActiveTexture_(GL_TEXTURE0_ARB);
+            break;
+        default: SETSHADER(hdrnop); break;
+    }
+    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+    screenquad(vieww, viewh);
+}
+
 void processhdr(GLuint outfbo, int aa)
 {
-    if(!hdr)
-    {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
-        glViewport(0, 0, vieww, viewh);
-        switch(aa)
-        {
-            case AA_LUMA: SETSHADER(hdrnopluma); break;
-            case AA_VELOCITY:
-                SETSHADER(hdrnopvelocity);
-                glActiveTexture_(GL_TEXTURE3_ARB);
-                setaavelocityparams();
-                glActiveTexture_(GL_TEXTURE0_ARB);
-                break;
-            default: SETSHADER(hdrnop); break;
-        }
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
-        screenquad(vieww, viewh);
-        return;
-    }
+    if(!hdr) { processldr(outfbo, aa); return; }
 
     timer *hdrtimer = begintimer("hdr processing");
 
@@ -680,6 +911,32 @@ void processhdr(GLuint outfbo, int aa)
     GLuint b0fbo = bloomfbo[1], b0tex = bloomtex[1], b1fbo =  bloomfbo[0], b1tex = bloomtex[0], ptex = hdrtex;
     int b0w = max(vieww/4, bloomw), b0h = max(viewh/4, bloomh), b1w = max(vieww/2, bloomw), b1h = max(viewh/2, bloomh),
         pw = vieww, ph = viewh;
+    if(msaaresolvehdr) 
+    {
+        if(!msaatonemap)
+        {
+            glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
+            glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, hdrfbo);
+            glBlitFramebuffer_(0, 0, vieww, viewh, 0, 0, vieww, viewh, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        }
+        else if(hasFBMSBS && (vieww > bloomw || viewh > bloomh))
+        {
+            int cw = max(vieww/2, bloomw), ch = max(viewh/2, bloomh);
+            glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
+            glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, hdrfbo);
+            glBlitFramebuffer_(0, 0, vieww, viewh, 0, 0, cw, ch, GL_COLOR_BUFFER_BIT, GL_SCALED_RESOLVE_FASTEST_EXT);
+            pw = cw;
+            ph = ch;
+        }
+        else
+        {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+            glViewport(0, 0, vieww, viewh);
+            SETSHADER(msaaresolve);
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
+            screenquad(vieww, viewh);
+        }
+    }
     if(hdrreduce) while(pw > bloomw || ph > bloomh)
     {
         GLuint cfbo = b1fbo, ctex = b1tex;
@@ -788,16 +1045,21 @@ void processhdr(GLuint outfbo, int aa)
     glViewport(0, 0, vieww, viewh);
     switch(aa)
     {
-        case AA_LUMA: SETSHADER(hdrtonemapluma); break;
+        case AA_LUMA: 
+            if(msaaresolvehdr && msaatonemap) SETSHADER(msaatonemapluma); else SETSHADER(hdrtonemapluma); 
+            break;
         case AA_VELOCITY:
-            SETSHADER(hdrtonemapvelocity);
+            if(msaaresolvehdr && msaatonemap) SETSHADER(msaatonemapvelocity); else SETSHADER(hdrtonemapvelocity);
             glActiveTexture_(GL_TEXTURE3_ARB);
             setaavelocityparams();
             glActiveTexture_(GL_TEXTURE0_ARB);
             break;
-        default: SETSHADER(hdrtonemap); break;
+        default: 
+            if(msaaresolvehdr && msaatonemap) SETSHADER(msaatonemap); else SETSHADER(hdrtonemap); 
+            break;
     }       
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+    if(msaaresolvehdr && msaatonemap) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
     glActiveTexture_(GL_TEXTURE0_ARB);
@@ -1690,12 +1952,14 @@ void radiancehints::bindparams()
     GLOBALPARAM(rhnudge, (rhnudge*step));
 }
 
-static Shader *deferredlightshader = NULL, *deferredminimapshader = NULL;
+static Shader *deferredlightshader = NULL, *deferredminimapshader = NULL, *deferredmsaapixelshader = NULL, *deferredmsaasampleshader = NULL;
 
 void cleardeferredlightshaders()
 {
     deferredlightshader = NULL;
     deferredminimapshader = NULL;
+    deferredmsaapixelshader = NULL;
+    deferredmsaasampleshader = NULL;
 }
 
 Shader *loaddeferredlightshader(const char *type = NULL)
@@ -1741,7 +2005,15 @@ Shader *loaddeferredlightshader(const char *type = NULL)
 
 void loaddeferredlightshaders()
 {
-    deferredlightshader = loaddeferredlightshader();
+    if(msaasamples) 
+    {
+        string opts;
+        if(msaaresolvehdr) copystring(opts, "MS");
+        else formatstring(opts)("MR%d", msaasamples);
+        deferredmsaasampleshader = loaddeferredlightshader(opts);
+        deferredmsaapixelshader = loaddeferredlightshader("M");
+    }
+    deferredlightshader = msaaresolvehdr ? deferredmsaapixelshader : loaddeferredlightshader();
 }
 
 static inline bool sortlights(int x, int y)
@@ -1875,9 +2147,9 @@ FVAR(lightradiustweak, 1, 1.11f, 2);
 VAR(lighttilestrip, 0, 1, 1);
 VAR(lighttilestripthreshold, 1, 8, 8);
 
-void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL, int stencilmask = 0)
+void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL, int stencilmask = 0, int msaapass = 0)
 {
-    Shader *s = drawtex == DRAWTEX_MINIMAP ? deferredminimapshader : deferredlightshader;
+    Shader *s = drawtex == DRAWTEX_MINIMAP ? deferredminimapshader : (msaapass <= 0 ? deferredlightshader : (msaapass > 1 ? deferredmsaasampleshader : deferredmsaapixelshader));
     if(!s || s == nullshader) return;
 
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -1888,13 +2160,17 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     if(!depthtestlights) { glDisable(GL_DEPTH_TEST); depth = false; }
     else glDepthMask(GL_FALSE);
 
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+    if(msaapass) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mscolortex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    if(msaapass) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glActiveTexture_(GL_TEXTURE2_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+    if(msaapass) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msglowtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
     glActiveTexture_(GL_TEXTURE3_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    if(msaapass) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE4_ARB);
     glBindTexture(shadowatlastarget, shadowatlastex);
     if(usesmcomparemode()) setsmcomparemode(); else setsmnoncomparemode();
@@ -1964,6 +2240,41 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
     int btx1, bty1, btx2, bty2;
     calctilebounds(bsx1, bsy1, bsx2, bsy2, btx1, bty1, btx2, bty2);
+    if(msaapass > 1)
+    {
+        glStencilFunc(GL_EQUAL, stencilmask|0x10, stencilmask|0x10);
+        if(!stencilmask) glEnable(GL_STENCIL_TEST);
+    }
+    else if(msaapass > 0)
+    {
+        int tx1 = max(int(floor((bsx1*0.5f+0.5f)*vieww)), 0), ty1 = max(int(floor((bsy1*0.5f+0.5f)*viewh)), 0),
+            tx2 = min(int(ceil((bsx2*0.5f+0.5f)*vieww)), vieww), ty2 = min(int(ceil((bsy2*0.5f+0.5f)*viewh)), viewh);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+        if(stencilmask)
+        {
+            glStencilFunc(GL_EQUAL, stencilmask|0x10, stencilmask);
+            glStencilMask(0x10);
+        }
+        else
+        {
+            glStencilFunc(GL_ALWAYS, 0x10, 0x10);
+            glEnable(GL_STENCIL_TEST);
+        }
+        if(depthtestlights && depth) { glDisable(GL_DEPTH_TEST); depth = false; }
+        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
+        SETSHADER(msaaedgedetect);
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex3f( 1, -1, -1);
+        glVertex3f(-1, -1, -1);
+        glVertex3f( 1,  1, -1);
+        glVertex3f(-1,  1, -1);
+        glEnd();
+        glStencilFunc(GL_EQUAL, stencilmask, stencilmask|0x10);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        if(stencilmask) glStencilMask(~0);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    }
 
     if(sunpass)
     {
@@ -2277,6 +2588,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     glMatrixMode(GL_MODELVIEW);
+
+    if(msaapass > 0 && !stencilmask) glDisable(GL_STENCIL_TEST);
 }
 
 VAR(oqlights, 0, 1, 1);
@@ -2777,13 +3090,11 @@ void radiancehints::renderslices()
     }
 }
 
-VAR(rhinoq, 0, 0, 1);
-
 void renderradiancehints()
 {
     if(!sunlight || !csmshadowmap || !gi || !giscale || !gidist) return;
 
-    timer *rhtimer = !rhinoq ? begintimer("radiance hints") : NULL;
+    timer *rhtimer = begintimer("radiance hints");
 
     rh.setup();
     rsm.setup();
@@ -2810,8 +3121,6 @@ void renderradiancehints()
 
     if(!rhcache || rh.prevdynmin.z < rh.prevdynmax.z || rh.dynmin.z < rh.dynmax.z || !rh.allcached())
     {
-        if(rhinoq) glFlush();
-
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
         glLoadMatrixf(rsm.proj.v);
@@ -2836,12 +3145,6 @@ void renderradiancehints()
         glPopMatrix();
         glMatrixMode(GL_MODELVIEW);
         glPopMatrix();
-
-        if(rhinoq)
-        {
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
-            glViewport(0, 0, vieww, viewh);
-        }
     }
 
     clearbatchedmapmodels();
@@ -3141,9 +3444,10 @@ void rendertransparent()
 
     if(hasalphavas&4 || hasmats&4)
     {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, refractfbo);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaaresolvehdr ? msrefractfbo : refractfbo);
         glDepthMask(GL_FALSE);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+        if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+        else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
         float sx1 = min(alpharefractsx1, matrefractsx1), sy1 = min(alpharefractsy1, matrefractsy1),
               sx2 = max(alpharefractsx2, matrefractsx2), sy2 = max(alpharefractsy2, matrefractsy2);
         bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
@@ -3168,14 +3472,17 @@ void rendertransparent()
     }
 
     glActiveTexture_(GL_TEXTURE7_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
+    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msrefracttex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
     glActiveTexture_(GL_TEXTURE8_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
+    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     glActiveTexture_(GL_TEXTURE9_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    if((gdepthstencil && hasDS) || gstencil) glEnable(GL_STENCIL_TEST);
+    if((gdepthstencil && hasDS) || gstencil || msaaresolvehdr) glEnable(GL_STENCIL_TEST);
 
     glmatrixf raymatrix = mvmatrix.v;
     loopk(4)
@@ -3217,15 +3524,15 @@ void rendertransparent()
             continue;
         }
 
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
-        if((gdepthstencil && hasDS) || gstencil)
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaaresolvehdr ? msfbo : gfbo);
+        if((gdepthstencil && hasDS) || gstencil || msaaresolvehdr)
         {
             glStencilFunc(GL_ALWAYS, 1<<layer, 1<<layer);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         }
         else
         {
-            maskgbuffer(maskedaa() ? "cg" : "cng");
+            maskgbuffer(maskedaa() || msaaresolvehdr ? "cg" : "cng");
             bool scissor = sx1 > -1 || sy1 > -1 || sx2 < 1 || sy2 < 1;
             if(scissor)
             {
@@ -3265,17 +3572,26 @@ void rendertransparent()
 
         if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
-        if((gdepthstencil && hasDS) || gstencil)
+        if(msaaresolvehdr)
         {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, mshdrfbo);
+            loopi(2) renderlights(sx1, sy1, sx2, sy2, tiles, 1<<layer, i+1);
             glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
-
-        renderlights(sx1, sy1, sx2, sy2, tiles);
+        else
+        {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+            if((gdepthstencil && hasDS) || gstencil)
+            {
+                glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
+                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+            }
+            renderlights(sx1, sy1, sx2, sy2, tiles);
+        }
     }
 
-    if((gdepthstencil && hasDS) || gstencil) glDisable(GL_STENCIL_TEST);
+    if((gdepthstencil && hasDS) || gstencil || msaaresolvehdr) glDisable(GL_STENCIL_TEST);
 
     endtimer(transtimer);
 }
@@ -3285,7 +3601,7 @@ VAR(gcolorclear, 0, 1, 1);
 
 void preparegbuffer(bool depthclear)
 {
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaasamples && (msaaresolvehdr || !drawtex) ? msfbo : gfbo);
     glViewport(0, 0, vieww, viewh);
 
     if(gdepthformat && gdepthclear)
@@ -3297,7 +3613,7 @@ void preparegbuffer(bool depthclear)
         maskgbuffer("cng");
     }
     if(gcolorclear) glClearColor(0, 0, 0, 0);
-    glClear((depthclear ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(depthclear && ((gdepthstencil && hasDS) || gstencil) ? GL_STENCIL_BUFFER_BIT : 0));
+    glClear((depthclear ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(depthclear && ((gdepthstencil && hasDS) || gstencil || msaaresolvehdr) ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
 
     glmatrixf invscreenmatrix;
@@ -3382,16 +3698,18 @@ void shademinimap(const vec &color)
 {
     GLERROR;
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaaresolvehdr ? mshdrfbo : hdrfbo);
     glViewport(0, 0, vieww, viewh);
 
     if(color.x >= 0)
     {
+        maskgbuffer("c");
         glClearColor(color.x, color.y, color.z, 0);
         glClear(GL_COLOR_BUFFER_BIT);
+        maskgbuffer("cngd");
     }
 
-    renderlights();
+    renderlights(-1, -1, 1, 1, NULL, 0, msaaresolvehdr ? -1 : 0);
     GLERROR;
 }
 
@@ -3403,13 +3721,17 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
     glViewport(outfbo ? 0 : x, outfbo ? 0 : y, vieww, viewh);
 
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
+    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mscolortex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gcolortex);
     glActiveTexture_(GL_TEXTURE1_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
     glActiveTexture_(GL_TEXTURE2_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
+    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msglowtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gglowtex);
     glActiveTexture_(GL_TEXTURE3_ARB);
-    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
@@ -3456,17 +3778,19 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
     
     glViewport(0, 0, screen->w, screen->h);
 }
- 
+
 void shadegbuffer()
 {
+    if(msaasamples && !msaaresolvehdr && !drawtex) resolvemsaadepth();
     GLERROR;
+
     timer *shcputimer = begintimer("deferred shading", false);
     timer *shtimer = begintimer("deferred shading");
 
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
+    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaaresolvehdr ? mshdrfbo : hdrfbo);
     glViewport(0, 0, vieww, viewh);
 
-    if(hdrclear > 0)
+    if(hdrclear > 0 && (!msaasamples || drawtex))
     {
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -3474,7 +3798,12 @@ void shadegbuffer()
     }
     drawskybox(farplane);
 
-    renderlights();
+    if(msaasamples && (msaaresolvehdr || !drawtex)) 
+    {
+        if(!msaaresolvehdr) glClear(GL_STENCIL_BUFFER_BIT);
+        loopi(2) renderlights(-1, -1, 1, 1, NULL, 0, i+1);
+    }
+    else renderlights();
     GLERROR;
 
     endtimer(shtimer);
@@ -3489,7 +3818,7 @@ void setupframe(int w, int h)
     if(!shadowatlasfbo) setupshadowatlas();
     if(sunlight && csmshadowmap && gi && giscale && gidist && !rhfbo) setupradiancehints();
     if(!deferredlightshader) loaddeferredlightshaders();
-    if(drawtex == DRAWTEX_MINIMAP && !deferredminimapshader) deferredminimapshader = loaddeferredlightshader("m");
+    if(drawtex == DRAWTEX_MINIMAP && !deferredminimapshader) deferredminimapshader = loaddeferredlightshader(msaaresolvehdr ? "Mm" : "m");
     setupaa(gw, gh);
     GLERROR;
 }

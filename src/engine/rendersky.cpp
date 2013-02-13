@@ -382,7 +382,7 @@ void drawskybox(int farplane)
     float skyclip = 0, topclip = 1;
     if(skyclip) skyclip = 0.5f + 0.5f*(skyclip-camera1->o.z)/float(worldsize); 
 
-    if(limitsky())
+    if(limitsky() || (msaasamples && (msaaresolvehdr || !drawtex)))
     {
         glDisable(GL_DEPTH_TEST);
     }
@@ -463,7 +463,7 @@ void drawskybox(int farplane)
 
     if(clampsky) glDepthRange(0, 1);
 
-    if(limitsky())
+    if(limitsky() || (msaasamples && (msaaresolvehdr || !drawtex)))
     {
         glEnable(GL_DEPTH_TEST);
     }
