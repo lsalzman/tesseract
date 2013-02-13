@@ -109,7 +109,6 @@ static inline bool pvsoccluded(const ivec &bborigin, int size)
 
 // rendergl
 extern bool hasVBO, hasDRE, hasOQ, hasTR, hasT3D, hasFBO, hasAFBO, hasDS, hasTF, hasCBF, hasBE, hasBC, hasCM, hasNP2, hasTC, hasS3TC, hasFXT1, hasMT, hasAF, hasMDA, hasGLSL, hasGM, hasNVFB, hasSGIDT, hasSGISH, hasDT, hasSH, hasNVPCF, hasPBO, hasFBB, hasFBMS, hasTMS, hasMSS, hasFBMSBS, hasUBO, hasBUE, hasMBR, hasDB, hasTG, hasT4, hasTQ, hasPF, hasTRG, hasDBT, hasDC, hasDBGO, hasGPU4, hasGPU5;
-extern int hasstencil;
 extern int glversion, glslversion;
 
 enum { DRAWTEX_NONE = 0, DRAWTEX_ENVMAP, DRAWTEX_MINIMAP, DRAWTEX_MODELPREVIEW };
@@ -135,7 +134,7 @@ extern void glerror(const char *file, int line, GLenum error);
 #define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
 
 extern void gl_checkextensions();
-extern void gl_init(int w, int h, int bpp, int depth, int fsaa);
+extern void gl_init(int w, int h, int bpp);
 extern void cleangl();
 extern void gl_drawframe(int w, int h);
 extern void gl_drawmainmenu(int w, int h);

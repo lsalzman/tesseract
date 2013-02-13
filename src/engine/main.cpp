@@ -88,9 +88,6 @@ bool initwarning(const char *desc, int level, int type)
 VARF(scr_w, SCR_MINW, -1, SCR_MAXW, initwarning("screen resolution"));
 VARF(scr_h, SCR_MINH, -1, SCR_MAXH, initwarning("screen resolution"));
 VARF(colorbits, 0, 0, 32, initwarning("color depth"));
-VARF(depthbits, 0, 0, 32, initwarning("depth-buffer precision"));
-VARF(stencilbits, 0, 0, 32, initwarning("stencil-buffer precision"));
-VARF(fsaa, -1, -1, 16, initwarning("anti-aliasing"));
 VARF(vsync, -1, -1, 1, initwarning("vertical sync"));
 
 void writeinitcfg()
@@ -103,9 +100,6 @@ void writeinitcfg()
     f->printf("scr_w %d\n", scr_w);
     f->printf("scr_h %d\n", scr_h);
     f->printf("colorbits %d\n", colorbits);
-    f->printf("depthbits %d\n", depthbits);
-    f->printf("stencilbits %d\n", stencilbits);
-    f->printf("fsaa %d\n", fsaa);
     f->printf("vsync %d\n", vsync);
     extern int sound, soundchans, soundfreq, soundbufferlen;
     f->printf("sound %d\n", sound);
@@ -343,8 +337,7 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     interceptkey(SDLK_UNKNOWN); // keep the event queue awake to avoid 'beachball' cursor
     #endif
 
-    extern int sdl_backingstore_bug;
-    if(background || sdl_backingstore_bug > 0) restorebackground();
+    if(background) restorebackground();
 
     int w = screen->w, h = screen->h;
     if(forceaspect) w = int(ceil(h*forceaspect));
@@ -538,7 +531,7 @@ VAR(dbgmodes, 0, 0, 1);
 
 int desktopw = 0, desktoph = 0;
 
-void setupscreen(int &usedcolorbits, int &useddepthbits, int &usedfsaa)
+void setupscreen(int &usedcolorbits)
 {
     int flags = SDL_RESIZABLE;
     #if defined(WIN32) || defined(__APPLE__)
@@ -603,57 +596,18 @@ void setupscreen(int &usedcolorbits, int &useddepthbits, int &usedfsaa)
 #if SDL_VERSION_ATLEAST(1, 2, 11)
     if(vsync>=0) SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, vsync);
 #endif
-    static int configs[] =
-    {
-        0x7, /* try everything */
-        0x6, 0x5, 0x3, /* try disabling one at a time */
-        0x4, 0x2, 0x1, /* try disabling two at a time */
-        0 /* try disabling everything */
-    };
-    int config = 0;
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
-    if(!fsaa)
-    {
-        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
-        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
-    }
-    loopi(sizeof(configs)/sizeof(configs[0]))
-    {
-        config = configs[i];
-        if(!depthbits && config&1) continue;
-        if(!stencilbits && config&2) continue;
-        if(fsaa<=0 && config&4) continue;
-        if(depthbits) SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, config&1 ? depthbits : 0);
-        if(stencilbits)
-        {
-            hasstencil = config&2 ? stencilbits : 0;
-            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, hasstencil);
-        }
-        else hasstencil = 0;
-        if(fsaa>0)
-        {
-            SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, config&4 ? 1 : 0);
-            SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, config&4 ? fsaa : 0);
-        }
-        screen = SDL_SetVideoMode(scr_w, scr_h, hasbpp ? colorbits : 0, SDL_OPENGL|flags);
-        if(screen) break;
-    }
     if(!screen) fatal("Unable to create OpenGL screen: %s", SDL_GetError());
     else
     {
         if(!hasbpp) conoutf(CON_WARN, "%d bit color buffer not supported - disabling", colorbits);
-        if(depthbits && (config&1)==0) conoutf(CON_WARN, "%d bit z-buffer not supported - disabling", depthbits);
-        if(stencilbits && (config&2)==0) conoutf(CON_WARN, "Stencil buffer not supported - disabling");
-        if(fsaa>0 && (config&4)==0) conoutf(CON_WARN, "%dx anti-aliasing not supported - disabling", fsaa);
     }
 
     scr_w = screen->w;
     scr_h = screen->h;
 
     usedcolorbits = hasbpp ? colorbits : 0;
-    useddepthbits = config&1 ? depthbits : 0;
-    usedfsaa = config&4 ? fsaa : 0;
 }
 
 void resetgl()
@@ -684,9 +638,9 @@ void resetgl()
     
     SDL_SetVideoMode(0, 0, 0, 0);
 
-    int usedcolorbits = 0, useddepthbits = 0, usedfsaa = 0;
-    setupscreen(usedcolorbits, useddepthbits, usedfsaa);
-    gl_init(scr_w, scr_h, usedcolorbits, useddepthbits, usedfsaa);
+    int usedcolorbits = 0;
+    setupscreen(usedcolorbits);
+    gl_init(scr_w, scr_h, usedcolorbits);
 
     extern void reloadfonts();
     extern void reloadtextures();
@@ -1077,12 +1031,12 @@ int main(int argc, char **argv)
             case 'd': dedicated = atoi(&argv[i][2]); if(dedicated<=0) dedicated = 2; break;
             case 'w': scr_w = clamp(atoi(&argv[i][2]), SCR_MINW, SCR_MAXW); if(!findarg(argc, argv, "-h")) scr_h = -1; break;
             case 'h': scr_h = clamp(atoi(&argv[i][2]), SCR_MINH, SCR_MAXH); if(!findarg(argc, argv, "-w")) scr_w = -1; break;
-            case 'z': depthbits = atoi(&argv[i][2]); break;
+            case 'z': /* compat, ignore */ break;
             case 'b': colorbits = atoi(&argv[i][2]); break;
-            case 'a': fsaa = atoi(&argv[i][2]); break;
+            case 'a': /* compat, ignore */ break;
             case 'v': vsync = atoi(&argv[i][2]); break;
             case 't': fullscreen = atoi(&argv[i][2]); break;
-            case 's': stencilbits = atoi(&argv[i][2]); break;
+            case 's': /* compat, ignore */ break;
             case 'f': /* compat, ignore */ break; 
             case 'l': 
             {
@@ -1134,8 +1088,8 @@ int main(int argc, char **argv)
         desktopw = video->current_w;
         desktoph = video->current_h;
     }
-    int usedcolorbits = 0, useddepthbits = 0, usedfsaa = 0;
-    setupscreen(usedcolorbits, useddepthbits, usedfsaa);
+    int usedcolorbits = 0;
+    setupscreen(usedcolorbits);
 
     logoutf("init: video: misc");
     SDL_WM_SetCaption("Tesseract", NULL);
@@ -1144,7 +1098,7 @@ int main(int argc, char **argv)
 
     logoutf("init: gl");
     gl_checkextensions();
-    gl_init(scr_w, scr_h, usedcolorbits, useddepthbits, usedfsaa);
+    gl_init(scr_w, scr_h, usedcolorbits);
     notexture = textureload("packages/textures/notexture.png");
     if(!notexture) fatal("could not find core textures");
 

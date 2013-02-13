@@ -201,7 +201,6 @@ VAR(ati_ubo_bug, 0, 0, 1);
 VAR(ati_pf_bug, 0, 0, 1);
 VAR(intel_immediate_bug, 0, 0, 1);
 VAR(intel_vertexarray_bug, 0, 0, 1);
-VAR(sdl_backingstore_bug, -1, 0, 1);
 VAR(usetexrect, 1, 0, 0);
 VAR(useubo, 1, 0, 0);
 VAR(usebue, 1, 0, 0);
@@ -243,7 +242,6 @@ void gl_checkextensions()
 #ifdef __APPLE__
     extern int mac_osversion();
     int osversion = mac_osversion();  /* 0x0A0500 = 10.5 (Leopard) */
-    sdl_backingstore_bug = -1;
 #endif
 
     if(strstr(renderer, "Mesa") || strstr(version, "Mesa"))
@@ -931,7 +929,7 @@ void printtimers(int conw, int conh)
 }
          
 
-void gl_init(int w, int h, int bpp, int depth, int fsaa)
+void gl_init(int w, int h, int bpp)
 {
     glViewport(0, 0, w, h);
     glClearColor(0, 0, 0, 0);
@@ -950,19 +948,6 @@ void gl_init(int w, int h, int bpp, int depth, int fsaa)
     glFrontFace(GL_CW);
     glCullFace(GL_BACK);
     glDisable(GL_CULL_FACE);
-
-#ifdef __APPLE__
-    if(sdl_backingstore_bug)
-    {
-        if(fsaa)
-        {
-            sdl_backingstore_bug = 1;
-            // since SDL doesn't add kCGLPFABackingStore to the pixelformat and so it isn't guaranteed to be preserved - only manifests when using fsaa?
-            //conoutf(CON_WARN, "WARNING: Using SDL backingstore workaround. (use \"/sdl_backingstore_bug 0\" to disable if unnecessary)");
-        }
-        else sdl_backingstore_bug = -1;
-    }
-#endif
 
     renderpath = R_GLSLANG;
 
