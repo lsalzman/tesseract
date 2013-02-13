@@ -382,7 +382,7 @@ void dosmaa(GLuint outfbo = 0)
     if(smaadepthmask || smaastencil)
     {
         glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | (msaaresolvehdr ? GL_DEPTH_BUFFER_BIT | ((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0) : 0));
     }
     if(smaadepthmask)
     {
