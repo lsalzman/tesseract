@@ -418,6 +418,8 @@ void doscale(int w, int h)
 VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD, CHANGE_SHADERS));
 VAR(gdepthformat, 1, 0, 0);
 VARFP(msaa, 0, 0, 16, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
+VARF(msaadepthstencil, 0, 1, 1, cleanupgbuffer());
+VARF(msaastencil, 0, 0, 1, cleanupgbuffer());
 VARFP(msaalineardepth, -1, -1, 3, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaatonemap, 0, 0, 1, cleanupgbuffer());
 VARF(msaatonemapblit, 0, 0, 1, cleanupgbuffer());
@@ -500,13 +502,14 @@ void bindmsdepth()
     if(gdepthformat)
     {
         glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msdepthrb);
-        glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, hasDS ? msdepthrb : msstencilrb);
+        if(msaadepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msdepthrb);
+        else if(msaastencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msstencilrb);
     }
     else
     {
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
-        if(hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
-        else glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msstencilrb);
+        if(msaadepthstencil && hasDS) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_2D_MULTISAMPLE, msdepthtex, 0);
+        else if(msaastencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, msstencilrb);
     }
 }
 
@@ -523,7 +526,7 @@ void setupmsbuffer(int w, int h)
     maskgbuffer("cngd");
 
     static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
-    GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
+    GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (msaadepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
     glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, depthformat, w, h, GL_FALSE);
  
@@ -538,10 +541,10 @@ void setupmsbuffer(int w, int h)
     {
         if(!msdepthrb) glGenRenderbuffers_(1, &msdepthrb);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, msdepthrb);
-        glRenderbufferStorageMultisample_(GL_RENDERBUFFER_EXT, msaasamples, hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, w, h);
+        glRenderbufferStorageMultisample_(GL_RENDERBUFFER_EXT, msaasamples, msaadepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, w, h);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
     }
-    if(!hasDS)
+    if(msaastencil && (!msaadepthstencil || !hasDS))
     {
         if(!msstencilrb) glGenRenderbuffers_(1, &msstencilrb);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, msstencilrb);
@@ -616,7 +619,7 @@ void bindgdepth()
     if(gdepthformat || msaasamples)
     {
         glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        if((msaasamples || gdepthstencil) && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+        if((msaasamples ? msaadepthstencil : gdepthstencil) && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
         else if(!msaasamples && gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
     }
     else
@@ -658,7 +661,7 @@ void setupgbuffer(int w, int h)
     {
         if(!gdepthrb) glGenRenderbuffers_(1, &gdepthrb);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gdepthrb);
-        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, (msaasamples || gdepthstencil) && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, gw, gh);
+        glRenderbufferStorage_(GL_RENDERBUFFER_EXT, (msaasamples ? msaadepthstencil : gdepthstencil) && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, gw, gh);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
     }
 
@@ -1029,7 +1032,7 @@ void processhdr(GLuint outfbo, int aa)
     {
         bool blit = false, stencil = false;
         if(msaatonemapblit && (!aa || !outfbo)) { blit = true; if(msaatonemapstencil) stencil = true; }
-        else if((hasDS || gstencil) && msaatonemapstencil)
+        else if(((msaadepthstencil && hasDS) || gstencil) && msaatonemapstencil)
         {
             stencil = true;
             glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
@@ -3824,7 +3827,7 @@ void shadegbuffer()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaasamples ? mshdrfbo : hdrfbo);
     glViewport(0, 0, vieww, viewh);
 
-    if(hdrclear > 0 && (!msaasamples || drawtex))
+    if(hdrclear > 0)
     {
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
