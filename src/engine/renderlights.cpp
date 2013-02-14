@@ -421,6 +421,7 @@ VARFP(msaa, 0, 0, 16, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARF(msaadepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(msaastencil, 0, 0, 1, cleanupgbuffer());
 VARF(msaaedgedetect, 0, 1, 1, cleanupgbuffer());
+VARF(msaasampleshading, 0, 1, 1, cleanupgbuffer());
 VARFP(msaalineardepth, -1, -1, 3, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaatonemap, 0, 0, 1, cleanupgbuffer());
 VARF(msaatonemapblit, 0, 0, 1, cleanupgbuffer());
@@ -611,7 +612,7 @@ void setupmsbuffer(int w, int h)
 
     useshaderbyname("msaaedgedetect");
     useshaderbyname("msaaresolve");
-    if(msaatonemap && hasMSS)
+    if(msaatonemap && hasMSS && msaasampleshading)
     {
         useshaderbyname("msaatonemap");
         useshaderbyname("msaatonemapsample");
@@ -723,7 +724,7 @@ void setupgbuffer(int w, int h)
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
         fatal("failed allocating HDR buffer!");
 
-    if(!msaasamples || (msaatonemap && hasMSS && msaatonemapblit))
+    if(!msaasamples || (msaatonemap && hasMSS && msaasampleshading && msaatonemapblit))
     {
         if(!refracttex) glGenTextures(1, &refracttex);
         if(!refractfbo) glGenFramebuffers_(1, &refractfbo);
@@ -837,12 +838,12 @@ void loadhdrshaders(int aa)
         case AA_LUMA:
             useshaderbyname("hdrtonemapluma");
             useshaderbyname("hdrnopluma");
-            if(msaatonemap && hasMSS) useshaderbyname("msaatonemapluma");
+            if(msaatonemap && hasMSS && msaasampleshading) useshaderbyname("msaatonemapluma");
             break;
         case AA_VELOCITY:
             useshaderbyname("hdrtonemapvelocity");
             useshaderbyname("hdrnopvelocity");
-            if(msaatonemap && hasMSS) useshaderbyname("msaatonemapvelocity");
+            if(msaatonemap && hasMSS && msaasampleshading) useshaderbyname("msaatonemapvelocity");
             break;
         default:
             break;
@@ -888,7 +889,7 @@ void processhdr(GLuint outfbo, int aa)
         pw = vieww, ph = viewh;
     if(msaasamples)
     {
-        if(!msaatonemap || !hasMSS)
+        if(!msaatonemap || !hasMSS || !msaasampleshading)
         {
             glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
             glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, hdrfbo);
@@ -1016,7 +1017,7 @@ void processhdr(GLuint outfbo, int aa)
         }
     }
 
-    if(!msaasamples || !msaatonemap || !hasMSS)
+    if(!msaasamples || !msaatonemap || !hasMSS || !msaasampleshading)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
         glViewport(0, 0, vieww, viewh);
@@ -2060,7 +2061,7 @@ void loaddeferredlightshaders()
     if(msaasamples) 
     {
         string opts;
-        if(hasMSS) copystring(opts, "MS");
+        if(hasMSS && msaasampleshading) copystring(opts, "MS");
         else formatstring(opts)((msaadepthstencil && hasDS) || msaastencil || !msaaedgedetect ? "MR%d" : "MRT%d", msaasamples);
         deferredmsaasampleshader = loaddeferredlightshader(opts);
         deferredmsaapixelshader = loaddeferredlightshader("M");
