@@ -1063,7 +1063,7 @@ void processhdr(GLuint outfbo, int aa)
         {
             glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
             glEnable(GL_STENCIL_TEST);
-            glStencilFunc(GL_EQUAL, 0, 0x10);
+            glStencilFunc(GL_EQUAL, 0, 0x08);
             switch(aa)
             {
                 case AA_LUMA: SETSHADER(msaatonemapluma); break;
@@ -1075,7 +1075,7 @@ void processhdr(GLuint outfbo, int aa)
             }
             screenquad(vieww, viewh, b0w, b0h);
 
-            glStencilFunc(GL_EQUAL, 0x10, 0x10);
+            glStencilFunc(GL_EQUAL, 0x08, 0x08);
         }
 
         if(blit) SETSHADER(msaatonemapsample);
@@ -2299,15 +2299,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         int tx1 = max(int(floor((bsx1*0.5f+0.5f)*vieww)), 0), ty1 = max(int(floor((bsy1*0.5f+0.5f)*viewh)), 0),
             tx2 = min(int(ceil((bsx2*0.5f+0.5f)*vieww)), vieww), ty2 = min(int(ceil((bsy2*0.5f+0.5f)*viewh)), viewh);
         glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-        if(stencilmask)
-        {
-            glStencilFunc(GL_EQUAL, stencilmask|0x10, stencilmask);
-            glStencilMask(0x10);
-        }
-        else
-        {
-            glStencilFunc(GL_ALWAYS, 0x10, 0x10);
-        }
+        if(stencilmask) glStencilFunc(GL_EQUAL, stencilmask|0x08, stencilmask);
+        else glStencilFunc(GL_ALWAYS, 0x08, ~0);
         if(depthtestlights && depth) { glDisable(GL_DEPTH_TEST); depth = false; }
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
         glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
@@ -2318,14 +2311,13 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         glVertex3f( 1,  1, -1);
         glVertex3f(-1,  1, -1);
         glEnd();
-        glStencilFunc(GL_EQUAL, stencilmask, stencilmask|0x10);
+        glStencilFunc(GL_EQUAL, stencilmask, ~0);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-        if(stencilmask) glStencilMask(~0);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
     else if(msaapass == 2)
     {
-        glStencilFunc(GL_EQUAL, stencilmask|0x10, stencilmask|0x10);
+        glStencilFunc(GL_EQUAL, stencilmask|0x08, ~0);
     }
 
     if(sunpass)
@@ -3577,7 +3569,7 @@ void rendertransparent()
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaasamples ? msfbo : gfbo);
         if(stencilformat)
         {
-            glStencilFunc(GL_ALWAYS, 1<<layer, 1<<layer);
+            glStencilFunc(GL_ALWAYS, layer+1, ~0);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         }
         else
@@ -3625,11 +3617,15 @@ void rendertransparent()
         if(msaasamples)
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, mshdrfbo);
-            if(stencilformat && msaaedgedetect)
+            if(stencilformat)
             {
-                loopi(2) renderlights(sx1, sy1, sx2, sy2, tiles, 1<<layer, i+1);
-                glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
-                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+                if(!msaaedgedetect)
+                {
+                    glStencilFunc(GL_EQUAL, layer+1, ~0);
+                    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+                    renderlights(sx1, sy1, sx2, sy2, tiles, 0, 3);
+                }
+                else loopi(2) renderlights(sx1, sy1, sx2, sy2, tiles, layer+1, i+1);
             }
             else renderlights(sx1, sy1, sx2, sy2, tiles, 0, 3);
         }
@@ -3638,7 +3634,7 @@ void rendertransparent()
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
             if(stencilformat)
             {
-                glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
+                glStencilFunc(GL_EQUAL, layer+1, ~0);
                 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
             }
             renderlights(sx1, sy1, sx2, sy2, tiles);

@@ -384,7 +384,7 @@ void dosmaa(GLuint outfbo = 0)
     else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
     {
         glEnable(GL_STENCIL_TEST);
-        glStencilFunc(GL_ALWAYS, 8, 8);
+        glStencilFunc(GL_ALWAYS, 0x10, ~0);
         glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     }
     if(smaacoloredge) smaacoloredgeshader->set();
@@ -409,7 +409,7 @@ void dosmaa(GLuint outfbo = 0)
     }
     else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
     {
-        glStencilFunc(GL_EQUAL, 8, 8);
+        glStencilFunc(GL_EQUAL, 0x10, ~0);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     }
     if(smaadepthmask || smaastencil) glClear(GL_COLOR_BUFFER_BIT);
