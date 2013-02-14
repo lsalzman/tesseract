@@ -14,8 +14,17 @@ int aow = -1, aoh = -1;
 GLuint aofbo[4] = { 0, 0, 0, 0 }, aotex[4] = { 0, 0, 0, 0 }, aonoisetex = 0;
 glmatrixf eyematrix, worldmatrix, linearworldmatrix, screenmatrix;
 
-extern int bloomsize, bloomprec;
 extern int ati_pf_bug;
+
+int gethdrformat(int prec, int fallback = GL_RGB)
+{
+    if(prec >= 3 && hasTF) return GL_RGB16F_ARB;
+    if(prec >= 2 && hasPF && !ati_pf_bug) return GL_R11F_G11F_B10F_EXT;
+    if(prec >= 1) return GL_RGB10;
+    return fallback;
+}
+
+extern int bloomsize, bloomprec;
 
 void setupbloom(int w, int h)
 {
@@ -33,7 +42,7 @@ void setupbloom(int w, int h)
 
     loopi(5) if(!bloomfbo[i]) glGenFramebuffers_(1, &bloomfbo[i]);
 
-    bloomformat = bloomprec >= 3 && hasTF ? GL_RGB16F_ARB : (bloomprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (bloomprec >= 1 ? GL_RGB10 : GL_RGB));
+    bloomformat = gethdrformat(bloomprec);
     createtexture(bloomtex[0], max(gw/2, bloomw), max(gh/2, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[1], max(gw/4, bloomw), max(gh/4, bloomh), NULL, 3, 1, bloomformat, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(bloomtex[2], bloomw, bloomh, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
@@ -409,6 +418,7 @@ void doscale(int w, int h)
 VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD, CHANGE_SHADERS));
 VAR(gdepthformat, 1, 0, 0);
 VARFP(msaa, 0, 0, 16, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
+VARFP(msaalineardepth, -1, -1, 3, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaahdr, 0, 1, 1, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaatonemap, 0, 0, 1, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARF(msaatonemapblit, 0, 0, 1, cleanupgbuffer());
@@ -419,9 +429,6 @@ VAR(msaaresolvehdr, 1, 0, 0);
 
 void initgbuffer()
 {
-    if(glineardepth >= 2 && (!hasAFBO || !hasTF || !hasTRG)) gdepthformat = 1;
-    else gdepthformat = glineardepth;
-
     msaamaxsamples = msaasamples = msaaresolvehdr = 0;
     if(hasFBMS && hasFBB && hasTMS)
     {
@@ -436,6 +443,10 @@ void initgbuffer()
         while(msaasamples*2 <= min(msaa, msaamaxsamples)) msaasamples *= 2;
         if(hasMSS) msaaresolvehdr = msaahdr ? (msaatonemap ? 2 : 1) : 0;
     }
+
+    int lineardepth = msaasamples && msaalineardepth >= 0 ? msaalineardepth : glineardepth;
+    if(lineardepth >= 2 && (!hasAFBO || !hasTF || !hasTRG)) gdepthformat = 1;
+    else gdepthformat = lineardepth;
 
     initao();
 }
@@ -544,13 +555,21 @@ void setupmsbuffer(int w, int h)
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, mshdrfbo);
 
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
-        glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, hdrformat, w, h, GL_FALSE);
-
-        glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, mshdrtex, 0);
         bindmsdepth();
 
-        if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
+        hdrformat = 0;
+        for(int prec = hdr ? hdrprec : 0; prec >= 0; prec--)
+        {
+            GLenum format = gethdrformat(prec);
+            if(format == hdrformat) continue;
+            hdrformat = format;
+            glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
+            glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, hdrformat, w, h, GL_FALSE);
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, mshdrtex, 0);
+            if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT) break;
+        }
+
+        if(!hdrformat || glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
             fatal("failed allocating MSAA HDR buffer!");
 
         if(!msrefracttex) glGenTextures(1, &msrefracttex);
@@ -581,10 +600,11 @@ void setupmsbuffer(int w, int h)
 
 void bindgdepth()
 {
-    if(gdepthformat)
+    if(gdepthformat || msaaresolvehdr)
     {
         glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
         if(gdepthstencil && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
+        else if(msaaresolvehdr && gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
     }
     else
     {
@@ -614,11 +634,18 @@ void setupgbuffer(int w, int h)
     gw = sw;
     gh = sh;
 
+    hdrformat = gethdrformat(hdr ? hdrprec : 0);
+
+    if(msaasamples) setupmsbuffer(gw, gh);
+
+    hdrfloat = floatformat(hdrformat);
+    hdrclear = 3;
+
     if(!gdepthtex) glGenTextures(1, &gdepthtex);
 
     static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
     GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
-    createtexture(gdepthtex, gw, gh, NULL, 3, 0, depthformat, GL_TEXTURE_RECTANGLE_ARB);
+    if(!msaaresolvehdr) createtexture(gdepthtex, gw, gh, NULL, 3, 0, depthformat, GL_TEXTURE_RECTANGLE_ARB);
 
     if(!msaaresolvehdr)
     {
@@ -635,14 +662,14 @@ void setupgbuffer(int w, int h)
         createtexture(gnormaltex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
         createtexture(gglowtex, gw, gh, NULL, 3, 0, GL_RGBA8, GL_TEXTURE_RECTANGLE_ARB);
 
-        if(gdepthformat)
+        if(gdepthformat || msaaresolvehdr)
         {
             if(!gdepthrb) glGenRenderbuffers_(1, &gdepthrb);
             glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gdepthrb);
             glRenderbufferStorage_(GL_RENDERBUFFER_EXT, gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, gw, gh);
             glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
         }
-        else if(gstencil && (!gdepthstencil || !hasDS))
+        if((!gdepthformat || msaaresolvehdr) && gstencil && (!gdepthstencil || !hasDS))
         {
             if(!gstencilrb) glGenRenderbuffers_(1, &gstencilrb);
             glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gstencilrb);
@@ -654,7 +681,7 @@ void setupgbuffer(int w, int h)
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, gcolortex, 0);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, gnormaltex, 0);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT2_EXT, GL_TEXTURE_RECTANGLE_ARB, gglowtex, 0);
-        if(gdepthformat) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
+        if(gdepthformat && !msaaresolvehdr) glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT3_EXT, GL_TEXTURE_RECTANGLE_ARB, gdepthtex, 0);
 
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
             fatal("failed allocating g-buffer!");
@@ -665,9 +692,6 @@ void setupgbuffer(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
 
-    hdrformat = hdr ? (hdrprec >= 3 && hasTF ? GL_RGB16F_ARB : (hdrprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (hdrprec >= 1 ? GL_RGB10 : GL_RGB))) : GL_RGB;
-    hdrfloat = floatformat(hdrformat);
-    hdrclear = 3;
     createtexture(hdrtex, gw, gh, NULL, 3, 1, hdrformat, GL_TEXTURE_RECTANGLE_ARB);
 
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, hdrtex, 0);
@@ -694,7 +718,6 @@ void setupgbuffer(int w, int h)
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0);
 
-    if(msaasamples) setupmsbuffer(gw, gh);
     if(gscale != 100) setupscale(sw, sh, w, h);
 }
 
@@ -1192,7 +1215,7 @@ void setupradiancehints()
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
 
-    GLenum rsmformat = rsmprec >= 3 && hasTF ? GL_RGB16F_ARB : (rsmprec >= 2 && hasPF && !ati_pf_bug ? GL_R11F_G11F_B10F_EXT : (rsmprec >= 1 ? GL_RGB10 : GL_RGBA8));
+    GLenum rsmformat = gethdrformat(rsmprec, GL_RGBA8);
 
     createtexture(rsmdepthtex, rsmsize, rsmsize, NULL, 3, 0, GL_DEPTH_COMPONENT16_ARB, GL_TEXTURE_RECTANGLE_ARB);
     createtexture(rsmcolortex, rsmsize, rsmsize, NULL, 3, 0, rsmformat, GL_TEXTURE_RECTANGLE_ARB);
