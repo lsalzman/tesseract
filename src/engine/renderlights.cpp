@@ -302,14 +302,11 @@ void renderao()
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[(i+1)%2]);
             glViewport(0, 0, aow, aoh);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[i%2]);
-            if(!aopackdepth)
-            {
-                glActiveTexture_(GL_TEXTURE1_ARB);
-                if(linear) glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[3]);
-                else if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
-                else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-                glActiveTexture_(GL_TEXTURE0_ARB);
-            }
+            glActiveTexture_(GL_TEXTURE1_ARB);
+            if(linear) glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[3]);
+            else if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+            else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+            glActiveTexture_(GL_TEXTURE0_ARB);
             screenquad(vieww, viewh);
         }
     }
