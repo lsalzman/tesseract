@@ -318,7 +318,7 @@ extern glmatrixf worldmatrix, screenmatrix;
 
 extern int gw, gh, gdepthformat, gstencil, gdepthstencil;
 extern GLuint gdepthtex, gcolortex, gnormaltex, gglowtex, gdepthrb, gstencilrb;
-extern int msaasamples, msaaresolvehdr;
+extern int msaasamples;
 extern GLuint msdepthtex, mscolortex, msnormaltex, msglowtex, msdepthrb, msstencilrb;
 
 enum { AA_UNUSED = 0, AA_RESERVED, AA_LUMA, AA_VELOCITY };
@@ -349,7 +349,7 @@ extern void cleanuplights();
 extern void setupaa(int w, int h);
 extern void jitteraa();
 extern bool maskedaa();
-extern void setaavelocityparams();
+extern void setaavelocityparams(GLenum tmu = GL_TEXTURE0_ARB);
 extern void setaamask(bool val);
 extern void doaa(GLuint outfbo, void (*resolve)(GLuint, int));
 extern bool debugaa();

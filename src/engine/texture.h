@@ -327,6 +327,12 @@ struct LocalShaderParam
         if(!name##shader) name##shader = lookupshaderbyname(#name); \
         name##shader->set(); \
     } while(0)
+#define SETVARIANT(name, col, row) \
+    do { \
+        static Shader *name##shader = NULL; \
+        if(!name##shader) name##shader = lookupshaderbyname(#name); \
+        name##shader->setvariant(col, row); \
+    } while(0)
 
 struct ImageData
 {

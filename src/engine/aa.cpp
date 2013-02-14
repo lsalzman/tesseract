@@ -69,9 +69,10 @@ VARFP(tqaamovemaskreduce, 0, 0, 2, cleanuptqaa());
 VARFP(tqaamovemaskprec, 0, 1, 1, cleanuptqaa());
 VARP(tqaaquincunx, 0, 1, 1);
 
-void setaavelocityparams()
+void setaavelocityparams(GLenum tmu)
 {
-    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+    if(tmu!=GL_TEXTURE0_ARB) glActiveTexture(tmu);
+    if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
     else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glMatrixMode(GL_TEXTURE);
     glmatrixf reproject;
@@ -82,6 +83,7 @@ void setaavelocityparams()
     glMatrixMode(GL_MODELVIEW);
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
     LOCALPARAM(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
+    if(tmu!=GL_TEXTURE0_ARB) glActiveTexture(GL_TEXTURE0_ARB);
 }
 
 void packtqaa(GLuint packfbo)
@@ -96,12 +98,12 @@ void packtqaa(GLuint packfbo)
             glClear(GL_COLOR_BUFFER_BIT);
         }
         SETSHADER(tqaamaskmovement);
-        if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+        if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
         else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
         if(tqaamovemaskreduce)
         {
             glViewport(0, 0, maskw, maskh);
-            if(!msaaresolvehdr)
+            if(!msaasamples)
             {
                 glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -113,7 +115,7 @@ void packtqaa(GLuint packfbo)
         glDisable(GL_BLEND);
         if(tqaamovemaskreduce)
         {
-            if(!msaaresolvehdr)
+            if(!msaasamples)
             {
                 glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
                 glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -140,7 +142,7 @@ void resolvetqaa(GLuint outfbo)
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaaframe ? tqaaprevtex : tqaacurtex);
     glActiveTexture_(GL_TEXTURE2_ARB);
-    if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+    if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
     else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     if(tqaamovemask)
     {
@@ -371,7 +373,7 @@ void dosmaa(GLuint outfbo = 0)
     if(smaadepthmask || smaastencil)
     {
         glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT | (msaaresolvehdr ? GL_DEPTH_BUFFER_BIT | ((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0) : 0));
+        glClear(GL_COLOR_BUFFER_BIT | (msaasamples ? GL_DEPTH_BUFFER_BIT | ((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0) : 0));
     }
     if(smaadepthmask)
     {
@@ -391,7 +393,7 @@ void dosmaa(GLuint outfbo = 0)
     if(tqaa)
     {
         glActiveTexture_(GL_TEXTURE1_ARB);
-        if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+        if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
         else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
         glActiveTexture_(GL_TEXTURE0_ARB);
     }

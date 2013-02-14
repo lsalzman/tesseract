@@ -926,7 +926,7 @@ void renderparticles()
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);             
 
             glActiveTexture_(GL_TEXTURE2_ARB);
-            if(msaaresolvehdr) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
+            if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
             else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
             glActiveTexture_(GL_TEXTURE0_ARB);
 
