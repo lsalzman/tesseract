@@ -7,7 +7,7 @@ GLuint scalefbo[2] = { 0, 0 }, scaletex[2] = { 0, 0 };
 GLuint hdrfbo = 0, hdrtex = 0, bloomfbo[6] = { 0, 0, 0, 0, 0, 0 }, bloomtex[6] = { 0, 0, 0, 0, 0, 0 };
 int hdrclear = 0;
 GLuint refractfbo = 0, refracttex = 0;
-GLenum bloomformat = 0, hdrformat = 0;
+GLenum bloomformat = 0, hdrformat = 0, stencilformat = 0;
 bool hdrfloat = false;
 GLuint msfbo = 0, msdepthtex = 0, mscolortex = 0, msnormaltex = 0, msglowtex = 0, msdepthrb = 0, msstencilrb = 0, mshdrfbo = 0, mshdrtex = 0, msrefractfbo = 0, msrefracttex = 0;
 int aow = -1, aoh = -1;
@@ -417,10 +417,10 @@ void doscale(int w, int h)
    
 VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD, CHANGE_SHADERS));
 VAR(gdepthformat, 1, 0, 0);
-VAR(gstencilformat, 1, 0, 0);
 VARFP(msaa, 0, 0, 16, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARF(msaadepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(msaastencil, 0, 0, 1, cleanupgbuffer());
+VARF(msaaedgedetect, 0, 1, 1, cleanupgbuffer());
 VARFP(msaalineardepth, -1, -1, 3, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaatonemap, 0, 0, 1, cleanupgbuffer());
 VARF(msaatonemapblit, 0, 0, 1, cleanupgbuffer());
@@ -459,9 +459,7 @@ void initgbuffer()
             else if(!lineardepth) lineardepth = 1;
         }
         else if(msaalineardepth >= 0) lineardepth = msaalineardepth;
-        gstencilformat = msaadepthstencil && hasDS ? 2 : (msaastencil ? 1 : 0);
     }
-    else gstencilformat = gdepthstencil && hasDS ? 2 : (gstencil ? 1 : 0);
 
     if(lineardepth > 1 && (!hasAFBO || !hasTF || !hasTRG)) gdepthformat = 1;
     else gdepthformat = lineardepth;
@@ -527,6 +525,9 @@ void setupmsbuffer(int w, int h)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msfbo);
 
     maskgbuffer("cngd");
+
+    if(msaadepthstencil && hasDS) stencilformat = GL_DEPTH24_STENCIL8_EXT;
+    else if(msaastencil) stencilformat = GL_STENCIL_INDEX8_EXT;
 
     static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
     GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (msaadepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
@@ -654,6 +655,7 @@ void setupgbuffer(int w, int h)
     gh = sh;
 
     hdrformat = gethdrformat(hdr ? hdrprec : 0);
+    stencilformat = 0;
 
     if(msaasamples) setupmsbuffer(gw, gh);
 
@@ -686,6 +688,9 @@ void setupgbuffer(int w, int h)
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, gfbo);
 
         maskgbuffer("cngd");
+
+        if(gdepthstencil && hasDS) stencilformat = GL_DEPTH24_STENCIL8_EXT;
+        else if(gstencil) stencilformat = GL_STENCIL_INDEX8_EXT;
 
         static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
         GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (gdepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
@@ -1036,9 +1041,9 @@ void processhdr(GLuint outfbo, int aa)
         if(msaatonemapblit && (!aa || !outfbo)) 
         { 
             blit = true; 
-            if(msaatonemapstencil && gstencilformat) stencil = true; 
+            if(msaatonemapstencil && stencilformat) stencil = true; 
         }
-        else if(msaatonemapstencil && gstencilformat)
+        else if(msaatonemapstencil && stencilformat)
         {
             stencil = true;
             glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
@@ -2056,7 +2061,7 @@ void loaddeferredlightshaders()
     {
         string opts;
         if(hasMSS) copystring(opts, "MS");
-        else formatstring(opts)(gstencilformat ? "MR%d" : "MRT%d", msaasamples);
+        else formatstring(opts)((msaadepthstencil && hasDS) || msaastencil || !msaaedgedetect ? "MR%d" : "MRT%d", msaasamples);
         deferredmsaasampleshader = loaddeferredlightshader(opts);
         deferredmsaapixelshader = loaddeferredlightshader("M");
         deferredlightshader = deferredmsaapixelshader;
@@ -3526,7 +3531,7 @@ void rendertransparent()
     else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    if(gstencilformat) glEnable(GL_STENCIL_TEST);
+    if(stencilformat) glEnable(GL_STENCIL_TEST);
 
     glmatrixf raymatrix = mvmatrix.v;
     loopk(4)
@@ -3569,7 +3574,7 @@ void rendertransparent()
         }
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaasamples ? msfbo : gfbo);
-        if(gstencilformat)
+        if(stencilformat)
         {
             glStencilFunc(GL_ALWAYS, 1<<layer, 1<<layer);
             glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
@@ -3619,7 +3624,7 @@ void rendertransparent()
         if(msaasamples)
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, mshdrfbo);
-            if(gstencilformat)
+            if(stencilformat && msaaedgedetect)
             {
                 loopi(2) renderlights(sx1, sy1, sx2, sy2, tiles, 1<<layer, i+1);
                 glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
@@ -3630,7 +3635,7 @@ void rendertransparent()
         else
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
-            if(gstencilformat)
+            if(stencilformat)
             {
                 glStencilFunc(GL_EQUAL, 1<<layer, 1<<layer);
                 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
@@ -3639,7 +3644,7 @@ void rendertransparent()
         }
     }
 
-    if(gstencilformat) glDisable(GL_STENCIL_TEST);
+    if(stencilformat) glDisable(GL_STENCIL_TEST);
 
     endtimer(transtimer);
 }
@@ -3661,7 +3666,7 @@ void preparegbuffer(bool depthclear)
         maskgbuffer("cng");
     }
     if(gcolorclear) glClearColor(0, 0, 0, 0);
-    glClear((depthclear ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(depthclear && gstencilformat ? GL_STENCIL_BUFFER_BIT : 0));
+    glClear((depthclear ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(depthclear && stencilformat ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
 
     glmatrixf invscreenmatrix;
@@ -3847,7 +3852,7 @@ void shadegbuffer()
 
     if(msaasamples)
     {
-        if(gstencilformat)
+        if(stencilformat && msaaedgedetect)
         {
             glEnable(GL_STENCIL_TEST);
             loopi(2) renderlights(-1, -1, 1, 1, NULL, 0, i+1);
