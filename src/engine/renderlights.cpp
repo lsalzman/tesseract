@@ -3586,8 +3586,8 @@ void rendertransparent()
             glClearColor(0, 0, 0, 0);
             glClear(GL_COLOR_BUFFER_BIT);
             if(scissor) glDisable(GL_SCISSOR_TEST);
-            maskgbuffer("cngd");
         }
+        maskgbuffer("cngd"); // workaround for strange Radeon HD 7340 bug, if not here (instead of inside the glClear branch where it should be), stencil doesn't work!
 
         extern int wireframe;
         if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -3753,10 +3753,8 @@ void shademinimap(const vec &color)
 
     if(color.x >= 0)
     {
-        maskgbuffer("c");
         glClearColor(color.x, color.y, color.z, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        maskgbuffer("cngd");
     }
 
     renderlights(-1, -1, 1, 1, NULL, 0, msaasamples ? -1 : 0);
