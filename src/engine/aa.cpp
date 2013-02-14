@@ -71,7 +71,7 @@ VARP(tqaaquincunx, 0, 1, 1);
 
 void setaavelocityparams(GLenum tmu)
 {
-    if(tmu!=GL_TEXTURE0_ARB) glActiveTexture(tmu);
+    if(tmu!=GL_TEXTURE0_ARB) glActiveTexture_(tmu);
     if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
     else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glMatrixMode(GL_TEXTURE);
@@ -83,7 +83,7 @@ void setaavelocityparams(GLenum tmu)
     glMatrixMode(GL_MODELVIEW);
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
     LOCALPARAM(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
-    if(tmu!=GL_TEXTURE0_ARB) glActiveTexture(GL_TEXTURE0_ARB);
+    if(tmu!=GL_TEXTURE0_ARB) glActiveTexture_(GL_TEXTURE0_ARB);
 }
 
 void packtqaa(GLuint packfbo)
