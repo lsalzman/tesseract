@@ -75,6 +75,7 @@ extern void create3dtexture(int tnum, int w, int h, int d, const void *pixels, i
 extern void blurtexture(int n, int bpp, int w, int h, uchar *dst, const uchar *src, int margin = 0);
 extern void blurnormals(int n, int w, int h, bvec *dst, const bvec *src, int margin = 0);
 extern GLuint setuppostfx(int w, int h, GLuint outfbo = 0);
+extern void cleanuppostfx(bool fullclean = false);
 extern void renderpostfx(GLuint outfbo = 0);
 extern void initenvmaps();
 extern void genenvmaps();
@@ -325,6 +326,7 @@ enum { AA_UNUSED = 0, AA_RESERVED, AA_LUMA, AA_VELOCITY };
 extern void cleanupgbuffer();
 extern void initgbuffer();
 extern void maskgbuffer(const char *mask);
+extern void bindgdepth();
 extern void preparegbuffer(bool depthclear = true);
 extern void rendergbuffer(bool depthclear = true);
 extern void shadegbuffer();

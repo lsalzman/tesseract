@@ -1164,6 +1164,7 @@ GLuint setuppostfx(int w, int h, GLuint outfbo)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, postfxfb);
     int tex = allocatepostfxtex(0);
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, postfxtexs[tex].id, 0);
+    bindgdepth();
 
     postfxbinds[0] = tex;
     postfxtexs[tex].used = 0;
