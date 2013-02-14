@@ -419,7 +419,7 @@ VARFP(glineardepth, 0, 0, 3, initwarning("g-buffer setup", INIT_LOAD, CHANGE_SHA
 VAR(gdepthformat, 1, 0, 0);
 VARFP(msaa, 0, 0, 16, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaalineardepth, -1, -1, 3, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
-VARFP(msaahdr, 0, 1, 1, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
+VARFP(msaahdr, 0, 1, 2, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaatonemap, 0, 0, 1, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARF(msaatonemapblit, 0, 0, 1, cleanupgbuffer());
 VARF(msaatonemapstencil, 0, 1, 1, cleanupgbuffer());
@@ -447,7 +447,7 @@ void initgbuffer()
     {
         msaasamples = 2;
         while(msaasamples*2 <= min(msaa, min(msaamaxsamples, msaamaxcolortexsamples))) msaasamples *= 2;
-        if(hasMSS) msaaresolvehdr = msaahdr ? (msaatonemap ? 2 : 1) : 0;
+        if(hasMSS || msaahdr > 1) msaaresolvehdr = msaahdr ? (msaatonemap && hasMSS ? 2 : 1) : 0;
     }
 
     int lineardepth = glineardepth;
@@ -2072,8 +2072,8 @@ void loaddeferredlightshaders()
     if(msaasamples) 
     {
         string opts;
-        if(msaaresolvehdr) copystring(opts, "MS");
-        else formatstring(opts)((gdepthstencil && hasDS) || gstencil ? "MR%d" : "MRT%d", msaasamples);
+        if(msaaresolvehdr && hasMSS) copystring(opts, "MS");
+        else formatstring(opts)(msaaresolvehdr || (gdepthstencil && hasDS) || gstencil ? "MR%d" : "MRT%d", msaasamples);
         deferredmsaasampleshader = loaddeferredlightshader(opts);
         deferredmsaapixelshader = loaddeferredlightshader("M");
     }
