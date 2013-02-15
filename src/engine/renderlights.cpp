@@ -3837,11 +3837,11 @@ void shadegbuffer()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaasamples ? mshdrfbo : hdrfbo);
     glViewport(0, 0, vieww, viewh);
 
-    if(hdrclear > 0)
+    if(hdrclear > 0 || msaasamples)
     {
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-        hdrclear--;
+        if(hdrclear > 0) hdrclear--;
     }
     drawskybox(farplane);
 
