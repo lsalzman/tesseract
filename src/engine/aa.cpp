@@ -582,6 +582,7 @@ void cleanupsmaa()
     if(smaasearchtex) { glDeleteTextures(1, &smaasearchtex); smaasearchtex = 0; }
     loopi(4) if(smaafbo[i]) { glDeleteFramebuffers_(1, &smaafbo[i]); smaafbo[i] = 0; }
     loopi(5) if(smaatex[i]) { glDeleteTextures(1, &smaatex[i]); smaatex[i] = 0; }
+    smaat2x = smaas2x = smaa4x = 0;
 
     clearsmaashaders();
 }
