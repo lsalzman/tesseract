@@ -30,7 +30,6 @@ extern const uchar faceedgesidx[6][4];
 extern bool inbetweenframes, renderedframe;
 
 extern SDL_Surface *screen;
-extern int zpass, glowpass;
 
 extern vector<int> entgroup;
 
@@ -320,8 +319,8 @@ extern int gw, gh, gdepthformat, gstencil, gdepthstencil;
 extern GLuint gdepthtex, gcolortex, gnormaltex, gglowtex, gdepthrb, gstencilrb;
 extern int msaasamples;
 extern GLuint msdepthtex, mscolortex, msnormaltex, msglowtex, msdepthrb, msstencilrb;
-
-enum { AA_UNUSED = 0, AA_RESERVED, AA_LUMA, AA_VELOCITY };
+extern vec2 msaapositions[16];
+enum { AA_UNUSED = 0, AA_RESERVED, AA_LUMA, AA_VELOCITY, AA_SPLIT, AA_SPLIT_LUMA, AA_SPLIT_VELOCITY };
 
 extern void cleanupgbuffer();
 extern void initgbuffer();
@@ -349,6 +348,7 @@ extern void cleanuplights();
 extern void setupaa(int w, int h);
 extern void jitteraa();
 extern bool maskedaa();
+extern bool multisampledaa();
 extern void setaavelocityparams(GLenum tmu = GL_TEXTURE0_ARB);
 extern void setaamask(bool val);
 extern void doaa(GLuint outfbo, void (*resolve)(GLuint, int));

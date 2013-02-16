@@ -195,10 +195,8 @@
 		D19E776111977E82003753EF /* varray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = varray.h; sourceTree = "<group>"; };
 		D1AB44FB0E245F7A00B5D3A5 /* help */ = {isa = PBXFileReference; lastKnownFileType = folder; path = help; sourceTree = "<group>"; };
 		D1B750F016278BF500FA16AA /* aa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aa.cpp; sourceTree = "<group>"; };
-		D1B750F116278BF500FA16AA /* AreaTex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AreaTex.h; sourceTree = "<group>"; };
 		D1B750F216278BF500FA16AA /* hitzone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hitzone.h; sourceTree = "<group>"; };
 		D1B750F316278BF500FA16AA /* renderlights.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = renderlights.cpp; sourceTree = "<group>"; };
-		D1B750F416278BF500FA16AA /* SearchTex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SearchTex.h; sourceTree = "<group>"; };
 		D1B750F816278C1100FA16AA /* collect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = collect.h; sourceTree = "<group>"; };
 		D1B87D5D0F7F57C80063BD1C /* crypto.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = crypto.cpp; sourceTree = "<group>"; };
 		D1B87D5E0F7F57C80063BD1C /* stream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stream.cpp; sourceTree = "<group>"; };
@@ -374,9 +372,7 @@
 				B9AC7AA90D06DB44005506F8 /* water.cpp */,
 				B9AC7AAA0D06DB44005506F8 /* world.cpp */,
 				B9AC7AAC0D06DB44005506F8 /* worldio.cpp */,
-				D1B750F116278BF500FA16AA /* AreaTex.h */,
 				D1B750F216278BF500FA16AA /* hitzone.h */,
-				D1B750F416278BF500FA16AA /* SearchTex.h */,
 				B91D401E0D525FD3004EF78A /* animmodel.h */,
 				B9AC7A860D06DB44005506F8 /* bih.h */,
 				B9AC7A8B0D06DB44005506F8 /* engine.h */,

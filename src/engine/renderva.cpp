@@ -1029,8 +1029,6 @@ void batchshadowmapmodels()
 
 VAR(oqdist, 0, 256, 1024);
 VAR(zpass, 0, 1, 1);
-VAR(glowpass, 0, 1, 1);
-VAR(envpass, 0, 1, 1);
 
 struct renderstate
 {

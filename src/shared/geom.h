@@ -81,6 +81,7 @@ struct vec
     }
     vec &lerp(const vec &b, float t) { x += (b.x-x)*t; y += (b.y-y)*t; z += (b.z-z)*t; return *this; }
     vec &lerp(const vec &a, const vec &b, float t) { x = a.x + (b.x-a.x)*t; y = a.y + (b.y-a.y)*t; z = a.z + (b.z-a.z)*t; return *this; }
+    vec &avg(const vec &b) { add(b); mul(0.5f); return *this; }
 
     vec &rescale(float k)
     {
@@ -217,6 +218,7 @@ struct vec4
         w = a.w+(b.w-a.w)*t;
         return *this;
     }
+    vec4 &avg(const vec4 &b) { add(b); mul(0.5f); return *this; }
 
     vec4 &mul3(float f)      { x *= f; y *= f; z *= f; return *this; }
     vec4 &mul(float f)       { mul3(f); w *= f; return *this; }
@@ -294,6 +296,7 @@ struct vec2
 
     vec2 &lerp(const vec2 &b, float t) { x += (b.x-x)*t; y += (b.y-y)*t; return *this; }
     vec2 &lerp(const vec2 &a, const vec2 &b, float t) { x = a.x + (b.x-a.x)*t; y = a.y + (b.y-a.y)*t; return *this; }
+    vec2 &avg(const vec2 &b) { add(b); mul(0.5f); return *this; }
 };
 
 inline vec::vec(const vec2 &v, float z) : x(v.x), y(v.y), z(z) {}

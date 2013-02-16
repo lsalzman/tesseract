@@ -10,6 +10,7 @@ GLuint refractfbo = 0, refracttex = 0;
 GLenum bloomformat = 0, hdrformat = 0, stencilformat = 0;
 bool hdrfloat = false;
 GLuint msfbo = 0, msdepthtex = 0, mscolortex = 0, msnormaltex = 0, msglowtex = 0, msdepthrb = 0, msstencilrb = 0, mshdrfbo = 0, mshdrtex = 0, msrefractfbo = 0, msrefracttex = 0;
+vec2 msaapositions[16];
 int aow = -1, aoh = -1;
 GLuint aofbo[4] = { 0, 0, 0, 0 }, aotex[4] = { 0, 0, 0, 0 }, aonoisetex = 0;
 glmatrixf eyematrix, worldmatrix, linearworldmatrix, screenmatrix;
@@ -421,7 +422,6 @@ VARFP(msaa, 0, 0, 16, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARF(msaadepthstencil, 0, 1, 1, cleanupgbuffer());
 VARF(msaastencil, 0, 0, 1, cleanupgbuffer());
 VARF(msaaedgedetect, 0, 1, 1, cleanupgbuffer());
-VARF(msaasampleshading, 0, 1, 1, cleanupgbuffer());
 VARFP(msaalineardepth, -1, -1, 3, initwarning("MSAA setup", INIT_LOAD, CHANGE_SHADERS));
 VARFP(msaatonemap, 0, 0, 1, cleanupgbuffer());
 VARF(msaatonemapblit, 0, 0, 1, cleanupgbuffer());
@@ -530,17 +530,19 @@ void setupmsbuffer(int w, int h)
     if(msaadepthstencil && hasDS) stencilformat = GL_DEPTH24_STENCIL8_EXT;
     else if(msaastencil) stencilformat = GL_STENCIL_INDEX8_EXT;
 
+    GLenum fixed = hasMSS && multisampledaa() ? GL_TRUE : GL_FALSE;
+
     static const GLenum depthformats[] = { GL_RGBA8, GL_R16F, GL_R32F };
     GLenum depthformat = gdepthformat ? depthformats[gdepthformat-1] : (msaadepthstencil && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
-    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, depthformat, w, h, GL_FALSE);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, depthformat, w, h, fixed);
  
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mscolortex);
-    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, GL_FALSE);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, fixed);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
-    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, GL_FALSE);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, fixed);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msglowtex);
-    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, GL_FALSE);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGBA8, w, h, fixed);
 
     if(gdepthformat)
     {
@@ -566,6 +568,14 @@ void setupmsbuffer(int w, int h)
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
         fatal("failed allocating MSAA g-buffer!");
 
+    memset(msaapositions, 0, sizeof(msaapositions));
+    if(fixed) loopi(msaasamples) 
+    {
+        GLfloat vals[2];
+        glGetMultisamplefv_(GL_SAMPLE_POSITION, i, vals);
+        msaapositions[i] = vec2(vals[0], vals[1]);
+    }
+
     if(!mshdrtex) glGenTextures(1, &mshdrtex);
     if(!mshdrfbo) glGenFramebuffers_(1, &mshdrfbo);
 
@@ -579,7 +589,7 @@ void setupmsbuffer(int w, int h)
         GLenum format = gethdrformat(prec);
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
         glGetError();
-        glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, format, w, h, GL_FALSE);
+        glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, format, w, h, fixed);
         if(glGetError() == GL_NO_ERROR)
         {
             glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, mshdrtex, 0);
@@ -600,7 +610,7 @@ void setupmsbuffer(int w, int h)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msrefractfbo);
 
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msrefracttex);
-    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGB, w, h, GL_FALSE);
+    glTexImage2DMultisample_(GL_TEXTURE_2D_MULTISAMPLE, msaasamples, GL_RGB, w, h, fixed);
 
     glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D_MULTISAMPLE, msrefracttex, 0);
     bindmsdepth();
@@ -612,7 +622,7 @@ void setupmsbuffer(int w, int h)
 
     useshaderbyname("msaaedgedetect");
     useshaderbyname("msaaresolve");
-    if(msaatonemap && hasMSS && msaasampleshading)
+    if(hasMSS && msaatonemap)
     {
         useshaderbyname("msaatonemap");
         useshaderbyname("msaatonemapsample");
@@ -625,7 +635,7 @@ void bindgdepth()
     {
         glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
         if((msaasamples ? msaadepthstencil : gdepthstencil) && hasDS) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gdepthrb);
-        else if(msaasamples ? msaatonemap && msaatonemapstencil && msaastencil : gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
+        else if(msaasamples ? hasMSS && msaatonemap && msaatonemapstencil && msaastencil : gstencil) glFramebufferRenderbuffer_(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, gstencilrb);
     }
     else
     {
@@ -670,7 +680,7 @@ void setupgbuffer(int w, int h)
         glRenderbufferStorage_(GL_RENDERBUFFER_EXT, (msaasamples ? msaadepthstencil : gdepthstencil) && hasDS ? GL_DEPTH24_STENCIL8_EXT : GL_DEPTH_COMPONENT, gw, gh);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, 0);
     }
-    if(msaasamples ? msaatonemap && msaatonemapstencil && msaastencil && (!hasDS || !msaadepthstencil) : gstencil && (!hasDS || !gdepthstencil))
+    if(msaasamples ? hasMSS && msaatonemap && msaatonemapstencil && msaastencil && (!hasDS || !msaadepthstencil) : gstencil && (!hasDS || !gdepthstencil))
     {
         if(!gstencilrb) glGenRenderbuffers_(1, &gstencilrb);
         glBindRenderbuffer_(GL_RENDERBUFFER_EXT, gstencilrb);
@@ -724,7 +734,7 @@ void setupgbuffer(int w, int h)
     if(glCheckFramebufferStatus_(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT)
         fatal("failed allocating HDR buffer!");
 
-    if(!msaasamples || (msaatonemap && hasMSS && msaasampleshading && msaatonemapblit))
+    if(!msaasamples || (hasMSS && msaatonemap && msaatonemapblit))
     {
         if(!refracttex) glGenTextures(1, &refracttex);
         if(!refractfbo) glGenFramebuffers_(1, &refractfbo);
@@ -838,12 +848,24 @@ void loadhdrshaders(int aa)
         case AA_LUMA:
             useshaderbyname("hdrtonemapluma");
             useshaderbyname("hdrnopluma");
-            if(msaatonemap && hasMSS && msaasampleshading) useshaderbyname("msaatonemapluma");
+            if(msaasamples && hasMSS && msaatonemap) useshaderbyname("msaatonemapluma");
             break;
         case AA_VELOCITY:
             useshaderbyname("hdrtonemapvelocity");
             useshaderbyname("hdrnopvelocity");
-            if(msaatonemap && hasMSS && msaasampleshading) useshaderbyname("msaatonemapvelocity");
+            if(msaasamples && hasMSS && msaatonemap) useshaderbyname("msaatonemapvelocity");
+            break;
+        case AA_SPLIT:
+            useshaderbyname("msaasplit");
+            useshaderbyname("msaatonemapsplit");
+            break;
+        case AA_SPLIT_LUMA:
+            useshaderbyname("msaasplitluma");
+            useshaderbyname("msaatonemapsplitluma");
+            break;
+        case AA_SPLIT_VELOCITY:
+            useshaderbyname("msaasplitvelocity");
+            useshaderbyname("msaatonemapsplitvelocity");
             break;
         default:
             break;
@@ -852,6 +874,24 @@ void loadhdrshaders(int aa)
 
 void processldr(GLuint outfbo, int aa)
 {
+    if(aa >= AA_SPLIT)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+        glViewport(0, 0, vieww, viewh);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrfbo);
+        switch(aa)
+        {
+            case AA_SPLIT_LUMA: SETSHADER(msaasplitluma); break;
+            case AA_SPLIT_VELOCITY:
+                SETSHADER(msaasplitvelocity);
+                setaavelocityparams(GL_TEXTURE3_ARB);
+                break;
+            default: SETSHADER(msaasplit); break;
+        }
+        screenquad(vieww, viewh);
+        return;
+    }
+
     if(msaasamples)
     {
         glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
@@ -889,7 +929,7 @@ void processhdr(GLuint outfbo, int aa)
         pw = vieww, ph = viewh;
     if(msaasamples)
     {
-        if(!msaatonemap || !hasMSS || !msaasampleshading)
+        if(!hasMSS || (!msaatonemap && aa < AA_SPLIT))
         {
             glBindFramebuffer_(GL_READ_FRAMEBUFFER_EXT, mshdrfbo);
             glBindFramebuffer_(GL_DRAW_FRAMEBUFFER_EXT, hdrfbo);
@@ -1017,7 +1057,26 @@ void processhdr(GLuint outfbo, int aa)
         }
     }
 
-    if(!msaasamples || !msaatonemap || !hasMSS || !msaasampleshading)
+    if(aa >= AA_SPLIT)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+        glViewport(0, 0, vieww, viewh);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
+        glActiveTexture_(GL_TEXTURE1_ARB);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
+        glActiveTexture_(GL_TEXTURE0_ARB);
+        switch(aa)
+        {
+            case AA_SPLIT_LUMA: SETSHADER(msaatonemapsplitluma); break;
+            case AA_SPLIT_VELOCITY:
+                SETSHADER(msaatonemapsplitvelocity);
+                setaavelocityparams(GL_TEXTURE3_ARB);
+                break;
+            default: SETSHADER(msaatonemapsplit); break;
+        }
+        screenquad(vieww, viewh, b0w, b0h);
+    }
+    else if(!msaasamples || !hasMSS || !msaatonemap)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
         glViewport(0, 0, vieww, viewh);
@@ -2061,7 +2120,7 @@ void loaddeferredlightshaders()
     if(msaasamples) 
     {
         string opts;
-        if(hasMSS && msaasampleshading) copystring(opts, "MS");
+        if(hasMSS) copystring(opts, "MS");
         else formatstring(opts)((msaadepthstencil && hasDS) || msaastencil || !msaaedgedetect ? "MR%d" : "MRT%d", msaasamples);
         deferredmsaasampleshader = loaddeferredlightshader(opts);
         deferredmsaapixelshader = loaddeferredlightshader("M");

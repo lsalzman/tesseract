@@ -20,7 +20,7 @@ It provides a bunch of new rendering features such as:
 * screen-space ambient occlusion
 * screen-space reflections and refractions for water and glass (use as many water planes as you want now!)
 * screen-space refractive alpha cubes
-* deferred MSAA, subpixel morphological anti-aliasing (SMAA 1x and T2x), FXAA, and temporal AA
+* deferred MSAA, subpixel morphological anti-aliasing (SMAA 1x, T2x, S2x, and 4x), FXAA, and temporal AA
 
 Install:
 

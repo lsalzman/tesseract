@@ -226,7 +226,6 @@ engine/aa.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/aa.o: shared/ents.h shared/command.h shared/iengine.h shared/igame.h
 engine/aa.o: engine/world.h engine/octa.h engine/light.h engine/bih.h
 engine/aa.o: engine/glexts.h engine/texture.h engine/model.h engine/varray.h
-engine/aa.o: engine/AreaTex.h engine/SearchTex.h
 engine/bih.o: engine/engine.h shared/cube.h shared/tools.h shared/geom.h
 engine/bih.o: shared/ents.h shared/command.h shared/iengine.h shared/igame.h
 engine/bih.o: engine/world.h engine/octa.h engine/light.h engine/bih.h
