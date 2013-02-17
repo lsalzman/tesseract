@@ -554,7 +554,7 @@ void setupsmaa(int w, int h)
         switch(i)
         {
             case 0: format = tqaa || (!smaagreenluma && !smaacoloredge) ? GL_RGBA8 : GL_RGB; break;
-            case 1: format = hasTRG && !tqaa ? GL_RG8 : GL_RGBA8; break;
+            case 1: format = hasTRG ? GL_RG8 : GL_RGBA8; break;
             case 2: case 3: format = GL_RGBA8; break;
         }  
         createtexture(smaatex[i], w, h, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
@@ -618,8 +618,6 @@ void viewsmaa()
     notextureshader->set();
 }
 
-VAR(foo, 0, 1, 2);
-
 void dosmaa(GLuint outfbo = 0, bool split = false)
 {
     timer *smaatimer = begintimer("smaa");
@@ -649,13 +647,6 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
         if(smaacoloredge) smaacoloredgeshader->set();
         else smaalumaedgeshader->set();
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[pass ? 4 : 0]);
-        if(tqaa)
-        {
-            glActiveTexture_(GL_TEXTURE1_ARB);
-            if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
-            else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
-            glActiveTexture_(GL_TEXTURE0_ARB);
-        }
         screenquad(vieww, viewh);
 
         if(tqaa && !pass) packtqaa();
@@ -683,6 +674,12 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
         glActiveTexture_(GL_TEXTURE2_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex);
+        if(tqaa)
+        {
+            glActiveTexture_(GL_TEXTURE3_ARB);
+            if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+            else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+        }
         glActiveTexture_(GL_TEXTURE0_ARB);
         screenquad(vieww, viewh);
         if(smaadepthmask)
