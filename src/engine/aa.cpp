@@ -251,9 +251,13 @@ void loadsmaashaders(bool split = false)
     string opts;
     int optslen = 0;
     if(smaadepthmask || smaastencil) opts[optslen++] = 'd';
-    if(split) opts[optslen++] = 'm';
+    if(split) opts[optslen++] = 's';
     if(smaagreenluma || tqaa) opts[optslen++] = 'g';
-    if(tqaa) opts[optslen++] = 't';
+    if(tqaa) 
+    {
+        opts[optslen++] = 't';
+        if(tqaamovemask) opts[optslen++] = 'm';
+    }
     opts[optslen] = '\0';
 
     defformatstring(lumaedgename)("SMAALumaEdgeDetection%d%s", smaaquality, opts);
@@ -674,11 +678,10 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
         glActiveTexture_(GL_TEXTURE2_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex);
-        if(tqaa)
+        if(tqaa && tqaamovemask)
         {
             glActiveTexture_(GL_TEXTURE3_ARB);
-            if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
-            else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaamasktex);
         }
         glActiveTexture_(GL_TEXTURE0_ARB);
         screenquad(vieww, viewh);
