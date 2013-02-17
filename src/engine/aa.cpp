@@ -626,6 +626,8 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
 {
     timer *smaatimer = begintimer("smaa");
 
+    if(tqaa) packtqaa();
+
     int cleardepth = msaasamples ? GL_DEPTH_BUFFER_BIT | ((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0) : 0;
     loop(pass, split ? 2 : 1)
     {
@@ -652,8 +654,6 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
         else smaalumaedgeshader->set();
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[pass ? 4 : 0]);
         screenquad(vieww, viewh);
-
-        if(tqaa && !pass) packtqaa();
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2 + pass]);
         if(smaadepthmask)
