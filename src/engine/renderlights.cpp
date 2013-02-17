@@ -3750,6 +3750,11 @@ void preparegbuffer(bool depthclear)
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, msaasamples ? msfbo : gfbo);
     glViewport(0, 0, vieww, viewh);
 
+    if(drawtex)
+    {
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(0, 0, vieww, viewh);
+    }
     if(gdepthformat && gdepthclear)
     {
         maskgbuffer("d");
@@ -3761,6 +3766,7 @@ void preparegbuffer(bool depthclear)
     if(gcolorclear) glClearColor(0, 0, 0, 0);
     glClear((depthclear ? GL_DEPTH_BUFFER_BIT : 0)|(gcolorclear ? GL_COLOR_BUFFER_BIT : 0)|(depthclear && stencilformat ? GL_STENCIL_BUFFER_BIT : 0));
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
+    if(drawtex) glDisable(GL_SCISSOR_TEST);
 
     glmatrixf invscreenmatrix;
     invscreenmatrix.identity();
