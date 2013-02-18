@@ -347,7 +347,7 @@ void cleanupscale()
     scalew = scaleh = -1;
 }
 
-extern int gscalecubic;
+extern int gscalecubic, gscalenearest;
 
 void setupscale(int sw, int sh, int w, int h)
 {
@@ -361,7 +361,7 @@ void setupscale(int sw, int sh, int w, int h)
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, scalefbo[i]);
 
-        createtexture(scaletex[i], sw, i ? h : sh, NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+        createtexture(scaletex[i], sw, i ? h : sh, NULL, 3, gscalecubic || !gscalenearest ? 1 : 0, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
 
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, scaletex[i], 0);
         if(!i) bindgdepth();
@@ -847,6 +847,7 @@ FVARR(hdrbright, 1e-4f, 1.0f, 1e4f);
 FVAR(hdrsaturate, 1e-3f, 0.8f, 1e3f);
 VARFP(gscale, 25, 100, 100, cleanupgbuffer());
 VARFP(gscalecubic, 0, 0, 1, cleanupgbuffer());
+VARFP(gscalenearest, 0, 0, 1, cleanupgbuffer());
 FVARFP(gscalecubicsoft, 0, 0, 1, initwarning("scaling setup", INIT_LOAD, CHANGE_SHADERS));
 
 float ldrscale = 1.0f, ldrscaleb = 1.0f/255;
