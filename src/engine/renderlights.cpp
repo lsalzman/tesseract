@@ -659,6 +659,8 @@ void setupmsbuffer(int w, int h)
 
     useshaderbyname("msaaedgedetect");
     useshaderbyname("msaaresolve");
+    useshaderbyname("msaareducew");
+    useshaderbyname("msaareduce");
     if(hasMSS && msaatonemap)
     {
         useshaderbyname("msaatonemap");
@@ -984,8 +986,26 @@ void processhdr(GLuint outfbo, int aa)
         else
         {
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, hdrfbo);
-            glViewport(0, 0, vieww, viewh);
-            SETSHADER(msaaresolve);
+            if(vieww/2 >= bloomw)
+            {
+                pw = vieww/2;
+                if(viewh/2 >= bloomh)
+                {
+                    ph = viewh/2;
+                    glViewport(0, 0, pw, ph);
+                    SETSHADER(msaareduce);
+                }
+                else
+                {
+                    glViewport(0, 0, pw, viewh);
+                    SETSHADER(msaareducew);
+                }
+            }
+            else
+            {
+                glViewport(0, 0, vieww, viewh);
+                SETSHADER(msaaresolve);
+            }
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
             screenquad(vieww, viewh);
         }
@@ -995,11 +1015,15 @@ void processhdr(GLuint outfbo, int aa)
         GLuint cfbo = b1fbo, ctex = b1tex;
         int cw = max(pw/2, bloomw), ch = max(ph/2, bloomh);
 
-        if(hdrreduce > 1 && cw/2 >= bloomw && ch/2 >= bloomh)
+        if(hdrreduce > 1 && cw/2 >= bloomw)
         {
             cw /= 2;
-            ch /= 2;
-            SETSHADER(hdrreduce2);
+            if(ch/2 >= bloomh)
+            {
+                ch /= 2;
+                SETSHADER(hdrreduce2);
+            }
+            else SETSHADER(hdrreduce2w);
         }
         else SETSHADER(hdrreduce);
         if(cw == bloomw && ch == bloomh) { if(bloomfbo[5]) { cfbo = bloomfbo[5]; ctex = bloomtex[5]; } else { cfbo = bloomfbo[2]; ctex = bloomtex[2]; } }
@@ -1025,11 +1049,15 @@ void processhdr(GLuint outfbo, int aa)
         {
             int cw = max(lw/2, 2), ch = max(lh/2, 2);
 
-            if(hdrreduce > 1 && cw/2 >= 2 && ch/2 >= 2)
+            if(hdrreduce > 1 && cw/2 >= 2)
             {
                 cw /= 2;
-                ch /= 2;
-                if(i) SETSHADER(hdrreduce2); else SETSHADER(hdrluminance2);
+                if(ch/2 >= 2)
+                {
+                    ch /= 2;
+                    if(i) SETSHADER(hdrreduce2); else SETSHADER(hdrluminance2);
+                }
+                else if(i) SETSHADER(hdrreduce2w); else SETSHADER(hdrluminance2w);
             }
             else if(i) SETSHADER(hdrreduce); else SETSHADER(hdrluminance);
             glBindFramebuffer_(GL_FRAMEBUFFER_EXT, b1fbo);
