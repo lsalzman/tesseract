@@ -1254,6 +1254,8 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         GLuint diffusetex = slot.sts.empty() ? notexture->id : slot.sts[0].t->id;
         if(cur.textures[cur.diffusetmu]!=diffusetex)
             glBindTexture(GL_TEXTURE_2D, cur.textures[cur.diffusetmu] = diffusetex);
+
+        if(msaasamples && pass == RENDERPASS_GBUFFER) GLOBALPARAM(hashid, (vslot.index));
     }
 
     if(cur.alphaing)
