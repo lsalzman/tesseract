@@ -148,6 +148,8 @@ extern int pushscissor(float sx1, float sy1, float sx2, float sy2);
 extern void popscissor();
 extern void screenquad(float sw, float sh);
 extern void screenquad(float sw, float sh, float sw2, float sh2);
+extern void screenquadoffset(float x, float y, float w, float h);
+extern void screenquadoffset(float x, float y, float w, float h, float x2, float y2, float w2, float h2);
 extern void recomputecamera();
 extern void findorientation();
 extern float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, const vec &view, vec &center);

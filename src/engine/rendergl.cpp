@@ -1579,6 +1579,26 @@ void screenquad(float sw, float sh, float sw2, float sh2)
     glEnd();
 }
 
+void screenquadoffset(float x, float y, float w, float h)
+{
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(x + w, y); glVertex2f(1, -1);
+    glTexCoord2f(x, y); glVertex2f(-1, -1);
+    glTexCoord2f(x + w, y + h); glVertex2f(1, 1);
+    glTexCoord2f(x, y + h); glVertex2f(-1, 1);
+    glEnd();
+}
+
+void screenquadoffset(float x, float y, float w, float h, float x2, float y2, float w2, float h2)
+{
+    glBegin(GL_TRIANGLE_STRIP);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, x+w, y); glMultiTexCoord2f_(GL_TEXTURE1_ARB, x2+w2, y2); glVertex2f(1, -1);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, x, y); glMultiTexCoord2f_(GL_TEXTURE1_ARB, x2, y2); glVertex2f(-1, -1);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, x+w, y+h); glMultiTexCoord2f_(GL_TEXTURE1_ARB, x2+w2, y2+h2); glVertex2f(1, 1);
+    glMultiTexCoord2f_(GL_TEXTURE0_ARB, x, y+h); glMultiTexCoord2f_(GL_TEXTURE1_ARB, x2, y2+h2); glVertex2f(-1, 1);
+    glEnd();
+}
+
 VARR(fog, 16, 4000, 1000024);
 bvec fogcolor(0x80, 0x99, 0xB3);
 HVARFR(fogcolour, 0, 0x8099B3, 0xFFFFFF,

@@ -684,7 +684,7 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaamasktex);
         }
         glActiveTexture_(GL_TEXTURE0_ARB);
-        screenquad(vieww, viewh);
+        screenquadoffset(0, 0, vieww, viewh, -0.5f/(1<<tqaamovemaskreduce), -0.5f/(1<<tqaamovemaskreduce), vieww>>tqaamovemaskreduce, viewh>>tqaamovemaskreduce);
         if(smaadepthmask)
         {
             glDisable(GL_DEPTH_TEST);

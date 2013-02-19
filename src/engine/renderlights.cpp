@@ -243,10 +243,10 @@ void viewao()
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2] ? aotex[2] : aotex[0]);
     int tw = aotex[2] ? gw : aow, th = aotex[2] ? gh : aoh;
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, th); glVertex2i(0, 0);
-    glTexCoord2f(tw, th); glVertex2i(w, 0);
-    glTexCoord2f(0, 0); glVertex2i(0, h);
-    glTexCoord2f(tw, 0); glVertex2i(w, h);
+    glTexCoord2f(0, th); glVertex2f(0, 0);
+    glTexCoord2f(tw, th); glVertex2f(w, 0);
+    glTexCoord2f(0, 0); glVertex2f(0, h);
+    glTexCoord2f(tw, 0); glVertex2f(w, h);
     glEnd();
     notextureshader->set();
 }
@@ -1261,10 +1261,10 @@ void viewdepth()
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, gh); glVertex2i(0, 0);
-    glTexCoord2f(gw, gh); glVertex2i(w, 0);
-    glTexCoord2f(0, 0); glVertex2i(0, h);
-    glTexCoord2f(gw, 0); glVertex2i(w, h);
+    glTexCoord2f(0, gh); glVertex2f(0, 0);
+    glTexCoord2f(gw, gh); glVertex2f(w, 0);
+    glTexCoord2f(0, 0); glVertex2f(0, h);
+    glTexCoord2f(gw, 0); glVertex2f(w, h);
     glEnd();
     notextureshader->set();
 }
@@ -1278,10 +1278,10 @@ void viewrefract()
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, gh); glVertex2i(0, 0);
-    glTexCoord2f(gw, gh); glVertex2i(w, 0);
-    glTexCoord2f(0, 0); glVertex2i(0, h);
-    glTexCoord2f(gw, 0); glVertex2i(w, h);
+    glTexCoord2f(0, gh); glVertex2f(0, 0);
+    glTexCoord2f(gw, gh); glVertex2f(w, 0);
+    glTexCoord2f(0, 0); glVertex2f(0, h);
+    glTexCoord2f(gw, 0); glVertex2f(w, h);
     glEnd();
     notextureshader->set();
 }
@@ -1418,10 +1418,10 @@ void viewrsm()
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, debugrsm == 2 ? rsmnormaltex : rsmcolortex);
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, 0); glVertex2i(screen->w-w, screen->h-h);
-    glTexCoord2f(rsmsize, 0); glVertex2i(screen->w, screen->h-h);
-    glTexCoord2f(0, rsmsize); glVertex2i(screen->w-w, screen->h);
-    glTexCoord2f(rsmsize, rsmsize); glVertex2i(screen->w, screen->h);
+    glTexCoord2f(0, 0); glVertex2f(screen->w-w, screen->h-h);
+    glTexCoord2f(rsmsize, 0); glVertex2f(screen->w, screen->h-h);
+    glTexCoord2f(0, rsmsize); glVertex2f(screen->w-w, screen->h);
+    glTexCoord2f(rsmsize, rsmsize); glVertex2f(screen->w, screen->h);
     glEnd();
     notextureshader->set();
 }
@@ -1435,10 +1435,10 @@ void viewrh()
     glBindTexture(GL_TEXTURE_3D, rhtex[1]);
     float z = (debugrh-1+0.5f)/float((rhgrid+2*rhborder)*rhsplits);
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord3f(0, 0, z); glVertex2i(screen->w-w, screen->h-h);
-    glTexCoord3f(1, 0, z); glVertex2i(screen->w, screen->h-h);
-    glTexCoord3f(0, 1, z); glVertex2i(screen->w-w, screen->h);
-    glTexCoord3f(1, 1, z); glVertex2i(screen->w, screen->h);
+    glTexCoord3f(0, 0, z); glVertex2f(screen->w-w, screen->h-h);
+    glTexCoord3f(1, 0, z); glVertex2f(screen->w, screen->h-h);
+    glTexCoord3f(0, 1, z); glVertex2f(screen->w-w, screen->h);
+    glTexCoord3f(1, 1, z); glVertex2f(screen->w, screen->h);
     glEnd();
     notextureshader->set();
 }
@@ -1566,10 +1566,10 @@ void viewshadowatlas()
     glBindTexture(shadowatlastarget, shadowatlastex);
     if(usesmcomparemode()) setsmnoncomparemode();
     glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, 0); glVertex2i(screen->w-w, screen->h-h);
-    glTexCoord2f(tw, 0); glVertex2i(screen->w, screen->h-h);
-    glTexCoord2f(0, th); glVertex2i(screen->w-w, screen->h);
-    glTexCoord2f(tw, th); glVertex2i(screen->w, screen->h);
+    glTexCoord2f(0, 0); glVertex2f(screen->w-w, screen->h-h);
+    glTexCoord2f(tw, 0); glVertex2f(screen->w, screen->h-h);
+    glTexCoord2f(0, th); glVertex2f(screen->w-w, screen->h);
+    glTexCoord2f(tw, th); glVertex2f(screen->w, screen->h);
     glEnd();
     if(usesmcomparemode()) setsmcomparemode();
     notextureshader->set();
