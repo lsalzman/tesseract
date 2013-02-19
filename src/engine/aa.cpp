@@ -236,7 +236,7 @@ void dofxaa(GLuint outfbo = 0)
     endtimer(fxaatimer);
 }
  
-GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[4] = { 0, 0, 0, 0 }, smaatex[5] = { 0, 0, 0, 0, 0 };
+GLuint smaaareatex = 0, smaasearchtex = 0, smaafbo[5] = { 0, 0, 0, 0 , 0}, smaatex[6] = { 0, 0, 0, 0, 0, 0 };
 int smaasubsampleorder = -1;
 
 extern int smaaquality, smaagreenluma, smaacoloredge, smaadepthmask, smaastencil;
@@ -549,7 +549,7 @@ void setupsmaa(int w, int h)
     smaat2x = tqaa ? 1 : 0;
     smaas2x = split ? 1 : 0;
     smaa4x = tqaa && split ? 1 : 0;
-    loopi(split ? 4 : 3)
+    loopi(split ? 5 : 3)
     {
         if(!smaatex[i]) glGenTextures(1, &smaatex[i]);
         if(!smaafbo[i]) glGenFramebuffers_(1, &smaafbo[i]);
@@ -558,16 +558,16 @@ void setupsmaa(int w, int h)
         switch(i)
         {
             case 0: format = tqaa || (!smaagreenluma && !smaacoloredge) ? GL_RGBA8 : GL_RGB; break;
-            case 1: format = hasTRG ? GL_RG8 : GL_RGBA8; break;
-            case 2: case 3: format = GL_RGBA8; break;
+            case 1: case 3: format = hasTRG ? GL_RG8 : GL_RGBA8; break;
+            case 2: case 4: format = GL_RGBA8; break;
         }  
         createtexture(smaatex[i], w, h, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
         glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, smaatex[i], 0);
         if(!i && split)
         {
-            if(!smaatex[4]) glGenTextures(1, &smaatex[4]);
-            createtexture(smaatex[4], w, h, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
-            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, smaatex[4], 0);
+            if(!smaatex[5]) glGenTextures(1, &smaatex[5]);
+            createtexture(smaatex[5], w, h, NULL, 3, 1, format, GL_TEXTURE_RECTANGLE_ARB);
+            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT1_EXT, GL_TEXTURE_RECTANGLE_ARB, smaatex[5], 0);
             static const GLenum drawbufs[2] = { GL_COLOR_ATTACHMENT0_EXT, GL_COLOR_ATTACHMENT1_EXT };
             glDrawBuffers_(2, drawbufs);
         }
@@ -584,8 +584,9 @@ void cleanupsmaa()
 {
     if(smaaareatex) { glDeleteTextures(1, &smaaareatex); smaaareatex = 0; }
     if(smaasearchtex) { glDeleteTextures(1, &smaasearchtex); smaasearchtex = 0; }
-    loopi(4) if(smaafbo[i]) { glDeleteFramebuffers_(1, &smaafbo[i]); smaafbo[i] = 0; }
-    loopi(5) if(smaatex[i]) { glDeleteTextures(1, &smaatex[i]); smaatex[i] = 0; }
+    loopi(5) if(smaafbo[i]) { glDeleteFramebuffers_(1, &smaafbo[i]); smaafbo[i] = 0; }
+    loopi(6) if(smaatex[i]) { glDeleteTextures(1, &smaatex[i]); smaatex[i] = 0; }
+    subsampleorder = -1;
     smaat2x = smaas2x = smaa4x = 0;
 
     clearsmaashaders();
@@ -629,9 +630,21 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
     if(tqaa) packtqaa();
 
     int cleardepth = msaasamples ? GL_DEPTH_BUFFER_BIT | ((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0) : 0;
+    if(smaadepthmask)
+    {
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_ALWAYS);
+    }
+    else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
+    {
+        glEnable(GL_STENCIL_TEST);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    }
+    if(smaacoloredge) smaacoloredgeshader->set();
+    else smaalumaedgeshader->set();
     loop(pass, split ? 2 : 1)
     {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1]);
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1 + 2*pass]);
         if(smaadepthmask || smaastencil)
         {
             glClearColor(0, 0, 0, 0);
@@ -639,41 +652,46 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
         }
         if(smaadepthmask)
         {
-            glEnable(GL_DEPTH_TEST);
-            glDepthFunc(GL_ALWAYS);
             float depthval = cleardepth ? 0.25f*(pass+1) : 1;
             glDepthRange(depthval, depthval);
         }
         else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
         {
-            glEnable(GL_STENCIL_TEST);
             glStencilFunc(GL_ALWAYS, 0x10*(pass+1), ~0);
-            glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         }
-        if(smaacoloredge) smaacoloredgeshader->set();
-        else smaalumaedgeshader->set();
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[pass ? 4 : 0]);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[pass ? 5 : 0]);
         screenquad(vieww, viewh);
+    }
 
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2 + pass]);
+    if(smaadepthmask)
+    {
+        glDepthFunc(GL_EQUAL);
+        glDepthMask(GL_FALSE);
+    }
+    else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
+    {
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    }
+    smaablendweightshader->set();
+    loop(pass, split ? 2 : 1)
+    {
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2 + 2*pass]);
         if(smaadepthmask)
         {
-            glDepthFunc(GL_EQUAL);
-            glDepthMask(GL_FALSE);
+            float depthval = cleardepth ? 0.25f*(pass+1) : 1;
+            glDepthRange(depthval, depthval);
         }
         else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
         {
             glStencilFunc(GL_EQUAL, 0x10*(pass+1), ~0);
-            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
         if(smaadepthmask || smaastencil) glClear(GL_COLOR_BUFFER_BIT);
-        smaablendweightshader->set();
         vec4 subsamples(0, 0, 0, 0);
         if(tqaa && split) subsamples = tqaaframe&1 ? (pass != smaasubsampleorder ? vec4(6, 4, 2, 4) : vec4(3, 5, 1, 4)) : (pass != smaasubsampleorder ? vec4(4, 6, 2, 3) : vec4(5, 3, 1, 3));
         else if(tqaa) subsamples = tqaaframe&1 ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0);
-        else if(split) subsamples = pass != smaasubsampleorder ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0); 
+        else if(split) subsamples = pass != smaasubsampleorder ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0);
         LOCALPARAM(subsamples, (subsamples));
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[1]);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[1 + 2*pass]);
         glActiveTexture_(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
         glActiveTexture_(GL_TEXTURE2_ARB);
@@ -685,16 +703,17 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
         }
         glActiveTexture_(GL_TEXTURE0_ARB);
         screenquadoffset(0, 0, vieww, viewh, -0.5f/(1<<tqaamovemaskreduce), -0.5f/(1<<tqaamovemaskreduce), vieww>>tqaamovemaskreduce, viewh>>tqaamovemaskreduce);
-        if(smaadepthmask)
-        {
-            glDisable(GL_DEPTH_TEST);
-            glDepthMask(GL_TRUE);
-            glDepthFunc(GL_LESS);
-            glDepthRange(0, 1);
-        }
-        else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
+    } 
+
+    if(smaadepthmask)
+    {
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        glDepthRange(0, 1);
     }
-        
+    else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
+
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, tqaa ? tqaafbo[0] : outfbo);
     smaaneighborhoodshader->set();
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[0]);
@@ -703,9 +722,9 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
     if(split)
     {
         glActiveTexture_(GL_TEXTURE2_ARB);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[4]);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[5]);
         glActiveTexture_(GL_TEXTURE3_ARB);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[3]);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[4]);
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
     screenquad(vieww, viewh);
