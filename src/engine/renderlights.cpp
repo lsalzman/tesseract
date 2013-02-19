@@ -914,11 +914,13 @@ void loadhdrshaders(int aa)
 
 void processldr(GLuint outfbo, int aa)
 {
+    timer *ldrtimer = begintimer("ldr processing");
+
     if(aa >= AA_SPLIT)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
         glViewport(0, 0, vieww, viewh);
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrfbo);
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, mshdrtex);
         switch(aa)
         {
             case AA_SPLIT_LUMA: SETSHADER(msaasplitluma); break;
@@ -929,6 +931,8 @@ void processldr(GLuint outfbo, int aa)
             default: SETSHADER(msaasplit); break;
         }
         screenquad(vieww, viewh);
+
+        endtimer(ldrtimer);
         return;
     }
 
@@ -953,6 +957,8 @@ void processldr(GLuint outfbo, int aa)
     }
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, hdrtex);
     screenquad(vieww, viewh);
+    
+    endtimer(ldrtimer);
 }
 
 void processhdr(GLuint outfbo, int aa)
