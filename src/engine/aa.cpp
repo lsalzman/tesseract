@@ -599,6 +599,7 @@ VARFP(smaacoloredge, 0, 0, 1, cleanupsmaa());
 VARFP(smaagreenluma, 0, 0, 1, cleanupsmaa());
 VARF(smaadepthmask, 0, 1, 1, cleanupsmaa());
 VARF(smaastencil, 0, 1, 1, cleanupsmaa());
+VARF(smaainterleave, 0, 2, 2, cleanupsmaa());
 VAR(debugsmaa, 0, 0, 5);
 
 void viewsmaa()
@@ -629,90 +630,98 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
 
     if(tqaa) packtqaa();
 
-    int cleardepth = msaasamples ? GL_DEPTH_BUFFER_BIT | ((gdepthstencil && hasDS) || gstencil ? GL_STENCIL_BUFFER_BIT : 0) : 0;
-    if(smaadepthmask)
+    bool hasstencil = (gdepthstencil && hasDS) || gstencil;
+    int cleardepth = msaasamples ? GL_DEPTH_BUFFER_BIT | (hasstencil ? GL_STENCIL_BUFFER_BIT : 0) : 0,
+        stencilpasses = split && (!smaainterleave || (!smaadepthmask && smaastencil && hasstencil && smaainterleave < 2)) ? 2 : 1, 
+        numpasses = split && stencilpasses <= 1 ? 2 : 1;
+    loop(stencilpass, stencilpasses)
     {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_ALWAYS);
-    }
-    else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
-    {
-        glEnable(GL_STENCIL_TEST);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-    }
-    if(smaacoloredge) smaacoloredgeshader->set();
-    else smaalumaedgeshader->set();
-    loop(pass, split ? 2 : 1)
-    {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1 + 2*pass]);
-        if(smaadepthmask || smaastencil)
-        {
-            glClearColor(0, 0, 0, 0);
-            glClear(GL_COLOR_BUFFER_BIT | (!pass ? cleardepth : 0));
-        }
         if(smaadepthmask)
         {
-            float depthval = cleardepth ? 0.25f*(pass+1) : 1;
-            glDepthRange(depthval, depthval);
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_ALWAYS);
         }
-        else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
+        else if(smaastencil && hasstencil)
         {
-            glStencilFunc(GL_ALWAYS, 0x10*(pass+1), ~0);
+            glEnable(GL_STENCIL_TEST);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         }
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[pass ? 5 : 0]);
-        screenquad(vieww, viewh);
-    }
+        if(smaacoloredge) smaacoloredgeshader->set();
+        else smaalumaedgeshader->set();
+        for(int pass = stencilpass; pass < stencilpass + numpasses; pass++)
+        {
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[1 + 2*pass]);
+            if(smaadepthmask || smaastencil)
+            {
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT | (!pass ? cleardepth : 0));
+            }
+            if(smaadepthmask)
+            {
+                float depthval = cleardepth ? 0.25f*(pass+1) : 1;
+                glDepthRange(depthval, depthval);
+            }
+            else if(smaastencil && hasstencil)
+            {
+                glStencilFunc(GL_ALWAYS, 0x10*(pass+1), ~0);
+                if(numpasses >= 2 && pass) glStencilMask(0x10*(pass+1));
+            }
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[pass ? 5 : 0]);
+            screenquad(vieww, viewh);
+        }
 
-    if(smaadepthmask)
-    {
-        glDepthFunc(GL_EQUAL);
-        glDepthMask(GL_FALSE);
-    }
-    else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
-    {
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    }
-    smaablendweightshader->set();
-    loop(pass, split ? 2 : 1)
-    {
-        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2 + 2*pass]);
         if(smaadepthmask)
         {
-            float depthval = cleardepth ? 0.25f*(pass+1) : 1;
-            glDepthRange(depthval, depthval);
+            glDepthFunc(GL_EQUAL);
+            glDepthMask(GL_FALSE);
         }
-        else if(smaastencil && ((gdepthstencil && hasDS) || gstencil))
+        else if(smaastencil && hasstencil)
         {
-            glStencilFunc(GL_EQUAL, 0x10*(pass+1), ~0);
+            if(numpasses >= 2) glStencilMask(~0);
+            glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         }
-        if(smaadepthmask || smaastencil) glClear(GL_COLOR_BUFFER_BIT);
-        vec4 subsamples(0, 0, 0, 0);
-        if(tqaa && split) subsamples = tqaaframe&1 ? (pass != smaasubsampleorder ? vec4(6, 4, 2, 4) : vec4(3, 5, 1, 4)) : (pass != smaasubsampleorder ? vec4(4, 6, 2, 3) : vec4(5, 3, 1, 3));
-        else if(tqaa) subsamples = tqaaframe&1 ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0);
-        else if(split) subsamples = pass != smaasubsampleorder ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0);
-        LOCALPARAM(subsamples, (subsamples));
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[1 + 2*pass]);
-        glActiveTexture_(GL_TEXTURE1_ARB);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
-        glActiveTexture_(GL_TEXTURE2_ARB);
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex);
-        if(tqaa && tqaamovemask)
+        smaablendweightshader->set();
+        for(int pass = stencilpass; pass < stencilpass + numpasses; pass++)
         {
-            glActiveTexture_(GL_TEXTURE3_ARB);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaamasktex);
-        }
-        glActiveTexture_(GL_TEXTURE0_ARB);
-        screenquadoffset(0, 0, vieww, viewh, -0.5f/(1<<tqaamovemaskreduce), -0.5f/(1<<tqaamovemaskreduce), vieww>>tqaamovemaskreduce, viewh>>tqaamovemaskreduce);
-    } 
+            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, smaafbo[2 + 2*pass]);
+            if(smaadepthmask)
+            {
+                float depthval = cleardepth ? 0.25f*(pass+1) : 1;
+                glDepthRange(depthval, depthval);
+            }
+            else if(smaastencil && hasstencil)
+            {
+                glStencilFunc(GL_EQUAL, 0x10*(pass+1), ~0);
+            }
+            if(smaadepthmask || smaastencil) glClear(GL_COLOR_BUFFER_BIT);
+            vec4 subsamples(0, 0, 0, 0);
+            if(tqaa && split) subsamples = tqaaframe&1 ? (pass != smaasubsampleorder ? vec4(6, 4, 2, 4) : vec4(3, 5, 1, 4)) : (pass != smaasubsampleorder ? vec4(4, 6, 2, 3) : vec4(5, 3, 1, 3));
+            else if(tqaa) subsamples = tqaaframe&1 ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0);
+            else if(split) subsamples = pass != smaasubsampleorder ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0);
+            LOCALPARAM(subsamples, (subsamples));
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[1 + 2*pass]);
+            glActiveTexture_(GL_TEXTURE1_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
+            glActiveTexture_(GL_TEXTURE2_ARB);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex);
+            if(tqaa && tqaamovemask)
+            {
+                glActiveTexture_(GL_TEXTURE3_ARB);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaamasktex);
+            }
+            glActiveTexture_(GL_TEXTURE0_ARB);
+            screenquadoffset(0, 0, vieww, viewh, -0.5f/(1<<tqaamovemaskreduce), -0.5f/(1<<tqaamovemaskreduce), vieww>>tqaamovemaskreduce, viewh>>tqaamovemaskreduce);
+        } 
 
-    if(smaadepthmask)
-    {
-        glDisable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDepthFunc(GL_LESS);
-        glDepthRange(0, 1);
+        if(smaadepthmask)
+        {
+            glDisable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glDepthFunc(GL_LESS);
+            glDepthRange(0, 1);
+        }
+        else if(smaastencil && hasstencil) glDisable(GL_STENCIL_TEST);
     }
-    else if(smaastencil && ((gdepthstencil && hasDS) || gstencil)) glDisable(GL_STENCIL_TEST);
 
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, tqaa ? tqaafbo[0] : outfbo);
     smaaneighborhoodshader->set();
