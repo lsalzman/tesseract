@@ -127,26 +127,22 @@ void packtqaa()
 void resolvetqaa(GLuint outfbo)
 {
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+    if(tqaamovemask)
+    {
+        SETSHADER(tqaaresolvemasked);
+        LOCALPARAM(movemaskscale, (1/float(1<<tqaamovemaskreduce)));
+    }
+    else SETSHADER(tqaaresolve);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaacurtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaaframe ? tqaaprevtex : tqaacurtex);
-    glActiveTexture_(GL_TEXTURE2_ARB);
-    if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
-    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
+    setaavelocityparams(GL_TEXTURE2_ARB);
     if(tqaamovemask)
     {
        glActiveTexture_(GL_TEXTURE3_ARB);
        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaamasktex);
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
-    if(tqaamovemask) 
-    {
-        SETSHADER(tqaaresolvemasked); 
-        LOCALPARAM(movemaskscale, (1/float(1<<tqaamovemaskreduce)));
-    }
-    else SETSHADER(tqaaresolve);
-    float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
-    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
     vec4 quincunx(0, 0, 0, 0);
     if(tqaaquincunx) quincunx = tqaaframe&1 ? vec4(0.25f, 0.25f, -0.25f, -0.25f) : vec4(-0.25f, -0.25f, 0.25f, 0.25f);
     if(multisampledaa()) { quincunx.x *= 0.5f; quincunx.y *= -0.5f; quincunx.z *= 0.5f; quincunx.w *= -0.5f; }

@@ -2759,10 +2759,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         glDepthMask(GL_TRUE);
         if(hasDBT && depthtestlights > 1) glDisable(GL_DEPTH_BOUNDS_TEST_EXT);
     }
-
-    glMatrixMode(GL_TEXTURE);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
 }
 
 VAR(oqlights, 0, 1, 1);
@@ -3954,10 +3950,6 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
         if(scissor) glDisable(GL_SCISSOR_TEST);
         glDisable(GL_BLEND);
     }
-
-    glMatrixMode(GL_TEXTURE);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
 
     GLERROR;
     
