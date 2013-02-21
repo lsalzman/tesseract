@@ -2,6 +2,7 @@ VARP(gpuskel, 0, 1, 1);
 VARP(matskel, 0, 0, 1);
 
 VAR(maxskelanimdata, 1, 192, 0);
+VAR(testtags, 0, 0, 1);
 
 #define BONEMASK_NOT  0x8000
 #define BONEMASK_END  0xFFFF
@@ -605,11 +606,21 @@ struct skelmodel : animmodel
 
         bool addtag(const char *name, int bone, const matrix3x4 &matrix)
         {
-            if(findtag(name) >= 0) return false;
-            tag &t = tags.add();
-            t.name = newstring(name);
-            t.bone = bone;
-            t.matrix = matrix;
+            int idx = findtag(name);
+            if(idx >= 0)
+            {
+                if(!testtags) return false;
+                tag &t = tags[idx];
+                t.bone = bone;
+                t.matrix = matrix;
+            }
+            else
+            {
+                tag &t = tags.add();
+                t.name = newstring(name);
+                t.bone = bone;
+                t.matrix = matrix;
+            }
             return true;
         }
 
