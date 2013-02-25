@@ -2386,7 +2386,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     GLOBALPARAM(shadowatlasscale, (1.0f/shadowatlaspacker.w, 1.0f/shadowatlaspacker.h));
     if(ao)
     {
-        if((editmode && fullbright) || drawtex)
+        if(tilemask || (editmode && fullbright) || drawtex)
         {
             GLOBALPARAM(aoscale, (0.0f, 0.0f));
             GLOBALPARAM(aoparams, (1.0f, 0.0f, 1.0f, 0.0f));
