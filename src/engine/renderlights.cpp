@@ -127,11 +127,8 @@ Shader *loadambientobscuranceshader()
     int optslen = 0;
 
     bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1);
-    if(linear) 
-    {
-        opts[optslen++] = 'l';
-        if(aoderivnormal) opts[optslen++] = 'd';
-    }
+    if(linear) opts[optslen++] = 'l';
+    if(aoderivnormal) opts[optslen++] = 'd';
     if(aobilateral && aopackdepth) opts[optslen++] = 'p';
     opts[optslen] = '\0';
 
@@ -285,7 +282,7 @@ void renderao()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[0]);
     glViewport(0, 0, aow, aoh);
     glActiveTexture_(GL_TEXTURE1_ARB);
-    if(linear && aoderivnormal)
+    if(aoderivnormal)
     {
         if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
         else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
