@@ -893,14 +893,11 @@ struct animmodel : model
                 if(resize!=1) glScalef(resize, resize, resize);
                 if(!(anim&ANIM_NOSKIN))
                 {
-                    glMatrixMode(GL_TEXTURE);
-                    glLoadMatrixf(matrixstack[matrixpos].a.v);
-                    glMatrixMode(GL_MODELVIEW);
+                    GLOBALPARAM(oworld, glmatrix3x3(matrixstack[matrixpos]));
                 
                     vec ocampos;
                     matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
                     ocampos.div(resize);
-                    if(!index) ocampos.sub(model->translate);
                     GLOBALPARAM(ocamera, ocampos);
                 }
             }

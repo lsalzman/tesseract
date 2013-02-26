@@ -2990,10 +2990,10 @@ void radiancehints::renderslices()
     GLOBALPARAMF(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
 
     glMatrixMode(GL_TEXTURE);
-    glLoadIdentity();
-    glTranslatef(rsm.offset.x, rsm.offset.y, rsm.offset.z);
-    glScalef(rsm.scale.x, rsm.scale.y, rsm.scale.z);
-    glMultMatrixf(rsm.model.a.v);
+    glmatrix rsmmatrix = rsm.model;
+    rsmmatrix.scale(rsm.scale);
+    rsmmatrix.translate(rsm.offset);
+    glLoadMatrixf(rsmmatrix.a.v);
     glMatrixMode(GL_MODELVIEW);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmdepthtex);

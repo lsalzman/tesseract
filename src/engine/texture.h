@@ -55,8 +55,8 @@ struct GlobalShaderParamUse : ShaderParamBinding
             case GL_INT_VEC2:   glUniform2iv_(loc, size, param->ival); break;
             case GL_INT_VEC3:   glUniform3iv_(loc, size, param->ival); break;
             case GL_INT_VEC4:   glUniform4iv_(loc, size, param->ival); break;
-            case GL_FLOAT_MAT2: glUniformMatrix2fv_(loc, 1, GL_TRUE, param->fval); break;
-            case GL_FLOAT_MAT3: glUniformMatrix3fv_(loc, 1, GL_TRUE, param->fval); break;
+            case GL_FLOAT_MAT2: glUniformMatrix2fv_(loc, 1, GL_FALSE, param->fval); break;
+            case GL_FLOAT_MAT3: glUniformMatrix3fv_(loc, 1, GL_FALSE, param->fval); break;
             case GL_FLOAT_MAT4: glUniformMatrix4fv_(loc, 1, GL_FALSE, param->fval); break;
         }
         version = param->version;
@@ -271,7 +271,9 @@ struct GlobalShaderParam
     void set(const vec2 &v, float z = 0, float w = 0) { setf(v.x, v.y, z, w); }
     void set(const vec4 &v) { setf(v.x, v.y, v.z, v.w); }
     void set(const plane &p) { setf(p.x, p.y, p.z, p.offset); }
-    void set(const matrix3x3 &m) { memcpy(resolve()->fval, m.a.v, sizeof(m)); }
+    void set(const matrix3x3 &m) { m.transpose(resolve()->fval); }
+    void set(const glmatrix2x2 &m) { memcpy(resolve()->fval, m.a.v, sizeof(m)); }
+    void set(const glmatrix3x3 &m) { memcpy(resolve()->fval, m.a.v, sizeof(m)); }
     void set(const glmatrix &m) { memcpy(resolve()->fval, m.a.v, sizeof(m)); }
 
     template<class T>
@@ -342,8 +344,12 @@ struct LocalShaderParam
     void setv(const vec4 *v, int n = 1) { ShaderParamBinding *b = resolve(); if(b) glUniform4fv_(b->loc, n, v->v); }
     void setv(const plane *p, int n = 1) { ShaderParamBinding *b = resolve(); if(b) glUniform4fv_(b->loc, n, p->v); }
     void setv(const matrix3x3 *m, int n = 1) { ShaderParamBinding *b = resolve(); if(b) glUniformMatrix3fv_(b->loc, n, GL_TRUE, m->a.v); }
+    void setv(const glmatrix2x2 *m, int n = 1) { ShaderParamBinding *b = resolve(); if(b) glUniformMatrix2fv_(b->loc, n, GL_FALSE, m->a.v); }
+    void setv(const glmatrix3x3 *m, int n = 1) { ShaderParamBinding *b = resolve(); if(b) glUniformMatrix3fv_(b->loc, n, GL_FALSE, m->a.v); }
     void setv(const glmatrix *m, int n = 1) { ShaderParamBinding *b = resolve(); if(b) glUniformMatrix4fv_(b->loc, n, GL_FALSE, m->a.v); }
     void set(const matrix3x3 &m) { setv(&m); }
+    void set(const glmatrix2x2 &m) { setv(&m); }
+    void set(const glmatrix3x3 &m) { setv(&m); }
     void set(const glmatrix &m) { setv(&m); }
 
     void seti(int x = 0, int y = 0, int z = 0, int w = 0)

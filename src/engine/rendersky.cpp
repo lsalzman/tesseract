@@ -355,12 +355,11 @@ static void drawfogdome(int farplane)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glPushMatrix();
-    glLoadMatrixf(viewmatrix.a.v);
-    glRotatef(camera1->roll, 0, 1, 0);
-    glRotatef(camera1->pitch, -1, 0, 0);
-    glRotatef(camera1->yaw, 0, 0, -1);
-    glTranslatef(0, 0, farplane*fogdomeheight*0.5f);
-    glScalef(farplane/2, farplane/2, farplane*(0.5f - fogdomeheight*0.5f));
+    glmatrix fogdomematrix = mvmatrix;
+    fogdomematrix.d = vec4(0, 0, 0, 1);
+    fogdomematrix.transformedtranslate(0, 0, farplane*fogdomeheight*0.5f);
+    fogdomematrix.scale(farplane/2, farplane/2, farplane*(0.5f - fogdomeheight*0.5f)); 
+    glLoadMatrixf(fogdomematrix.a.v);
     drawdome();
     glPopMatrix();
 
@@ -404,10 +403,10 @@ void drawskybox(int farplane)
     glColor3f((skyboxcolour>>16)*ldrscaleb, ((skyboxcolour>>8)&255)*ldrscaleb, (skyboxcolour&255)*ldrscaleb);
 
     glPushMatrix();
-    glLoadMatrixf(viewmatrix.a.v);
-    glRotatef(camera1->roll, 0, 1, 0);
-    glRotatef(camera1->pitch, -1, 0, 0);
-    glRotatef(camera1->yaw+spinsky*lastmillis/1000.0f+yawsky, 0, 0, -1);
+    glmatrix skymatrix = mvmatrix;
+    skymatrix.d = vec4(0, 0, 0, 1);
+    skymatrix.rotate_around_z((spinsky*lastmillis/1000.0f+yawsky)*-RAD);
+    glLoadMatrixf(skymatrix.a.v);
     draw_envbox(farplane/2, skyclip, topclip, 0x3F, sky);
     glPopMatrix();
 
@@ -426,10 +425,10 @@ void drawskybox(int farplane)
         glColor4f((cloudboxcolour>>16)*ldrscaleb, ((cloudboxcolour>>8)&255)*ldrscaleb, (cloudboxcolour&255)*ldrscaleb, cloudboxalpha);
 
         glPushMatrix();
-        glLoadMatrixf(viewmatrix.a.v);
-        glRotatef(camera1->roll, 0, 1, 0);
-        glRotatef(camera1->pitch, -1, 0, 0);
-        glRotatef(camera1->yaw+spinclouds*lastmillis/1000.0f+yawclouds, 0, 0, -1);
+        glmatrix cloudsmatrix = mvmatrix;
+        cloudsmatrix.d = vec4(0, 0, 0, 1);
+        cloudsmatrix.rotate_around_z((spinclouds*lastmillis/1000.0f+yawclouds)*-RAD);
+        glLoadMatrixf(cloudsmatrix.a.v);
         draw_envbox(farplane/2, skyclip ? skyclip : cloudclip, topclip, 0x3F, clouds);
         glPopMatrix();
 
@@ -444,10 +443,10 @@ void drawskybox(int farplane)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         glPushMatrix();
-        glLoadMatrixf(viewmatrix.a.v);
-        glRotatef(camera1->roll, 0, 1, 0);
-        glRotatef(camera1->pitch, -1, 0, 0);
-        glRotatef(camera1->yaw+spincloudlayer*lastmillis/1000.0f+yawcloudlayer, 0, 0, -1);
+        glmatrix cloudlayermatrix = mvmatrix;
+        cloudlayermatrix.d = vec4(0, 0, 0, 1);
+        cloudlayermatrix.rotate_around_z((spincloudlayer*lastmillis/1000.0f+yawcloudlayer)*-RAD);
+        glLoadMatrixf(cloudlayermatrix.a.v);
         draw_env_overlay(farplane/2, cloudoverlay, cloudoffsetx + cloudscrollx * lastmillis/1000.0f, cloudoffsety + cloudscrolly * lastmillis/1000.0f);
         glPopMatrix();
 

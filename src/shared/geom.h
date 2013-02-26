@@ -598,11 +598,17 @@ struct matrix3x3
         c = vec(n.a).mul(m.a.z).add(vec(n.b).mul(m.b.z)).add(vec(n.c).mul(m.c.z));
     }
 
-    void transpose(const matrix3x3 &o)
+    void transpose(float *dst) const
     {
-        a = vec(o.a.x, o.b.x, o.c.x);
-        b = vec(o.a.y, o.b.y, o.c.y);
-        c = vec(o.a.z, o.b.z, o.c.z);
+        dst[0] = a.x; dst[1] = b.x; dst[2] = c.x;
+        dst[3] = a.y; dst[4] = b.y; dst[5] = c.y;
+        dst[6] = a.z; dst[7] = b.z; dst[8] = c.z;
+    }
+
+    void transpose()
+    {
+        swap(a.y, b.x); swap(a.z, c.x);
+        swap(b.z, c.y);
     }
 
     void rotate(float angle, const vec &axis)
@@ -1463,6 +1469,27 @@ struct glmatrix
     vec4 getrow(int i) const { return vec4(a.v[i], b.v[i], c.v[i], d.v[i]); }
 
     bool invert(const glmatrix &m, double mindet = 1.0e-10);
+};
+
+struct glmatrix3x3
+{
+    vec a, b, c;
+
+    glmatrix3x3() {}
+    glmatrix3x3(const vec &a, const vec &b, const vec &c) : a(a), b(b), c(c) {}
+    explicit glmatrix3x3(const glmatrix &m) : a(m.a), b(m.b), c(m.c) {}
+    explicit glmatrix3x3(const matrix3x3 &m) : a(m.a.x, m.b.x, m.c.x), b(m.a.y, m.b.y, m.c.y), c(m.a.z, m.b.z, m.c.z) {}
+    explicit glmatrix3x3(const matrix3x4 &m) : a(m.a.x, m.b.x, m.c.x), b(m.a.y, m.b.y, m.c.y), c(m.a.z, m.b.z, m.c.z) {}
+};
+
+struct glmatrix2x2
+{
+    vec2 a, b;
+
+    glmatrix2x2() {}
+    glmatrix2x2(const vec2 &a, const vec2 &b) : a(a), b(b) {}
+    explicit glmatrix2x2(const glmatrix &m) : a(m.a), b(m.b) {}
+    explicit glmatrix2x2(const glmatrix3x3 &m) : a(m.a), b(m.b) {}
 };
 
 extern bool raysphereintersect(const vec &center, float radius, const vec &o, const vec &ray, float &dist);
