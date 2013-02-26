@@ -118,7 +118,7 @@ struct BlendMapCache
 {
     BlendMapRoot node;
     int scale;
-    ivec origin;
+    ivec2 origin;
 };
 
 BlendMapCache *newblendmapcache() { return new BlendMapCache; }
@@ -131,7 +131,7 @@ bool setblendmaporigin(BlendMapCache *cache, const ivec &o, int size)
     {
         cache->node = blendmap;
         cache->scale = worldscale-BM_SCALE;
-        cache->origin = ivec(0, 0, 0);
+        cache->origin = ivec2(0, 0);
         return cache->node.solid!=&bmsolids[0xFF];
     }
 
@@ -150,7 +150,7 @@ bool setblendmaporigin(BlendMapCache *cache, const ivec &o, int size)
         {
             cache->node = BlendMapRoot(bm->type[n], bm->children[n]);
             cache->scale = bmscale;
-            cache->origin = ivec(x1&(~0U<<bmscale), y1&(~0U<<bmscale), 0);
+            cache->origin = ivec2(x1&(~0U<<bmscale), y1&(~0U<<bmscale));
             return cache->node.solid!=&bmsolids[0xFF];
         }
         bm = bm->children[n].branch;
@@ -159,7 +159,7 @@ bool setblendmaporigin(BlendMapCache *cache, const ivec &o, int size)
     cache->node.type = BM_BRANCH;
     cache->node.branch = bm;
     cache->scale = bmscale;
-    cache->origin = ivec(x1&(~0U<<bmscale), y1&(~0U<<bmscale), 0);
+    cache->origin = ivec2(x1&(~0U<<bmscale), y1&(~0U<<bmscale));
     return true;
 }
 
@@ -780,7 +780,7 @@ void bindblendtexture(const ivec &p)
     {
         BlendTexture &bt = blendtexs[i];
         int tsize = 1<<min(worldscale, 12);
-        GLOBALPARAM(blendmapparams, (bt.x, bt.y, 1.0f/tsize, 1.0f/tsize));
+        GLOBALPARAMF(blendmapparams, (bt.x, bt.y, 1.0f/tsize, 1.0f/tsize));
         glBindTexture(GL_TEXTURE_2D, bt.tex);
         break;
     }

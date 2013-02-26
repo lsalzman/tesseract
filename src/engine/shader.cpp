@@ -285,7 +285,7 @@ GlobalShaderParamState *getglobalparam(const char *name)
     {
         param = &globalparams[name];
         param->name = name;
-        memset(param->val, -1, sizeof(param->val));
+        memset(param->buf, -1, sizeof(param->buf));
         param->version = -1;
     }
     return param;
@@ -310,6 +310,14 @@ static void setglsluniformformat(Shader &s, const char *name, GLenum format, int
         case GL_FLOAT_VEC2:
         case GL_FLOAT_VEC3:
         case GL_FLOAT_VEC4:
+        case GL_INT:
+        case GL_INT_VEC2:
+        case GL_INT_VEC3:
+        case GL_INT_VEC4:
+        case GL_BOOL:
+        case GL_BOOL_VEC2:
+        case GL_BOOL_VEC3:
+        case GL_BOOL_VEC4:
         case GL_FLOAT_MAT2:
         case GL_FLOAT_MAT3:
         case GL_FLOAT_MAT4:
@@ -429,10 +437,18 @@ static inline void setslotparam(SlotShaderParamState &l, uint &mask, int i, cons
         mask |= 1<<i;
         switch(l.format)
         {
+            case GL_BOOL:
             case GL_FLOAT:      glUniform1fv_(l.loc, 1, val); break;
+            case GL_BOOL_VEC2:
             case GL_FLOAT_VEC2: glUniform2fv_(l.loc, 1, val); break;
+            case GL_BOOL_VEC3:
             case GL_FLOAT_VEC3: glUniform3fv_(l.loc, 1, val); break;
+            case GL_BOOL_VEC4:
             case GL_FLOAT_VEC4: glUniform4fv_(l.loc, 1, val); break;
+            case GL_INT:      glUniform1i_(l.loc, int(val[0])); break;
+            case GL_INT_VEC2: glUniform2i_(l.loc, int(val[0]), int(val[1])); break;
+            case GL_INT_VEC3: glUniform3i_(l.loc, int(val[0]), int(val[1]), int(val[2])); break;
+            case GL_INT_VEC4: glUniform4i_(l.loc, int(val[0]), int(val[1]), int(val[2]), int(val[3])); break;
         }
     }
 }
@@ -1196,7 +1212,7 @@ void renderpostfx(GLuint outfbo)
             h = tex >= 0 ? max(postfxh>>postfxtexs[tex].scale, 1) : postfxh;
         glViewport(0, 0, w, h);
         p.shader->set();
-        LOCALPARAM(params, (p.params));
+        LOCALPARAM(params, p.params);
         int tw = w, th = h, tmu = 0;
         loopj(NUMPOSTFXBINDS) if(p.inputs&(1<<j) && postfxbinds[j] >= 0)
         {
@@ -1367,9 +1383,9 @@ void setblurshader(int pass, int size, int radius, float *weights, float *offset
         s = lookupshaderbyname(name);
     }
     s->set();
-    LOCALPARAM(weights, (weights, 8));
+    LOCALPARAMV(weights, weights, 8);
     float scaledoffsets[8];
     loopk(8) scaledoffsets[k] = offsets[k]/size;
-    LOCALPARAM(offsets, (scaledoffsets, 8));
+    LOCALPARAMV(offsets, scaledoffsets, 8);
 }
 

@@ -291,6 +291,7 @@ struct fireballrenderer : listrenderer
         float yaw = inside ? camera1->yaw : atan2(oc.y, oc.x)/RAD - 90,
         pitch = (inside ? camera1->pitch : asin(oc.z/oc.magnitude())/RAD) - 90;
         vec rotdir;
+        float rotangle = lastmillis/1000.0f*143;
         if(explosion2d)
         {
             glRotatef(yaw, 0, 0, 1);
@@ -300,31 +301,31 @@ struct fireballrenderer : listrenderer
         else
         {
             vec s(1, 0, 0), t(0, 1, 0);
-            s.rotate(pitch*RAD, vec(-1, 0, 0));
-            s.rotate(yaw*RAD, vec(0, 0, -1));
-            t.rotate(pitch*RAD, vec(-1, 0, 0));
-            t.rotate(yaw*RAD, vec(0, 0, -1));
+            s.rotate_around_x(pitch*-RAD);
+            s.rotate_around_z(yaw*-RAD);
+            t.rotate_around_x(pitch*-RAD);
+            t.rotate_around_z(yaw*-RAD);
 
             rotdir = vec(-1, 1, -1).normalize();
-            s.rotate(-lastmillis/7.0f*RAD, rotdir);
-            t.rotate(-lastmillis/7.0f*RAD, rotdir);
+            s.rotate(rotangle*-RAD, rotdir);
+            t.rotate(rotangle*-RAD, rotdir);
 
-            LOCALPARAM(texgenS, (0.5f*s.x, 0.5f*s.y, 0.5f*s.z, 0.5f));
-            LOCALPARAM(texgenT, (0.5f*t.x, 0.5f*t.y, 0.5f*t.z, 0.5f));
+            LOCALPARAMF(texgenS, (0.5f*s.x, 0.5f*s.y, 0.5f*s.z, 0.5f));
+            LOCALPARAMF(texgenT, (0.5f*t.x, 0.5f*t.y, 0.5f*t.z, 0.5f));
         }
 
-        LOCALPARAM(center, (o));
-        LOCALPARAM(animstate, (size, psize, pmax, float(lastmillis)));
+        LOCALPARAM(center, o);
+        LOCALPARAMF(animstate, (size, psize, pmax, lastmillis/1000.0f));
         if(2*(p->size + pmax)*WOBBLE >= softexplosionblend)
         {
-            LOCALPARAM(softparams, (-1.0f/softexplosionblend, 0, inside ? blend/(2*255.0f) : 0));
+            LOCALPARAMF(softparams, (-1.0f/softexplosionblend, 0, inside ? blend/(2*255.0f) : 0));
         }
         else
         {
-            LOCALPARAM(softparams, (0, -1, inside ? blend/(2*255.0f) : 0));
+            LOCALPARAMF(softparams, (0, -1, inside ? blend/(2*255.0f) : 0));
         }
 
-        glRotatef(lastmillis/7.0f, -rotdir.x, rotdir.y, -rotdir.z);
+        glRotatef(rotangle, -rotdir.x, rotdir.y, -rotdir.z);
         glScalef(-psize, psize, -psize);
         drawexplosion(inside, color[0]*ldrscaleb, color[1]*ldrscaleb, color[2]*ldrscaleb, blend/255.0f);
 

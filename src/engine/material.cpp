@@ -724,8 +724,8 @@ void renderglass()
         const bvec &col = getglasscolor(k);
         float refract = getglassrefract(k);
         int spec = getglassspec(k);
-        GLOBALPARAM(glassrefract, (col.x*refractscale, col.y*refractscale, col.z*refractscale, refract*viewh));
-        GLOBALPARAM(glassspec, (0.5f*spec/100.0f));
+        GLOBALPARAMF(glassrefract, (col.x*refractscale, col.y*refractscale, col.z*refractscale, refract*viewh));
+        GLOBALPARAMF(glassspec, (0.5f*spec/100.0f));
 
         short envmap = EMID_NONE;
         if(!glassenv) SETSHADER(glass);

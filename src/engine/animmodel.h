@@ -87,13 +87,13 @@ struct animmodel : model
          
         void setshaderparams(mesh *m, const animstate *as, bool masked, bool alphatested = false, bool skinned = true)
         {
-            GLOBALPARAM(texscroll, (lastmillis/1000.0f, scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f));
-            if(alphatested) GLOBALPARAM(alphatest, (alphatest));
+            GLOBALPARAMF(texscroll, (scrollu*lastmillis/1000.0f, scrollv*lastmillis/1000.0f));
+            if(alphatested) GLOBALPARAMF(alphatest, (alphatest));
 
             if(!skinned) return;
                 
-            if(fullbright) GLOBALPARAM(fullbright, (0.0f, fullbright));
-            else GLOBALPARAM(fullbright, (1.0f, as->cur.anim&ANIM_FULLBRIGHT ? 0.5f*fullbrightmodels/100.0f : 0.0f));
+            if(fullbright) GLOBALPARAMF(fullbright, (0.0f, fullbright));
+            else GLOBALPARAMF(fullbright, (1.0f, as->cur.anim&ANIM_FULLBRIGHT ? 0.5f*fullbrightmodels/100.0f : 0.0f));
 
             float curglow = glow;
             if(glowpulse > 0)
@@ -102,8 +102,8 @@ struct animmodel : model
                 curpulse -= floor(curpulse);
                 curglow += glowdelta*2*fabs(curpulse - 0.5f);
             }
-            GLOBALPARAM(maskscale, (spec*lightmodels, curglow*glowmodels));
-            if(envmaptmu>=0 && envmapmax>0) GLOBALPARAM(envmapscale, (envmapmin-envmapmax, envmapmax));
+            GLOBALPARAMF(maskscale, (spec*lightmodels, curglow*glowmodels));
+            if(envmaptmu>=0 && envmapmax>0) GLOBALPARAMF(envmapscale, (envmapmin-envmapmax, envmapmax));
         }
 
         Shader *loadshader(bool shouldenvmap, bool masked, bool alphatested)
@@ -893,7 +893,7 @@ struct animmodel : model
                     vec ocampos;
                     matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
                     ocampos.div(resize).sub(translate);
-                    GLOBALPARAM(ocamera, (ocampos.x, ocampos.y, ocampos.z, 1));
+                    GLOBALPARAM(ocamera, ocampos);
                 }
             }
 

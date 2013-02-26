@@ -931,7 +931,7 @@ void renderparticles()
             glActiveTexture_(GL_TEXTURE0_ARB);
 
             particleshader->set();
-            LOCALPARAM(colorscale, (ldrscale, ldrscale, ldrscale, 1));
+            LOCALPARAMF(colorscale, (ldrscale, ldrscale, ldrscale, 1));
         }
         
         uint flags = p->type & flagmask;
@@ -968,7 +968,7 @@ void renderparticles()
                     if(flags&PT_SOFT && softparticles)
                     {
                         particlesoftshader->set();
-                        LOCALPARAM(softparams, (-1.0f/softparticleblend, 0, 0));
+                        LOCALPARAMF(softparams, (-1.0f/softparticleblend, 0, 0));
                     }
                     else (flags&PT_NOTEX ? particlenotextureshader : particleshader)->set();
                 }
@@ -976,7 +976,7 @@ void renderparticles()
                 {
                     float colorscale = ldrscale;
                     if(flags&PT_BRIGHT) colorscale *= particlebright;
-                    LOCALPARAM(colorscale, (colorscale, colorscale, colorscale, 1));
+                    LOCALPARAMF(colorscale, (colorscale, colorscale, colorscale, 1));
                 }
             }
             lastflags = flags;        

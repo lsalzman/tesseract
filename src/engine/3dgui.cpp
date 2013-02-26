@@ -646,7 +646,7 @@ struct gui : g3d_gui
         SETSHADER(rgbonly);
         const vec &color = hit ? vec(1, 0.5f, 0.5f) : vec(1, 1, 1);
         float tc[4][2] = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
-        int xoff = vslot.xoffset, yoff = vslot.yoffset;
+        int xoff = vslot.offset.x, yoff = vslot.offset.y;
         if(vslot.rotation)
         {
             if((vslot.rotation&5) == 1) { swap(xoff, yoff); loopk(4) swap(tc[k][0], tc[k][1]); }

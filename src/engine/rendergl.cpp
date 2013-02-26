@@ -110,6 +110,13 @@ PFNGLUNIFORM2FVPROC               glUniform2fv_               = NULL;
 PFNGLUNIFORM3FVPROC               glUniform3fv_               = NULL;
 PFNGLUNIFORM4FVPROC               glUniform4fv_               = NULL;
 PFNGLUNIFORM1IPROC                glUniform1i_                = NULL;
+PFNGLUNIFORM2IPROC                glUniform2i_                = NULL;
+PFNGLUNIFORM3IPROC                glUniform3i_                = NULL;
+PFNGLUNIFORM4IPROC                glUniform4i_                = NULL;
+PFNGLUNIFORM1IVPROC               glUniform1iv_               = NULL;
+PFNGLUNIFORM2IVPROC               glUniform2iv_               = NULL;
+PFNGLUNIFORM3IVPROC               glUniform3iv_               = NULL;
+PFNGLUNIFORM4IVPROC               glUniform4iv_               = NULL;
 PFNGLUNIFORMMATRIX2FVPROC         glUniformMatrix2fv_         = NULL;
 PFNGLUNIFORMMATRIX3FVPROC         glUniformMatrix3fv_         = NULL;
 PFNGLUNIFORMMATRIX4FVPROC         glUniformMatrix4fv_         = NULL;
@@ -556,6 +563,13 @@ void gl_checkextensions()
         glUniform3fv_ =               (PFNGLUNIFORM3FVPROC)               getprocaddress("glUniform3fv");
         glUniform4fv_ =               (PFNGLUNIFORM4FVPROC)               getprocaddress("glUniform4fv");
         glUniform1i_ =                (PFNGLUNIFORM1IPROC)                getprocaddress("glUniform1i");
+        glUniform2i_ =                (PFNGLUNIFORM2IPROC)                getprocaddress("glUniform2i");
+        glUniform3i_ =                (PFNGLUNIFORM3IPROC)                getprocaddress("glUniform3i");
+        glUniform4i_ =                (PFNGLUNIFORM4IPROC)                getprocaddress("glUniform4i");
+        glUniform1iv_ =               (PFNGLUNIFORM1IVPROC)               getprocaddress("glUniform1iv");
+        glUniform2iv_ =               (PFNGLUNIFORM2IVPROC)               getprocaddress("glUniform2iv");
+        glUniform3iv_ =               (PFNGLUNIFORM3IVPROC)               getprocaddress("glUniform3iv");
+        glUniform4iv_ =               (PFNGLUNIFORM4IVPROC)               getprocaddress("glUniform4iv");
         glUniformMatrix2fv_ =         (PFNGLUNIFORMMATRIX2FVPROC)         getprocaddress("glUniformMatrix2fv");
         glUniformMatrix3fv_ =         (PFNGLUNIFORMMATRIX3FVPROC)         getprocaddress("glUniformMatrix3fv");
         glUniformMatrix4fv_ =         (PFNGLUNIFORMMATRIX4FVPROC)         getprocaddress("glUniformMatrix4fv");
@@ -1665,7 +1679,7 @@ vec curfogcolor(0, 0, 0);
 
 void setfogcolor(const vec &v)
 {
-    GLOBALPARAM(fogcolor, (v));
+    GLOBALPARAM(fogcolor, v);
 }
 
 void zerofogcolor()
@@ -1690,8 +1704,8 @@ static void setfog(int fogmat, float below = 0, float blend = 1, int abovemat = 
     if(blend < 1) blendfog(abovemat, 0, 1-blend, 1-logblend, start, end, curfogcolor);
     curfogcolor.mul(ldrscale);
 
-    GLOBALPARAM(fogcolor, (curfogcolor));
-    GLOBALPARAM(fogparams, (start, end, 1/(end - start)));
+    GLOBALPARAM(fogcolor, curfogcolor);
+    GLOBALPARAMF(fogparams, (start, end, 1/(end - start)));
 }
 
 static void blendfogoverlay(int fogmat, float below, float blend, float *overlay)
@@ -1874,9 +1888,9 @@ void drawminimap()
 
     ldrscale = 1;
     ldrscaleb = ldrscale/255;
-    GLOBALPARAM(ldrscale, (ldrscale));
-    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
-    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
+    GLOBALPARAMF(ldrscale, (ldrscale));
+    GLOBALPARAM(camera, camera1->o);
+    GLOBALPARAMF(millis, (lastmillis/1000.0f));
 
     visiblecubes(false);
     collectlights();
@@ -1977,9 +1991,9 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
 
     ldrscale = 1;
     ldrscaleb = ldrscale/255;
-    GLOBALPARAM(ldrscale, (ldrscale));
-    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
-    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
+    GLOBALPARAMF(ldrscale, (ldrscale));
+    GLOBALPARAM(camera, camera1->o);
+    GLOBALPARAMF(millis, (lastmillis/1000.0f));
 
     visiblecubes();
     GLERROR;
@@ -2076,9 +2090,9 @@ namespace modelpreview
         ldrscale = 1;
         ldrscaleb = ldrscale/255;
 
-        GLOBALPARAM(ldrscale, (ldrscale));
-        GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
-        GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
+        GLOBALPARAMF(ldrscale, (ldrscale));
+        GLOBALPARAM(camera, camera1->o);
+        GLOBALPARAMF(millis, (lastmillis/1000.0f));
 
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
@@ -2177,9 +2191,9 @@ void gl_drawframe(int w, int h)
 
     ldrscale = hdr ? 0.5f : 1;
     ldrscaleb = ldrscale/255;
-    GLOBALPARAM(ldrscale, (ldrscale));
-    GLOBALPARAM(camera, (camera1->o.x, camera1->o.y, camera1->o.z, 1));
-    GLOBALPARAM(millis, (lastmillis/1000.0f, lastmillis/1000.0f, lastmillis/1000.0f));
+    GLOBALPARAMF(ldrscale, (ldrscale));
+    GLOBALPARAM(camera, camera1->o);
+    GLOBALPARAMF(millis, (lastmillis/1000.0f));
 
     visiblecubes();
   

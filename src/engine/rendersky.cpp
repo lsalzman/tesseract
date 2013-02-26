@@ -395,7 +395,7 @@ void drawskybox(int farplane)
     if(ldrscale < 1 && skyboxoverbright > 1 && skyboxoverbrightthreshold < 1)
     {
         SETSHADER(skyboxoverbright);
-        LOCALPARAM(overbrightparams, (skyboxoverbright-1, skyboxoverbrightthreshold));
+        LOCALPARAMF(overbrightparams, (skyboxoverbright-1, skyboxoverbrightthreshold));
     }
     else defaultshader->set();
 

@@ -256,7 +256,7 @@ void rendergrass()
     static Shader *grassshader = NULL;
     if(!grassshader) grassshader = lookupshaderbyname("grass");
     
-    GLOBALPARAM(grasstest, (grasstest));
+    GLOBALPARAMF(grasstest, (grasstest));
 
     int texid = -1, blend = -1;
     loopv(grassgroups)

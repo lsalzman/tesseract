@@ -1477,14 +1477,10 @@ static void clampvslotoffset(VSlot &dst, Slot *slot = NULL)
         if(!slot->loaded) loadslot(*slot, false);
         int xs = slot->sts[0].t->xs, ys = slot->sts[0].t->ys;
         if((dst.rotation&5)==1) swap(xs, ys);
-        dst.xoffset %= xs; if(dst.xoffset < 0) dst.xoffset += xs;
-        dst.yoffset %= ys; if(dst.yoffset < 0) dst.yoffset += ys;
+        dst.offset.x %= xs; if(dst.offset.x < 0) dst.offset.x += xs;
+        dst.offset.y %= ys; if(dst.offset.y < 0) dst.offset.y += ys;
     }
-    else
-    {
-        dst.xoffset = max(dst.xoffset, 0);
-        dst.yoffset = max(dst.yoffset, 0);
-    }
+    else dst.offset.max(0);
 }
 
 static void propagatevslot(VSlot &dst, const VSlot &src, int diff, bool edit = false)
@@ -1494,19 +1490,14 @@ static void propagatevslot(VSlot &dst, const VSlot &src, int diff, bool edit = f
     if(diff & (1<<VSLOT_ROTATION)) 
     {
         dst.rotation = src.rotation;
-        if(edit && (dst.xoffset || dst.yoffset)) clampvslotoffset(dst);
+        if(edit && !dst.offset.iszero()) clampvslotoffset(dst);
     }
     if(diff & (1<<VSLOT_OFFSET))
     {
-        dst.xoffset = src.xoffset;
-        dst.yoffset = src.yoffset;
+        dst.offset = src.offset;
         if(edit) clampvslotoffset(dst);
     }
-    if(diff & (1<<VSLOT_SCROLL))
-    {
-        dst.scrollS = src.scrollS;
-        dst.scrollT = src.scrollT;
-    }
+    if(diff & (1<<VSLOT_SCROLL)) dst.scroll = src.scroll;
     if(diff & (1<<VSLOT_LAYER)) dst.layer = src.layer;
     if(diff & (1<<VSLOT_ALPHA))
     {
@@ -1554,19 +1545,14 @@ static void mergevslot(VSlot &dst, const VSlot &src, int diff, Slot *slot = NULL
     if(diff & (1<<VSLOT_ROTATION)) 
     {
         dst.rotation = clamp(dst.rotation + src.rotation, 0, 5);
-        if(dst.xoffset || dst.yoffset) clampvslotoffset(dst, slot);
+        if(!dst.offset.iszero()) clampvslotoffset(dst, slot);
     }
     if(diff & (1<<VSLOT_OFFSET))
     {
-        dst.xoffset += src.xoffset;
-        dst.yoffset += src.yoffset;
+        dst.offset.add(src.offset);
         clampvslotoffset(dst, slot);
     }
-    if(diff & (1<<VSLOT_SCROLL))
-    {
-        dst.scrollS += src.scrollS;
-        dst.scrollT += src.scrollT;
-    }
+    if(diff & (1<<VSLOT_SCROLL)) dst.scroll.add(src.scroll);
     if(diff & (1<<VSLOT_LAYER)) dst.layer = src.layer;
     if(diff & (1<<VSLOT_ALPHA))
     {
@@ -1621,8 +1607,8 @@ static bool comparevslot(const VSlot &dst, const VSlot &src, int diff)
     }
     if(diff & (1<<VSLOT_SCALE) && dst.scale != src.scale) return false;
     if(diff & (1<<VSLOT_ROTATION) && dst.rotation != src.rotation) return false;
-    if(diff & (1<<VSLOT_OFFSET) && (dst.xoffset != src.xoffset || dst.yoffset != src.yoffset)) return false;
-    if(diff & (1<<VSLOT_SCROLL) && (dst.scrollS != src.scrollS || dst.scrollT != src.scrollT)) return false;
+    if(diff & (1<<VSLOT_OFFSET) && dst.offset != src.offset) return false;
+    if(diff & (1<<VSLOT_SCROLL) && dst.scroll != src.scroll) return false;
     if(diff & (1<<VSLOT_LAYER) && dst.layer != src.layer) return false;
     if(diff & (1<<VSLOT_ALPHA) && (dst.alphafront != src.alphafront || dst.alphaback != src.alphaback)) return false;
     if(diff & (1<<VSLOT_COLOR) && dst.colorscale != src.colorscale) return false;
@@ -1740,8 +1726,7 @@ void texture(char *type, char *name, int *rot, int *xoffset, int *yoffset, float
         VSlot &vs = matslot >= 0 ? materialslots[matslot] : *emptyvslot(s);
         vs.reset();
         vs.rotation = clamp(*rot, 0, 5);
-        vs.xoffset = max(*xoffset, 0);
-        vs.yoffset = max(*yoffset, 0);
+        vs.offset = ivec2(*xoffset, *yoffset).max(0);
         vs.scale = *scale <= 0 ? 1 : *scale;
         propagatevslot(&vs, (1<<VSLOT_NUM)-1);
     }
@@ -1762,8 +1747,7 @@ void texscroll(float *scrollS, float *scrollT)
 {
     if(slots.empty()) return;
     Slot &s = *slots.last();
-    s.variants->scrollS = *scrollS/1000.0f;
-    s.variants->scrollT = *scrollT/1000.0f;
+    s.variants->scroll = vec2(*scrollS/1000.0f, *scrollT/1000.0f);
     propagatevslot(s.variants, 1<<VSLOT_SCROLL);
 }
 COMMAND(texscroll, "ff");
@@ -1772,8 +1756,7 @@ void texoffset_(int *xoffset, int *yoffset)
 {
     if(slots.empty()) return;
     Slot &s = *slots.last();
-    s.variants->xoffset = max(*xoffset, 0);
-    s.variants->yoffset = max(*yoffset, 0);
+    s.variants->offset = ivec2(*xoffset, *yoffset).max(0);
     propagatevslot(s.variants, 1<<VSLOT_OFFSET);
 }
 COMMANDN(texoffset, texoffset_, "ii");

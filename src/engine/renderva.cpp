@@ -592,8 +592,8 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
     bvec color((blendbrushcolor>>16)&0xFF, (blendbrushcolor>>8)&0xFF, blendbrushcolor&0xFF);
     glColor4f(color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb, 0.25f);
 
-    LOCALPARAM(texgenS, (1.0f/w, 0, 0, -x/w));
-    LOCALPARAM(texgenT, (0, 1.0f/h, 0, -y/h));
+    LOCALPARAMF(texgenS, (1.0f/w, 0, 0, -x/w));
+    LOCALPARAMF(texgenT, (0, 1.0f/h, 0, -y/h));
 
     vtxarray *prev = NULL;
     for(vtxarray *va = visibleva; va; va = va->next)
@@ -1045,10 +1045,10 @@ struct renderstate
     GLuint textures[8];
     Slot *slot, *texgenslot;
     VSlot *vslot, *texgenvslot;
-    float texgenscrollS, texgenscrollT;
+    vec2 texgenscroll;
     int texgendim, texgenmillis;
 
-    renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscrollS(0), texgenscrollT(0), texgendim(-1), texgenmillis(lastmillis)
+    renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscroll(0, 0), texgendim(-1), texgenmillis(lastmillis)
     {
         loopk(4) color[k] = 1;
         loopk(8) textures[k] = 0;
@@ -1255,7 +1255,7 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         if(cur.textures[cur.diffusetmu]!=diffusetex)
             glBindTexture(GL_TEXTURE_2D, cur.textures[cur.diffusetmu] = diffusetex);
 
-        if(msaasamples && pass == RENDERPASS_GBUFFER) GLOBALPARAM(hashid, (vslot.index));
+        if(msaasamples && pass == RENDERPASS_GBUFFER) GLOBALPARAMF(hashid, (vslot.index));
     }
 
     if(cur.alphaing)
@@ -1265,20 +1265,20 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         {
             cur.colorscale = vslot.colorscale;
             cur.alphascale = alpha;
-            GLOBALPARAM(colorparams, (alpha*vslot.colorscale.x, alpha*vslot.colorscale.y, alpha*vslot.colorscale.z, alpha));
+            GLOBALPARAMF(colorparams, (alpha*vslot.colorscale.x, alpha*vslot.colorscale.y, alpha*vslot.colorscale.z, alpha));
         }
         if(cur.alphaing > 1 && vslot.refractscale > 0 && (cur.refractscale != vslot.refractscale || cur.refractcolor != vslot.refractcolor))
         {
             cur.refractscale = vslot.refractscale;
             cur.refractcolor = vslot.refractcolor;
             float refractscale = 0.5f/ldrscale*(1-alpha);
-            GLOBALPARAM(refractparams, (vslot.refractcolor.x*refractscale, vslot.refractcolor.y*refractscale, vslot.refractcolor.z*refractscale, vslot.refractscale*viewh));
+            GLOBALPARAMF(refractparams, (vslot.refractcolor.x*refractscale, vslot.refractcolor.y*refractscale, vslot.refractcolor.z*refractscale, vslot.refractscale*viewh));
         }
     }
     else if(cur.colorscale != vslot.colorscale)
     {
         cur.colorscale = vslot.colorscale;
-        GLOBALPARAM(colorparams, (vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1));
+        GLOBALPARAMF(colorparams, (vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1));
     }
     int tmu = cur.diffusetmu+1, envmaptmu = -1;
     if(slot.shader->type&SHADER_ENVMAP) envmaptmu = tmu++;
@@ -1319,19 +1319,17 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
         if(!cur.texgenvslot || slot.sts.empty() ||
             (curtex->xs != tex->xs || curtex->ys != tex->ys ||
              cur.texgenvslot->rotation != vslot.rotation || cur.texgenvslot->scale != vslot.scale ||
-             cur.texgenvslot->xoffset != vslot.xoffset || cur.texgenvslot->yoffset != vslot.yoffset ||
-             cur.texgenvslot->scrollS != vslot.scrollS || cur.texgenvslot->scrollT != vslot.scrollT))
+             cur.texgenvslot->offset != vslot.offset || cur.texgenvslot->scroll != vslot.scroll))
         {
             float xs = vslot.rotation>=2 && vslot.rotation<=4 ? -tex->xs : tex->xs,
-                  ys = (vslot.rotation>=1 && vslot.rotation<=2) || vslot.rotation==5 ? -tex->ys : tex->ys,
-                  scrollS = vslot.scrollS, scrollT = vslot.scrollT;
-            if((vslot.rotation&5)==1) swap(scrollS, scrollT);
-            scrollS *= cur.texgenmillis*tex->xs/xs;
-            scrollT *= cur.texgenmillis*tex->ys/ys;
-            if(cur.texgenscrollS != scrollS || cur.texgenscrollT != scrollT)
+                  ys = (vslot.rotation>=1 && vslot.rotation<=2) || vslot.rotation==5 ? -tex->ys : tex->ys;
+            vec2 scroll(vslot.scroll);
+            if((vslot.rotation&5)==1) swap(scroll.x, scroll.y);
+            scroll.x *= cur.texgenmillis*tex->xs/xs;
+            scroll.y *= cur.texgenmillis*tex->ys/ys;
+            if(cur.texgenscroll != scroll)
             {
-                cur.texgenscrollS = scrollS;
-                cur.texgenscrollT = scrollT;
+                cur.texgenscroll = scroll;
                 cur.texgendim = -1;
             }
         }
@@ -1340,7 +1338,7 @@ static void changetexgen(renderstate &cur, int dim, Slot &slot, VSlot &vslot)
     }
 
     if(cur.texgendim == dim) return;
-    GLOBALPARAM(texgenscroll, (cur.texgenscrollS, cur.texgenscrollT));
+    GLOBALPARAM(texgenscroll, cur.texgenscroll);
 
     cur.texgendim = dim;
 }
@@ -1513,8 +1511,8 @@ void setupTMUs(renderstate &cur)
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glEnableClientState(GL_NORMAL_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
-    GLOBALPARAM(colorparams, (1, 1, 1, 1));
-    GLOBALPARAM(blendlayer, (1.0f));
+    GLOBALPARAMF(colorparams, (1, 1, 1, 1));
+    GLOBALPARAMF(blendlayer, (1.0f));
 }
 
 void cleanupTMUs(renderstate &cur)
@@ -1640,7 +1638,7 @@ void rendergeom()
         glBlendFunc(GL_ONE, GL_ONE);
         maskgbuffer("cng");
 
-        GLOBALPARAM(blendlayer, (0.0f));
+        GLOBALPARAMF(blendlayer, (0.0f));
         cur.vbuf = 0;
         cur.texgendim = -1;
         for(vtxarray *va = visibleva; va; va = va->next)
@@ -1743,7 +1741,7 @@ void renderrsmgeom(bool dyntex)
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE);
 
-        GLOBALPARAM(blendlayer, (0.0f));
+        GLOBALPARAMF(blendlayer, (0.0f));
         cur.vbuf = 0;
         cur.texgendim = -1;
         for(vtxarray *va = shadowva; va; va = va->rnext)

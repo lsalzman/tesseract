@@ -81,7 +81,7 @@ void setaavelocityparams(GLenum tmu)
     glLoadMatrixf(reproject.v);
     glMatrixMode(GL_MODELVIEW);
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
-    LOCALPARAM(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
+    LOCALPARAMF(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
     if(tmu!=GL_TEXTURE0_ARB) glActiveTexture_(GL_TEXTURE0_ARB);
 }
 
@@ -130,7 +130,7 @@ void resolvetqaa(GLuint outfbo)
     if(tqaamovemask)
     {
         SETSHADER(tqaaresolvemasked);
-        LOCALPARAM(movemaskscale, (1/float(1<<tqaamovemaskreduce)));
+        LOCALPARAMF(movemaskscale, (1/float(1<<tqaamovemaskreduce)));
     }
     else SETSHADER(tqaaresolve);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, tqaacurtex);
@@ -146,7 +146,7 @@ void resolvetqaa(GLuint outfbo)
     vec4 quincunx(0, 0, 0, 0);
     if(tqaaquincunx) quincunx = tqaaframe&1 ? vec4(0.25f, 0.25f, -0.25f, -0.25f) : vec4(-0.25f, -0.25f, 0.25f, 0.25f);
     if(multisampledaa()) { quincunx.x *= 0.5f; quincunx.y *= -0.5f; quincunx.z *= 0.5f; quincunx.w *= -0.5f; }
-    LOCALPARAM(quincunx, (quincunx));
+    LOCALPARAM(quincunx, quincunx);
     screenquad(vieww, viewh, vieww/float(1<<tqaamovemaskreduce), viewh/float(1<<tqaamovemaskreduce));
 
     swap(tqaafbo[0], tqaafbo[1]);
@@ -669,7 +669,7 @@ void dosmaa(GLuint outfbo = 0, bool split = false)
         if(tqaa && split) subsamples = tqaaframe&1 ? (pass != smaasubsampleorder ? vec4(6, 4, 2, 4) : vec4(3, 5, 1, 4)) : (pass != smaasubsampleorder ? vec4(4, 6, 2, 3) : vec4(5, 3, 1, 3));
         else if(tqaa) subsamples = tqaaframe&1 ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0);
         else if(split) subsamples = pass != smaasubsampleorder ? vec4(2, 2, 2, 0) : vec4(1, 1, 1, 0); 
-        LOCALPARAM(subsamples, (subsamples));
+        LOCALPARAM(subsamples, subsamples);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[1]);
         glActiveTexture_(GL_TEXTURE1_ARB);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex);
@@ -735,7 +735,7 @@ void jitteraa()
     }
 
     aamask = false;
-    GLOBALPARAM(aamask, (0.0f));
+    GLOBALPARAMF(aamask, (0.0f));
 }
 
 void setaamask(bool val)
@@ -748,7 +748,7 @@ void setaamask(bool val)
     glLoadMatrixf(aamask ? nojittermatrix.v : projmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    GLOBALPARAM(aamask, (aamask ? 1.0f : 0.0f));
+    GLOBALPARAMF(aamask, (aamask ? 1.0f : 0.0f));
 }
 
 bool multisampledaa()

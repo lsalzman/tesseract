@@ -299,6 +299,13 @@ typedef void (APIENTRYP PFNGLUNIFORMMATRIX4X3FVPROC) (GLint location, GLsizei co
 #define glUniform3fv_ glUniform3fv
 #define glUniform4fv_ glUniform4fv
 #define glUniform1i_ glUniform1i
+#define glUniform2i_ glUniform2i
+#define glUniform3i_ glUniform3i
+#define glUniform4i_ glUniform4i
+#define glUniform1iv_ glUniform1iv
+#define glUniform2iv_ glUniform2iv
+#define glUniform3iv_ glUniform3iv
+#define glUniform4iv_ glUniform4iv
 #define glUniformMatrix2fv_ glUniformMatrix2fv
 #define glUniformMatrix3fv_ glUniformMatrix3fv
 #define glUniformMatrix4fv_ glUniformMatrix4fv
@@ -338,6 +345,13 @@ extern PFNGLUNIFORM2FVPROC               glUniform2fv_;
 extern PFNGLUNIFORM3FVPROC               glUniform3fv_;
 extern PFNGLUNIFORM4FVPROC               glUniform4fv_;
 extern PFNGLUNIFORM1IPROC                glUniform1i_;
+extern PFNGLUNIFORM2IPROC                glUniform2i_;
+extern PFNGLUNIFORM3IPROC                glUniform3i_;
+extern PFNGLUNIFORM4IPROC                glUniform4i_;
+extern PFNGLUNIFORM1IVPROC               glUniform1iv_;
+extern PFNGLUNIFORM2IVPROC               glUniform2iv_;
+extern PFNGLUNIFORM3IVPROC               glUniform3iv_;
+extern PFNGLUNIFORM4IVPROC               glUniform4iv_;
 extern PFNGLUNIFORMMATRIX2FVPROC         glUniformMatrix2fv_;
 extern PFNGLUNIFORMMATRIX3FVPROC         glUniformMatrix3fv_;
 extern PFNGLUNIFORMMATRIX4FVPROC         glUniformMatrix4fv_;

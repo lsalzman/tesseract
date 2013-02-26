@@ -116,7 +116,7 @@ void setbilateralshader(int radius, int pass, float sigma, float depth)
     bilateralshader[pass]->set();
     sigma *= 2*radius;
     float step = pass ? float(viewh)/aoh : float(vieww)/aow;
-    LOCALPARAM(bilateralparams, (1.0f/(2*sigma*sigma), 1.0f/(depth*depth), step));
+    LOCALPARAMF(bilateralparams, (1.0f/(2*sigma*sigma), 1.0f/(depth*depth), step));
 }
 
 static Shader *ambientobscuranceshader = NULL;
@@ -293,10 +293,10 @@ void renderao()
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    LOCALPARAM(tapparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, aoradius*aoradius*aocutoff*aocutoff));
-    LOCALPARAM(contrastparams, ((2.0f*aodark)/aotaps, aosharp));
-    LOCALPARAM(offsetscale, (xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]));
-    LOCALPARAM(prefilterdepth, (aoprefilterdepth));
+    LOCALPARAMF(tapparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, aoradius*aoradius*aocutoff*aocutoff));
+    LOCALPARAMF(contrastparams, ((2.0f*aodark)/aotaps, aosharp));
+    LOCALPARAMF(offsetscale, (xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]));
+    LOCALPARAMF(prefilterdepth, (aoprefilterdepth));
     screenquad(vieww, viewh, aow/float(1<<aonoise), aoh/float(1<<aonoise));
 
     if(aobilateral)
@@ -974,8 +974,8 @@ void processhdr(GLuint outfbo, int aa)
 
     timer *hdrtimer = begintimer("hdr processing");
 
-    GLOBALPARAM(hdrparams, (hdrbright, hdrsaturate, bloomthreshold, bloomscale));
-    GLOBALPARAM(hdrgamma, (hdrgamma, 1.0f/hdrgamma));
+    GLOBALPARAMF(hdrparams, (hdrbright, hdrsaturate, bloomthreshold, bloomscale));
+    GLOBALPARAMF(hdrgamma, (hdrgamma, 1.0f/hdrgamma));
 
     GLuint b0fbo = bloomfbo[1], b0tex = bloomtex[1], b1fbo =  bloomfbo[0], b1tex = bloomtex[0], ptex = hdrtex;
     int b0w = max(vieww/4, bloomw), b0h = max(viewh/4, bloomh), b1w = max(vieww/2, bloomw), b1h = max(viewh/2, bloomh),
@@ -1094,7 +1094,7 @@ void processhdr(GLuint outfbo, int aa)
         glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA);
         SETSHADER(hdraccum);
         glBindTexture(GL_TEXTURE_RECTANGLE_ARB, b0tex);
-        LOCALPARAM(accumscale, (lasthdraccum ? pow(hdraccumscale, float(lastmillis - lasthdraccum)/hdraccummillis) : 0));
+        LOCALPARAMF(accumscale, (lasthdraccum ? pow(hdraccumscale, float(lastmillis - lasthdraccum)/hdraccummillis) : 0));
         screenquad(2, 2);
         glDisable(GL_BLEND);
 
@@ -2140,7 +2140,7 @@ void radiancehints::bindparams()
         rhoffsetv[i] = split.offset;
     }
     float step = 2*splits[0].bounds/rhgrid;
-    GLOBALPARAM(rhnudge, (rhnudge*step));
+    GLOBALPARAMF(rhnudge, (rhnudge*step));
 }
 
 static Shader *deferredlightshader = NULL, *deferredminimapshader = NULL, *deferredmsaapixelshader = NULL, *deferredmsaasampleshader = NULL;
@@ -2382,26 +2382,26 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glLoadMatrixf(worldmatrix.v);
     glMatrixMode(GL_MODELVIEW);
 
-    GLOBALPARAM(fogdir, (mvmatrix.getrow(2)));
-    GLOBALPARAM(shadowatlasscale, (1.0f/shadowatlaspacker.w, 1.0f/shadowatlaspacker.h));
+    GLOBALPARAM(fogdir, mvmatrix.getrow(2));
+    GLOBALPARAMF(shadowatlasscale, (1.0f/shadowatlaspacker.w, 1.0f/shadowatlaspacker.h));
     if(ao)
     {
         if(tilemask || (editmode && fullbright) || drawtex)
         {
-            GLOBALPARAM(aoscale, (0.0f, 0.0f));
-            GLOBALPARAM(aoparams, (1.0f, 0.0f, 1.0f, 0.0f));
+            GLOBALPARAMF(aoscale, (0.0f, 0.0f));
+            GLOBALPARAMF(aoparams, (1.0f, 0.0f, 1.0f, 0.0f));
         }
         else
         {
-            GLOBALPARAM(aoscale, (aotex[2] ? vec2(1, 1) : vec2(float(aow)/vieww, float(aoh)/viewh)));
-            GLOBALPARAM(aoparams, (aomin, 1.0f-aomin, aosunmin, 1.0f-aosunmin));
+            GLOBALPARAM(aoscale, aotex[2] ? vec2(1, 1) : vec2(float(aow)/vieww, float(aoh)/viewh));
+            GLOBALPARAMF(aoparams, (aomin, 1.0f-aomin, aosunmin, 1.0f-aosunmin));
         }
     }
     float lightscale = 2.0f*ldrscaleb;
     if(editmode && fullbright)
-        GLOBALPARAM(lightscale, (fullbrightlevel*lightscale, fullbrightlevel*lightscale, fullbrightlevel*lightscale, 255*lightscale));
+        GLOBALPARAMF(lightscale, (fullbrightlevel*lightscale, fullbrightlevel*lightscale, fullbrightlevel*lightscale, 255*lightscale));
     else
-        GLOBALPARAM(lightscale, (ambientcolor.x*lightscale*ambientscale, ambientcolor.y*lightscale*ambientscale, ambientcolor.z*lightscale*ambientscale, 255*lightscale));
+        GLOBALPARAMF(lightscale, (ambientcolor.x*lightscale*ambientscale, ambientcolor.y*lightscale*ambientscale, ambientcolor.z*lightscale*ambientscale, 255*lightscale));
 
     bool sunpass = !lighttilebatch;
     if(sunlight && csmshadowmap)
@@ -2410,15 +2410,15 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         rh.bindparams();
         if(editmode && fullbright)
         {
-            GLOBALPARAM(sunlightdir, (0, 0, 0));
-            GLOBALPARAM(sunlightcolor, (0, 0, 0));
-            GLOBALPARAM(giscale, (0));
+            GLOBALPARAMF(sunlightdir, (0, 0, 0));
+            GLOBALPARAMF(sunlightcolor, (0, 0, 0));
+            GLOBALPARAMF(giscale, (0));
         }
         else
         {
-            GLOBALPARAM(sunlightdir, (sunlightdir));
-            GLOBALPARAM(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
-            GLOBALPARAM(giscale, (2*giscale));
+            GLOBALPARAM(sunlightdir, sunlightdir);
+            GLOBALPARAMF(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
+            GLOBALPARAMF(giscale, (2*giscale));
         }
         if(!batchsunlight) sunpass = true;
     }
@@ -2543,18 +2543,18 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             }
 
             s->setvariant(0, (shadowmap ? 1 : 0) + 2 + (spotlight ? 4 : 0));
-            lightpos.set(lightposv, 1);
-            lightcolor.set(lightcolorv, 1);
-            if(spotlight) spotparams.set(spotparamsv, 1);
+            lightpos.setv(lightposv, 1);
+            lightcolor.setv(lightcolorv, 1);
+            if(spotlight) spotparams.setv(spotparamsv, 1);
             if(shadowmap)
             {
                 if(spotlight)
                 {
-                    spotx.set(spotxv, 1);
-                    spoty.set(spotyv, 1);
+                    spotx.setv(spotxv, 1);
+                    spoty.setv(spotyv, 1);
                 }
-                shadowparams.set(shadowparamsv, 1);
-                shadowoffset.set(shadowoffsetv, 1);
+                shadowparams.setv(shadowparamsv, 1);
+                shadowoffset.setv(shadowoffsetv, 1);
             }
 
             int tx1 = int(floor((sx1*0.5f+0.5f)*vieww)), ty1 = int(floor((sy1*0.5f+0.5f)*viewh)),
@@ -2702,18 +2702,18 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 if(n)
                 {
                     s->setvariant(n-1, (shadowmap ? 1 : 0) + (i || sunpass ? 2 : 0) + (spotlight ? 4 : 0));
-                    lightpos.set(lightposv, n);
-                    lightcolor.set(lightcolorv, n);
-                    if(spotlight) spotparams.set(spotparamsv, n);
+                    lightpos.setv(lightposv, n);
+                    lightcolor.setv(lightcolorv, n);
+                    if(spotlight) spotparams.setv(spotparamsv, n);
                     if(shadowmap)
                     {
                         if(spotlight)
                         {
-                            spotx.set(spotxv, n);
-                            spoty.set(spotyv, n);
+                            spotx.setv(spotxv, n);
+                            spoty.setv(spotyv, n);
                         }
-                        shadowparams.set(shadowparamsv, n);
-                        shadowoffset.set(shadowoffsetv, n);
+                        shadowparams.setv(shadowparamsv, n);
+                        shadowoffset.setv(shadowoffsetv, n);
                     }
                 }
                 else s->set();
@@ -3016,8 +3016,8 @@ void radiancehints::renderslices()
     glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rhfbo);
     glViewport(0, 0, rhgrid+2*rhborder, rhgrid+2*rhborder);
 
-    GLOBALPARAM(rhatten, (1.0f/(gidist*gidist)));
-    GLOBALPARAM(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
+    GLOBALPARAMF(rhatten, (1.0f/(gidist*gidist)));
+    GLOBALPARAMF(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
 
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
@@ -3045,7 +3045,7 @@ void radiancehints::renderslices()
         splitinfo &split = splits[i];
 
         float cellradius = split.bounds/rhgrid, step = 2*cellradius;
-        GLOBALPARAM(rhspread, (cellradius));
+        GLOBALPARAMF(rhspread, (cellradius));
 
         vec cmin, cmax, bmin(1e16f, 1e16f, 1e16f), bmax(-1e16f, -1e16f, -1e16f), dmin(1e16f, 1e16f, 1e16f), dmax(-1e16f, -1e16f, -1e16f);
         loopk(3)
@@ -3066,9 +3066,9 @@ void radiancehints::renderslices()
 
         if(rhborder && i + 1 < rhsplits)
         {
-            GLOBALPARAM(bordercenter, (0.5f, 0.5f, float(i+1 + 0.5f)/rhsplits));
-            GLOBALPARAM(borderrange, (0.5f - 0.5f/(rhgrid+2), 0.5f - 0.5f/(rhgrid+2), (0.5f - 0.5f/(rhgrid+2))/rhsplits));
-            GLOBALPARAM(borderscale, (rhgrid+2, rhgrid+2, (rhgrid+2)*rhsplits));
+            GLOBALPARAMF(bordercenter, (0.5f, 0.5f, float(i+1 + 0.5f)/rhsplits));
+            GLOBALPARAMF(borderrange, (0.5f - 0.5f/(rhgrid+2), 0.5f - 0.5f/(rhgrid+2), (0.5f - 0.5f/(rhgrid+2))/rhsplits));
+            GLOBALPARAMF(borderscale, (rhgrid+2, rhgrid+2, (rhgrid+2)*rhsplits));
             splitinfo &next = splits[i+1];
             loopk(3)
             {
@@ -3306,7 +3306,7 @@ void renderradiancehints()
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
 
-        GLOBALPARAM(rsmdir, (-rsm.lightview.x, -rsm.lightview.y, -rsm.lightview.z));
+        GLOBALPARAMF(rsmdir, (-rsm.lightview.x, -rsm.lightview.y, -rsm.lightview.z));
 
         glViewport(0, 0, rsmsize, rsmsize);
         glClearColor(0, 0, 0, 0);
@@ -3639,7 +3639,7 @@ void rendertransparent()
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         if(scissor) glDisable(GL_SCISSOR_TEST);
-        GLOBALPARAM(refractdepth, (1.0f/refractdepth));
+        GLOBALPARAMF(refractdepth, (1.0f/refractdepth));
         SETSHADER(refractmask);
         if(hasalphavas&4) renderrefractmask();
         if(hasmats&4) rendermaterialmask();
@@ -3837,10 +3837,10 @@ void preparegbuffer(bool depthclear)
     screenmatrix.translate(0.5f*vieww, 0.5f*viewh, 0.5f);
     screenmatrix.mul(mvpmatrix);
 
-    GLOBALPARAM(viewsize, (vieww, viewh, 1.0f/vieww, 1.0f/viewh));
-    GLOBALPARAM(gdepthscale, (eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]));
-    GLOBALPARAM(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane));
-    GLOBALPARAM(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
+    GLOBALPARAMF(viewsize, (vieww, viewh, 1.0f/vieww, 1.0f/viewh));
+    GLOBALPARAMF(gdepthscale, (eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]));
+    GLOBALPARAMF(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane));
+    GLOBALPARAMF(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
 
     GLERROR;
 }
@@ -3927,9 +3927,9 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
     glMatrixMode(GL_MODELVIEW);
 
     float lightscale = 2.0f*ldrscale;
-    GLOBALPARAM(lightscale, (0.1f*lightscale, 0.1f*lightscale, 0.1f*lightscale, lightscale));
-    GLOBALPARAM(sunlightdir, (vec(0, -1, 2).normalize()));
-    GLOBALPARAM(sunlightcolor, (0.6f*lightscale, 0.6f*lightscale, 0.6f*lightscale));
+    GLOBALPARAMF(lightscale, (0.1f*lightscale, 0.1f*lightscale, 0.1f*lightscale, lightscale));
+    GLOBALPARAM(sunlightdir, vec(0, -1, 2).normalize());
+    GLOBALPARAMF(sunlightcolor, (0.6f*lightscale, 0.6f*lightscale, 0.6f*lightscale));
 
     SETSHADER(modelpreview);
 
