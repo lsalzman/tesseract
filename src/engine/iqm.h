@@ -392,7 +392,6 @@ struct iqm : skelmodel, skelloader<iqm>
             loading = NULL;
         }
         scale /= 4;
-        parts[0]->translate = translate;
         loopv(parts) 
         {
             skelpart *p = (skelpart *)parts[i];

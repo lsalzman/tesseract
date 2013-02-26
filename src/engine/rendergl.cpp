@@ -1022,9 +1022,9 @@ vec worldpos, camdir, camright, camup;
 
 void findorientation()
 {
-    vecfromyawpitch(camera1->yaw, camera1->pitch, 1, 0, camdir);
-    vecfromyawpitch(camera1->yaw, 0, 0, -1, camright);
-    vecfromyawpitch(camera1->yaw, camera1->pitch+90, 1, 0, camup);
+    mvmatrix.transposedtransformnormal(vec(viewmatrix.b), camdir);
+    mvmatrix.transposedtransformnormal(vec(viewmatrix.a).neg(), camright);
+    mvmatrix.transposedtransformnormal(vec(viewmatrix.c), camup);
 
     if(raycubepos(camera1->o, camdir, worldpos, 0, RAY_CLIPMAT|RAY_SKIPFIRST) == -1)
         worldpos = vec(camdir).mul(2*worldsize).add(camera1->o); //otherwise 3dgui won't work when outside of map
@@ -1038,7 +1038,7 @@ void transplayer()
     mvmatrix.rotate_around_x(camera1->pitch*-RAD);
     mvmatrix.rotate_around_z(camera1->yaw*-RAD);
     mvmatrix.transformedtranslate(camera1->o, -1);
-    glLoadMatrixf(mvmatrix.v);
+    glLoadMatrixf(mvmatrix.a.v);
 }
 
 int vieww = -1, viewh = -1;
@@ -1171,10 +1171,13 @@ void recomputecamera()
         camera1->move = -1;
         camera1->eyeheight = camera1->aboveeye = camera1->radius = camera1->xradius = camera1->yradius = 2;
         
-        vec dir, up, side;
-        vecfromyawpitch(camera1->yaw, camera1->pitch, -1, 0, dir);
-        vecfromyawpitch(camera1->yaw, camera1->pitch+90, 1, 0, up);
-        vecfromyawpitch(camera1->yaw, 0, 0, -1, side);
+        matrix3x3 orient;
+        orient.identity();
+        orient.rotate_around_y(camera1->roll*RAD);
+        orient.rotate_around_x(camera1->pitch*-RAD);
+        orient.rotate_around_z(camera1->yaw*-RAD);
+        vec dir = vec(orient.b).neg(), side = vec(orient.a).neg(), up = orient.c;
+
         if(game::collidecamera()) 
         {
             movecamera(camera1, dir, thirdpersondistance, 1);
@@ -1229,15 +1232,12 @@ float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, c
     }
 }
 
-extern const glmatrixf viewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, 1, 0), vec4(0, -1, 0, 0));
-extern const glmatrixf invviewmatrix(vec4(-1, 0, 0, 0), vec4(0, 0, -1, 0), vec4(0, 1, 0, 0));
-glmatrixf mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix;
+extern const glmatrix viewmatrix(vec(-1, 0, 0), vec(0, 0, 1), vec(0, -1, 0));
+extern const glmatrix invviewmatrix(vec(-1, 0, 0), vec(0, 0, -1), vec(0, 1, 0));
+glmatrix mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix;
 
 void readmatrices()
 {
-    //glGetFloatv(GL_MODELVIEW_MATRIX, mvmatrix.v);
-    //glGetFloatv(GL_PROJECTION_MATRIX, projmatrix.v);
-
     mvpmatrix.mul(projmatrix, mvmatrix);
     invmvmatrix.invert(mvmatrix);
     invmvpmatrix.invert(mvpmatrix);
@@ -1252,7 +1252,7 @@ void project(float fovy, float aspect, int farplane, float zscale = 1)
     projmatrix.perspective(fovy, aspect, nearplane, farplane);
     if(zscale!=1) projmatrix.scalez(zscale);
     if(!drawtex) jitteraa();
-    glLoadMatrixf(projmatrix.v);
+    glLoadMatrixf(projmatrix.a.v);
     glMatrixMode(GL_MODELVIEW);
 }
 
@@ -1282,29 +1282,6 @@ void renderavatar()
     }
 }
 
-static const glmatrixf dummymatrix;
-static int projectioncount = 0;
-void pushprojection(const glmatrixf &m = dummymatrix)
-{
-    glMatrixMode(GL_PROJECTION);
-    if(projectioncount <= 0) glPushMatrix();
-    if(&m != &dummymatrix) glLoadMatrixf(m.v);
-    glMatrixMode(GL_MODELVIEW);
-    projectioncount++;
-}
-
-void popprojection()
-{
-    --projectioncount;
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    if(projectioncount > 0)
-    {
-        glPushMatrix();
-    }
-    glMatrixMode(GL_MODELVIEW);
-}
-
 FVAR(polygonoffsetfactor, -1e4f, -3.0f, 1e4f);
 FVAR(polygonoffsetunits, -1e4f, -3.0f, 1e4f);
 FVAR(depthoffset, -1e4f, 0.01f, 1e4f);
@@ -1318,12 +1295,12 @@ void enablepolygonoffset(GLenum type)
         return;
     }
     
-    glmatrixf offsetmatrix = projmatrix;
-    offsetmatrix[14] += depthoffset * projmatrix[10];
+    glmatrix offsetmatrix = projmatrix;
+    offsetmatrix.d.z += depthoffset * projmatrix.c.z;
 
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
-    glLoadMatrixf(offsetmatrix.v);
+    glLoadMatrixf(offsetmatrix.a.v);
     glMatrixMode(GL_MODELVIEW);
 }
 
@@ -1391,22 +1368,21 @@ void popscissor()
 
 bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2)
 {
-    vec e(mvmatrix.transformx(center),
-          mvmatrix.transformy(center),
-          mvmatrix.transformz(center));
+    vec e;
+    mvmatrix.transform(center, e);
     if(e.z > 2*size) { sx1 = sy1 = sz1 = 1; sx2 = sy2 = sz2 = -1; return false; }
     if(drawtex == DRAWTEX_MINIMAP)
     {
         vec dir(size, size, size);
-        if(projmatrix.v[0] < 0) dir.x = -dir.x;
-        if(projmatrix.v[5] < 0) dir.y = -dir.y;
-        if(projmatrix.v[10] < 0) dir.z = -dir.z;
-        sx1 = max(projmatrix.v[0]*(e.x - dir.x) + projmatrix.v[12], -1.0f);
-        sx2 = min(projmatrix.v[0]*(e.x + dir.x) + projmatrix.v[12], 1.0f);
-        sy1 = max(projmatrix.v[5]*(e.y - dir.y) + projmatrix.v[13], -1.0f);
-        sy2 = min(projmatrix.v[5]*(e.y + dir.y) + projmatrix.v[13], 1.0f);
-        sz1 = max(projmatrix.v[10]*(e.z - dir.z) + projmatrix.v[14], -1.0f);
-        sz2 = min(projmatrix.v[10]*(e.z + dir.z) + projmatrix.v[14], 1.0f);
+        if(projmatrix.a.x < 0) dir.x = -dir.x;
+        if(projmatrix.b.y < 0) dir.y = -dir.y;
+        if(projmatrix.c.z < 0) dir.z = -dir.z;
+        sx1 = max(projmatrix.a.x*(e.x - dir.x) + projmatrix.d.x, -1.0f);
+        sx2 = min(projmatrix.a.x*(e.x + dir.x) + projmatrix.d.x, 1.0f);
+        sy1 = max(projmatrix.b.y*(e.y - dir.y) + projmatrix.d.y, -1.0f);
+        sy2 = min(projmatrix.b.y*(e.y + dir.y) + projmatrix.d.y, 1.0f);
+        sz1 = max(projmatrix.c.z*(e.z - dir.z) + projmatrix.d.z, -1.0f);
+        sz2 = min(projmatrix.c.z*(e.z + dir.z) + projmatrix.d.z, 1.0f);
         return sx1 < sx2 && sy1 < sy2 && sz1 < sz2;
     }
     float zzrr = e.z*e.z - size*size,
@@ -1439,8 +1415,8 @@ bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, fl
         CHECKPLANE(y, +, focaldist, sy1, sy2);
     }
     float z1 = min(e.z + size, -1e-3f - nearplane), z2 = min(e.z - size, -1e-3f - nearplane);
-    sz1 = (z1*projmatrix.v[10] + projmatrix.v[14]) / (z1*projmatrix.v[11] + projmatrix.v[15]);
-    sz2 = (z2*projmatrix.v[10] + projmatrix.v[14]) / (z2*projmatrix.v[11] + projmatrix.v[15]);
+    sz1 = (z1*projmatrix.c.z + projmatrix.d.z) / (z1*projmatrix.c.w + projmatrix.d.w);
+    sz2 = (z2*projmatrix.c.z + projmatrix.d.z) / (z2*projmatrix.c.w + projmatrix.d.w);
     return sx1 < sx2 && sy1 < sy2 && sz1 < sz2;
 }
 
@@ -1872,7 +1848,7 @@ void drawminimap()
 
     glMatrixMode(GL_PROJECTION);
     projmatrix.ortho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, 0, 2*zscale);
-    glLoadMatrixf(projmatrix.v);
+    glLoadMatrixf(projmatrix.a.v);
     glMatrixMode(GL_MODELVIEW);
 
     transplayer();
@@ -1907,7 +1883,7 @@ void drawminimap()
         camera1->o.z = minimapcenter.z + minimapradius.z + 1;
         glMatrixMode(GL_PROJECTION);
         projmatrix.ortho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, -zscale, zscale);
-        glLoadMatrixf(projmatrix.v);
+        glLoadMatrixf(projmatrix.a.v);
         glMatrixMode(GL_MODELVIEW);
         transplayer();
         readmatrices();

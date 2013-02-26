@@ -11,12 +11,12 @@ static inline double det3x3(double a1, double a2, double a3,
          + c1 * det2x2(a2, a3, b2, b3);
 }
 
-bool glmatrixf::invert(const glmatrixf &m, double mindet)
+bool glmatrix::invert(const glmatrix &m, double mindet)
 {
-    double a1 = m.v[0], a2 = m.v[1], a3 = m.v[2], a4 = m.v[3],
-           b1 = m.v[4], b2 = m.v[5], b3 = m.v[6], b4 = m.v[7],
-           c1 = m.v[8], c2 = m.v[9], c3 = m.v[10], c4 = m.v[11],
-           d1 = m.v[12], d2 = m.v[13], d3 = m.v[14], d4 = m.v[15],
+    double a1 = m.a.x, a2 = m.a.y, a3 = m.a.z, a4 = m.a.w,
+           b1 = m.b.x, b2 = m.b.y, b3 = m.b.z, b4 = m.b.w,
+           c1 = m.c.x, c2 = m.c.y, c3 = m.c.z, c4 = m.c.w,
+           d1 = m.d.x, d2 = m.d.y, d3 = m.d.z, d4 = m.d.w,
            det1 =  det3x3(b2, b3, b4, c2, c3, c4, d2, d3, d4),
            det2 = -det3x3(a2, a3, a4, c2, c3, c4, d2, d3, d4),
            det3 =  det3x3(a2, a3, a4, b2, b3, b4, d2, d3, d4),
@@ -27,25 +27,25 @@ bool glmatrixf::invert(const glmatrixf &m, double mindet)
 
     double invdet = 1/det;
 
-    v[0] = det1 * invdet;
-    v[1] = det2 * invdet;
-    v[2] = det3 * invdet;
-    v[3] = det4 * invdet;
+    a.x = det1 * invdet;
+    a.y = det2 * invdet;
+    a.z = det3 * invdet;
+    a.w = det4 * invdet;
 
-    v[4]  = -det3x3(b1, b3, b4, c1, c3, c4, d1, d3, d4) * invdet;
-    v[5]  =  det3x3(a1, a3, a4, c1, c3, c4, d1, d3, d4) * invdet;
-    v[6]  = -det3x3(a1, a3, a4, b1, b3, b4, d1, d3, d4) * invdet;
-    v[7]  =  det3x3(a1, a3, a4, b1, b3, b4, c1, c3, c4) * invdet;
+    b.x = -det3x3(b1, b3, b4, c1, c3, c4, d1, d3, d4) * invdet;
+    b.y =  det3x3(a1, a3, a4, c1, c3, c4, d1, d3, d4) * invdet;
+    b.z = -det3x3(a1, a3, a4, b1, b3, b4, d1, d3, d4) * invdet;
+    b.w =  det3x3(a1, a3, a4, b1, b3, b4, c1, c3, c4) * invdet;
 
-    v[8]  =  det3x3(b1, b2, b4, c1, c2, c4, d1, d2, d4) * invdet;
-    v[9]  = -det3x3(a1, a2, a4, c1, c2, c4, d1, d2, d4) * invdet;
-    v[10] =  det3x3(a1, a2, a4, b1, b2, b4, d1, d2, d4) * invdet;
-    v[11] = -det3x3(a1, a2, a4, b1, b2, b4, c1, c2, c4) * invdet;
+    c.x =  det3x3(b1, b2, b4, c1, c2, c4, d1, d2, d4) * invdet;
+    c.y = -det3x3(a1, a2, a4, c1, c2, c4, d1, d2, d4) * invdet;
+    c.z =  det3x3(a1, a2, a4, b1, b2, b4, d1, d2, d4) * invdet;
+    c.w = -det3x3(a1, a2, a4, b1, b2, b4, c1, c2, c4) * invdet;
 
-    v[12] = -det3x3(b1, b2, b3, c1, c2, c3, d1, d2, d3) * invdet;
-    v[13] =  det3x3(a1, a2, a3, c1, c2, c3, d1, d2, d3) * invdet;
-    v[14] = -det3x3(a1, a2, a3, b1, b2, b3, d1, d2, d3) * invdet;
-    v[15] =  det3x3(a1, a2, a3, b1, b2, b3, c1, c2, c3) * invdet;
+    d.x = -det3x3(b1, b2, b3, c1, c2, c3, d1, d2, d3) * invdet;
+    d.y =  det3x3(a1, a2, a3, c1, c2, c3, d1, d2, d3) * invdet;
+    d.z = -det3x3(a1, a2, a3, b1, b2, b3, d1, d2, d3) * invdet;
+    d.w =  det3x3(a1, a2, a3, b1, b2, b3, c1, c2, c3) * invdet;
 
     return true;
 }

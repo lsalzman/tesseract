@@ -46,16 +46,10 @@ void setupcaustics(int tmu, float surface = -1e16f)
     if(surface > -1e15f)
     {
         float bz = surface + camera1->o.z + (vertwater ? WATER_AMPLITUDE : 0);
-        GLfloat m[16] =
-        {
-            s.x, t.x,  0, 0,
-            s.y, t.y,  0, 0,
-            s.z, t.z, -1, 0,
-              0,   0, bz, 1
-        };
+        glmatrix m(vec4(s, 0), vec4(t, 0), vec4(0, 0, -1, bz));
+        m.mul(worldmatrix);
         glMatrixMode(GL_TEXTURE);
-        glLoadMatrixf(m);
-        glMultMatrixf(worldmatrix.v);
+        glLoadMatrixf(m.a.v);
         glMatrixMode(GL_MODELVIEW);
         blendscale *= 0.5f;
         blendoffset = 0;
@@ -122,16 +116,10 @@ void renderwaterfog(int mat, float surface)
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     vec4 d = mvmatrix.getrow(2);
-    GLfloat m[16] =
-    {
-        d.x, 0,  0, 0,
-        d.y, 1,  0, 0,
-        d.z, 0, -1, 0,
-        d.w, 0, bz, 1
-    };
+    glmatrix m(d, vec4(0, 1, 0, 0), vec4(0, 0, -1, bz));
+    m.mul(worldmatrix);
     glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(m);
-    glMultMatrixf(worldmatrix.v);
+    glLoadMatrixf(m.a.v);
     glMatrixMode(GL_MODELVIEW);
 
     SETSHADER(waterfog);

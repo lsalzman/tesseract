@@ -13,7 +13,7 @@ GLuint msfbo = 0, msdepthtex = 0, mscolortex = 0, msnormaltex = 0, msglowtex = 0
 vec2 msaapositions[16];
 int aow = -1, aoh = -1;
 GLuint aofbo[4] = { 0, 0, 0, 0 }, aotex[4] = { 0, 0, 0, 0 }, aonoisetex = 0;
-glmatrixf eyematrix, worldmatrix, linearworldmatrix, screenmatrix;
+glmatrix eyematrix, worldmatrix, linearworldmatrix, screenmatrix;
 
 extern int ati_pf_bug;
 
@@ -263,7 +263,7 @@ void renderao()
     else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
 
     bool linear = aoreducedepth && (aoreduce || aoreducedepth > 1);
-    float xscale = eyematrix.v[0], yscale = eyematrix.v[5];
+    float xscale = eyematrix.a.x, yscale = eyematrix.b.y;
     if(linear)
     {
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, aofbo[3]);
@@ -293,9 +293,9 @@ void renderao()
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    LOCALPARAMF(tapparams, (aoradius*eyematrix.v[14]/xscale, aoradius*eyematrix.v[14]/yscale, aoradius*aoradius*aocutoff*aocutoff));
+    LOCALPARAMF(tapparams, (aoradius*eyematrix.d.z/xscale, aoradius*eyematrix.d.z/yscale, aoradius*aoradius*aocutoff*aocutoff));
     LOCALPARAMF(contrastparams, ((2.0f*aodark)/aotaps, aosharp));
-    LOCALPARAMF(offsetscale, (xscale/eyematrix.v[14], yscale/eyematrix.v[14], eyematrix.v[12]/eyematrix.v[14], eyematrix.v[13]/eyematrix.v[14]));
+    LOCALPARAMF(offsetscale, (xscale/eyematrix.d.z, yscale/eyematrix.d.z, eyematrix.d.x/eyematrix.d.z, eyematrix.d.y/eyematrix.d.z));
     LOCALPARAMF(prefilterdepth, (aoprefilterdepth));
     screenquad(vieww, viewh, aow/float(1<<aonoise), aoh/float(1<<aonoise));
 
@@ -1620,45 +1620,15 @@ void cleanupshadowatlas()
     clearshadowcache();
 }
 
-const float cubeshadowviewmatrix[6][16] =
+const glmatrix cubeshadowviewmatrix[6] =
 {
     // sign-preserving cubemap projections
-    { // +X
-         0, 0,-1, 0,
-         0, 1, 0, 0,
-         1, 0, 0, 0,
-         0, 0, 0, 1,
-    },
-    { // -X
-         0, 0, 1, 0,
-         0, 1, 0, 0,
-         1, 0, 0, 0,
-         0, 0, 0, 1,
-    },
-    { // +Y
-         1, 0, 0, 0,
-         0, 0,-1, 0,
-         0, 1, 0, 0,
-         0, 0, 0, 1,
-    },
-    { // -Y
-         1, 0, 0, 0,
-         0, 0, 1, 0,
-         0, 1, 0, 0,
-         0, 0, 0, 1,
-    },
-    { // +Z
-         1, 0, 0, 0,
-         0, 1, 0, 0,
-         0, 0,-1, 0,
-         0, 0, 0, 1,
-    },
-    { // -Z
-         1, 0, 0, 0,
-         0, 1, 0, 0,
-         0, 0, 1, 0,
-         0, 0, 0, 1,
-    },
+    glmatrix(vec(0, 0, 1), vec(0, 1, 0), vec(-1, 0, 0)), // +X
+    glmatrix(vec(0, 0, 1), vec(0, 1, 0), vec( 1, 0, 0)), // -X
+    glmatrix(vec(1, 0, 0), vec(0, 0, 1), vec(0, -1, 0)), // +Y
+    glmatrix(vec(1, 0, 0), vec(0, 0, 1), vec(0,  1, 0)), // -Y
+    glmatrix(vec(1, 0, 0), vec(0, 1, 0), vec(0, 0, -1)), // +Z
+    glmatrix(vec(1, 0, 0), vec(0, 1, 0), vec(0, 0,  1))  // -Z
 };
 
 FVAR(smpolyfactor, -1e3f, 1, 1e3f);
@@ -1733,13 +1703,13 @@ struct cascadedshadowmap
     {
         float nearplane;     // split distance to near plane
         float farplane;      // split distance to farplane
-        glmatrixf proj;      // one projection per split
+        glmatrix proj;      // one projection per split
         vec scale, offset;   // scale and offset of the projection
         int idx;             // shadowmapinfo indices
         vec center, bounds;  // max extents of shadowmap in sunlight model space
         plane cull[4];       // world space culling planes of the split's projected sides
     };
-    glmatrixf model;                // model view is shared by all splits
+    glmatrix model;                // model view is shared by all splits
     splitinfo splits[CSM_MAXSPLITS]; // per-split parameters
     vec lightview;                  // view vector for light
     void setup();                   // insert shadowmaps for each split frustum if there is sunlight
@@ -1851,7 +1821,7 @@ void cascadedshadowmap::gencullplanes()
     loopi(csmsplits)
     {
         splitinfo &split = splits[i];
-        glmatrixf mvp;
+        glmatrix mvp;
         mvp.mul(split.proj, model);
         vec4 px = mvp.getrow(0), py = mvp.getrow(1), pw = mvp.getrow(3);
         split.cull[0] = plane(vec4(pw).add(px)).normalize(); // left plane
@@ -1879,7 +1849,7 @@ void cascadedshadowmap::bindparams()
     }
     glMatrixMode(GL_TEXTURE);
     glActiveTexture_(GL_TEXTURE1_ARB);
-    glLoadMatrixf(model.v);
+    glLoadMatrixf(model.a.v);
     glActiveTexture_(GL_TEXTURE0_ARB);
     glMatrixMode(GL_MODELVIEW);
 }
@@ -1948,7 +1918,7 @@ int calcspherecsmsplits(const vec &center, float radius)
 
 struct reflectiveshadowmap
 {
-    glmatrixf model, proj;
+    glmatrix model, proj;
     vec lightview;
     plane cull[4];
     vec scale, offset;
@@ -2006,7 +1976,7 @@ void reflectiveshadowmap::getprojmatrix()
 
 void reflectiveshadowmap::gencullplanes()
 {
-    glmatrixf mvp;
+    glmatrix mvp;
     mvp.mul(proj, model);
     vec4 px = mvp.getrow(0), py = mvp.getrow(1), pw = mvp.getrow(3);
     cull[0] = plane(vec4(pw).add(px)).normalize(); // left plane
@@ -2379,7 +2349,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(worldmatrix.v);
+    glLoadMatrixf(worldmatrix.a.v);
     glMatrixMode(GL_MODELVIEW);
 
     GLOBALPARAM(fogdir, mvmatrix.getrow(2));
@@ -3023,7 +2993,7 @@ void radiancehints::renderslices()
     glLoadIdentity();
     glTranslatef(rsm.offset.x, rsm.offset.y, rsm.offset.z);
     glScalef(rsm.scale.x, rsm.scale.y, rsm.scale.z);
-    glMultMatrixf(rsm.model.v);
+    glMultMatrixf(rsm.model.a.v);
     glMatrixMode(GL_MODELVIEW);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmdepthtex);
@@ -3299,10 +3269,10 @@ void renderradiancehints()
     {
         glMatrixMode(GL_PROJECTION);
         glPushMatrix();
-        glLoadMatrixf(rsm.proj.v);
+        glLoadMatrixf(rsm.proj.a.v);
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
-        glLoadMatrixf(rsm.model.v);
+        glLoadMatrixf(rsm.model.a.v);
 
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
 
@@ -3357,9 +3327,9 @@ void rendercsmshadowmaps()
         const shadowmapinfo &sm = shadowmaps[csm.splits[i].idx];
 
         glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf(csm.splits[i].proj.v);
+        glLoadMatrixf(csm.splits[i].proj.a.v);
         glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixf(csm.model.v);
+        glLoadMatrixf(csm.model.a.v);
         glViewport(sm.x, sm.y, sm.size, sm.size);
         glScissor(sm.x, sm.y, sm.size, sm.size);
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -3478,26 +3448,13 @@ void rendershadowmaps()
         }
 
         float smnearclip = SQRT3 / l.radius, smfarclip = SQRT3;
-        GLfloat smprojmatrix[16] =
-        {
-            float(sm.size - border) / sm.size, 0, 0, 0,
-            0, float(sm.size - border) / sm.size, 0, 0,
-            0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -1,
-            0, 0, -2*smnearclip*smfarclip / (smfarclip - smnearclip), 0
-        };
+        glmatrix smprojmatrix(vec4(float(sm.size - border) / sm.size, 0, 0, 0),
+                              vec4(0, float(sm.size - border) / sm.size, 0, 0),
+                              vec4(0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -2*smnearclip*smfarclip / (smfarclip - smnearclip)),
+                              vec4(0, 0, -1, 0));
         glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf(smprojmatrix);
+        glLoadMatrixf(smprojmatrix.a.v);
         glMatrixMode(GL_MODELVIEW);
-
-        GLfloat lightmatrix[16] =
-        {
-            1.0f/l.radius, 0, 0, 0,
-            0, 1.0f/l.radius, 0, 0,
-            0, 0, 1.0f/l.radius, 0,
-            -l.o.x/l.radius, -l.o.y/l.radius, -l.o.z/l.radius, 1
-        };
-
-        glmatrixf smviewmatrix;
 
         if(shadowmapping == SM_SPOT)
         {
@@ -3505,15 +3462,10 @@ void rendershadowmaps()
             glScissor(sm.x, sm.y, sm.size, sm.size);
             glClear(GL_DEPTH_BUFFER_BIT);
 
-            GLfloat spotmatrix[16] =
-            {
-                l.spotx.x, l.spoty.x, -l.dir.x, 0,
-                l.spotx.y, l.spoty.y, -l.dir.y, 0,
-                l.spotx.z, l.spoty.z, -l.dir.z, 0,
-                0, 0, 0, 1
-            };
-            smviewmatrix.mul(spotmatrix, lightmatrix);
-            glLoadMatrixf(smviewmatrix.v);
+            glmatrix spotmatrix(l.spotx, l.spoty, vec(l.dir).neg());
+            spotmatrix.scale(1.0f/l.radius);
+            spotmatrix.transformedtranslate(vec(l.o).neg());
+            glLoadMatrixf(spotmatrix.a.v);
 
             glCullFace((l.dir.scalartriple(l.spoty, l.spotx) < 0) == (smcullside != 0) ? GL_BACK : GL_FRONT);
 
@@ -3540,8 +3492,10 @@ void rendershadowmaps()
                 glScissor(sm.x + sidex, sm.y + sidey, sm.size, sm.size);
                 if(cachemask) glClear(GL_DEPTH_BUFFER_BIT);
 
-                smviewmatrix.mul(cubeshadowviewmatrix[side], lightmatrix);
-                glLoadMatrixf(smviewmatrix.v);
+                glmatrix cubematrix(cubeshadowviewmatrix[side]);
+                cubematrix.scale(1.0f/l.radius);
+                cubematrix.transformedtranslate(vec(l.o).neg());
+                glLoadMatrixf(cubematrix.a.v);
 
                 glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
 
@@ -3660,12 +3614,9 @@ void rendertransparent()
 
     if(stencilformat) glEnable(GL_STENCIL_TEST);
 
-    glmatrixf raymatrix = mvmatrix.v;
-    loopk(4)
-    {
-        raymatrix.v[0 + k*4] = 0.5f*vieww*(raymatrix.v[2 + k*4] - raymatrix.v[0 + k*4]*projmatrix.v[0]);
-        raymatrix.v[1 + k*4] = 0.5f*viewh*(raymatrix.v[2 + k*4] - raymatrix.v[1 + k*4]*projmatrix.v[5]);
-    }
+    glmatrix raymatrix(vec(-0.5f*vieww*projmatrix.a.x, 0, 0.5f*vieww), 
+                       vec(0, -0.5f*viewh*projmatrix.b.y, 0.5f*viewh));
+    raymatrix.mul(mvmatrix);
 
     loop(layer, 3)
     {
@@ -3727,9 +3678,9 @@ void rendertransparent()
         if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         glMatrixMode(GL_TEXTURE);
-        glLoadMatrixf(linearworldmatrix.v);
+        glLoadMatrixf(linearworldmatrix.a.v);
         glActiveTexture_(GL_TEXTURE1_ARB);
-        glLoadMatrixf(raymatrix.v);
+        glLoadMatrixf(raymatrix.a.v);
         glActiveTexture_(GL_TEXTURE0_ARB);
 
         switch(layer)
@@ -3806,7 +3757,7 @@ void preparegbuffer(bool depthclear)
     if(gdepthformat && gdepthclear) maskgbuffer("cngd");
     if(drawtex) glDisable(GL_SCISSOR_TEST);
 
-    glmatrixf invscreenmatrix;
+    glmatrix invscreenmatrix;
     invscreenmatrix.identity();
     invscreenmatrix.scale(2.0f/vieww, 2.0f/viewh, 2.0f);
     invscreenmatrix.translate(-1.0f, -1.0f, -1.0f);
@@ -3819,15 +3770,9 @@ void preparegbuffer(bool depthclear)
     else
     {
         linearworldmatrix.mul(invprojmatrix, invscreenmatrix);
-        float xscale = linearworldmatrix.v[0], yscale = linearworldmatrix.v[5], xoffset = linearworldmatrix.v[12], yoffset = linearworldmatrix.v[13], zscale = linearworldmatrix.v[14];
-        float depthmatrix[16] =
-        {
-            xscale/zscale,  0,              0, 0,
-            0,              yscale/zscale,  0, 0,
-            xoffset/zscale, yoffset/zscale, 1, 0,
-            0,              0,              0, 1
-        };
-        linearworldmatrix.mul(invmvmatrix.v, depthmatrix);
+        float xscale = linearworldmatrix.a.x, yscale = linearworldmatrix.b.y, xoffset = linearworldmatrix.d.x, yoffset = linearworldmatrix.d.y, zscale = linearworldmatrix.d.z;
+        glmatrix depthmatrix(vec(xscale/zscale, 0, xoffset/zscale), vec(0, yscale/zscale, yoffset/zscale));
+        linearworldmatrix.mul(invmvmatrix, depthmatrix);
         if(gdepthformat) worldmatrix = linearworldmatrix;
         else worldmatrix.mul(invmvpmatrix, invscreenmatrix);
     }
@@ -3838,7 +3783,7 @@ void preparegbuffer(bool depthclear)
     screenmatrix.mul(mvpmatrix);
 
     GLOBALPARAMF(viewsize, (vieww, viewh, 1.0f/vieww, 1.0f/viewh));
-    GLOBALPARAMF(gdepthscale, (eyematrix.v[14], eyematrix.v[11], eyematrix.v[15]));
+    GLOBALPARAMF(gdepthscale, (eyematrix.d.z, eyematrix.c.w, eyematrix.d.w));
     GLOBALPARAMF(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane));
     GLOBALPARAMF(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
 
@@ -3923,7 +3868,7 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(worldmatrix.v);
+    glLoadMatrixf(worldmatrix.a.v);
     glMatrixMode(GL_MODELVIEW);
 
     float lightscale = 2.0f*ldrscale;

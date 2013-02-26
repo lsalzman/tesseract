@@ -527,7 +527,7 @@ struct animmodel : model
         int tag, anim, basetime;
         vec translate;
         vec *pos;
-        glmatrixf matrix;
+        glmatrix matrix;
 
         linkedpart() : p(NULL), tag(-1), anim(-1), basetime(0), translate(0, 0, 0), pos(NULL) {}
     };
@@ -542,9 +542,8 @@ struct animmodel : model
         vector<animspec> *anims[MAXANIMPARTS];
         int numanimparts;
         float pitchscale, pitchoffset, pitchmin, pitchmax;
-        vec translate;
 
-        part() : meshes(NULL), numanimparts(1), pitchscale(1), pitchoffset(0), pitchmin(0), pitchmax(0), translate(0, 0, 0)
+        part() : meshes(NULL), numanimparts(1), pitchscale(1), pitchoffset(0), pitchmin(0), pitchmax(0)
         {
             loopk(MAXANIMPARTS) anims[k] = NULL;
         }
@@ -561,7 +560,6 @@ struct animmodel : model
         void calcbb(vec &bbmin, vec &bbmax, const matrix3x4 &m)
         {
             matrix3x4 t = m;
-            t.translate(translate);
             t.scale(model->scale);
             meshes->calcbb(bbmin, bbmax, t);
             loopv(links)
@@ -576,7 +574,6 @@ struct animmodel : model
         void gentris(vector<BIH::tri> *tris, const matrix3x4 &m)
         {
             matrix3x4 t = m;
-            t.translate(translate);
             t.scale(model->scale);
             meshes->gentris(skins, tris, t);
             loopv(links)
@@ -801,7 +798,8 @@ struct animmodel : model
             }
             matrixstack[matrixpos].transposedtransformnormal(forward, oforward);
             matrixstack[matrixpos].transposedtransform(o, oo);
-            oo.div(model->scale).sub(translate);
+            oo.div(model->scale);
+            if(!index) oo.sub(model->translate);
             matrixstack[matrixpos].transposedtransformnormal(oray, oray);
 
             float resize = model->scale * sizescale;
@@ -863,6 +861,8 @@ struct animmodel : model
                 }
             }
 
+            float resize = model->scale * sizescale;
+            int oldpos = matrixpos; 
             vec oaxis, oforward;
             matrixstack[matrixpos].transposedtransformnormal(axis, oaxis);
             float pitchamount = pitchscale*pitch + pitchoffset;
@@ -875,24 +875,32 @@ struct animmodel : model
                 matrixstack[matrixpos] = matrixstack[matrixpos-1];
                 matrixstack[matrixpos].rotate(pitchamount*RAD, oaxis);
             }
+            if(!index && !model->translate.iszero()) 
+            {
+                if(oldpos == matrixpos)
+                {
+                    ++matrixpos;
+                    matrixstack[matrixpos] = matrixstack[matrixpos-1];
+                }
+                matrixstack[matrixpos].transformedtranslate(model->translate, resize);
+            }
             matrixstack[matrixpos].transposedtransformnormal(forward, oforward);
 
-            float resize = model->scale * sizescale;
             if(!(anim&ANIM_NORENDER))
             {
                 glPushMatrix();
-                glMultMatrixf(matrixstack[matrixpos].v);
+                glMultMatrixf(matrixstack[matrixpos].a.v);
                 if(resize!=1) glScalef(resize, resize, resize);
-                if(!translate.iszero()) glTranslatef(translate.x, translate.y, translate.z);
                 if(!(anim&ANIM_NOSKIN))
                 {
                     glMatrixMode(GL_TEXTURE);
-                    glLoadMatrixf(matrixstack[matrixpos].v);
+                    glLoadMatrixf(matrixstack[matrixpos].a.v);
                     glMatrixMode(GL_MODELVIEW);
                 
                     vec ocampos;
                     matrixstack[matrixpos].transposedtransform(camera1->o, ocampos);
-                    ocampos.div(resize).sub(translate);
+                    ocampos.div(resize);
+                    if(!index) ocampos.sub(model->translate);
                     GLOBALPARAM(ocamera, ocampos);
                 }
             }
@@ -935,7 +943,7 @@ struct animmodel : model
                 }
             }
 
-            if(pitchamount) matrixpos--;
+            matrixpos = oldpos;
         }
 
         void setanim(int animpart, int num, int frame, int range, float speed, int priority = 0)
@@ -1225,6 +1233,7 @@ struct animmodel : model
         m.identity();
         if(offsetyaw) m.rotate_around_z(offsetyaw*RAD);
         if(offsetpitch) m.rotate_around_y(-offsetpitch*RAD);
+        m.transformedtranslate(translate, scale);
     }
 
     void gentris(vector<BIH::tri> *tris)
@@ -1378,7 +1387,7 @@ struct animmodel : model
     static GLuint lastvbuf, lasttcbuf, lastnbuf, lastxbuf, lastbbuf, lastebuf, lastenvmaptex, closestenvmaptex;
     static Texture *lasttex, *lastdecal, *lastmasks, *lastnormalmap;
     static int envmaptmu, matrixpos;
-    static glmatrixf matrixstack[64];
+    static glmatrix matrixstack[64];
 
     void startrender()
     {
@@ -1447,7 +1456,7 @@ GLuint animmodel::lastvbuf = 0, animmodel::lasttcbuf = 0, animmodel::lastnbuf = 
        animmodel::lastenvmaptex = 0, animmodel::closestenvmaptex = 0;
 Texture *animmodel::lasttex = NULL, *animmodel::lastdecal = NULL, *animmodel::lastmasks = NULL, *animmodel::lastnormalmap = NULL;
 int animmodel::envmaptmu = -1, animmodel::matrixpos = 0;
-glmatrixf animmodel::matrixstack[64];
+glmatrix animmodel::matrixstack[64];
 
 template<class MDL> struct modelloader
 {

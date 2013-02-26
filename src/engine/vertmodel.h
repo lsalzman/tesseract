@@ -293,10 +293,9 @@ struct vertmodel : animmodel
         void concattagtransform(part *p, int i, const matrix3x4 &m, matrix3x4 &n)
         {
             n.mul(m, tags[i].transform);
-            n.translate(m.transformnormal(p->translate).mul(p->model->scale));
         }
 
-        void calctagmatrix(part *p, int i, const animstate &as, glmatrixf &matrix)
+        void calctagmatrix(part *p, int i, const animstate &as, glmatrix &matrix)
         {
             const matrix3x4 &tag1 = tags[as.cur.fr1*numtags + i].transform, 
                             &tag2 = tags[as.cur.fr2*numtags + i].transform;
@@ -311,10 +310,8 @@ struct vertmodel : animmodel
                 tag.lerp(tagp, tag, as.interp);
             }
             float resize = p->model->scale * sizescale;
-            matrix = glmatrixf(tag);
-            matrix[12] = (matrix[12] + p->translate.x) * resize;
-            matrix[13] = (matrix[13] + p->translate.y) * resize;
-            matrix[14] = (matrix[14] + p->translate.z) * resize;
+            matrix = glmatrix(tag);
+            matrix.d.mul3(resize);
         }
 
         void genvbo(bool norms, bool tangents, vbocacheentry &vc)

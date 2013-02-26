@@ -1029,7 +1029,7 @@ struct skelmodel : animmodel
             loopv(ragdoll->verts) \
             { \
                 ragdolldata::vert &dv = d.verts[i]; \
-                matrixstack[matrixpos].transform(vec(dv.pos).add(p->translate).mul(p->model->scale), dv.pos); \
+                matrixstack[matrixpos].transform(vec(dv.pos).mul(p->model->scale), dv.pos); \
             } \
             loopv(ragdoll->reljoints) \
             { \
@@ -1059,7 +1059,7 @@ struct skelmodel : animmodel
 
         #define GENRAGDOLLBONES(outbody, relbody) \
             sc.nextversion(); \
-            vec trans = vec(d.center).div(p->model->scale).add(p->translate); \
+            vec trans = vec(d.center).div(p->model->scale).add(p->model->translate); \
             loopv(ragdoll->joints) \
             { \
                 const ragdollskel::joint &j = ragdoll->joints[i]; \
@@ -1108,7 +1108,6 @@ struct skelmodel : animmodel
         {
             matrix3x4 t;
             t.mul(bones[tags[i].bone].base, tags[i].matrix);
-            t.translate(vec(p->translate).mul(p->model->scale));
             n.mul(m, t);
         }
 
@@ -1127,9 +1126,7 @@ struct skelmodel : animmodel
                 }
                 float resize = p->model->scale * sizescale;
                 l.matrix = m;
-                l.matrix[12] = (l.matrix[12] + p->translate.x) * resize;
-                l.matrix[13] = (l.matrix[13] + p->translate.y) * resize;
-                l.matrix[14] = (l.matrix[14] + p->translate.z) * resize;
+                l.matrix.d.mul3(resize);
             }
         }
 

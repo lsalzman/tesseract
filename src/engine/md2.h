@@ -278,7 +278,6 @@ struct md2 : vertmodel, vertloader<md2>
         loading = 0;
         scale /= 4;
         translate.y = -translate.y;
-        parts[0]->translate = translate;
         loopv(parts) parts[i]->meshes->shared++;
         return loaded = true;
     }
