@@ -471,25 +471,18 @@ struct textrenderer : listrenderer
 
     void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
     {
-        glPushMatrix();
-        float scale = p->size/80.0f;
-        GLfloat billboardmatrix[16] =
-        {
-            scale*camright.x, scale*camright.y, scale*camright.z, 0,
-            -scale*camup.x, -scale*camup.y, -scale*camup.z, 0,
-            -scale*camdir.x, -scale*camdir.y, -scale*camdir.z, 0,
-            o.x, o.y, o.z, 1
-        };
-        glMultMatrixf(billboardmatrix);
+        float scale = p->size/80.0f, xoff = -text_width(p->text)/2, yoff = 0;
+        if((type&0xFF)==PT_TEXTUP) { xoff += detrnd((size_t)p, 100)-50; yoff -= detrnd((size_t)p, 101); }
 
-        float xoff = -text_width(p->text)/2;
-        float yoff = 0;
-        if((type&0xFF)==PT_TEXTUP) { xoff += detrnd((size_t)p, 100)-50; yoff -= detrnd((size_t)p, 101); } //@TODO instead in worldspace beforehand?
-        glTranslatef(xoff, yoff, 50);
+        matrix3x4 m(vec4(camright.x, -camup.x, -camdir.x, o.x),
+                    vec4(camright.y, -camup.y, -camdir.y, o.y),
+                    vec4(camright.z, -camup.z, -camdir.z, o.z));
+        m.scale(scale);
+        m.transformedtranslate(xoff, yoff, 50);
 
+        textmatrix = &m;
         draw_text(p->text, 0, 0, color[0], color[1], color[2], blend);
-
-        glPopMatrix();
+        textmatrix = NULL;
     } 
 };
 static textrenderer texts(PT_TEXT|PT_LERP);

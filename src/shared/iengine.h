@@ -218,6 +218,7 @@ extern void fatal(const char *s, ...) PRINTFARGS(1, 2);
 extern void keyrepeat(bool on);
 
 // rendertext
+extern const matrix3x4 *textmatrix;
 extern bool setfont(const char *name);
 extern void pushfont();
 extern bool popfont();
