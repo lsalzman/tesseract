@@ -1193,13 +1193,6 @@ struct animmodel : model
 
         render(anim, basetime, basetime2, pitch, axis, forward, d, a);
 
-        if(envmaptmu>=0)
-        {
-            glMatrixMode(GL_TEXTURE);
-            glLoadIdentity();
-            glMatrixMode(GL_MODELVIEW);
-        }
-
         if(d) d->lastrendered = lastmillis;
     }
 

@@ -611,6 +611,13 @@ struct matrix3x3
         swap(b.z, c.y);
     }
 
+    void transpose(const matrix3x3 &m)
+    {
+        a = vec(m.a.x, m.b.x, m.c.x);
+        b = vec(m.a.y, m.b.y, m.c.y);
+        c = vec(m.a.z, m.b.z, m.c.z);
+    }
+
     void rotate(float angle, const vec &axis)
     {
         rotate(cosf(angle), sinf(angle), axis);
@@ -1363,6 +1370,14 @@ struct glmatrix
         swap(a.y, b.x); swap(a.z, c.x); swap(a.w, d.x);
         swap(b.z, c.y); swap(b.w, d.y);
         swap(c.w, d.z);
+    }
+
+    void transpose(const glmatrix &m)
+    {
+        a = vec4(m.a.x, m.b.x, m.c.x, m.d.x);
+        b = vec4(m.a.y, m.b.y, m.c.y, m.d.y);
+        c = vec4(m.a.z, m.b.z, m.c.z, m.d.z);
+        d = vec4(m.a.w, m.b.w, m.c.w, m.d.w);
     }
 
     void frustum(float left, float right, float bottom, float top, float znear, float zfar)

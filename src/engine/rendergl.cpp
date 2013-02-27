@@ -1251,7 +1251,7 @@ void project(float fovy, float aspect, int farplane, float zscale = 1)
     glMatrixMode(GL_PROJECTION);
     projmatrix.perspective(fovy, aspect, nearplane, farplane);
     if(zscale!=1) projmatrix.scalez(zscale);
-    if(!drawtex) jitteraa();
+    jitteraa();
     glLoadMatrixf(projmatrix.a.v);
     glMatrixMode(GL_MODELVIEW);
 }

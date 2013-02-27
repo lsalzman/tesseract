@@ -72,14 +72,12 @@ void setaavelocityparams(GLenum tmu)
     if(tmu!=GL_TEXTURE0_ARB) glActiveTexture_(tmu);
     if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
     else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-    glMatrixMode(GL_TEXTURE);
     glmatrix reproject;
     reproject.mul(tqaaframe ? tqaaprevmvp : screenmatrix, worldmatrix);
     vec2 jitter = tqaaframe&1 ? vec2(0.5f, 0.5f) : vec2(-0.5f, -0.5f);
     if(multisampledaa()) { jitter.x *= 0.5f; jitter.y *= -0.5f; }
     if(tqaaframe) reproject.jitter(jitter.x, jitter.y);
-    glLoadMatrixf(reproject.a.v);
-    glMatrixMode(GL_MODELVIEW);
+    LOCALPARAM(reprojectmatrix, reproject);
     float maxvel = sqrtf(vieww*vieww + viewh*viewh)/tqaareproject;
     LOCALPARAMF(maxvelocity, (maxvel, 1/maxvel, tqaareprojectscale));
     if(tmu!=GL_TEXTURE0_ARB) glActiveTexture_(GL_TEXTURE0_ARB);
@@ -727,7 +725,7 @@ void jitteraa()
 {
     nojittermatrix = projmatrix;
 
-    if(tqaa)
+    if(!drawtex && tqaa)
     {
         vec2 jitter = tqaaframe&1 ? vec2(0.25f, 0.25f) : vec2(-0.25f, -0.25f);
         if(multisampledaa()) { jitter.x *= 0.5f; jitter.y *= -0.5f; }
@@ -740,7 +738,7 @@ void jitteraa()
 
 void setaamask(bool val)
 {
-    if(!tqaa || !tqaamovemask || aamask == val) return;
+    if(drawtex || !tqaa || !tqaamovemask || aamask == val) return;
     
     aamask = val;
 

@@ -1784,7 +1784,7 @@ void cascadedshadowmap::getprojmatrix()
     // compute each split projection matrix
     loopi(csmsplits)
     {
-        splitinfo &split = this->splits[i];
+        splitinfo &split = splits[i];
         if(split.idx < 0) continue;
         const shadowmapinfo &sm = shadowmaps[split.idx];
 
@@ -1793,7 +1793,7 @@ void cascadedshadowmap::getprojmatrix()
 
         // compute the projected bounding box of the sphere
         vec tc;
-        this->model.transform(c, tc);
+        model.transform(c, tc);
         int border = smfilter > 2 ? smborder2 : smborder;
         const float pradius = ceil(radius * csmpradiustweak), step = (2*pradius) / (sm.size - 2*border);
         vec2 offset = vec2(tc).sub(pradius).div(step);
@@ -1847,11 +1847,7 @@ void cascadedshadowmap::bindparams()
         splitscalev[i] = split.scale;
         splitoffsetv[i] = split.offset;
     }
-    glMatrixMode(GL_TEXTURE);
-    glActiveTexture_(GL_TEXTURE1_ARB);
-    glLoadMatrixf(model.a.v);
-    glActiveTexture_(GL_TEXTURE0_ARB);
-    glMatrixMode(GL_MODELVIEW);
+    GLOBALPARAM(csmmatrix, glmatrix3x3(model));
 }
 
 cascadedshadowmap csm;
@@ -2348,10 +2344,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     }
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(worldmatrix.a.v);
-    glMatrixMode(GL_MODELVIEW);
-
+    GLOBALPARAM(worldmatrix, worldmatrix);
     GLOBALPARAM(fogdir, mvmatrix.getrow(2));
     GLOBALPARAMF(shadowatlasscale, (1.0f/shadowatlaspacker.w, 1.0f/shadowatlaspacker.h));
     if(ao)
@@ -2989,12 +2982,14 @@ void radiancehints::renderslices()
     GLOBALPARAMF(rhatten, (1.0f/(gidist*gidist)));
     GLOBALPARAMF(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
 
-    glMatrixMode(GL_TEXTURE);
-    glmatrix rsmmatrix = rsm.model;
-    rsmmatrix.scale(rsm.scale);
-    rsmmatrix.translate(rsm.offset);
-    glLoadMatrixf(rsmmatrix.a.v);
-    glMatrixMode(GL_MODELVIEW);
+    glmatrix rsmtcmatrix = rsm.model;
+    rsmtcmatrix.scale(rsm.scale);
+    rsmtcmatrix.translate(rsm.offset);
+    GLOBALPARAM(rsmtcmatrix, rsmtcmatrix);
+
+    glmatrix rsmworldmatrix;
+    rsmworldmatrix.invert(rsmtcmatrix);
+    GLOBALPARAM(rsmworldmatrix, rsmworldmatrix);
 
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, rsmdepthtex);
     glActiveTexture_(GL_TEXTURE1_ARB);
@@ -3617,6 +3612,8 @@ void rendertransparent()
     glmatrix raymatrix(vec(-0.5f*vieww*projmatrix.a.x, 0, 0.5f*vieww), 
                        vec(0, -0.5f*viewh*projmatrix.b.y, 0.5f*viewh));
     raymatrix.mul(mvmatrix);
+    GLOBALPARAM(raymatrix, raymatrix);
+    GLOBALPARAM(linearworldmatrix, linearworldmatrix);
 
     loop(layer, 3)
     {
@@ -3676,12 +3673,6 @@ void rendertransparent()
 
         extern int wireframe;
         if(wireframe && editmode) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-        glMatrixMode(GL_TEXTURE);
-        glLoadMatrixf(linearworldmatrix.a.v);
-        glActiveTexture_(GL_TEXTURE1_ARB);
-        glLoadMatrixf(raymatrix.a.v);
-        glActiveTexture_(GL_TEXTURE0_ARB);
 
         switch(layer)
         {
@@ -3867,9 +3858,7 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
     else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glActiveTexture_(GL_TEXTURE0_ARB);
 
-    glMatrixMode(GL_TEXTURE);
-    glLoadMatrixf(worldmatrix.a.v);
-    glMatrixMode(GL_MODELVIEW);
+    GLOBALPARAM(worldmatrix, worldmatrix);
 
     float lightscale = 2.0f*ldrscale;
     GLOBALPARAMF(lightscale, (0.1f*lightscale, 0.1f*lightscale, 0.1f*lightscale, lightscale));
