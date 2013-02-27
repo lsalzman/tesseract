@@ -287,8 +287,12 @@ void renderao()
         if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
         else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     }
-    else if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
-    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+    else 
+    {
+        if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msnormaltex);
+        else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gnormaltex);
+        LOCALPARAM(normalmatrix, glmatrix3x3(cammatrix));
+    }
     glActiveTexture_(GL_TEXTURE2_ARB);
     glBindTexture(GL_TEXTURE_2D, aonoisetex);
     glActiveTexture_(GL_TEXTURE0_ARB);
