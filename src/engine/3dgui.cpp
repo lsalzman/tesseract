@@ -55,9 +55,11 @@ struct gui : g3d_gui
 
     static int ty, tx, tpos, *tcurrent, tcolor; //tracking tab size and position since uses different layout method...
 
-    void allowautotab(bool on)
+    bool allowautotab(bool on)
     {
+        bool oldval = shouldautotab;
         shouldautotab = on;
+        return oldval;
     }
 
     void autotab() 
@@ -270,7 +272,12 @@ struct gui : g3d_gui
         }
     }
 
-    void mergehits(bool on) { shouldmergehits = on; }
+    bool mergehits(bool on) 
+    { 
+        bool oldval = shouldmergehits;
+        shouldmergehits = on; 
+        return oldval;
+    }
 
     bool ishit(int w, int h, int x = curx, int y = cury)
     {

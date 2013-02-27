@@ -483,7 +483,7 @@ struct g3d_gui
     virtual void pushlist() {}
     virtual void poplist() {}
 
-    virtual void allowautotab(bool on) = 0;
+    virtual bool allowautotab(bool on) = 0;
     virtual bool shouldtab() { return false; }
 	virtual void tab(const char *name = NULL, int color = 0) = 0;
     virtual int image(Texture *t, float scale, bool overlaid = false) = 0;
@@ -500,7 +500,7 @@ struct g3d_gui
     virtual char *keyfield(const char *name, int color, int length, int height = 0, const char *initval = NULL, int initmode = EDITORFOCUSED) = 0;
     virtual char *field(const char *name, int color, int length, int height = 0, const char *initval = NULL, int initmode = EDITORFOCUSED) = 0;
     virtual void textbox(const char *text, int width, int height, int color = 0xFFFFFF) = 0;
-    virtual void mergehits(bool on) = 0;
+    virtual bool mergehits(bool on) = 0;
 };
 
 struct g3d_callback
