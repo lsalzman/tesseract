@@ -3778,6 +3778,7 @@ void preparegbuffer(bool depthclear)
     screenmatrix.mul(camprojmatrix);
 
     GLOBALPARAMF(viewsize, (vieww, viewh, 1.0f/vieww, 1.0f/viewh));
+    GLOBALPARAMF(gdepthlinear, (invprojmatrix.c.z, invprojmatrix.d.z));
     GLOBALPARAMF(gdepthscale, (eyematrix.d.z, eyematrix.c.w, eyematrix.d.w));
     GLOBALPARAMF(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane));
     GLOBALPARAMF(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));
