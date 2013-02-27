@@ -377,83 +377,75 @@ struct meterrenderer : listrenderer
     void startrender()
     {
          glDisable(GL_BLEND);
+         varray::enable();
+         varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
     }
 
     void endrender()
     {
+         varray::disable();
          glEnable(GL_BLEND);
     }
 
     void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
     {
         int basetype = type&0xFF;
-
-        glPushMatrix();
-        float scale = p->size/80.0f;
-        GLfloat billboardmatrix[16] =
-        {
-            scale*camright.x, scale*camright.y, scale*camright.z, 0,
-            -scale*camup.x, -scale*camup.y, -scale*camup.z, 0,
-            -scale*camdir.x, -scale*camdir.y, -scale*camdir.z, 0,
-            o.x, o.y, o.z, 1
-        };
-        glMultMatrixf(billboardmatrix);
-
-        float right = 8*FONTH, left = p->progress/100.0f*right;
-        glTranslatef(-right/2.0f, 0, 0);
+        float scale = FONTH*p->size/80.0f, right = 8, left = p->progress/100.0f*right;
+        matrix3x4 m(vec4(camright.x, -camup.x, -camdir.x, o.x),
+                    vec4(camright.y, -camup.y, -camdir.y, o.y),
+                    vec4(camright.z, -camup.z, -camdir.z, o.z));
+        m.scale(scale);
+        m.transformedtranslate(-right/2.0f, 0, 0);
 
         if(outlinemeters)
         {
             glColor3f(0, 0.8f, 0);
-            glBegin(GL_TRIANGLE_STRIP);
+            varray::begin(GL_TRIANGLE_STRIP);
             loopk(10)
             {
                 const vec2 &sc = sincos360[k*(180/(10-1))];
                 float c = (0.5f + 0.1f)*sc.y, s = 0.5f - (0.5f + 0.1f)*sc.x;
-                glVertex2f(-c*FONTH, s*FONTH);
-                glVertex2f(right + c*FONTH, s*FONTH);
+                varray::attrib(m.transform(vec2(-c, s)));
+                varray::attrib(m.transform(vec2(right + c, s)));
             }
-            glEnd();
+            varray::end();
         }
 
         if(basetype==PT_METERVS) glColor3ubv(p->color2);
         else glColor3f(0, 0, 0);
-        glBegin(GL_TRIANGLE_STRIP);
+        varray::begin(GL_TRIANGLE_STRIP);
         loopk(10)
         {
             const vec2 &sc = sincos360[k*(180/(10-1))];
             float c = 0.5f*sc.y, s = 0.5f - 0.5f*sc.x;
-            glVertex2f(left + c*FONTH, s*FONTH);
-            glVertex2f(right + c*FONTH, s*FONTH);
+            varray::attrib(m.transform(vec2(left + c, s)));
+            varray::attrib(m.transform(vec2(right + c, s))); 
         }
-        glEnd();
+        varray::end();
 
         if(outlinemeters)
         {
             glColor3f(0, 0.8f, 0);
-            glBegin(GL_TRIANGLE_FAN);
+            varray::begin(GL_TRIANGLE_FAN);
             loopk(10)
             {
                 const vec2 &sc = sincos360[k*(180/(10-1))];
                 float c = (0.5f + 0.1f)*sc.y, s = 0.5f - (0.5f + 0.1f)*sc.x;
-                glVertex2f(left + c*FONTH, s*FONTH);
+                varray::attrib(m.transform(vec2(left + c, s)));
             }
-            glEnd();
+            varray::end();
         }
 
         glColor3ubv(color);
-        glBegin(GL_TRIANGLE_STRIP);
+        varray::begin(GL_TRIANGLE_STRIP);
         loopk(10)
         {
             const vec2 &sc = sincos360[k*(180/(10-1))];
             float c = 0.5f*sc.y, s = 0.5f - 0.5f*sc.x;
-            glVertex2f(-c*FONTH, s*FONTH);
-            glVertex2f(left + c*FONTH, s*FONTH);
+            varray::attrib(m.transform(vec2(-c, s)));
+            varray::attrib(m.transform(vec2(left + c, s)));
         }
-        glEnd();
-
-
-        glPopMatrix();
+        varray::end();
     }
 };
 static meterrenderer meters(PT_METER|PT_LERP), metervs(PT_METERVS|PT_LERP);

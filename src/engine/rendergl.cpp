@@ -2302,27 +2302,34 @@ void drawdamagecompass(int w, int h)
         {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glColor4f(1, 0, 0, damagecompassalpha/100.0f);
+            varray::enable();
+            varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
+            varray::begin(GL_TRIANGLES);
         }
         dirs++;
 
-        glPushMatrix();
-        glTranslatef(w/2, h/2, 0);
-        glRotatef(i*45, 0, 0, 1);
-        glTranslatef(0, -size/2.0f-min(h, w)/4.0f, 0);
         float logscale = 32,
-              scale = log(1 + (logscale - 1)*dcompass[i]) / log(logscale);
-        glScalef(size*scale, size*scale, 0);
-
-        glBegin(GL_TRIANGLES);
-        glVertex3f(1, 1, 0);
-        glVertex3f(-1, 1, 0);
-        glVertex3f(0, 0, 0);
-        glEnd();
-        glPopMatrix();
+              scale = log(1 + (logscale - 1)*dcompass[i]) / log(logscale),
+              offset = -size/2.0f-min(h, w)/4.0f;
+        matrix3x4 m;
+        m.identity();
+        m.translate(w/2, h/2, 0);
+        m.rotate_around_z(i*45*RAD);
+        m.transformedtranslate(0, offset, 0);
+        m.scale(size*scale);
+        
+        varray::attrib(m.transform(vec2(1, 1)));
+        varray::attrib(m.transform(vec2(-1, 1)));
+        varray::attrib(m.transform(vec2(0, 0)));
 
         // fade in log space so short blips don't disappear too quickly
         scale -= float(curtime)/damagecompassfade;
         dcompass[i] = scale > 0 ? (pow(logscale, scale) - 1) / (logscale - 1) : 0;
+    }
+    if(dirs)
+    {
+        varray::end();
+        varray::disable();
     }
 }
 

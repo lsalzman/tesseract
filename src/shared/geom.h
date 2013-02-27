@@ -557,6 +557,8 @@ struct dualquat
     }
 };
 
+struct glmatrix;
+
 struct matrix3x3
 {
     vec a, b, c;
@@ -575,6 +577,7 @@ struct matrix3x3
         b = vec(txy + twz, 1 - (txx + tzz), tyz - twx);
         c = vec(txz - twy, tyz + twx, 1 - (txx + tyy));
     }
+    explicit matrix3x3(const glmatrix &m);
 
     void mul(const matrix3x3 &m, const matrix3x3 &n)
     {
@@ -707,6 +710,8 @@ struct matrix3x3
         b.rotate_around_z(ck, sk);
         c.rotate_around_z(ck, sk);
     }
+
+    vec transform(const vec2 &o) const { return vec(a.x*o.x + a.y*o.y, b.x*o.x + b.y*o.y, c.x*o.y + c.y*o.y); }
 };
 
 struct matrix3x4
@@ -731,6 +736,7 @@ struct matrix3x4
         c = vec4(xz - wy, yz + wx, rr.w + rr.z - rr.x - rr.y,
             -(d.dual.w*r.z + d.dual.x*r.y - d.dual.y*r.x - d.dual.z*r.w));
     }
+    explicit matrix3x4(const glmatrix &m);
 
     void mul(float k)
     {
@@ -746,18 +752,24 @@ struct matrix3x4
         c.mul3(k);
     }
     
-    void translate(const vec &p)
+    void translate(float x, float y, float z)
     {
-        a.w += p.x;
-        b.w += p.y;
-        c.w += p.z;
+        a.w += x;
+        b.w += y;
+        c.w += z;
     }
+    void translate(const vec &p) { translate(p.x, p.y, p.z); }
 
     void transformedtranslate(const vec &p, float scale = 1)
     {
         a.w += a.dot3(p)*scale;
         b.w += b.dot3(p)*scale;
         c.w += c.dot3(p)*scale;
+    }
+
+    void transformedtranslate(float x, float y, float z, float scale = 1)
+    {
+        transformedtranslate(vec(x, y, z), scale);
     }
 
     void accumulate(const matrix3x4 &m, float k)
@@ -904,6 +916,7 @@ struct matrix3x4
                    a.y*o.x + b.y*o.y + c.y*o.z,
                    a.z*o.x + b.z*o.y + c.z*o.z);
     }
+    vec transform(const vec2 &o) const { return vec(a.x*o.x + a.y*o.y + a.w, b.x*o.x + b.y*o.y + b.w, c.x*o.x + c.y*o.y + c.w); }
 
     float getscale() const { return a.magnitude3(); }
     vec gettranslation() const { return vec(a.w, b.w, c.w); }
@@ -1485,6 +1498,14 @@ struct glmatrix
 
     bool invert(const glmatrix &m, double mindet = 1.0e-10);
 };
+
+inline matrix3x3::matrix3x3(const glmatrix &m)
+    : a(m.a.x, m.b.x, m.c.x), b(m.a.y, m.b.y, m.c.y), c(m.a.z, m.b.z, m.c.z)
+{}
+
+inline matrix3x4::matrix3x4(const glmatrix &m)
+    : a(m.a.x, m.b.x, m.c.x, m.d.x), b(m.a.y, m.b.y, m.c.y, m.d.y), c(m.a.z, m.b.z, m.c.z, m.d.z)
+{}
 
 struct glmatrix3x3
 {
