@@ -172,7 +172,7 @@ void calcvfcD()
 
 void setvfcP(const vec &bbmin, const vec &bbmax)
 {
-    vec4 px = mvpmatrix.getrow(0), py = mvpmatrix.getrow(1), pz = mvpmatrix.getrow(2), pw = mvpmatrix.getrow(3);
+    vec4 px = camprojmatrix.getrow(0), py = camprojmatrix.getrow(1), pz = camprojmatrix.getrow(2), pw = camprojmatrix.getrow(3);
     vfcP[0] = plane(vec4(pw).mul(-bbmin.x).add(px)).normalize(); // left plane
     vfcP[1] = plane(vec4(pw).mul(bbmax.x).sub(px)).normalize(); // right plane
     vfcP[2] = plane(vec4(pw).mul(-bbmin.y).add(py)).normalize(); // bottom plane

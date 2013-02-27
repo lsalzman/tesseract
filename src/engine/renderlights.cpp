@@ -3755,7 +3755,7 @@ void preparegbuffer(bool depthclear)
     eyematrix.mul(invprojmatrix, invscreenmatrix);
     if(drawtex == DRAWTEX_MINIMAP)
     {
-        linearworldmatrix.mul(invmvpmatrix, invscreenmatrix);
+        linearworldmatrix.mul(invcamprojmatrix, invscreenmatrix);
         worldmatrix = linearworldmatrix;
     }
     else
@@ -3765,13 +3765,13 @@ void preparegbuffer(bool depthclear)
         glmatrix depthmatrix(vec(xscale/zscale, 0, xoffset/zscale), vec(0, yscale/zscale, yoffset/zscale));
         linearworldmatrix.mul(invcammatrix, depthmatrix);
         if(gdepthformat) worldmatrix = linearworldmatrix;
-        else worldmatrix.mul(invmvpmatrix, invscreenmatrix);
+        else worldmatrix.mul(invcamprojmatrix, invscreenmatrix);
     }
 
     screenmatrix.identity();
     screenmatrix.scale(0.5f*vieww, 0.5f*viewh, 0.5f);
     screenmatrix.translate(0.5f*vieww, 0.5f*viewh, 0.5f);
-    screenmatrix.mul(mvpmatrix);
+    screenmatrix.mul(camprojmatrix);
 
     GLOBALPARAMF(viewsize, (vieww, viewh, 1.0f/vieww, 1.0f/viewh));
     GLOBALPARAMF(gdepthscale, (eyematrix.d.z, eyematrix.c.w, eyematrix.d.w));

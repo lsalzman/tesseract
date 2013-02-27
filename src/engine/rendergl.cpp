@@ -1234,13 +1234,13 @@ float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, c
 
 extern const glmatrix viewmatrix(vec(-1, 0, 0), vec(0, 0, 1), vec(0, -1, 0));
 extern const glmatrix invviewmatrix(vec(-1, 0, 0), vec(0, 0, -1), vec(0, 1, 0));
-glmatrix cammatrix, projmatrix, mvpmatrix, invcammatrix, invmvpmatrix, invprojmatrix;
+glmatrix cammatrix, projmatrix, camprojmatrix, invcammatrix, invcamprojmatrix, invprojmatrix;
 
 void readmatrices()
 {
-    mvpmatrix.mul(projmatrix, cammatrix);
+    camprojmatrix.mul(projmatrix, cammatrix);
     invcammatrix.invert(cammatrix);
-    invmvpmatrix.invert(mvpmatrix);
+    invcamprojmatrix.invert(camprojmatrix);
     invprojmatrix.invert(projmatrix);
 }
 
@@ -1267,7 +1267,7 @@ vec calcavatarpos(const vec &pos, float dist)
     scrpos.z = (eyepos.z*(farplane + nearplane) - 2*nearplane*farplane) / (farplane - nearplane);
     scrpos.w = -eyepos.z;
 
-    vec worldpos = invmvpmatrix.perspectivetransform(scrpos);
+    vec worldpos = invcamprojmatrix.perspectivetransform(scrpos);
     vec dir = vec(worldpos).sub(camera1->o).rescale(dist);
     return dir.add(camera1->o);
 }
@@ -1435,21 +1435,21 @@ bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1,
     vec4 v[8];
     sx1 = sy1 = 1;
     sx2 = sy2 = -1;
-    mvpmatrix.transform(vec(bbmin.x, bbmin.y, bbmin.z), v[0]);
+    camprojmatrix.transform(vec(bbmin.x, bbmin.y, bbmin.z), v[0]);
     ADDXYSCISSOR(v[0]);
-    mvpmatrix.transform(vec(bbmax.x, bbmin.y, bbmin.z), v[1]);
+    camprojmatrix.transform(vec(bbmax.x, bbmin.y, bbmin.z), v[1]);
     ADDXYSCISSOR(v[1]);
-    mvpmatrix.transform(vec(bbmin.x, bbmax.y, bbmin.z), v[2]);
+    camprojmatrix.transform(vec(bbmin.x, bbmax.y, bbmin.z), v[2]);
     ADDXYSCISSOR(v[2]);
-    mvpmatrix.transform(vec(bbmax.x, bbmax.y, bbmin.z), v[3]);
+    camprojmatrix.transform(vec(bbmax.x, bbmax.y, bbmin.z), v[3]);
     ADDXYSCISSOR(v[3]);
-    mvpmatrix.transform(vec(bbmin.x, bbmin.y, bbmax.z), v[4]);
+    camprojmatrix.transform(vec(bbmin.x, bbmin.y, bbmax.z), v[4]);
     ADDXYSCISSOR(v[4]);
-    mvpmatrix.transform(vec(bbmax.x, bbmin.y, bbmax.z), v[5]);
+    camprojmatrix.transform(vec(bbmax.x, bbmin.y, bbmax.z), v[5]);
     ADDXYSCISSOR(v[5]);
-    mvpmatrix.transform(vec(bbmin.x, bbmax.y, bbmax.z), v[6]);
+    camprojmatrix.transform(vec(bbmin.x, bbmax.y, bbmax.z), v[6]);
     ADDXYSCISSOR(v[6]);
-    mvpmatrix.transform(vec(bbmax.x, bbmax.y, bbmax.z), v[7]);
+    camprojmatrix.transform(vec(bbmax.x, bbmax.y, bbmax.z), v[7]);
     ADDXYSCISSOR(v[7]);
     if(sx1 > sx2 || sy1 > sy2) return false;
     loopi(8)
@@ -1500,15 +1500,15 @@ bool calcspotscissor(const vec &origin, float radius, const vec &dir, int spot, 
     vec4 v[5];
     sx1 = sy1 = sz1 = 1;
     sx2 = sy2 = sz2 = -1;
-    mvpmatrix.transform(vec(center).sub(right).sub(up), v[0]);
+    camprojmatrix.transform(vec(center).sub(right).sub(up), v[0]);
     ADDXYZSCISSOR(v[0]);
-    mvpmatrix.transform(vec(center).add(right).sub(up), v[1]);
+    camprojmatrix.transform(vec(center).add(right).sub(up), v[1]);
     ADDXYZSCISSOR(v[1]);
-    mvpmatrix.transform(vec(center).sub(right).add(up), v[2]);
+    camprojmatrix.transform(vec(center).sub(right).add(up), v[2]);
     ADDXYZSCISSOR(v[2]);
-    mvpmatrix.transform(vec(center).add(right).add(up), v[3]);
+    camprojmatrix.transform(vec(center).add(right).add(up), v[3]);
     ADDXYZSCISSOR(v[3]);
-    mvpmatrix.transform(origin, v[4]);
+    camprojmatrix.transform(origin, v[4]);
     ADDXYZSCISSOR(v[4]);
     if(sx1 > sx2 || sy1 > sy2 || sz1 > sz2) return false;
     loopi(4)

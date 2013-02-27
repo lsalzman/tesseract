@@ -123,7 +123,7 @@ extern bool hdrfloat;
 extern float ldrscale, ldrscaleb;
 extern int drawtex;
 extern const glmatrix viewmatrix, invviewmatrix;
-extern glmatrix cammatrix, projmatrix, mvpmatrix, invcammatrix, invmvpmatrix, invprojmatrix;
+extern glmatrix cammatrix, projmatrix, camprojmatrix, invcammatrix, invcamprojmatrix, invprojmatrix;
 extern int fog;
 extern bvec fogcolor;
 extern vec curfogcolor;
