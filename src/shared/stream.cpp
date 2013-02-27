@@ -152,6 +152,11 @@ int encodeutf8(uchar *dstbuf, int dstlen, const uchar *srcbuf, int srclen, int *
             const uchar *end = min(srcend, &src[dstend-dst]);
             do 
             { 
+                if(uni == '\f')
+                {
+                    if(++src >= srcend) goto done;
+                    goto uni1;
+                }
                 *dst++ = uni; 
                 if(++src >= end) goto done; 
                 uni = cube2uni(*src); 

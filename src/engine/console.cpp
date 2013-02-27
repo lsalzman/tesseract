@@ -30,7 +30,6 @@ void conoutfv(int type, const char *fmt, va_list args)
     static char buf[CONSTRLEN];
     vformatstring(buf, fmt, args, sizeof(buf));
     conline(type, buf);
-    filtertext(buf, buf);
     logoutf("%s", buf);
 }
 
