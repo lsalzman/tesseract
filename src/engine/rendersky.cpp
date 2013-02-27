@@ -355,7 +355,7 @@ static void drawfogdome(int farplane)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glPushMatrix();
-    glmatrix fogdomematrix = mvmatrix;
+    glmatrix fogdomematrix = cammatrix;
     fogdomematrix.d = vec4(0, 0, 0, 1);
     fogdomematrix.transformedtranslate(0, 0, farplane*fogdomeheight*0.5f);
     fogdomematrix.scale(farplane/2, farplane/2, farplane*(0.5f - fogdomeheight*0.5f)); 
@@ -403,7 +403,7 @@ void drawskybox(int farplane)
     glColor3f((skyboxcolour>>16)*ldrscaleb, ((skyboxcolour>>8)&255)*ldrscaleb, (skyboxcolour&255)*ldrscaleb);
 
     glPushMatrix();
-    glmatrix skymatrix = mvmatrix;
+    glmatrix skymatrix = cammatrix;
     skymatrix.d = vec4(0, 0, 0, 1);
     skymatrix.rotate_around_z((spinsky*lastmillis/1000.0f+yawsky)*-RAD);
     glLoadMatrixf(skymatrix.a.v);
@@ -425,7 +425,7 @@ void drawskybox(int farplane)
         glColor4f((cloudboxcolour>>16)*ldrscaleb, ((cloudboxcolour>>8)&255)*ldrscaleb, (cloudboxcolour&255)*ldrscaleb, cloudboxalpha);
 
         glPushMatrix();
-        glmatrix cloudsmatrix = mvmatrix;
+        glmatrix cloudsmatrix = cammatrix;
         cloudsmatrix.d = vec4(0, 0, 0, 1);
         cloudsmatrix.rotate_around_z((spinclouds*lastmillis/1000.0f+yawclouds)*-RAD);
         glLoadMatrixf(cloudsmatrix.a.v);
@@ -443,7 +443,7 @@ void drawskybox(int farplane)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         glPushMatrix();
-        glmatrix cloudlayermatrix = mvmatrix;
+        glmatrix cloudlayermatrix = cammatrix;
         cloudlayermatrix.d = vec4(0, 0, 0, 1);
         cloudlayermatrix.rotate_around_z((spincloudlayer*lastmillis/1000.0f+yawcloudlayer)*-RAD);
         glLoadMatrixf(cloudlayermatrix.a.v);

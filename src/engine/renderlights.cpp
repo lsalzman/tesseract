@@ -2345,7 +2345,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     GLOBALPARAM(worldmatrix, worldmatrix);
-    GLOBALPARAM(fogdir, mvmatrix.getrow(2));
+    GLOBALPARAM(fogdir, cammatrix.getrow(2));
     GLOBALPARAMF(shadowatlasscale, (1.0f/shadowatlaspacker.w, 1.0f/shadowatlaspacker.h));
     if(ao)
     {
@@ -3611,7 +3611,7 @@ void rendertransparent()
 
     glmatrix raymatrix(vec(-0.5f*vieww*projmatrix.a.x, 0, 0.5f*vieww), 
                        vec(0, -0.5f*viewh*projmatrix.b.y, 0.5f*viewh));
-    raymatrix.mul(mvmatrix);
+    raymatrix.mul(cammatrix);
     GLOBALPARAM(raymatrix, raymatrix);
     GLOBALPARAM(linearworldmatrix, linearworldmatrix);
 
@@ -3763,7 +3763,7 @@ void preparegbuffer(bool depthclear)
         linearworldmatrix.mul(invprojmatrix, invscreenmatrix);
         float xscale = linearworldmatrix.a.x, yscale = linearworldmatrix.b.y, xoffset = linearworldmatrix.d.x, yoffset = linearworldmatrix.d.y, zscale = linearworldmatrix.d.z;
         glmatrix depthmatrix(vec(xscale/zscale, 0, xoffset/zscale), vec(0, yscale/zscale, yoffset/zscale));
-        linearworldmatrix.mul(invmvmatrix, depthmatrix);
+        linearworldmatrix.mul(invcammatrix, depthmatrix);
         if(gdepthformat) worldmatrix = linearworldmatrix;
         else worldmatrix.mul(invmvpmatrix, invscreenmatrix);
     }

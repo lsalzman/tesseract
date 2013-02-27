@@ -113,7 +113,7 @@ void renderwaterfog(int mat, float surface)
     }
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    vec4 d = mvmatrix.getrow(2);
+    vec4 d = cammatrix.getrow(2);
     glmatrix m(d, vec4(0, 1, 0, 0), vec4(0, 0, -1, bz));
     m.mul(worldmatrix);
     GLOBALPARAM(waterfogmatrix, m);

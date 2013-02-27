@@ -1022,9 +1022,9 @@ vec worldpos, camdir, camright, camup;
 
 void findorientation()
 {
-    mvmatrix.transposedtransformnormal(vec(viewmatrix.b), camdir);
-    mvmatrix.transposedtransformnormal(vec(viewmatrix.a).neg(), camright);
-    mvmatrix.transposedtransformnormal(vec(viewmatrix.c), camup);
+    cammatrix.transposedtransformnormal(vec(viewmatrix.b), camdir);
+    cammatrix.transposedtransformnormal(vec(viewmatrix.a).neg(), camright);
+    cammatrix.transposedtransformnormal(vec(viewmatrix.c), camup);
 
     if(raycubepos(camera1->o, camdir, worldpos, 0, RAY_CLIPMAT|RAY_SKIPFIRST) == -1)
         worldpos = vec(camdir).mul(2*worldsize).add(camera1->o); //otherwise 3dgui won't work when outside of map
@@ -1033,12 +1033,12 @@ void findorientation()
 void transplayer()
 {
     // move from RH to Z-up LH quake style worldspace
-    mvmatrix = viewmatrix;
-    mvmatrix.rotate_around_y(camera1->roll*RAD);
-    mvmatrix.rotate_around_x(camera1->pitch*-RAD);
-    mvmatrix.rotate_around_z(camera1->yaw*-RAD);
-    mvmatrix.transformedtranslate(camera1->o, -1);
-    glLoadMatrixf(mvmatrix.a.v);
+    cammatrix = viewmatrix;
+    cammatrix.rotate_around_y(camera1->roll*RAD);
+    cammatrix.rotate_around_x(camera1->pitch*-RAD);
+    cammatrix.rotate_around_z(camera1->yaw*-RAD);
+    cammatrix.transformedtranslate(camera1->o, -1);
+    glLoadMatrixf(cammatrix.a.v);
 }
 
 int vieww = -1, viewh = -1;
@@ -1234,12 +1234,12 @@ float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, c
 
 extern const glmatrix viewmatrix(vec(-1, 0, 0), vec(0, 0, 1), vec(0, -1, 0));
 extern const glmatrix invviewmatrix(vec(-1, 0, 0), vec(0, 0, -1), vec(0, 1, 0));
-glmatrix mvmatrix, projmatrix, mvpmatrix, invmvmatrix, invmvpmatrix, invprojmatrix;
+glmatrix cammatrix, projmatrix, mvpmatrix, invcammatrix, invmvpmatrix, invprojmatrix;
 
 void readmatrices()
 {
-    mvpmatrix.mul(projmatrix, mvmatrix);
-    invmvmatrix.invert(mvmatrix);
+    mvpmatrix.mul(projmatrix, cammatrix);
+    invcammatrix.invert(cammatrix);
     invmvpmatrix.invert(mvpmatrix);
     invprojmatrix.invert(projmatrix);
 }
@@ -1259,7 +1259,7 @@ void project(float fovy, float aspect, int farplane, float zscale = 1)
 vec calcavatarpos(const vec &pos, float dist)
 {
     vec eyepos;
-    mvmatrix.transform(pos, eyepos);
+    cammatrix.transform(pos, eyepos);
     GLdouble ydist = nearplane * tan(curavatarfov/2*RAD), xdist = ydist * aspect;
     vec4 scrpos;
     scrpos.x = eyepos.x*nearplane/xdist;
@@ -1369,7 +1369,7 @@ void popscissor()
 bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2)
 {
     vec e;
-    mvmatrix.transform(center, e);
+    cammatrix.transform(center, e);
     if(e.z > 2*size) { sx1 = sy1 = sz1 = 1; sx2 = sy2 = sz2 = -1; return false; }
     if(drawtex == DRAWTEX_MINIMAP)
     {
