@@ -623,7 +623,7 @@ void setupshaders()
         "uniform mat4 hudmatrix;\n"
         "void main(void) {\n"
         "    gl_Position = hudmatrix * gl_Vertex;\n"
-        "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
+        "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;\n"
         "    gl_FrontColor = gl_Color;\n"
         "}\n",
         "uniform sampler2D tex0;\n"
@@ -703,25 +703,13 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     if(!vspragma && !pspragma) return;
     static const int pragmalen = strlen("#pragma CUBE2_fog");
     const char *vsmain = findglslmain(vs), *vsend = strrchr(vs, '}');
-    if(vsmain && vsend)
+    if(vsmain && vsend && !strstr(vs, "lineardepth"))
     {
         vsbuf.put(vs, vsmain - vs);
-        const char *fogparams = "\nvarying float fogcoord;\n";
+        const char *fogparams = "\nuniform vec2 lineardepthscale;\nvarying float lineardepth;\n";
         vsbuf.put(fogparams, strlen(fogparams));
         vsbuf.put(vsmain, vsend - vsmain);
-        const char *vsdef = "\n#define FOG_COORD ";
-        const char *vsfog = "\nfogcoord = -dot((FOG_COORD), gl_ModelViewMatrixTranspose[2]);\n";
-        int clen = 0;
-        if(vspragma)
-        {
-            vspragma += pragmalen;
-            while(*vspragma && !iscubespace(*vspragma)) vspragma++;
-            vspragma += strspn(vspragma, " \t\v\f");
-            clen = strcspn(vspragma, "\r\n");
-        }
-        if(clen <= 0) { vspragma = "gl_Vertex"; clen = strlen(vspragma); }
-        vsbuf.put(vsdef, strlen(vsdef));
-        vsbuf.put(vspragma, clen);
+        const char *vsfog = "\nlineardepth = dot(lineardepthscale, gl_Position.zw);\n";
         vsbuf.put(vsfog, strlen(vsfog));
         vsbuf.put(vsend, strlen(vsend)+1);
     }
@@ -729,14 +717,19 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     if(psmain && psend)
     {
         psbuf.put(ps, psmain - ps);
-        const char *fogparams = "\nuniform vec3 fogcolor, fogparams;\nvarying float fogcoord;\n"; 
+        if(!strstr(ps, "lineardepth"))
+        {
+            const char *foginterp = "\nvarying float lineardepth;\n";
+            psbuf.put(foginterp, strlen(foginterp));
+        }
+        const char *fogparams = "\nuniform vec3 fogcolor, fogparams;\n";
         psbuf.put(fogparams, strlen(fogparams));
         psbuf.put(psmain, psend - psmain);
         const char *psdef = "\n#define FOG_COLOR ";
         const char *psfog =
             pspragma && !strncmp(pspragma+pragmalen, "rgba", 4) ?
-                "\ngl_FragColor = mix((FOG_COLOR), gl_FragColor, clamp((fogparams.y + fogcoord)*fogparams.z, 0.0, 1.0));\n" :
-                "\ngl_FragColor.rgb = mix((FOG_COLOR).rgb, gl_FragColor.rgb, clamp((fogparams.y + fogcoord)*fogparams.z, 0.0, 1.0));\n";
+                "\ngl_FragColor = mix((FOG_COLOR), gl_FragColor, clamp((fogparams.y - lineardepth)*fogparams.z, 0.0, 1.0));\n" :
+                "\ngl_FragColor.rgb = mix((FOG_COLOR).rgb, gl_FragColor.rgb, clamp((fogparams.y - lineardepth)*fogparams.z, 0.0, 1.0));\n";
         int clen = 0;
         if(pspragma)
         {

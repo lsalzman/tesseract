@@ -274,7 +274,8 @@ struct fireballrenderer : listrenderer
 
         if(isfoggedsphere(psize*WOBBLE, p->o)) return;
 
-        glmatrix m = camprojmatrix;
+        glmatrix m;
+        m.identity();
         m.translate(o);
 
         bool inside = o.dist(camera1->o) <= psize*WOBBLE;
@@ -309,6 +310,7 @@ struct fireballrenderer : listrenderer
 
         m.rotate(rotangle*RAD, vec(-rotdir.x, rotdir.y, -rotdir.z));
         m.scale(-psize, psize, -psize);
+        m.mul(camprojmatrix, glmatrix(m));
         LOCALPARAM(explosionmatrix, m);
 
         LOCALPARAM(center, o);

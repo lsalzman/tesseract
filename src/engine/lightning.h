@@ -46,7 +46,7 @@ static void renderlightning(Texture *tex, const vec &o, const vec &d, float sz)
           scrollscale = lnscrollscale*(LIGHTNINGSTEP*tex->ys)/(sz*tex->xs),
           blend = pow(clamp(float(lastmillis - lastlnjitter)/lnjittermillis, 0.0f, 1.0f), lnblendpower),
           jitter0 = (1-blend)*lnjitterscale*sz/lnjitterradius, jitter1 = blend*lnjitterscale*sz/lnjitterradius; 
-    glBegin(GL_TRIANGLE_STRIP);
+    varray::begin(GL_TRIANGLE_STRIP);
     loopj(numsteps)
     {
         vec next(cur);
@@ -62,17 +62,21 @@ static void renderlightning(Texture *tex, const vec &o, const vec &d, float sz)
         dir1.sub(cur);
         dir2.sub(camera1->o);
         across.cross(dir2, dir1).normalize().mul(sz);
-        glTexCoord2f(scroll, 1); glVertex3f(cur.x-across.x, cur.y-across.y, cur.z-across.z);
-        glTexCoord2f(scroll, 0); glVertex3f(cur.x+across.x, cur.y+across.y, cur.z+across.z);
+        varray::attrib<float>(cur.x-across.x, cur.y-across.y, cur.z-across.z);
+            varray::attrib<float>(scroll, 1);
+        varray::attrib<float>(cur.x+across.x, cur.y+across.y, cur.z+across.z);
+            varray::attrib<float>(scroll, 0);
         scroll += scrollscale;
         if(j+1==numsteps)
         {
-            glTexCoord2f(scroll, 1); glVertex3f(next.x-across.x, next.y-across.y, next.z-across.z);
-            glTexCoord2f(scroll, 0); glVertex3f(next.x+across.x, next.y+across.y, next.z+across.z);
+            varray::attrib<float>(next.x-across.x, next.y-across.y, next.z-across.z);
+                varray::attrib<float>(scroll, 1);
+            varray::attrib<float>(next.x+across.x, next.y+across.y, next.z+across.z);
+                varray::attrib<float>(scroll, 0);
         }
         cur = next;
     }
-    glEnd();
+    varray::end();
 }
 
 struct lightningrenderer : listrenderer
@@ -84,10 +88,14 @@ struct lightningrenderer : listrenderer
     void startrender()
     {
         glDisable(GL_CULL_FACE);
+        varray::enable();
+        varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
+        varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
     }
 
     void endrender()
     {
+        varray::disable();
         glEnable(GL_CULL_FACE);
     }
 
