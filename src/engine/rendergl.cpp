@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasS3TC = false, hasFXT1 = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasDT = false, hasSH = false, hasPBO = false, hasFBB = false, hasFBMS = false, hasTMS = false, hasMSS = false, hasFBMSBS = false, hasNVFBMSC = false, hasNVTMS = false, hasUBO = false, hasMBR = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false, hasDBGO = false, hasGPU4 = false, hasGPU5 = false;
+bool hasVBO = false, hasVAO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasS3TC = false, hasFXT1 = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasDT = false, hasSH = false, hasPBO = false, hasFBB = false, hasFBMS = false, hasTMS = false, hasMSS = false, hasFBMSBS = false, hasNVFBMSC = false, hasNVTMS = false, hasUBO = false, hasMBR = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false, hasDBGO = false, hasGPU4 = false, hasGPU5 = false;
 bool mesa = false, intel = false, ati = false, nvidia = false;
 
 int hasstencil = 0;
@@ -124,6 +124,34 @@ PFNGLBINDATTRIBLOCATIONPROC       glBindAttribLocation_       = NULL;
 PFNGLGETACTIVEUNIFORMPROC         glGetActiveUniform_         = NULL;
 PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray_  = NULL;
 PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray_ = NULL;
+
+PFNGLVERTEXATTRIB1FPROC           glVertexAttrib1f_           = NULL;
+PFNGLVERTEXATTRIB1FVPROC          glVertexAttrib1fv_          = NULL;
+PFNGLVERTEXATTRIB1SPROC           glVertexAttrib1s_           = NULL;
+PFNGLVERTEXATTRIB1SVPROC          glVertexAttrib1sv_          = NULL;
+PFNGLVERTEXATTRIB2FPROC           glVertexAttrib2f_           = NULL;
+PFNGLVERTEXATTRIB2FVPROC          glVertexAttrib2fv_          = NULL;
+PFNGLVERTEXATTRIB2SPROC           glVertexAttrib2s_           = NULL;
+PFNGLVERTEXATTRIB2SVPROC          glVertexAttrib2sv_          = NULL;
+PFNGLVERTEXATTRIB3FPROC           glVertexAttrib3f_           = NULL;
+PFNGLVERTEXATTRIB3FVPROC          glVertexAttrib3fv_          = NULL;
+PFNGLVERTEXATTRIB3SPROC           glVertexAttrib3s_           = NULL;
+PFNGLVERTEXATTRIB3SVPROC          glVertexAttrib3sv_          = NULL;
+PFNGLVERTEXATTRIB4FPROC           glVertexAttrib4f_           = NULL;
+PFNGLVERTEXATTRIB4FVPROC          glVertexAttrib4fv_          = NULL;
+PFNGLVERTEXATTRIB4SPROC           glVertexAttrib4s_           = NULL;
+PFNGLVERTEXATTRIB4SVPROC          glVertexAttrib4sv_          = NULL;
+PFNGLVERTEXATTRIB4BVPROC          glVertexAttrib4bv_          = NULL;
+PFNGLVERTEXATTRIB4IVPROC          glVertexAttrib4iv_          = NULL;
+PFNGLVERTEXATTRIB4UBVPROC         glVertexAttrib4ubv_         = NULL;
+PFNGLVERTEXATTRIB4UIVPROC         glVertexAttrib4uiv_         = NULL;
+PFNGLVERTEXATTRIB4USVPROC         glVertexAttrib4usv_         = NULL;
+PFNGLVERTEXATTRIB4NBVPROC         glVertexAttrib4Nbv_         = NULL;
+PFNGLVERTEXATTRIB4NIVPROC         glVertexAttrib4Niv_         = NULL;
+PFNGLVERTEXATTRIB4NUBPROC         glVertexAttrib4Nub_         = NULL;
+PFNGLVERTEXATTRIB4NUBVPROC        glVertexAttrib4Nubv_        = NULL;
+PFNGLVERTEXATTRIB4NUIVPROC        glVertexAttrib4Nuiv_        = NULL;
+PFNGLVERTEXATTRIB4NUSVPROC        glVertexAttrib4Nusv_        = NULL;
 PFNGLVERTEXATTRIBPOINTERPROC      glVertexAttribPointer_      = NULL;
 
 PFNGLUNIFORMMATRIX2X3FVPROC       glUniformMatrix2x3fv_       = NULL;
@@ -172,19 +200,25 @@ PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_ = NULL;
 PFNGLCLAMPCOLORARBPROC glClampColor_ = NULL;
 
 // GL_EXT_texture3D
-PFNGLTEXIMAGE3DEXTPROC        glTexImage3D_ = NULL;
-PFNGLTEXSUBIMAGE3DEXTPROC     glTexSubImage3D_ = NULL;
+PFNGLTEXIMAGE3DEXTPROC        glTexImage3D_        = NULL;
+PFNGLTEXSUBIMAGE3DEXTPROC     glTexSubImage3D_     = NULL;
 PFNGLCOPYTEXSUBIMAGE3DEXTPROC glCopyTexSubImage3D_ = NULL;
 
 // GL_ARB_debug_output
-PFNGLDEBUGMESSAGECONTROLARBPROC glDebugMessageControl_ = NULL;
-PFNGLDEBUGMESSAGEINSERTARBPROC glDebugMessageInsert_ = NULL;
+PFNGLDEBUGMESSAGECONTROLARBPROC  glDebugMessageControl_  = NULL;
+PFNGLDEBUGMESSAGEINSERTARBPROC   glDebugMessageInsert_   = NULL;
 PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallback_ = NULL;
-PFNGLGETDEBUGMESSAGELOGARBPROC glGetDebugMessageLog_ = NULL;
+PFNGLGETDEBUGMESSAGELOGARBPROC   glGetDebugMessageLog_   = NULL;
 
 // GL_ARB_map_buffer_range
 PFNGLMAPBUFFERRANGEPROC         glMapBufferRange_         = NULL;
 PFNGLFLUSHMAPPEDBUFFERRANGEPROC glFlushMappedBufferRange_ = NULL;
+
+// GL_ARB_vertex_array_object
+PFNGLBINDVERTEXARRAYPROC    glBindVertexArray_    = NULL;
+PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays_ = NULL;
+PFNGLGENVERTEXARRAYSPROC    glGenVertexArrays_    = NULL;
+PFNGLISVERTEXARRAYPROC      glIsVertexArray_      = NULL;
 
 void *getprocaddress(const char *name)
 {
@@ -327,6 +361,25 @@ void gl_checkextensions()
         glBufferSubData_    = (PFNGLBUFFERSUBDATAARBPROC)   getprocaddress("glBufferSubDataARB");
         glDeleteBuffers_    = (PFNGLDELETEBUFFERSARBPROC)   getprocaddress("glDeleteBuffersARB");
         glGetBufferSubData_ = (PFNGLGETBUFFERSUBDATAARBPROC)getprocaddress("glGetBufferSubDataARB");
+    }
+
+    if(hasext(exts, "GL_ARB_vertex_array_object"))
+    {
+        glBindVertexArray_ =    (PFNGLBINDVERTEXARRAYPROC)   getprocaddress("glBindVertexArray");
+        glDeleteVertexArrays_ = (PFNGLDELETEVERTEXARRAYSPROC)getprocaddress("glDeleteVertexArrays");
+        glGenVertexArrays_ =    (PFNGLGENVERTEXARRAYSPROC)   getprocaddress("glGenVertexArrays");
+        glIsVertexArray_ =      (PFNGLISVERTEXARRAYPROC)     getprocaddress("glIsVertexArray");
+        hasVAO = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_vertex_array_object extension.");
+    }
+    else if(hasext(exts, "GL_APPLE_vertex_array_object"))
+    {
+        glBindVertexArray_ =    (PFNGLBINDVERTEXARRAYPROC)   getprocaddress("glBindVertexArrayAPPLE");
+        glDeleteVertexArrays_ = (PFNGLDELETEVERTEXARRAYSPROC)getprocaddress("glDeleteVertexArraysAPPLE");
+        glGenVertexArrays_ =    (PFNGLGENVERTEXARRAYSPROC)   getprocaddress("glGenVertexArraysAPPLE");
+        glIsVertexArray_ =      (PFNGLISVERTEXARRAYPROC)     getprocaddress("glIsVertexArrayAPPLE");
+        hasVAO = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_APPLE_vertex_array_object extension.");
     }
 
     if(hasext(exts, "GL_EXT_draw_range_elements"))
@@ -571,6 +624,34 @@ void gl_checkextensions()
         glGetActiveUniform_ =         (PFNGLGETACTIVEUNIFORMPROC)         getprocaddress("glGetActiveUniform");
         glEnableVertexAttribArray_ =  (PFNGLENABLEVERTEXATTRIBARRAYPROC)  getprocaddress("glEnableVertexAttribArray");
         glDisableVertexAttribArray_ = (PFNGLDISABLEVERTEXATTRIBARRAYPROC) getprocaddress("glDisableVertexAttribArray");
+
+        glVertexAttrib1f_ =           (PFNGLVERTEXATTRIB1FPROC)           getprocaddress("glVertexAttrib1f");
+        glVertexAttrib1fv_ =          (PFNGLVERTEXATTRIB1FVPROC)          getprocaddress("glVertexAttrib1fv");
+        glVertexAttrib1s_ =           (PFNGLVERTEXATTRIB1SPROC)           getprocaddress("glVertexAttrib1s");
+        glVertexAttrib1sv_ =          (PFNGLVERTEXATTRIB1SVPROC)          getprocaddress("glVertexAttrib1sv");
+        glVertexAttrib2f_ =           (PFNGLVERTEXATTRIB2FPROC)           getprocaddress("glVertexAttrib2f");
+        glVertexAttrib2fv_ =          (PFNGLVERTEXATTRIB2FVPROC)          getprocaddress("glVertexAttrib2fv");
+        glVertexAttrib2s_ =           (PFNGLVERTEXATTRIB2SPROC)           getprocaddress("glVertexAttrib2s");
+        glVertexAttrib2sv_ =          (PFNGLVERTEXATTRIB2SVPROC)          getprocaddress("glVertexAttrib2sv");
+        glVertexAttrib3f_ =           (PFNGLVERTEXATTRIB3FPROC)           getprocaddress("glVertexAttrib3f");
+        glVertexAttrib3fv_ =          (PFNGLVERTEXATTRIB3FVPROC)          getprocaddress("glVertexAttrib3fv");
+        glVertexAttrib3s_ =           (PFNGLVERTEXATTRIB3SPROC)           getprocaddress("glVertexAttrib3s");
+        glVertexAttrib3sv_ =          (PFNGLVERTEXATTRIB3SVPROC)          getprocaddress("glVertexAttrib3sv");
+        glVertexAttrib4f_ =           (PFNGLVERTEXATTRIB4FPROC)           getprocaddress("glVertexAttrib4f");
+        glVertexAttrib4fv_ =          (PFNGLVERTEXATTRIB4FVPROC)          getprocaddress("glVertexAttrib4fv");
+        glVertexAttrib4s_ =           (PFNGLVERTEXATTRIB4SPROC)           getprocaddress("glVertexAttrib4s");
+        glVertexAttrib4sv_ =          (PFNGLVERTEXATTRIB4SVPROC)          getprocaddress("glVertexAttrib4sv");
+        glVertexAttrib4bv_ =          (PFNGLVERTEXATTRIB4BVPROC)          getprocaddress("glVertexAttrib4bv");
+        glVertexAttrib4iv_ =          (PFNGLVERTEXATTRIB4IVPROC)          getprocaddress("glVertexAttrib4iv");
+        glVertexAttrib4ubv_ =         (PFNGLVERTEXATTRIB4UBVPROC)         getprocaddress("glVertexAttrib4ubv");
+        glVertexAttrib4uiv_ =         (PFNGLVERTEXATTRIB4UIVPROC)         getprocaddress("glVertexAttrib4uiv");
+        glVertexAttrib4usv_ =         (PFNGLVERTEXATTRIB4USVPROC)         getprocaddress("glVertexAttrib4usv");
+        glVertexAttrib4Nbv_ =         (PFNGLVERTEXATTRIB4NBVPROC)         getprocaddress("glVertexAttrib4Nbv");
+        glVertexAttrib4Niv_ =         (PFNGLVERTEXATTRIB4NIVPROC)         getprocaddress("glVertexAttrib4Niv");
+        glVertexAttrib4Nub_ =         (PFNGLVERTEXATTRIB4NUBPROC)         getprocaddress("glVertexAttrib4Nub");
+        glVertexAttrib4Nubv_ =        (PFNGLVERTEXATTRIB4NUBVPROC)        getprocaddress("glVertexAttrib4Nubv");
+        glVertexAttrib4Nuiv_ =        (PFNGLVERTEXATTRIB4NUIVPROC)        getprocaddress("glVertexAttrib4Nuiv");
+        glVertexAttrib4Nusv_ =        (PFNGLVERTEXATTRIB4NUSVPROC)        getprocaddress("glVertexAttrib4Nusv");
         glVertexAttribPointer_ =      (PFNGLVERTEXATTRIBPOINTERPROC)      getprocaddress("glVertexAttribPointer");
 
         if(glversion >= 210)

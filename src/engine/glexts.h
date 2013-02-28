@@ -313,6 +313,34 @@ typedef void (APIENTRYP PFNGLUNIFORMMATRIX4X3FVPROC) (GLint location, GLsizei co
 #define glGetActiveUniform_ glGetActiveUniform
 #define glEnableVertexAttribArray_ glEnableVertexAttribArray
 #define glDisableVertexAttribArray_ glDisableVertexAttribArray
+
+#define glVertexAttrib1f_ glVertexAttrib1f
+#define glVertexAttrib1fv_ glVertexAttrib1fv
+#define glVertexAttrib1s_ glVertexAttrib1s
+#define glVertexAttrib1sv_ glVertexAttrib1sv
+#define glVertexAttrib2f_ glVertexAttrib2f
+#define glVertexAttrib2fv_ glVertexAttrib2fv
+#define glVertexAttrib2s_ glVertexAttrib2s
+#define glVertexAttrib2sv_ glVertexAttrib2sv
+#define glVertexAttrib3f_ glVertexAttrib3f
+#define glVertexAttrib3fv_ glVertexAttrib3fv
+#define glVertexAttrib3s_ glVertexAttrib3s
+#define glVertexAttrib3sv_ glVertexAttrib3sv
+#define glVertexAttrib4f_ glVertexAttrib4f
+#define glVertexAttrib4fv_ glVertexAttrib4fv
+#define glVertexAttrib4s_ glVertexAttrib4s
+#define glVertexAttrib4sv_ glVertexAttrib4sv
+#define glVertexAttrib4bv_ glVertexAttrib4bv
+#define glVertexAttrib4iv_ glVertexAttrib4iv
+#define glVertexAttrib4ubv_ glVertexAttrib4ubv
+#define glVertexAttrib4uiv_ glVertexAttrib4uiv
+#define glVertexAttrib4usv_ glVertexAttrib4usv
+#define glVertexAttrib4Nbv_ glVertexAttrib4Nbv
+#define glVertexAttrib4Niv_ glVertexAttrib4Niv
+#define glVertexAttrib4Nub_ glVertexAttrib4Nub
+#define glVertexAttrib4Nubv_ glVertexAttrib4Nubv
+#define glVertexAttrib4Nuiv_ glVertexAttrib4Nuiv
+#define glVertexAttrib4Nusv_ glVertexAttrib4Nusv
 #define glVertexAttribPointer_ glVertexAttribPointer
 
 #define glUniformMatrix2x3fv_ glUniformMatrix2x3fv
@@ -322,6 +350,7 @@ typedef void (APIENTRYP PFNGLUNIFORMMATRIX4X3FVPROC) (GLint location, GLsizei co
 #define glUniformMatrix3x4fv_ glUniformMatrix3x4fv
 #define glUniformMatrix4x3fv_ glUniformMatrix4x3fv
 #else
+                                        
 extern PFNGLCREATEPROGRAMPROC            glCreateProgram_;
 extern PFNGLDELETEPROGRAMPROC            glDeleteProgram_;
 extern PFNGLUSEPROGRAMPROC               glUseProgram_;
@@ -359,6 +388,34 @@ extern PFNGLBINDATTRIBLOCATIONPROC       glBindAttribLocation_;
 extern PFNGLGETACTIVEUNIFORMPROC         glGetActiveUniform_;
 extern PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray_;
 extern PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray_;
+
+extern PFNGLVERTEXATTRIB1FPROC           glVertexAttrib1f_;
+extern PFNGLVERTEXATTRIB1FVPROC          glVertexAttrib1fv_;
+extern PFNGLVERTEXATTRIB1SPROC           glVertexAttrib1s_;
+extern PFNGLVERTEXATTRIB1SVPROC          glVertexAttrib1sv_;
+extern PFNGLVERTEXATTRIB2FPROC           glVertexAttrib2f_;
+extern PFNGLVERTEXATTRIB2FVPROC          glVertexAttrib2fv_;
+extern PFNGLVERTEXATTRIB2SPROC           glVertexAttrib2s_;
+extern PFNGLVERTEXATTRIB2SVPROC          glVertexAttrib2sv_;
+extern PFNGLVERTEXATTRIB3FPROC           glVertexAttrib3f_;
+extern PFNGLVERTEXATTRIB3FVPROC          glVertexAttrib3fv_;
+extern PFNGLVERTEXATTRIB3SPROC           glVertexAttrib3s_;
+extern PFNGLVERTEXATTRIB3SVPROC          glVertexAttrib3sv_;
+extern PFNGLVERTEXATTRIB4FPROC           glVertexAttrib4f_;
+extern PFNGLVERTEXATTRIB4FVPROC          glVertexAttrib4fv_;
+extern PFNGLVERTEXATTRIB4SPROC           glVertexAttrib4s_;
+extern PFNGLVERTEXATTRIB4SVPROC          glVertexAttrib4sv_;
+extern PFNGLVERTEXATTRIB4BVPROC          glVertexAttrib4bv_;
+extern PFNGLVERTEXATTRIB4IVPROC          glVertexAttrib4iv_;
+extern PFNGLVERTEXATTRIB4UBVPROC         glVertexAttrib4ubv_;
+extern PFNGLVERTEXATTRIB4UIVPROC         glVertexAttrib4uiv_;
+extern PFNGLVERTEXATTRIB4USVPROC         glVertexAttrib4usv_;
+extern PFNGLVERTEXATTRIB4NBVPROC         glVertexAttrib4Nbv_;
+extern PFNGLVERTEXATTRIB4NIVPROC         glVertexAttrib4Niv_;
+extern PFNGLVERTEXATTRIB4NUBPROC         glVertexAttrib4Nub_;
+extern PFNGLVERTEXATTRIB4NUBVPROC        glVertexAttrib4Nubv_;
+extern PFNGLVERTEXATTRIB4NUIVPROC        glVertexAttrib4Nuiv_;
+extern PFNGLVERTEXATTRIB4NUSVPROC        glVertexAttrib4Nusv_;
 extern PFNGLVERTEXATTRIBPOINTERPROC      glVertexAttribPointer_;
 
 extern PFNGLUNIFORMMATRIX2X3FVPROC       glUniformMatrix2x3fv_;
@@ -434,17 +491,16 @@ extern PFNGLUNIFORMBLOCKBINDINGPROC     glUniformBlockBinding_;
 extern PFNGLBINDBUFFERBASEPROC          glBindBufferBase_;
 extern PFNGLBINDBUFFERRANGEPROC         glBindBufferRange_;
 
-#ifndef GL_EXT_bindable_uniform
-#define GL_EXT_bindable_uniform 1
-#define GL_MAX_VERTEX_BINDABLE_UNIFORMS_EXT 0x8DE2
-#define GL_MAX_FRAGMENT_BINDABLE_UNIFORMS_EXT 0x8DE3
-#define GL_MAX_GEOMETRY_BINDABLE_UNIFORMS_EXT 0x8DE4
-#define GL_MAX_BINDABLE_UNIFORM_SIZE_EXT  0x8DED
-#define GL_UNIFORM_BUFFER_EXT             0x8DEE
-#define GL_UNIFORM_BUFFER_BINDING_EXT     0x8DEF
-
-typedef void (APIENTRYP PFNGLUNIFORMBUFFEREXTPROC) (GLuint program, GLint location, GLuint buffer);
-typedef GLint (APIENTRYP PFNGLGETUNIFORMBUFFERSIZEEXTPROC) (GLuint program, GLint location);
-typedef GLintptr (APIENTRYP PFNGLGETUNIFORMOFFSETEXTPROC) (GLuint program, GLint location);
+// GL_ARB_vertex_array_objext
+#ifndef GL_ARB_vertex_array_object
+#define GL_VERTEX_ARRAY_BINDING           0x85B5
+typedef void (APIENTRYP PFNGLBINDVERTEXARRAYPROC) (GLuint array);
+typedef void (APIENTRYP PFNGLDELETEVERTEXARRAYSPROC) (GLsizei n, const GLuint *arrays);
+typedef void (APIENTRYP PFNGLGENVERTEXARRAYSPROC) (GLsizei n, GLuint *arrays);
+typedef GLboolean (APIENTRYP PFNGLISVERTEXARRAYPROC) (GLuint array);
 #endif
+extern PFNGLBINDVERTEXARRAYPROC    glBindVertexArray_;
+extern PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays_;
+extern PFNGLGENVERTEXARRAYSPROC    glGenVertexArrays_;
+extern PFNGLISVERTEXARRAYPROC      glIsVertexArray_;
 
