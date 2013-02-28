@@ -1270,41 +1270,41 @@ struct glmatrix
     void rotate_around_x(float angle)
     {
         float ck = cosf(angle), sk = sinf(angle);
-        vec rb = vec(b).mul(ck).add(vec(c).mul(sk)),
-            rc = vec(c).mul(ck).sub(vec(b).mul(sk));
-        b.setxyz(rb);
-        c.setxyz(rc);
+        vec4 rb = vec4(b).mul(ck).add(vec4(c).mul(sk)),
+             rc = vec4(c).mul(ck).sub(vec4(b).mul(sk));
+        b = rb;
+        c = rc;
     }
 
     void rotate_around_y(float angle)
     {
         float ck = cosf(angle), sk = sinf(angle);
-        vec rc = vec(c).mul(ck).add(vec(a).mul(sk)),
-            ra = vec(a).mul(ck).sub(vec(c).mul(sk));
-        c.setxyz(rc);
-        a.setxyz(ra);
+        vec4 rc = vec4(c).mul(ck).add(vec4(a).mul(sk)),
+             ra = vec4(a).mul(ck).sub(vec4(c).mul(sk));
+        c = rc;
+        a = ra;
     }
 
     void rotate_around_z(float angle)
     {
         float ck = cosf(angle), sk = sinf(angle);
-        vec ra = vec(a).mul(ck).add(vec(b).mul(sk)),
-            rb = vec(b).mul(ck).sub(vec(a).mul(sk));
-        a.setxyz(ra);
-        b.setxyz(rb);
+        vec4 ra = vec4(a).mul(ck).add(vec4(b).mul(sk)),
+             rb = vec4(b).mul(ck).sub(vec4(a).mul(sk));
+        a = ra;
+        b = rb;
     }
 
     void rotate(float ck, float sk, const vec &dir)
     {
         vec c1(dir.x*dir.x*(1-ck)+ck, dir.y*dir.x*(1-ck)+dir.z*sk, dir.x*dir.z*(1-ck)-dir.y*sk),
             c2(dir.x*dir.y*(1-ck)-dir.z*sk, dir.y*dir.y*(1-ck)+ck, dir.y*dir.z*(1-ck)+dir.x*sk),
-            c3(dir.x*dir.z*(1-ck)+dir.y*sk, dir.y*dir.z*(1-ck)-dir.x*sk, dir.z*dir.z*(1-ck)+ck),
-            ra = vec(a).mul(c1.x).add(vec(b).mul(c1.y)).add(vec(c).mul(c1.z)),
-            rb = vec(a).mul(c2.x).add(vec(b).mul(c2.y)).add(vec(c).mul(c2.z)),
-            rc = vec(a).mul(c3.x).add(vec(b).mul(c3.y)).add(vec(c).mul(c3.z));
-        a.setxyz(ra);
-        b.setxyz(rb);
-        c.setxyz(rc);
+            c3(dir.x*dir.z*(1-ck)+dir.y*sk, dir.y*dir.z*(1-ck)-dir.x*sk, dir.z*dir.z*(1-ck)+ck);
+        vec4 ra = vec4(a).mul(c1.x).add(vec4(b).mul(c1.y)).add(vec4(c).mul(c1.z)),
+             rb = vec4(a).mul(c2.x).add(vec4(b).mul(c2.y)).add(vec4(c).mul(c2.z)),
+             rc = vec4(a).mul(c3.x).add(vec4(b).mul(c3.y)).add(vec4(c).mul(c3.z));
+        a = ra;
+        b = rb;
+        c = rc;
     }
 
     void rotate(float angle, const vec &dir)
