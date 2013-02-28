@@ -102,3 +102,5 @@ extern volatile bool check_calclight_progress;
 
 extern void check_calclight_canceled();
 
+extern const vector<int> &checklightcache(int x, int y);
+

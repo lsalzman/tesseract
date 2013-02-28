@@ -1,4 +1,4 @@
-static struct flaretype
+static const struct flaretype
 {
     int type;             /* flaretex index, 0..5, -1 for 6+random shine */
     float loc;            /* postion on axis */
@@ -51,8 +51,11 @@ struct flarerenderer : partrenderer
     void newflare(vec &o,  const vec &center, uchar r, uchar g, uchar b, float mod, float size, bool sun, bool sparkle)
     {
         if(numflares >= maxflares) return;
-        vec target; //occlusion check (neccessary as depth testing is turned off)
-        if(!raycubelos(o, camera1->o, target)) return;
+        //occlusion check (neccessary as depth testing is turned off)
+        vec dir = vec(camera1->o).sub(o);
+        float dist = dir.magnitude();
+        dir.mul(1/dist);
+        if(raycube(o, dir, dist, RAY_CLIPMAT|RAY_POLY) < dist) return;
         flare &f = flares[numflares++];
         f.o = o;
         f.center = center;
@@ -93,7 +96,6 @@ struct flarerenderer : partrenderer
         if(editmode || !flarelights) return;
 
         const vector<extentity *> &ents = entities::getents();
-        extern const vector<int> &checklightcache(int x, int y);
         const vector<int> &lights = checklightcache(int(camera1->o.x), int(camera1->o.y));
         loopv(lights)
         {
@@ -144,15 +146,14 @@ struct flarerenderer : partrenderer
         varray::begin(GL_QUADS);
         loopi(numflares)
         {
-            flare *f = flares+i;
-            vec center = f->center;
-            vec axis = vec(f->o).sub(center);
-            uchar color[4] = {f->color[0], f->color[1], f->color[2], 255};
-            loopj(f->sparkle?12:9)
+            const flare &f = flares[i];
+            vec axis = vec(f.o).sub(f.center);
+            uchar color[4] = {f.color[0], f.color[1], f.color[2], 255};
+            loopj(f.sparkle?12:9)
             {
                 const flaretype &ft = flaretypes[j];
-                vec o = vec(axis).mul(ft.loc).add(center);
-                float sz = ft.scale * f->size;
+                vec o = vec(axis).mul(ft.loc).add(f.center);
+                float sz = ft.scale * f.size;
                 int tex = ft.type;
                 if(ft.type < 0) //sparkles - always done last
                 {
@@ -161,7 +162,7 @@ struct flarerenderer : partrenderer
                     color[0] = 0;
                     color[1] = 0;
                     color[2] = 0;
-                    color[-ft.type-1] = f->color[-ft.type-1]; //only want a single channel
+                    color[-ft.type-1] = f.color[-ft.type-1]; //only want a single channel
                 }
                 color[3] = ft.alpha;
                 const float tsz = 0.25; //flares are aranged in 4x4 grid
