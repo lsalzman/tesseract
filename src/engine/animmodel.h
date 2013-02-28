@@ -784,6 +784,8 @@ struct animmodel : model
                 }
             }
 
+            float resize = model->scale * sizescale;
+            int oldpos = matrixpos;
             vec oaxis, oforward, oo, oray;
             matrixstack[matrixpos].transposedtransformnormal(axis, oaxis);
             float pitchamount = pitchscale*pitch + pitchoffset;
@@ -796,13 +798,20 @@ struct animmodel : model
                 matrixstack[matrixpos] = matrixstack[matrixpos-1];
                 matrixstack[matrixpos].rotate(pitchamount*RAD, oaxis);
             }
+            if(!index && !model->translate.iszero())
+            {
+                if(oldpos == matrixpos)
+                {
+                    ++matrixpos;
+                    matrixstack[matrixpos] = matrixstack[matrixpos-1];
+                }
+                matrixstack[matrixpos].translate(model->translate, resize);
+            }
             matrixstack[matrixpos].transposedtransformnormal(forward, oforward);
             matrixstack[matrixpos].transposedtransform(o, oo);
-            oo.div(model->scale);
-            if(!index) oo.sub(model->translate);
-            matrixstack[matrixpos].transposedtransformnormal(oray, oray);
+            oo.div(resize);
+            matrixstack[matrixpos].transposedtransformnormal(ray, oray);
 
-            float resize = model->scale * sizescale;
             intersectscale = resize;
             meshes->intersect(as, pitch, oaxis, oforward, d, this, oo, oray);
 
@@ -830,7 +839,7 @@ struct animmodel : model
                 }
             }
 
-            if(pitchamount) matrixpos--;
+            matrixpos = oldpos;
         }
 
         void render(int anim, int basetime, int basetime2, float pitch, const vec &axis, const vec &forward, dynent *d)
