@@ -276,11 +276,11 @@ void gl_checkextensions()
     hwtexsize = texsize;
     if(hwtexsize < 4096)
         fatal("Large texture support is required!");
-    glGetInteger(GL_MAX_TEXTURE_IMAGE_UNITS, &texunits);
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &texunits);
     hwtexunits = texunits;
     if(hwtexunits < 16)
         fatal("Hardware does not support at least 16 texture units.");
-    glGetInteger(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &vtexunits);
+    glGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &vtexunits);
     hwvtexunits = vtexunits;
     if(hwvtexunits < 4)
         fatal("Hardware does not support at least 4 vertex texture units.");
@@ -474,6 +474,7 @@ void gl_checkextensions()
             conoutf(CON_WARN, "WARNING: No occlusion query support!");
             extern int vacubesize, oqfrags;
             vacubesize = 64;
+            oqfrags = 0;
         }
     }
     else fatal("Occlusion query support is required!");
