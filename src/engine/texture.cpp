@@ -392,6 +392,8 @@ void texagrad(ImageData &s, float x2, float y2, float x1, float y1)
 VAR(hwtexsize, 1, 0, 0);
 VAR(hwcubetexsize, 1, 0, 0);
 VAR(hwmaxaniso, 1, 0, 0);
+VAR(hwtexunits, 1, 0, 0);
+VAR(hwvtexunits, 1, 0, 0);
 VARFP(maxtexsize, 0, 0, 1<<12, initwarning("texture quality", INIT_LOAD));
 VARFP(reducefilter, 0, 1, 1, initwarning("texture quality", INIT_LOAD));
 VARFP(texreduce, 0, 0, 12, initwarning("texture quality", INIT_LOAD));

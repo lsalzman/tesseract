@@ -58,7 +58,7 @@ struct font
 extern font *curfont;
 
 // texture
-extern int hwtexsize, hwcubetexsize, hwmaxaniso, maxtexsize;
+extern int hwtexsize, hwcubetexsize, hwmaxaniso, maxtexsize, hwtexunits, hwvtexunits;
 
 extern Texture *textureload(const char *name, int clamp = 0, bool mipit = true, bool msg = true);
 extern int texalign(const void *data, int w, int bpp);

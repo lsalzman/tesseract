@@ -271,12 +271,20 @@ void gl_checkextensions()
     if(sscanf(version, " %u.%u", &glmajorversion, &glminorversion) != 2) glversion = 100;
     else glversion = glmajorversion*100 + glminorversion*10;
 
-    GLint val;
-    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &val);
-    hwtexsize = val;
+    GLint texsize = 0, texunits = 0, vtexunits = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texsize);
+    hwtexsize = texsize;
     if(hwtexsize < 4096)
         fatal("Large texture support is required!");
-
+    glGetInteger(GL_MAX_TEXTURE_IMAGE_UNITS, &texunits);
+    hwtexunits = texunits;
+    if(hwtexunits < 16)
+        fatal("Hardware does not support at least 16 texture units.");
+    glGetInteger(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &vtexunits);
+    hwvtexunits = vtexunits;
+    if(hwvtexunits < 4)
+        fatal("Hardware does not support at least 4 vertex texture units.");
+ 
     if(hasext(exts, "GL_ARB_multitexture"))
     {
         glActiveTexture_       = (PFNGLACTIVETEXTUREARBPROC)      getprocaddress("glActiveTextureARB");
@@ -665,7 +673,7 @@ void gl_checkextensions()
 
     if(hasext(exts, "GL_ARB_texture_cube_map"))
     {
-        GLint val;
+        GLint val = 0;
         glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE_ARB, &val);
         hwcubetexsize = val;
         hasCM = true;
@@ -720,7 +728,7 @@ void gl_checkextensions()
 
     if(hasext(exts, "GL_EXT_texture_filter_anisotropic"))
     {
-       GLint val;
+       GLint val = 0;
        glGetIntegerv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &val);
        hwmaxaniso = val;
        hasAF = true;
