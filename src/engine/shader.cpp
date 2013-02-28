@@ -4,7 +4,7 @@
 
 Shader *Shader::lastshader = NULL;
 
-Shader *nullshader = NULL, *defaultshader = NULL, *rectshader = NULL, *cubemapshader = NULL, *notextureshader = NULL, *nocolorshader = NULL, *foggedshader = NULL, *foggednotextureshader = NULL, *ldrshader = NULL, *ldrnotextureshader = NULL, *stdworldshader = NULL, *rsmworldshader = NULL;
+Shader *nullshader = NULL, *hudshader = NULL, *hudnotextureshader = NULL, *nocolorshader = NULL, *foggedshader = NULL, *foggednotextureshader = NULL, *ldrshader = NULL, *ldrnotextureshader = NULL, *stdworldshader = NULL, *rsmworldshader = NULL;
 
 static hashtable<const char *, GlobalShaderParamState> globalparams(256);
 static hashtable<const char *, int> localparams(256);
@@ -27,15 +27,13 @@ void loadshaders()
     standardshader = false;
 
     nullshader = lookupshaderbyname("null");
-    defaultshader = lookupshaderbyname("default");
+    hudshader = lookupshaderbyname("hud");
+    hudnotextureshader = lookupshaderbyname("hudnotexture");
     stdworldshader = lookupshaderbyname("stdworld");
-    if(!nullshader || !defaultshader || !stdworldshader) fatal("cannot find shader definitions");
+    if(!nullshader || !hudshader || !hudnotextureshader || !stdworldshader) fatal("cannot find shader definitions");
 
     dummyslot.shader = stdworldshader;
 
-    rectshader = lookupshaderbyname("rect");
-    cubemapshader = lookupshaderbyname("cubemap");
-    notextureshader = lookupshaderbyname("notexture");
     nocolorshader = lookupshaderbyname("nocolor");
     foggedshader = lookupshaderbyname("fogged");
     foggednotextureshader = lookupshaderbyname("foggednotexture");
@@ -43,7 +41,7 @@ void loadshaders()
     ldrnotextureshader = lookupshaderbyname("ldrnotexture");
     rsmworldshader = lookupshaderbyname("rsmworld");
  
-    defaultshader->set();
+    nullshader->set();
 
     loadedshaders = true;
 }
@@ -621,9 +619,10 @@ void setupshaders()
         "void main(void) {\n"
         "   gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n"
         "}\n");
-    defaultshader = newshader(0, "<init>default", 
+    hudshader = newshader(0, "<init>hud", 
+        "uniform mat4 hudmatrix;\n"
         "void main(void) {\n"
-        "    gl_Position = ftransform();\n"
+        "    gl_Position = hudmatrix * gl_Vertex;\n"
         "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
         "    gl_FrontColor = gl_Color;\n"
         "}\n",
@@ -631,9 +630,10 @@ void setupshaders()
         "void main(void) {\n"
         "    gl_FragColor = gl_Color * texture2D(tex0, gl_TexCoord[0].xy);\n"
         "}\n");
-    notextureshader = newshader(0, "<init>notexture",
+    hudnotextureshader = newshader(0, "<init>hudnotexture",
+        "uniform mat4 hudmatrix;"
         "void main(void) {\n"
-        "    gl_Position = ftransform();\n"
+        "    gl_Position = hudmatrix * gl_Vertex;\n"
         "    gl_FrontColor = gl_Color;\n"
         "}\n",
         "void main(void) {\n"
@@ -641,7 +641,7 @@ void setupshaders()
         "}\n");
     standardshader = false;
 
-    if(!nullshader || !defaultshader || !notextureshader) fatal("failed to setup shaders");
+    if(!nullshader || !hudshader || !hudnotextureshader) fatal("failed to setup shaders");
 
     dummyslot.shader = nullshader;
 }
@@ -1300,7 +1300,7 @@ void cleanupshaders()
 {
     cleanuppostfx(true);
 
-    nullshader = defaultshader = notextureshader = NULL;
+    nullshader = hudshader = hudnotextureshader = NULL;
     enumerate(shaders, Shader, s, s.cleanup());
     Shader::lastshader = NULL;
     glUseProgram_(0);

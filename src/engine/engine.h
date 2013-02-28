@@ -151,7 +151,6 @@ extern void screenquad(float sw, float sh, float sw2, float sh2);
 extern void screenquadoffset(float x, float y, float w, float h);
 extern void screenquadoffset(float x, float y, float w, float h, float x2, float y2, float w2, float h2);
 extern void recomputecamera();
-extern void findorientation();
 extern float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, const vec &view, vec &center);
 extern void setfogcolor(const vec &v);
 extern void zerofogcolor();
@@ -275,6 +274,7 @@ extern int shadowmapping;
 extern vec shadoworigin, shadowdir;
 extern float shadowradius, shadowbias;
 extern int shadowside, shadowspot;
+extern glmatrix shadowmatrix;
 
 extern void resetlights();
 extern void collectlights();
@@ -346,9 +346,10 @@ extern bool debuglights();
 extern void cleanuplights();
 
 // aa
+extern glmatrix nojittermatrix, aamaskmatrix;
 
 extern void setupaa(int w, int h);
-extern void jitteraa();
+extern void jitteraa(bool init = true);
 extern bool maskedaa();
 extern bool multisampledaa();
 extern void setaavelocityparams(GLenum tmu = GL_TEXTURE0_ARB);

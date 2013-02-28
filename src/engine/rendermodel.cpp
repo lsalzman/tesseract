@@ -729,7 +729,6 @@ void rendermodelbatches(bool dynmodel)
         if(query) endquery(query);
         if(rendered) b.m->endrender();
     }
-    setaamask(false);
 }
 
 void startmodelquery(occludequery *query)
@@ -774,7 +773,6 @@ void endmodelquery()
         b.m->endrender();
     }
     endquery(modelquery);
-    setaamask(false);
     modelquery = NULL;
     modelattached.setsize(minattached);
 }
@@ -888,7 +886,6 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
         setaamask(true);
         if(flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
         m->render(anim, basetime, basetime2, o, yaw, pitch, d, a, size);
-        setaamask(false);
         m->endrender();
         if(flags&MDL_CULL_QUERY && d->query) endquery(d->query);
         return;

@@ -598,7 +598,7 @@ VAR(debugsmaa, 0, 0, 5);
 void viewsmaa()
 {
     int w = min(screen->w, screen->h)*1.0f, h = (w*screen->h)/screen->w, tw = gw, th = gh;
-    rectshader->set();
+    SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     switch(debugsmaa)
     {
@@ -614,7 +614,6 @@ void viewsmaa()
     glTexCoord2f(0, 0); glVertex2i(0, h);
     glTexCoord2f(tw, 0); glVertex2i(w, h);
     glEnd();
-    notextureshader->set();
 }
 
 void dosmaa(GLuint outfbo = 0, bool split = false)
@@ -718,10 +717,10 @@ void setupaa(int w, int h)
     if(tqaa && !tqaafbo[0]) setuptqaa(w, h);
 }
 
-glmatrix nojittermatrix;
-bool aamask = false;
+glmatrix nojittermatrix, aamaskmatrix;
+int aamask = -1;
 
-void jitteraa()
+void jitteraa(bool init)
 {
     nojittermatrix = projmatrix;
 
@@ -732,19 +731,19 @@ void jitteraa()
         projmatrix.jitter(jitter.x*2.0f/vieww, jitter.y*2.0f/viewh);
     }
 
-    aamask = false;
-    GLOBALPARAMF(aamask, (0.0f));
+    if(init) aamask = -1;
+    else if(aamask >= 0) aamaskmatrix.mul(aamask ? nojittermatrix : projmatrix, cammatrix);
 }
 
-void setaamask(bool val)
+void setaamask(bool on)
 {
-    if(drawtex || !tqaa || !tqaamovemask || aamask == val) return;
-    
+    int val = on && !drawtex && tqaa && tqaamovemask ? 1 : 0;
+    if(aamask == val) return;
+
     aamask = val;
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixf(aamask ? nojittermatrix.a.v : projmatrix.a.v);
-    glMatrixMode(GL_MODELVIEW);
+    if(aamask) aamaskmatrix.mul(nojittermatrix, cammatrix);
+    else aamaskmatrix = camprojmatrix;
 
     GLOBALPARAMF(aamask, (aamask ? 1.0f : 0.0f));
 }

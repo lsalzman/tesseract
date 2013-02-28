@@ -597,7 +597,7 @@ struct editor
                 if(sy < scrolly) { sy = scrolly; psy = 0; psx = 0; }
                 if(ey > maxy) { ey = maxy; pey = pixelheight - FONTH; pex = pixelwidth; }
 
-                notextureshader->set();
+                hudnotextureshader->set();
                 glColor3ub(0xA0, 0x80, 0x80);
                 glBegin(GL_QUADS);
                 if(psy == pey) 
@@ -625,7 +625,7 @@ struct editor
                     glVertex2f(x+pex, y+pey);
                 }
                 glEnd();
-                defaultshader->set();
+                hudshader->set();
             }
         }
     
@@ -639,7 +639,7 @@ struct editor
             draw_text(lines[i].text, x, y+h, color>>16, (color>>8)&0xFF, color&0xFF, 0xFF, hit&&(cy==i)?cx:-1, maxwidth);
             if(linewrap && height > FONTH) // line wrap indicator
             {   
-                notextureshader->set();
+                hudnotextureshader->set();
                 glColor3ub(0x80, 0xA0, 0x80);
                 glBegin(GL_TRIANGLE_STRIP);
                 glVertex2f(x,         y+h+FONTH);
@@ -647,7 +647,7 @@ struct editor
                 glVertex2f(x-FONTW/2, y+h+FONTH);
                 glVertex2f(x-FONTW/2, y+h+height);
                 glEnd();
-                defaultshader->set();
+                hudshader->set();
             }
             h+=height;
         }

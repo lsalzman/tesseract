@@ -566,7 +566,7 @@ struct animmodel : model
             {
                 matrix3x4 n;
                 meshes->concattagtransform(this, links[i].tag, m, n);
-                n.transformedtranslate(links[i].translate, model->scale);
+                n.translate(links[i].translate, model->scale);
                 links[i].p->calcbb(bbmin, bbmax, n);
             }
         }
@@ -580,7 +580,7 @@ struct animmodel : model
             {
                 matrix3x4 n;
                 meshes->concattagtransform(this, links[i].tag, m, n);
-                n.transformedtranslate(links[i].translate, model->scale);
+                n.translate(links[i].translate, model->scale);
                 links[i].p->gentris(tris, n);
             }
         }
@@ -812,7 +812,7 @@ struct animmodel : model
                 {
                     linkedpart &link = links[i];
                     if(!link.p) continue;
-                    link.matrix.transformedtranslate(links[i].translate, resize);
+                    link.matrix.translate(links[i].translate, resize);
 
                     matrixpos++;
                     matrixstack[matrixpos].mul(matrixstack[matrixpos-1], link.matrix);
@@ -882,15 +882,17 @@ struct animmodel : model
                     ++matrixpos;
                     matrixstack[matrixpos] = matrixstack[matrixpos-1];
                 }
-                matrixstack[matrixpos].transformedtranslate(model->translate, resize);
+                matrixstack[matrixpos].translate(model->translate, resize);
             }
             matrixstack[matrixpos].transposedtransformnormal(forward, oforward);
 
             if(!(anim&ANIM_NORENDER))
             {
-                glPushMatrix();
-                glMultMatrixf(matrixstack[matrixpos].a.v);
-                if(resize!=1) glScalef(resize, resize, resize);
+                glmatrix modelmatrix;
+                modelmatrix.mul(shadowmapping ? shadowmatrix : aamaskmatrix, matrixstack[matrixpos]);
+                if(resize!=1) modelmatrix.scale(resize);
+                GLOBALPARAM(modelmatrix, modelmatrix);
+
                 if(!(anim&ANIM_NOSKIN))
                 {
                     GLOBALPARAM(oworld, glmatrix3x3(matrixstack[matrixpos]));
@@ -904,17 +906,12 @@ struct animmodel : model
 
             meshes->render(as, pitch, oaxis, oforward, d, this);
 
-            if(!(anim&ANIM_NORENDER))
-            {
-                glPopMatrix();
-            }
-
             if(!(anim&ANIM_REUSE)) 
             {
                 loopv(links)
                 {
                     linkedpart &link = links[i];
-                    link.matrix.transformedtranslate(links[i].translate, resize);
+                    link.matrix.translate(links[i].translate, resize);
 
                     matrixpos++;
                     matrixstack[matrixpos].mul(matrixstack[matrixpos-1], link.matrix);
@@ -1050,7 +1047,7 @@ struct animmodel : model
         matrixstack[0].identity();
         if(!d || !d->ragdoll || anim&ANIM_RAGDOLL)
         {
-            matrixstack[0].translate(pos);
+            matrixstack[0].settranslation(pos);
             matrixstack[0].rotate_around_z(yaw*RAD);
             matrixstack[0].transformnormal(vec(axis), axis);
             matrixstack[0].transformnormal(vec(forward), forward);
@@ -1058,7 +1055,7 @@ struct animmodel : model
         }
         else 
         {
-            matrixstack[0].translate(d->ragdoll->center);
+            matrixstack[0].settranslation(d->ragdoll->center);
             pitch = 0;
         }
 
@@ -1153,7 +1150,7 @@ struct animmodel : model
         matrixstack[0].identity();
         if(!d || !d->ragdoll || anim&ANIM_RAGDOLL)
         {
-            matrixstack[0].translate(o);
+            matrixstack[0].settranslation(o);
             matrixstack[0].rotate_around_z(yaw*RAD);
             matrixstack[0].transformnormal(vec(axis), axis);
             matrixstack[0].transformnormal(vec(forward), forward);
@@ -1161,7 +1158,7 @@ struct animmodel : model
         }
         else
         {
-            matrixstack[0].translate(d->ragdoll->center);
+            matrixstack[0].settranslation(d->ragdoll->center);
             pitch = 0;
         }
 
@@ -1223,7 +1220,7 @@ struct animmodel : model
         m.identity();
         if(offsetyaw) m.rotate_around_z(offsetyaw*RAD);
         if(offsetpitch) m.rotate_around_y(-offsetpitch*RAD);
-        m.transformedtranslate(translate, scale);
+        m.translate(translate, scale);
     }
 
     void gentris(vector<BIH::tri> *tris)

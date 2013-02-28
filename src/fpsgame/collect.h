@@ -444,10 +444,11 @@ struct collectclientmode : clientmode
         if(d->state == CS_ALIVE && d->tokens > 0)
         {
             int x = HICON_X + 3*HICON_STEP + (d->quadmillis ? HICON_SIZE + HICON_SPACE : 0);
-            glPushMatrix();
-            glScalef(2, 2, 1);
+            pushhudmatrix();
+            hudmatrix.scale(2, 2, 1);
+            flushhudmatrix();
             draw_textf("%d", (x + HICON_SIZE + HICON_SPACE)/2, HICON_TEXTY/2, d->tokens);
-            glPopMatrix();
+            pophudmatrix();
             drawicon(HICON_TOKEN, x, HICON_Y);
         }
 
@@ -464,11 +465,12 @@ struct collectclientmode : clientmode
         drawradar(x - roffset, y - roffset, rsize);
         #if 0
         settexture("packages/hud/compass.png", 3);
-        glPushMatrix();
-        glTranslatef(x - roffset + 0.5f*rsize, y - roffset + 0.5f*rsize, 0);
-        glRotatef(camera1->yaw + 180, 0, 0, -1);
+        pushhudmatrix();
+        hudmatrix.translate(x - roffset + 0.5f*rsize, y - roffset + 0.5f*rsize, 0);
+        hudmatrix.rotate_around_z((camera1->yaw + 180)*-RAD);
+        flushhudmatrix();
         drawradar(-0.5f*rsize, -0.5f*rsize, rsize);
-        glPopMatrix();
+        pophudmatrix();
         #endif
         loopv(bases)
         {
@@ -490,11 +492,12 @@ struct collectclientmode : clientmode
             int wait = respawnwait(d);
             if(wait>=0)
             {
-                glPushMatrix();
-                glScalef(2, 2, 1);
+                pushhudmatrix();
+                hudmatrix.scale(2, 2, 1);
+                flushhudmatrix();
                 bool flash = wait>0 && d==player1 && lastspawnattempt>=d->lastpain && lastmillis < lastspawnattempt+100;
                 draw_textf("%s%d", (x+s/2)/2-(wait>=10 ? 28 : 16), (y+s/2)/2-32, flash ? "\f3" : "", wait);
-                glPopMatrix();
+                pophudmatrix();
             }
         }
     }

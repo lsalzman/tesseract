@@ -316,12 +316,10 @@ struct gui : g3d_gui
             float xs = size, ys = size, xi = curx, yi = cury;
             if(overlaid && hit && actionon)
             {
-                glDisable(GL_TEXTURE_2D);
-                notextureshader->set();
+                hudnotextureshader->set();
                 glColor4f(0, 0, 0, 0.75f);
                 rect_(xi+SHADOW, yi+SHADOW, xs, ys, -1);
-                glEnable(GL_TEXTURE_2D);
-                defaultshader->set();
+                hudshader->set();
             }
             int x1 = int(floor(screen->w*(xi*scale.x+origin.x))), y1 = int(floor(screen->h*(1 - ((yi+ys)*scale.y+origin.y)))),
                 x2 = int(ceil(screen->w*((xi+xs)*scale.x+origin.x))), y2 = int(ceil(screen->h*(1 - (yi*scale.y+origin.y))));
@@ -329,20 +327,19 @@ struct gui : g3d_gui
             modelpreview::start(x1, y1, x2-x1, y2-y1, overlaid);
             game::renderplayerpreview(model, team, weap);
             modelpreview::end();
+            hudshader->set();
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glEnable(GL_BLEND);
             if(overlaid)
             {
                 if(hit)
                 {
-                    glDisable(GL_TEXTURE_2D);
-                    notextureshader->set();
+                    hudnotextureshader->set();
                     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
                     glColor3f(1, 0.5f, 0.5f);
                     rect_(xi, yi, xs, ys, -1);
                     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                    glEnable(GL_TEXTURE_2D);
-                    defaultshader->set();
+                    hudshader->set();
                 }
                 if(!overlaytex) overlaytex = textureload("data/guioverlay.png", 3);
                 glColor3f(1, 1, 1);
@@ -364,12 +361,10 @@ struct gui : g3d_gui
             float xs = size, ys = size, xi = curx, yi = cury;
             if(overlaid && hit && actionon)
             {
-                glDisable(GL_TEXTURE_2D);
-                notextureshader->set();
+                hudnotextureshader->set();
                 glColor4f(0, 0, 0, 0.75f);
                 rect_(xi+SHADOW, yi+SHADOW, xs, ys, -1);
-                glEnable(GL_TEXTURE_2D);
-                defaultshader->set();
+                hudshader->set();
             }
             int x1 = int(floor(screen->w*(xi*scale.x+origin.x))), y1 = int(floor(screen->h*(1 - ((yi+ys)*scale.y+origin.y)))),
                 x2 = int(ceil(screen->w*((xi+xs)*scale.x+origin.x))), y2 = int(ceil(screen->h*(1 - (yi*scale.y+origin.y))));
@@ -392,14 +387,12 @@ struct gui : g3d_gui
             {
                 if(hit)
                 {
-                    glDisable(GL_TEXTURE_2D);
-                    notextureshader->set();
+                    hudnotextureshader->set();
                     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
                     glColor3f(1, 0.5f, 0.5f);
                     rect_(xi, yi, xs, ys, -1);
                     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                    glEnable(GL_TEXTURE_2D);
-                    defaultshader->set();
+                    hudshader->set();
                 }
                 if(!overlaytex) overlaytex = textureload("data/guioverlay.png", 3);
                 glColor3f(1, 1, 1);
@@ -515,13 +508,13 @@ struct gui : g3d_gui
             
             e->draw(curx+FONTW/2, cury, color, hit && editing);
             
-            notextureshader->set();
+            hudnotextureshader->set();
             glDisable(GL_BLEND);
             if(editing) glColor3f(1, 0, 0);
             else glColor3ub(color>>16, (color>>8)&0xFF, color&0xFF);
             rect_(curx, cury, w, h, -1, true);
             glEnable(GL_BLEND);
-            defaultshader->set();
+            hudshader->set();
         }
         layout(w, h);
         
@@ -574,7 +567,7 @@ struct gui : g3d_gui
     void background(int color, int inheritw, int inherith)
     {
         if(layoutpass) return;
-        notextureshader->set();
+        hudnotextureshader->set();
         glColor4ub(color>>16, (color>>8)&0xFF, color&0xFF, 0x80);
         int w = xsize, h = ysize;
         if(inheritw>0) 
@@ -594,7 +587,7 @@ struct gui : g3d_gui
             h = p.springs > 0 && !((curdepth-parentdepth)&1) ? lists[p.parent].h : p.h;
         }
         rect_(curx, cury, w, h);
-        defaultshader->set();
+        hudshader->set();
     }
 
     void icon_(Texture *t, bool overlaid, int x, int y, int size, bool hit)
@@ -645,12 +638,12 @@ struct gui : g3d_gui
         float xt = min(1.0f, t->xs/(float)t->ys), yt = min(1.0f, t->ys/(float)t->xs), xs = size, ys = size;
         if(hit && actionon) 
         {
-            notextureshader->set();
+            hudnotextureshader->set();
             glColor4f(0, 0, 0, 0.75f);
             rect_(x+SHADOW, y+SHADOW, xs, ys);
-            defaultshader->set();	
+            hudshader->set();	
         }
-        SETSHADER(rgbonly);
+        SETSHADER(hudrgb);
         const vec &color = hit ? vec(1, 0.5f, 0.5f) : vec(1, 1, 1);
         float tc[4][2] = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
         int xoff = vslot.offset.x, yoff = vslot.offset.y;
@@ -696,7 +689,7 @@ struct gui : g3d_gui
             glEnd();
         }
             
-        defaultshader->set();
+        hudshader->set();
         if(overlaid) 
         {
             if(!overlaytex) overlaytex = textureload("data/guioverlay.png", 3);
@@ -895,10 +888,11 @@ struct gui : g3d_gui
             if(tcurrent && !*tcurrent) tcurrent = NULL;
             cury = -ysize; 
             curx = -xsize/2;
-            
-            glPushMatrix();
-            glTranslatef(origin.x, origin.y, origin.z);
-            glScalef(scale.x, scale.y, scale.z);
+           
+            pushhudmatrix();
+            hudmatrix.translate(origin);
+            hudmatrix.scale(scale); 
+            flushhudmatrix();
 
             drawskin(curx-skinx[2]*SKIN_SCALE, cury-skiny[6]*SKIN_SCALE, xsize, ysize, 0, 9, alpha);
             if(!tcurrent) drawskin(curx-skinx[5]*SKIN_SCALE, cury-skiny[6]*SKIN_SCALE, xsize, 0, 9, 1, alpha);
@@ -977,7 +971,7 @@ struct gui : g3d_gui
         else
         {
             if(tcurrent && tx<xsize) drawskin(curx+tx-skinx[5]*SKIN_SCALE, -ysize-skiny[6]*SKIN_SCALE, xsize-tx, FONTH, 9, 1, alpha);
-            glPopMatrix();
+            pophudmatrix();
         }
         poplist();
     }
@@ -1215,24 +1209,14 @@ void g3d_render()
 
     if(guis2d.length())
     {
+        hudmatrix.ortho(0, 1, 1, 0, -1, 1);
+        resethudmatrix();
+        hudshader->set();
+
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glLoadIdentity();
-        glOrtho(0, 1, 1, 0, -1, 1);
-
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        glLoadIdentity();
-
         loopvrev(guis2d) guis2d[i].draw();
-
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
 
         glDisable(GL_BLEND);
     }
@@ -1251,16 +1235,17 @@ void g3d_render()
 void consolebox(int x1, int y1, int x2, int y2)
 {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glPushMatrix();
-    glTranslatef(x1, y1, 0);
     float bw = x2 - x1, bh = y2 - y1, aspect = bw/bh, sh = bh, sw = sh*aspect;
     bw *= float(4*FONTH)/(SKIN_H*SKIN_SCALE);
     bh *= float(4*FONTH)/(SKIN_H*SKIN_SCALE);
     sw /= bw + (gui::skinx[2]-gui::skinx[1] + gui::skinx[10]-gui::skinx[9])*SKIN_SCALE;
     sh /= bh + (gui::skiny[9]-gui::skiny[7] + gui::skiny[6]-gui::skiny[4])*SKIN_SCALE;
-    glScalef(sw, sh, 1);
+    pushhudmatrix();
+    hudmatrix.translate(x1, y1, 0);
+    hudmatrix.scale(sw, sh, 1);
+    flushhudmatrix();
     gui::drawskin(-gui::skinx[1]*SKIN_SCALE, -gui::skiny[4]*SKIN_SCALE, int(bw), int(bh), 0, 9, 0.60f);
     gui::drawskin((-gui::skinx[1] + gui::skinx[2] - gui::skinx[5])*SKIN_SCALE, -gui::skiny[4]*SKIN_SCALE, int(bw), 0, 9, 1, 0.60f);
-    glPopMatrix();
+    pophudmatrix();
 }
 

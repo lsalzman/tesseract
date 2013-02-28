@@ -2088,14 +2088,8 @@ void forcecubemapload(GLuint tex)
     extern int ati_cubemap_bug;
     if(!ati_cubemap_bug || !tex) return;
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
+    SETSHADER(forcecubemap);
 
-    cubemapshader->set();
     GLenum depthtest = glIsEnabled(GL_DEPTH_TEST), blend = glIsEnabled(GL_BLEND);
     if(depthtest) glDisable(GL_DEPTH_TEST);
     glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, tex);
@@ -2111,11 +2105,6 @@ void forcecubemapload(GLuint tex)
     glEnd();
     if(!blend) glDisable(GL_BLEND);
     if(depthtest) glEnable(GL_DEPTH_TEST);
-
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
 }
 
 cubemapside cubemapsides[6] =

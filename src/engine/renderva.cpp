@@ -523,13 +523,13 @@ VAR(dtoutline, 0, 1, 1);
 
 void renderoutline()
 {
-    notextureshader->set();
+    ldrnotextureshader->set();
 
     glEnableClientState(GL_VERTEX_ARRAY);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    bvec color((outlinecolour>>16)&0xFF, (outlinecolour>>8)&0xFF, outlinecolour&0xFF);
-    glColor3f(color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb);
+    vec color = vec::hexcolor(outlinecolour);
+    glColor3f(color.x, color.y, color.z);
 
     enablepolygonoffset(GL_POLYGON_OFFSET_LINE);
 
@@ -571,8 +571,6 @@ void renderoutline()
     glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     glDisableClientState(GL_VERTEX_ARRAY);
-
-    defaultshader->set();
 }
 
 HVAR(blendbrushcolor, 0, 0x0000C0, 0xFFFFFF);
@@ -589,8 +587,8 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     glBindTexture(GL_TEXTURE_2D, tex);
-    bvec color((blendbrushcolor>>16)&0xFF, (blendbrushcolor>>8)&0xFF, blendbrushcolor&0xFF);
-    glColor4f(color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb, 0.25f);
+    vec color = vec::hexcolor(blendbrushcolor);
+    glColor4f(color.x, color.y, color.z, 0.25f);
 
     LOCALPARAMF(texgenS, (1.0f/w, 0, 0, -x/w));
     LOCALPARAMF(texgenT, (0, 1.0f/h, 0, -y/h));
@@ -621,8 +619,6 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
     glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     glDisableClientState(GL_VERTEX_ARRAY);
-
-    notextureshader->set();
 }
  
 int calcbbsidemask(const ivec &bbmin, const ivec &bbmax, const vec &lightpos, float lightradius, float bias)
@@ -1886,9 +1882,9 @@ bool renderexplicitsky(bool outline)
                 glEnableClientState(GL_VERTEX_ARRAY);
                 if(outline)
                 {
-                    notextureshader->set();
-                    bvec color((explicitskycolour>>16)&0xFF, (explicitskycolour>>8)&0xFF, explicitskycolour&0xFF);
-                    glColor3f(color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb);
+                    ldrnotextureshader->set();
+                    vec color = vec::hexcolor(explicitskycolour);
+                    glColor3f(color.x, color.y, color.z);
                     glDepthMask(GL_FALSE);
                     enablepolygonoffset(GL_POLYGON_OFFSET_LINE);
                     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

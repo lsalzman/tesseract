@@ -142,8 +142,8 @@ void draw_env_overlay(int w, Texture *overlay = NULL, float tx = 0, float ty = 0
 {
     float z = w*cloudheight, tsz = 0.5f*(1-cloudfade)/cloudscale, psz = w*(1-cloudfade);
     glBindTexture(GL_TEXTURE_2D, overlay ? overlay->id : notexture->id);
-    float r = (cloudcolour>>16)*ldrscaleb, g = ((cloudcolour>>8)&255)*ldrscaleb, b = (cloudcolour&255)*ldrscaleb;
-    glColor4f(r, g, b, cloudalpha);
+    vec color = vec::hexcolor(cloudcolour);
+    glColor4f(color.r, color.g, color.b, cloudalpha);
     glBegin(GL_TRIANGLE_FAN);
     loopi(cloudsubdiv+1)
     {
@@ -158,9 +158,9 @@ void draw_env_overlay(int w, Texture *overlay = NULL, float tx = 0, float ty = 0
     {
         vec p(1, 1, 0);
         p.rotate_around_z((-2.0f*M_PI*i)/cloudsubdiv);
-        glColor4f(r, g, b, cloudalpha);
+        glColor4f(color.r, color.g, color.b, cloudalpha);
         glTexCoord2f(tx + p.x*tsz, ty + p.y*tsz); glVertex3f(p.x*psz, p.y*psz, z);
-        glColor4f(r, g, b, 0);
+        glColor4f(color.r, color.g, color.b, 0);
         glTexCoord2f(tx + p.x*tsz2, ty + p.y*tsz2); glVertex3f(p.x*w, p.y*w, z);
     }
     glEnd();    
@@ -349,19 +349,19 @@ VARR(fogdomeclouds, 0, 1, 1);
 
 static void drawfogdome(int farplane)
 {
-    ldrnotextureshader->set();
+    SETSHADER(skyfog);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glPushMatrix();
-    glmatrix fogdomematrix = cammatrix;
-    fogdomematrix.d = vec4(0, 0, 0, 1);
-    fogdomematrix.transformedtranslate(0, 0, farplane*fogdomeheight*0.5f);
-    fogdomematrix.scale(farplane/2, farplane/2, farplane*(0.5f - fogdomeheight*0.5f)); 
-    glLoadMatrixf(fogdomematrix.a.v);
+    glmatrix skymatrix = cammatrix, skyprojmatrix;
+    skymatrix.d = vec4(0, 0, 0, 1);
+    skymatrix.translate(0, 0, farplane*fogdomeheight*0.5f);
+    skymatrix.scale(farplane/2, farplane/2, farplane*(0.5f - fogdomeheight*0.5f)); 
+    skyprojmatrix.mul(projmatrix, skymatrix);
+    LOCALPARAM(skymatrix, skyprojmatrix);
+
     drawdome();
-    glPopMatrix();
 
     glDisable(GL_BLEND);
 }
@@ -396,41 +396,43 @@ void drawskybox(int farplane)
         SETSHADER(skyboxoverbright);
         LOCALPARAMF(overbrightparams, (skyboxoverbright-1, skyboxoverbrightthreshold));
     }
-    else defaultshader->set();
+    else SETSHADER(skybox);
 
     if(clampsky) glDepthRange(1, 1);
 
-    glColor3f((skyboxcolour>>16)*ldrscaleb, ((skyboxcolour>>8)&255)*ldrscaleb, (skyboxcolour&255)*ldrscaleb);
+    vec color = vec::hexcolor(skyboxcolour);
+    glColor3f(color.r, color.g, color.b);
 
-    glPushMatrix();
-    glmatrix skymatrix = cammatrix;
+    glmatrix skymatrix = cammatrix, skyprojmatrix;
     skymatrix.d = vec4(0, 0, 0, 1);
     skymatrix.rotate_around_z((spinsky*lastmillis/1000.0f+yawsky)*-RAD);
-    glLoadMatrixf(skymatrix.a.v);
+    skyprojmatrix.mul(projmatrix, skymatrix);
+    LOCALPARAM(skymatrix, skyprojmatrix);
+
     draw_envbox(farplane/2, skyclip, topclip, 0x3F, sky);
-    glPopMatrix();
 
     if(fogdomemax && !fogdomeclouds) 
     {
         drawfogdome(farplane);
     }
-    
-    defaultshader->set();
+   
+    SETSHADER(skybox); 
 
     if(cloudbox[0])
     {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glColor4f((cloudboxcolour>>16)*ldrscaleb, ((cloudboxcolour>>8)&255)*ldrscaleb, (cloudboxcolour&255)*ldrscaleb, cloudboxalpha);
+        color = vec::hexcolor(cloudboxcolour);
+        glColor4f(color.r, color.g, color.b, cloudboxalpha);
 
-        glPushMatrix();
-        glmatrix cloudsmatrix = cammatrix;
-        cloudsmatrix.d = vec4(0, 0, 0, 1);
-        cloudsmatrix.rotate_around_z((spinclouds*lastmillis/1000.0f+yawclouds)*-RAD);
-        glLoadMatrixf(cloudsmatrix.a.v);
+        skymatrix = cammatrix;
+        skymatrix.d = vec4(0, 0, 0, 1);
+        skymatrix.rotate_around_z((spinclouds*lastmillis/1000.0f+yawclouds)*-RAD);
+        skyprojmatrix.mul(projmatrix, skymatrix);
+        LOCALPARAM(skymatrix, skyprojmatrix);
+
         draw_envbox(farplane/2, skyclip ? skyclip : cloudclip, topclip, 0x3F, clouds);
-        glPopMatrix();
 
         glDisable(GL_BLEND);
     }
@@ -442,13 +444,13 @@ void drawskybox(int farplane)
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glPushMatrix();
-        glmatrix cloudlayermatrix = cammatrix;
-        cloudlayermatrix.d = vec4(0, 0, 0, 1);
-        cloudlayermatrix.rotate_around_z((spincloudlayer*lastmillis/1000.0f+yawcloudlayer)*-RAD);
-        glLoadMatrixf(cloudlayermatrix.a.v);
+        skymatrix = cammatrix;
+        skymatrix.d = vec4(0, 0, 0, 1);
+        skymatrix.rotate_around_z((spincloudlayer*lastmillis/1000.0f+yawcloudlayer)*-RAD);
+        skyprojmatrix.mul(projmatrix, skymatrix);
+        LOCALPARAM(skymatrix, skyprojmatrix);
+
         draw_env_overlay(farplane/2, cloudoverlay, cloudoffsetx + cloudscrollx * lastmillis/1000.0f, cloudoffsety + cloudscrolly * lastmillis/1000.0f);
-        glPopMatrix();
 
         glDisable(GL_BLEND);
 

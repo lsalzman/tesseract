@@ -133,17 +133,21 @@ struct flarerenderer : partrenderer
 
     void render()
     {
-        defaultshader->set();
+        ldrshader->set();
         glDisable(GL_DEPTH_TEST);
         if(!tex) tex = textureload(texname);
         glBindTexture(GL_TEXTURE_2D, tex->id);
-        glBegin(GL_QUADS);
+        varray::enable();
+        varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
+        varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
+        varray::defattrib(varray::ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE); 
+        varray::begin(GL_QUADS);
         loopi(numflares)
         {
             flare *f = flares+i;
             vec center = f->center;
             vec axis = vec(f->o).sub(center);
-            float color[4] = {f->color[0]*ldrscaleb, f->color[1]*ldrscaleb, f->color[2]*ldrscaleb, 1};
+            uchar color[4] = {f->color[0], f->color[1], f->color[2], 255};
             loopj(f->sparkle?12:9)
             {
                 const flaretype &ft = flaretypes[j];
@@ -159,18 +163,25 @@ struct flarerenderer : partrenderer
                     color[2] = 0;
                     color[-ft.type-1] = f->color[-ft.type-1]; //only want a single channel
                 }
-                color[3] = ft.alpha/255.0f;
-                glColor4fv(color);
+                color[3] = ft.alpha;
                 const float tsz = 0.25; //flares are aranged in 4x4 grid
-                float tx = tsz*(tex&0x03);
-                float ty = tsz*((tex>>2)&0x03);
-                glTexCoord2f(tx,     ty+tsz); glVertex3f(o.x+(-camright.x+camup.x)*sz, o.y+(-camright.y+camup.y)*sz, o.z+(-camright.z+camup.z)*sz);
-                glTexCoord2f(tx+tsz, ty+tsz); glVertex3f(o.x+( camright.x+camup.x)*sz, o.y+( camright.y+camup.y)*sz, o.z+( camright.z+camup.z)*sz);
-                glTexCoord2f(tx+tsz, ty);     glVertex3f(o.x+( camright.x-camup.x)*sz, o.y+( camright.y-camup.y)*sz, o.z+( camright.z-camup.z)*sz);
-                glTexCoord2f(tx,     ty);     glVertex3f(o.x+(-camright.x-camup.x)*sz, o.y+(-camright.y-camup.y)*sz, o.z+(-camright.z-camup.z)*sz);
+                float tx = tsz*(tex&0x03), ty = tsz*((tex>>2)&0x03);
+                varray::attrib<float>(o.x+(-camright.x+camup.x)*sz, o.y+(-camright.y+camup.y)*sz, o.z+(-camright.z+camup.z)*sz);
+                    varray::attrib<float>(tx,     ty+tsz);                                       
+                    varray::attribv<4, uchar>(color);
+                varray::attrib<float>(o.x+( camright.x+camup.x)*sz, o.y+( camright.y+camup.y)*sz, o.z+( camright.z+camup.z)*sz);
+                    varray::attrib<float>(tx+tsz, ty+tsz);
+                    varray::attribv<4, uchar>(color);
+                varray::attrib<float>(o.x+( camright.x-camup.x)*sz, o.y+( camright.y-camup.y)*sz, o.z+( camright.z-camup.z)*sz);
+                    varray::attrib<float>(tx+tsz, ty);
+                    varray::attribv<4, uchar>(color);
+                varray::attrib<float>(o.x+(-camright.x-camup.x)*sz, o.y+(-camright.y-camup.y)*sz, o.z+(-camright.z-camup.z)*sz);
+                    varray::attrib<float>(tx,     ty);
+                    varray::attribv<4, uchar>(color);
             }
         }
-        glEnd();
+        varray::end();
+        varray::disable();
         glEnable(GL_DEPTH_TEST);
     }
 

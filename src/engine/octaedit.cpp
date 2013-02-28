@@ -2276,11 +2276,12 @@ void rendertexturepanel(int w, int h)
     {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        glPushMatrix();
-        glScalef(h/1800.0f, h/1800.0f, 1);
-        int y = 50, gap = 10;
+        pushhudmatrix();
+        hudmatrix.scale(h/1800.0f, h/1800.0f, 1);
+        flushhudmatrix(false);
+        SETSHADER(hudrgb);
 
-        SETSHADER(rgbonly);
+        int y = 50, gap = 10;
 
         loopi(7)
         {
@@ -2351,8 +2352,7 @@ void rendertexturepanel(int w, int h)
             y += s+gap;
         }
 
-        defaultshader->set();
-
-        glPopMatrix();
+        pophudmatrix(true, false);
+        hudshader->set();
     }
 }

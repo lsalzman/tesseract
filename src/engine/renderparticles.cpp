@@ -395,7 +395,7 @@ struct meterrenderer : listrenderer
                     vec4(camright.y, -camup.y, -camdir.y, o.y),
                     vec4(camright.z, -camup.z, -camdir.z, o.z));
         m.scale(scale);
-        m.transformedtranslate(-right/2.0f, 0, 0);
+        m.translate(-right/2.0f, 0, 0);
 
         if(outlinemeters)
         {
@@ -478,7 +478,7 @@ struct textrenderer : listrenderer
                     vec4(camright.y, -camup.y, -camdir.y, o.y),
                     vec4(camright.z, -camup.z, -camdir.z, o.z));
         m.scale(scale);
-        m.transformedtranslate(xoff, yoff, 50);
+        m.translate(xoff, yoff, 50);
 
         textmatrix = &m;
         draw_text(p->text, 0, 0, color[0], color[1], color[2], blend);
@@ -857,16 +857,12 @@ void renderparticles()
     if(debugparticles)
     {
         int n = sizeof(parts)/sizeof(parts[0]);
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glLoadIdentity();
-        glOrtho(0, FONTH*n*2*vieww/float(viewh), FONTH*n*2, 0, -1, 1); //squeeze into top-left corner        
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        glLoadIdentity();
+        hudmatrix.ortho(0, FONTH*n*2*vieww/float(viewh), FONTH*n*2, 0, -1, 1); // squeeze into top-left corner
+        resethudmatrix();
+        hudshader->set();
+
         glDisable(GL_DEPTH_TEST);
         glEnable(GL_BLEND);
-        defaultshader->set();
         loopi(n) 
         {
             int type = parts[i]->type;
@@ -884,10 +880,6 @@ void renderparticles()
         }
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
     }
 
     loopi(sizeof(parts)/sizeof(parts[0])) 

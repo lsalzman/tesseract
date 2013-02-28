@@ -1020,27 +1020,76 @@ ICOMMAND(getcampos, "", (),
 
 vec worldpos, camdir, camright, camup;
 
-void findorientation()
-{
-    cammatrix.transposedtransformnormal(vec(viewmatrix.b), camdir);
-    cammatrix.transposedtransformnormal(vec(viewmatrix.a).neg(), camright);
-    cammatrix.transposedtransformnormal(vec(viewmatrix.c), camup);
-
-    if(raycubepos(camera1->o, camdir, worldpos, 0, RAY_CLIPMAT|RAY_SKIPFIRST) == -1)
-        worldpos = vec(camdir).mul(2*worldsize).add(camera1->o); //otherwise 3dgui won't work when outside of map
-}
-
-void transplayer()
+void setcammatrix()
 {
     // move from RH to Z-up LH quake style worldspace
     cammatrix = viewmatrix;
     cammatrix.rotate_around_y(camera1->roll*RAD);
     cammatrix.rotate_around_x(camera1->pitch*-RAD);
     cammatrix.rotate_around_z(camera1->yaw*-RAD);
-    cammatrix.transformedtranslate(camera1->o, -1);
-    glLoadMatrixf(cammatrix.a.v);
+    cammatrix.translate(vec(camera1->o).neg());
+
+    cammatrix.transposedtransformnormal(vec(viewmatrix.b), camdir);
+    cammatrix.transposedtransformnormal(vec(viewmatrix.a).neg(), camright);
+    cammatrix.transposedtransformnormal(vec(viewmatrix.c), camup);
+
+    if(!drawtex)
+    {
+        if(raycubepos(camera1->o, camdir, worldpos, 0, RAY_CLIPMAT|RAY_SKIPFIRST) == -1)
+            worldpos = vec(camdir).mul(2*worldsize).add(camera1->o); //otherwise 3dgui won't work when outside of map
+    }
 }
 
+void setcamprojmatrix(bool init = true)
+{
+    if(init) setcammatrix();
+
+    jitteraa(init);
+
+    camprojmatrix.mul(projmatrix, cammatrix);
+
+    if(init)
+    {
+        invcammatrix.invert(cammatrix);
+        invprojmatrix.invert(projmatrix);
+        invcamprojmatrix.invert(camprojmatrix);
+    }
+
+    GLOBALPARAM(camprojmatrix, camprojmatrix);
+    GLOBALPARAM(lineardepthscale, projmatrix.lineardepthscale()); //(invprojmatrix.c.z, invprojmatrix.d.z));
+}
+
+glmatrix hudmatrix, hudmatrixstack[64];
+int hudmatrixpos = 0;
+
+void resethudmatrix()
+{
+    hudmatrixpos = 0;
+    GLOBALPARAM(hudmatrix, hudmatrix);
+}
+ 
+void pushhudmatrix()
+{
+    if(hudmatrixpos >= 0 && hudmatrixpos < int(sizeof(hudmatrixstack)/sizeof(hudmatrixstack[0]))) hudmatrixstack[hudmatrixpos] = hudmatrix;
+    ++hudmatrixpos;
+}
+
+void flushhudmatrix(bool flushparams)
+{
+    GLOBALPARAM(hudmatrix, hudmatrix);
+    if(flushparams && Shader::lastshader) Shader::lastshader->flushparams();
+}
+
+void pophudmatrix(bool flush, bool flushparams)
+{
+    --hudmatrixpos;
+    if(hudmatrixpos >= 0 && hudmatrixpos < int(sizeof(hudmatrixstack)/sizeof(hudmatrixstack[0]))) 
+    {
+        hudmatrix = hudmatrixstack[hudmatrixpos];
+        if(flush) flushhudmatrix(flushparams);
+    }
+}
+ 
 int vieww = -1, viewh = -1;
 float curfov = 100, curavatarfov = 65, fovy, aspect;
 int farplane;
@@ -1236,25 +1285,7 @@ extern const glmatrix viewmatrix(vec(-1, 0, 0), vec(0, 0, 1), vec(0, -1, 0));
 extern const glmatrix invviewmatrix(vec(-1, 0, 0), vec(0, 0, -1), vec(0, 1, 0));
 glmatrix cammatrix, projmatrix, camprojmatrix, invcammatrix, invcamprojmatrix, invprojmatrix;
 
-void readmatrices()
-{
-    camprojmatrix.mul(projmatrix, cammatrix);
-    invcammatrix.invert(cammatrix);
-    invcamprojmatrix.invert(camprojmatrix);
-    invprojmatrix.invert(projmatrix);
-}
-
 FVAR(nearplane, 0.01f, 0.54f, 2.0f);
-
-void project(float fovy, float aspect, int farplane, float zscale = 1)
-{
-    glMatrixMode(GL_PROJECTION);
-    projmatrix.perspective(fovy, aspect, nearplane, farplane);
-    if(zscale!=1) projmatrix.scalez(zscale);
-    jitteraa();
-    glLoadMatrixf(projmatrix.a.v);
-    glMatrixMode(GL_MODELVIEW);
-}
 
 vec calcavatarpos(const vec &pos, float dist)
 {
@@ -1276,15 +1307,20 @@ void renderavatar()
 {
     if(!isthirdperson())
     {
-        project(curavatarfov, aspect, farplane, avatardepth);
+        projmatrix.perspective(curavatarfov, aspect, nearplane, farplane);
+        projmatrix.scalez(avatardepth);
+        setcamprojmatrix(false);
         game::renderavatar();
-        project(fovy, aspect, farplane);
+        projmatrix.perspective(fovy, aspect, nearplane, farplane);
+        setcamprojmatrix(false);
     }
 }
 
 FVAR(polygonoffsetfactor, -1e4f, -3.0f, 1e4f);
 FVAR(polygonoffsetunits, -1e4f, -3.0f, 1e4f);
 FVAR(depthoffset, -1e4f, 0.01f, 1e4f);
+
+glmatrix nooffsetmatrix;
 
 void enablepolygonoffset(GLenum type)
 {
@@ -1295,13 +1331,10 @@ void enablepolygonoffset(GLenum type)
         return;
     }
     
-    glmatrix offsetmatrix = projmatrix;
-    offsetmatrix.d.z += depthoffset * projmatrix.c.z;
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadMatrixf(offsetmatrix.a.v);
-    glMatrixMode(GL_MODELVIEW);
+    projmatrix = nojittermatrix;
+    nooffsetmatrix = projmatrix;
+    projmatrix.d.z += depthoffset * projmatrix.c.z;
+    setcamprojmatrix(false);
 }
 
 void disablepolygonoffset(GLenum type)
@@ -1311,10 +1344,9 @@ void disablepolygonoffset(GLenum type)
         glDisable(type);
         return;
     }
-    
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
+   
+    projmatrix = nooffsetmatrix; 
+    setcamprojmatrix(false);
 }
 
 static int scissoring = 0;
@@ -1717,21 +1749,13 @@ static void blendfogoverlay(int fogmat, float below, float blend, float *overlay
 
 void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
 {
-    notextureshader->set();
+    SETSHADER(fogoverlay);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
     float overlay[3] = { 0, 0, 0 };
     blendfogoverlay(fogmat, fogbelow, fogblend, overlay);
     blendfogoverlay(abovemat, 0, 1-fogblend, overlay);
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
 
     glColor3fv(overlay);
     glBegin(GL_TRIANGLE_STRIP);
@@ -1741,14 +1765,6 @@ void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
     glVertex2f(1, 1);
     glEnd();
     glDisable(GL_BLEND);
-
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
-
-    defaultshader->set();
 }
 
 int drawtex = 0;
@@ -1846,13 +1862,8 @@ void drawminimap()
 
     float zscale = max(float(minimapheight), minimapcenter.z + minimapradius.z + 1) + 1;
 
-    glMatrixMode(GL_PROJECTION);
     projmatrix.ortho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, 0, 2*zscale);
-    glLoadMatrixf(projmatrix.a.v);
-    glMatrixMode(GL_MODELVIEW);
-
-    transplayer();
-    readmatrices();
+    setcamprojmatrix();
 
     resetlights();
 
@@ -1881,12 +1892,8 @@ void drawminimap()
     if(minimapheight > 0 && minimapheight < minimapcenter.z + minimapradius.z)
     {
         camera1->o.z = minimapcenter.z + minimapradius.z + 1;
-        glMatrixMode(GL_PROJECTION);
         projmatrix.ortho(-minimapradius.x, minimapradius.x, -minimapradius.y, minimapradius.y, -zscale, zscale);
-        glLoadMatrixf(projmatrix.a.v);
-        glMatrixMode(GL_MODELVIEW);
-        transplayer();
-        readmatrices();
+        setcamprojmatrix();
         rendergbuffer(false);
         shademinimap();
     }
@@ -1951,11 +1958,8 @@ void drawcubemap(int size, const vec &o, float yaw, float pitch, const cubemapsi
     aspect = 1;
     farplane = worldsize*2;
     vieww = viewh = size;
-    project(90.0f, 1.0f, farplane);
-
-    transplayer();
-    readmatrices();
-    findorientation();
+    projmatrix.perspective(fovy, aspect, nearplane, farplane);
+    setcamprojmatrix();
 
     resetlights();
 
@@ -2070,14 +2074,8 @@ namespace modelpreview
         GLOBALPARAM(camera, camera1->o);
         GLOBALPARAMF(millis, (lastmillis/1000.0f));
 
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-
-        project(fovy, aspect, farplane);
-        transplayer();
-        readmatrices();
+        projmatrix.perspective(fovy, aspect, nearplane, farplane);
+        setcamprojmatrix();
 
         glEnable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
@@ -2095,13 +2093,6 @@ namespace modelpreview
         glDisable(GL_CULL_FACE);
 
         shademodelpreview(x, y, w, h, background, scissor);
-
-        defaultshader->set();
-
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
 
         aspect = oldaspect;
         fovy = oldfovy;
@@ -2124,8 +2115,6 @@ int xtraverts, xtravertsva;
 void gl_drawframe(int w, int h)
 {
     synctimers();
-
-    defaultshader->set();
 
     GLuint scalefbo = shouldscale();
     if(scalefbo) { vieww = gw; viewh = gh; }
@@ -2153,11 +2142,8 @@ void gl_drawframe(int w, int h)
 
     resetlights();
 
-    project(fovy, aspect, farplane);
-    transplayer();
-
-    readmatrices();
-    findorientation();
+    projmatrix.perspective(fovy, aspect, nearplane, farplane);
+    setcamprojmatrix();
 
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -2211,9 +2197,6 @@ void gl_drawframe(int w, int h)
 
     if(fogmat) setfog(fogmat, fogbelow, 1, abovemat);
 
-    defaultshader->set();
-    GLERROR;
-
     extern int outline;
     if(!wireframe && editmode && outline) renderoutline();
     GLERROR;
@@ -2236,15 +2219,13 @@ void gl_drawframe(int w, int h)
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
 
-    doaa(setuppostfx(vieww, viewh, scalefbo), processhdr);
     if(fogoverlay && fogmat != MAT_AIR) drawfogoverlay(fogmat, fogbelow, clamp(fogbelow, 0.0f, 1.0f), abovemat);
+
+    doaa(setuppostfx(vieww, viewh, scalefbo), processhdr);
     renderpostfx(scalefbo);
     if(scalefbo) { vieww = w; viewh = h; doscale(vieww, viewh); }
 
-    defaultshader->set();
     g3d_render();
-
-    notextureshader->set();
 
     gl_drawhud(vieww, viewh);
 }
@@ -2255,15 +2236,7 @@ void gl_drawmainmenu(int w, int h)
 
     renderbackground(NULL, NULL, NULL, NULL, true, true);
     
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    defaultshader->set();
     g3d_render();
-
-    notextureshader->set();
 
     gl_drawhud(w, h);
 }
@@ -2275,7 +2248,8 @@ VARP(damagecompassalpha, 1, 25, 100);
 VARP(damagecompassmin, 1, 25, 1000);
 VARP(damagecompassmax, 1, 200, 1000);
 
-float dcompass[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+float damagedirs[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
 void damagecompass(int n, const vec &loc)
 {
     if(!usedamagecompass || minimized) return;
@@ -2288,15 +2262,17 @@ void damagecompass(int n, const vec &loc)
     if(yaw >= 360) yaw = fmod(yaw, 360);
     else if(yaw < 0) yaw = 360 - fmod(-yaw, 360);
     int dir = (int(yaw+22.5f)%360)/45;
-    dcompass[dir] += max(n, damagecompassmin)/float(damagecompassmax);
-    if(dcompass[dir]>1) dcompass[dir] = 1;
+    damagedirs[dir] += max(n, damagecompassmin)/float(damagecompassmax);
+    if(damagedirs[dir]>1) damagedirs[dir] = 1;
 
 }
 void drawdamagecompass(int w, int h)
 {
+    hudnotextureshader->set();
+
     int dirs = 0;
     float size = damagecompasssize/100.0f*min(h, w)/2.0f;
-    loopi(8) if(dcompass[i]>0)
+    loopi(8) if(damagedirs[i]>0)
     {
         if(!dirs)
         {
@@ -2309,13 +2285,13 @@ void drawdamagecompass(int w, int h)
         dirs++;
 
         float logscale = 32,
-              scale = log(1 + (logscale - 1)*dcompass[i]) / log(logscale),
+              scale = log(1 + (logscale - 1)*damagedirs[i]) / log(logscale),
               offset = -size/2.0f-min(h, w)/4.0f;
         matrix3x4 m;
         m.identity();
-        m.translate(w/2, h/2, 0);
+        m.settranslation(w/2, h/2, 0);
         m.rotate_around_z(i*45*RAD);
-        m.transformedtranslate(0, offset, 0);
+        m.translate(0, offset, 0);
         m.scale(size*scale);
         
         varray::attrib(m.transform(vec2(1, 1)));
@@ -2324,7 +2300,7 @@ void drawdamagecompass(int w, int h)
 
         // fade in log space so short blips don't disappear too quickly
         scale -= float(curtime)/damagecompassfade;
-        dcompass[i] = scale > 0 ? (pow(logscale, scale) - 1) / (logscale - 1) : 0;
+        damagedirs[i] = scale > 0 ? (pow(logscale, scale) - 1) / (logscale - 1) : 0;
     }
     if(dirs)
     {
@@ -2353,7 +2329,7 @@ void drawdamagescreen(int w, int h)
 {
     if(lastmillis >= damageblendmillis) return;
 
-    defaultshader->set();
+    hudshader->set();
 
     static Texture *damagetex = NULL;
     if(!damagetex) damagetex = textureload("packages/hud/damage.png", 3);
@@ -2371,8 +2347,6 @@ void drawdamagescreen(int w, int h)
     glTexCoord2f(0, 1); glVertex2f(0, h);
     glTexCoord2f(1, 1); glVertex2f(w, h);
     glEnd();
-
-    notextureshader->set();
 }
 
 VAR(hidestats, 0, 0, 1);
@@ -2485,11 +2459,9 @@ void gl_drawhud(int w, int h)
 
     gettextres(w, h);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, w, h, 0, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    hudmatrix.ortho(0, w, h, 0, -1, 1);
+    resethudmatrix();
+    hudshader->set();
     
     glColor3f(1, 1, 1);
 
@@ -2503,15 +2475,16 @@ void gl_drawhud(int w, int h)
         drawdamagecompass(w, h);
     }
 
-    defaultshader->set();
+    hudshader->set();
 
     int conw = int(w/conscale), conh = int(h/conscale), abovehud = conh - FONTH, limitgui = abovehud;
     if(!hidehud && !mainmenu)
     {
         if(!hidestats)
         {
-            glPushMatrix();
-            glScalef(conscale, conscale, 1);
+            pushhudmatrix();
+            hudmatrix.scale(conscale, conscale, 1);
+            flushhudmatrix();
 
             int roffset = 0;
             if(showfps)
@@ -2613,7 +2586,7 @@ void gl_drawhud(int w, int h)
                 }
             } 
             
-            glPopMatrix();
+            pophudmatrix();
         }
 
         if(hidestats || (!editmode && !showeditstats))
@@ -2628,12 +2601,13 @@ void gl_drawhud(int w, int h)
     
     g3d_limitscale((2*limitgui - conh) / float(conh));
 
-    glPushMatrix();
-    glScalef(conscale, conscale, 1);
+    pushhudmatrix();
+    hudmatrix.scale(conscale, conscale, 1);
+    flushhudmatrix();
     abovehud -= rendercommand(FONTH/2, abovehud - FONTH/2, conw-FONTH);
     extern int fullconsole;
     if(!hidehud || fullconsole) renderconsole(conw, conh, abovehud - FONTH/2);
-    glPopMatrix();
+    pophudmatrix();
 
     drawcrosshair(w, h);
 

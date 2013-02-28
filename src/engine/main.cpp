@@ -143,13 +143,9 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
     getbackgroundres(w, h);
     gettextres(w, h);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, w, h, 0, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    defaultshader->set();
+    hudmatrix.ortho(0, w, h, 0, -1, 1);
+    resethudmatrix();
+    hudshader->set();
 
     static int lastupdate = -1, lastw = -1, lasth = -1;
     static float backgroundu = 0, backgroundv = 0;
@@ -241,11 +237,12 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
             int tw = text_width(caption);
             float tsz = 0.04f*min(w, h)/FONTH,
                   tx = 0.5f*(w - tw*tsz), ty = h - 0.075f*1.5f*min(w, h) - 1.25f*FONTH*tsz;
-            glPushMatrix();
-            glTranslatef(tx, ty, 0);
-            glScalef(tsz, tsz, 1);
+            pushhudmatrix();
+            hudmatrix.translate(tx, ty, 0);
+            hudmatrix.scale(tsz, tsz, 1);
+            flushhudmatrix();
             draw_text(caption, 0, 0);
-            glPopMatrix();
+            pophudmatrix();
         }
         if(mapshot || mapname)
         {
@@ -272,11 +269,12 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
                 int qw, qh;
                 text_bounds("?", qw, qh);
                 float qsz = sz*0.5f/max(qw, qh);
-                glPushMatrix();
-                glTranslatef(x + 0.5f*(sz - qw*qsz), y + 0.5f*(sz - qh*qsz), 0);
-                glScalef(qsz, qsz, 1);
+                pushhudmatrix();
+                hudmatrix.translate(x + 0.5f*(sz - qw*qsz), y + 0.5f*(sz - qh*qsz), 0);
+                hudmatrix.scale(qsz, qsz, 1);
+                flushhudmatrix();
                 draw_text("?", 0, 0);
-                glPopMatrix();
+                pophudmatrix();
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             }        
             settexture("data/mapshot_frame.png", 3);
@@ -292,19 +290,21 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
                 float tsz = sz/(8*FONTH),
                       tx = 0.9f*sz - tw*tsz, ty = 0.9f*sz - FONTH*tsz;
                 if(tx < 0.1f*sz) { tsz = 0.1f*sz/tw; tx = 0.1f; }
-                glPushMatrix();
-                glTranslatef(x+tx, y+ty, 0);
-                glScalef(tsz, tsz, 1);
+                pushhudmatrix();
+                hudmatrix.translate(x+tx, y+ty, 0);
+                hudmatrix.scale(tsz, tsz, 1);
+                flushhudmatrix();
                 draw_text(mapname, 0, 0);
-                glPopMatrix();
+                pophudmatrix();
             }
             if(mapinfo)
             {
-                glPushMatrix();
-                glTranslatef(x+sz+FONTH*msz, y, 0);
-                glScalef(msz, msz, 1);
+                pushhudmatrix();
+                hudmatrix.translate(x+sz+FONTH*msz, y, 0);
+                hudmatrix.scale(msz, msz, 1);
+                flushhudmatrix();
                 draw_text(mapinfo, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, -1, infowidth);
-                glPopMatrix();
+                pophudmatrix();
             }
         }
         glDisable(GL_BLEND);
@@ -344,15 +344,10 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     getbackgroundres(w, h);
     gettextres(w, h);
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(0, w, h, 0, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
+    hudmatrix.ortho(0, w, h, 0, -1, 1);
+    resethudmatrix();
+    hudshader->set();
 
-    defaultshader->set();
     glColor3f(1, 1, 1);
 
     float fh = 0.075f*min(w, h), fw = fh*10,
@@ -404,11 +399,12 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
         int tw = text_width(text);
         float tsz = bh*0.8f/FONTH;
         if(tw*tsz > mw) tsz = mw/tw;
-        glPushMatrix();
-        glTranslatef(bx+sw, by + (bh - FONTH*tsz)/2, 0);
-        glScalef(tsz, tsz, 1);
+        pushhudmatrix();
+        hudmatrix.translate(bx+sw, by + (bh - FONTH*tsz)/2, 0);
+        hudmatrix.scale(tsz, tsz, 1);
+        flushhudmatrix();
         draw_text(text, 0, 0);
-        glPopMatrix();
+        pophudmatrix();
     }
 
     glDisable(GL_BLEND);
@@ -436,10 +432,6 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
         glDisable(GL_BLEND);
     }
 
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
     swapbuffers();
 }
 

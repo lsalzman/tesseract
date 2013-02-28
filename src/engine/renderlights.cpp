@@ -240,7 +240,7 @@ void viewao()
 {
     if(!ao) return;
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
-    rectshader->set();
+    SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2] ? aotex[2] : aotex[0]);
     int tw = aotex[2] ? gw : aow, th = aotex[2] ? gh : aoh;
@@ -250,7 +250,6 @@ void viewao()
     glTexCoord2f(0, 0); glVertex2f(0, h);
     glTexCoord2f(tw, 0); glVertex2f(w, h);
     glEnd();
-    notextureshader->set();
 }
 
 void renderao()
@@ -1268,7 +1267,7 @@ VAR(debugdepth, 0, 0, 1);
 void viewdepth()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
-    rectshader->set();
+    SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     glBegin(GL_TRIANGLE_STRIP);
@@ -1277,7 +1276,6 @@ void viewdepth()
     glTexCoord2f(0, 0); glVertex2f(0, h);
     glTexCoord2f(gw, 0); glVertex2f(w, h);
     glEnd();
-    notextureshader->set();
 }
 
 VAR(debugrefract, 0, 0, 1);
@@ -1285,7 +1283,7 @@ VAR(debugrefract, 0, 0, 1);
 void viewrefract()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
-    rectshader->set();
+    SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
     glBegin(GL_TRIANGLE_STRIP);
@@ -1294,7 +1292,6 @@ void viewrefract()
     glTexCoord2f(0, 0); glVertex2f(0, h);
     glTexCoord2f(gw, 0); glVertex2f(w, h);
     glEnd();
-    notextureshader->set();
 }
 
 #define RH_MAXSPLITS 4
@@ -1425,7 +1422,7 @@ VAR(debugrsm, 0, 0, 2);
 void viewrsm()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
-    rectshader->set();
+    SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, debugrsm == 2 ? rsmnormaltex : rsmcolortex);
     glBegin(GL_TRIANGLE_STRIP);
@@ -1434,14 +1431,13 @@ void viewrsm()
     glTexCoord2f(0, rsmsize); glVertex2f(screen->w-w, screen->h);
     glTexCoord2f(rsmsize, rsmsize); glVertex2f(screen->w, screen->h);
     glEnd();
-    notextureshader->set();
 }
 
 VAR(debugrh, 0, 0, RH_MAXSPLITS*(128 + 2));
 void viewrh()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
-    SETSHADER(tex3d);
+    SETSHADER(hud3d);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_3D, rhtex[1]);
     float z = (debugrh-1+0.5f)/float((rhgrid+2*rhborder)*rhsplits);
@@ -1451,7 +1447,6 @@ void viewrh()
     glTexCoord3f(0, 1, z); glVertex2f(screen->w-w, screen->h);
     glTexCoord3f(1, 1, z); glVertex2f(screen->w, screen->h);
     glEnd();
-    notextureshader->set();
 }
 
 #define SHADOWATLAS_SIZE 4096
@@ -1570,9 +1565,9 @@ void viewshadowatlas()
     {
         tw = shadowatlaspacker.w;
         th = shadowatlaspacker.h;
-        rectshader->set();
+        SETSHADER(hudrect);
     }
-    else defaultshader->set();
+    else hudshader->set();
     glColor3f(1, 1, 1);
     glBindTexture(shadowatlastarget, shadowatlastex);
     if(usesmcomparemode()) setsmnoncomparemode();
@@ -1583,7 +1578,6 @@ void viewshadowatlas()
     glTexCoord2f(tw, th); glVertex2f(screen->w, screen->h);
     glEnd();
     if(usesmcomparemode()) setsmcomparemode();
-    notextureshader->set();
 }
 VAR(debugshadowatlas, 0, 0, 1);
 
@@ -1812,8 +1806,8 @@ void cascadedshadowmap::getprojmatrix()
         split.offset = vec(border - offset.x, border - offset.y, -minz/(maxz - minz));
 
         split.proj.identity();
-        split.proj.scale(2*split.scale.x/sm.size, 2*split.scale.y/sm.size, 2*split.scale.z);
-        split.proj.translate(2*split.offset.x/sm.size - 1, 2*split.offset.y/sm.size - 1, 2*split.offset.z - 1);
+        split.proj.settranslation(2*split.offset.x/sm.size - 1, 2*split.offset.y/sm.size - 1, 2*split.offset.z - 1);
+        split.proj.setscale(2*split.scale.x/sm.size, 2*split.scale.y/sm.size, 2*split.scale.z);
 
         const float bias = (smfilter > 2 ? csmbias2 : csmbias) * (-512.0f / sm.size) * (split.farplane - split.nearplane) / (splits[0].farplane - splits[0].nearplane);
         split.offset.add(vec(sm.x, sm.y, bias));
@@ -1970,8 +1964,8 @@ void reflectiveshadowmap::getprojmatrix()
     offset = vec(-tcoff.x, -tcoff.y, -minz/(maxz - minz));
 
     proj.identity();
-    proj.scale(2*scale.x/rsmsize, 2*scale.y/rsmsize, 2*scale.z);
-    proj.translate(2*offset.x/rsmsize - 1, 2*offset.y/rsmsize - 1, 2*offset.z - 1);
+    proj.settranslation(2*offset.x/rsmsize - 1, 2*offset.y/rsmsize - 1, 2*offset.z - 1);
+    proj.setscale(2*scale.x/rsmsize, 2*scale.y/rsmsize, 2*scale.z);
 }
 
 void reflectiveshadowmap::gencullplanes()
@@ -2390,13 +2384,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         if(!batchsunlight) sunpass = true;
     }
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
     int btx1, bty1, btx2, bty2;
     calctilebounds(bsx1, bsy1, bsx2, bsy2, btx1, bty1, btx2, bty2);
     if(msaapass == 1)
@@ -2449,13 +2436,12 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     static vec lightcolorv[8], spotxv[8], spotyv[8];
     static vec2 shadowoffsetv[8];
 
+    glmatrix lightmatrix;
+    lightmatrix.identity();
+    GLOBALPARAM(lightmatrix, lightmatrix);
+ 
     if(!lighttilebatch)
     {
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
-
         if(!lightspherevbuf) initlightsphere(10, 5);
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, lightspherevbuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, lightsphereebuf);
@@ -2546,16 +2532,15 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 glCullFace(GL_BACK);
             }
 
-            glPushMatrix();
-            glTranslatef(l.o.x, l.o.y, l.o.z);
-            glScalef(l.radius*lightradiustweak, l.radius*lightradiustweak, l.radius*lightradiustweak);
+            lightmatrix = camprojmatrix;
+            lightmatrix.translate(l.o);
+            lightmatrix.scale(l.radius*lightradiustweak);
+            LOCALPARAM(lightmatrix, lightmatrix);
 
             if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, 0, lightspherenumverts-1, lightspherenumindices, GL_UNSIGNED_SHORT, lightsphereindices);
             else glDrawElements(GL_TRIANGLES, lightspherenumindices, GL_UNSIGNED_SHORT, lightsphereindices);
             xtraverts += lightspherenumindices;
             glde++;
-
-            glPopMatrix();
 
             lightpassesused++;
         }
@@ -2714,14 +2699,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 if(i >= tile.length()) break;
             }
         }
-    }
-
-    if(lighttilebatch)
-    {
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
     }
 
     glDisable(GL_SCISSOR_TEST);
@@ -2986,9 +2963,11 @@ void radiancehints::renderslices()
     GLOBALPARAMF(rhatten, (1.0f/(gidist*gidist)));
     GLOBALPARAMF(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
 
-    glmatrix rsmtcmatrix = rsm.model;
-    rsmtcmatrix.scale(rsm.scale);
-    rsmtcmatrix.translate(rsm.offset);
+    glmatrix rsmtcmatrix;
+    rsmtcmatrix.identity();
+    rsmtcmatrix.settranslation(rsm.offset);
+    rsmtcmatrix.setscale(rsm.scale);
+    rsmtcmatrix.mul(rsm.model);
     GLOBALPARAM(rsmtcmatrix, rsmtcmatrix);
 
     glmatrix rsmworldmatrix;
@@ -3266,15 +3245,10 @@ void renderradiancehints()
 
     if(!rhcache || rh.prevdynmin.z < rh.prevdynmax.z || rh.dynmin.z < rh.dynmax.z || !rh.allcached())
     {
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glLoadMatrixf(rsm.proj.a.v);
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        glLoadMatrixf(rsm.model.a.v);
-
         glBindFramebuffer_(GL_FRAMEBUFFER_EXT, rsmfbo);
 
+        shadowmatrix.mul(rsm.proj, rsm.model);
+        GLOBALPARAM(rsmmatrix, shadowmatrix);
         GLOBALPARAMF(rsmdir, (-rsm.lightview.x, -rsm.lightview.y, -rsm.lightview.z));
 
         glViewport(0, 0, rsmsize, rsmsize);
@@ -3285,11 +3259,6 @@ void renderradiancehints()
         rendermodelbatches(rhdynmm!=0);
 
         rh.renderslices();
-
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPopMatrix();
     }
 
     clearbatchedmapmodels();
@@ -3325,10 +3294,9 @@ void rendercsmshadowmaps()
     {
         const shadowmapinfo &sm = shadowmaps[csm.splits[i].idx];
 
-        glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf(csm.splits[i].proj.a.v);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixf(csm.model.a.v);
+        shadowmatrix.mul(csm.splits[i].proj, csm.model);
+        GLOBALPARAM(shadowmatrix, shadowmatrix);
+
         glViewport(sm.x, sm.y, sm.size, sm.size);
         glScissor(sm.x, sm.y, sm.size, sm.size);
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -3379,7 +3347,9 @@ int calcshadowinfo(const extentity &e, vec &origin, float &radius, vec &spotloc,
 
     return type;
 }
-    
+   
+glmatrix shadowmatrix;
+ 
 void rendershadowmaps()
 {
     float polyfactor = smpolyfactor, polyoffset = smpolyoffset;
@@ -3451,9 +3421,6 @@ void rendershadowmaps()
                               vec4(0, float(sm.size - border) / sm.size, 0, 0),
                               vec4(0, 0, -(smfarclip + smnearclip) / (smfarclip - smnearclip), -2*smnearclip*smfarclip / (smfarclip - smnearclip)),
                               vec4(0, 0, -1, 0));
-        glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf(smprojmatrix.a.v);
-        glMatrixMode(GL_MODELVIEW);
 
         if(shadowmapping == SM_SPOT)
         {
@@ -3463,8 +3430,9 @@ void rendershadowmaps()
 
             glmatrix spotmatrix(l.spotx, l.spoty, vec(l.dir).neg());
             spotmatrix.scale(1.0f/l.radius);
-            spotmatrix.transformedtranslate(vec(l.o).neg());
-            glLoadMatrixf(spotmatrix.a.v);
+            spotmatrix.translate(vec(l.o).neg());
+            shadowmatrix.mul(smprojmatrix, spotmatrix);
+            GLOBALPARAM(shadowmatrix, shadowmatrix);
 
             glCullFace((l.dir.scalartriple(l.spoty, l.spotx) < 0) == (smcullside != 0) ? GL_BACK : GL_FRONT);
 
@@ -3493,8 +3461,9 @@ void rendershadowmaps()
 
                 glmatrix cubematrix(cubeshadowviewmatrix[side]);
                 cubematrix.scale(1.0f/l.radius);
-                cubematrix.transformedtranslate(vec(l.o).neg());
-                glLoadMatrixf(cubematrix.a.v);
+                cubematrix.translate(vec(l.o).neg());
+                shadowmatrix.mul(smprojmatrix, cubematrix);
+                GLOBALPARAM(shadowmatrix, shadowmatrix);
 
                 glCullFace((side & 1) ^ (side >> 2) ^ smcullside ? GL_FRONT : GL_BACK);
 
@@ -3530,11 +3499,6 @@ void rendershadowatlas()
 
     glEnable(GL_SCISSOR_TEST);
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-
     // sun light
     if(sunlight && csmshadowmap)
     {
@@ -3546,11 +3510,6 @@ void rendershadowatlas()
 
     // point lights
     rendershadowmaps();
-
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
 
     glCullFace(GL_BACK);
     glDisable(GL_SCISSOR_TEST);
@@ -3754,8 +3713,8 @@ void preparegbuffer(bool depthclear)
 
     glmatrix invscreenmatrix;
     invscreenmatrix.identity();
-    invscreenmatrix.scale(2.0f/vieww, 2.0f/viewh, 2.0f);
-    invscreenmatrix.translate(-1.0f, -1.0f, -1.0f);
+    invscreenmatrix.settranslation(-1.0f, -1.0f, -1.0f);
+    invscreenmatrix.setscale(2.0f/vieww, 2.0f/viewh, 2.0f);
     eyematrix.mul(invprojmatrix, invscreenmatrix);
     if(drawtex == DRAWTEX_MINIMAP)
     {
@@ -3773,12 +3732,11 @@ void preparegbuffer(bool depthclear)
     }
 
     screenmatrix.identity();
-    screenmatrix.scale(0.5f*vieww, 0.5f*viewh, 0.5f);
-    screenmatrix.translate(0.5f*vieww, 0.5f*viewh, 0.5f);
+    screenmatrix.settranslation(0.5f*vieww, 0.5f*viewh, 0.5f);
+    screenmatrix.setscale(0.5f*vieww, 0.5f*viewh, 0.5f);
     screenmatrix.mul(camprojmatrix);
 
     GLOBALPARAMF(viewsize, (vieww, viewh, 1.0f/vieww, 1.0f/viewh));
-    GLOBALPARAMF(gdepthlinear, (invprojmatrix.c.z, invprojmatrix.d.z));
     GLOBALPARAMF(gdepthscale, (eyematrix.d.z, eyematrix.c.w, eyematrix.d.w));
     GLOBALPARAMF(gdepthpackparams, (-1.0f/farplane, -255.0f/farplane, -(255.0f*255.0f)/farplane));
     GLOBALPARAMF(gdepthunpackparams, (-farplane, -farplane/255.0f, -farplane/(255.0f*255.0f)));

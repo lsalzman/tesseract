@@ -190,11 +190,10 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
         glBindTexture(GL_TEXTURE_2D, lastexpmodtex);
         glActiveTexture_(GL_TEXTURE0_ARB);
     }
-    int passes = inside ? 2 : 1;
     if(!explosion2d)
     {
-        if(inside) glScalef(1, 1, -1);
-        loopi(passes)
+        LOCALPARAMF(side, (inside ? -1 : 1));
+        loopi(inside ? 2 : 1)
         {
             glColor4f(r, g, b, i ? a/2 : a);
             if(i) glDepthFunc(GL_GEQUAL);
@@ -203,23 +202,17 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
         }
         return;
     }
-    loopi(passes)
+    loopi(inside ? 2 : 1)
     {
         glColor4f(r, g, b, i ? a/2 : a);
-        if(i)
-        {
-            glScalef(1, 1, -1);
-            glDepthFunc(GL_GEQUAL);
-        }
+        LOCALPARAMF(side, (1));
+        if(i) glDepthFunc(GL_GEQUAL);
         if(inside)
         {
-            if(passes >= 2)
-            {
-                glCullFace(GL_FRONT);
-                drawexpverts(heminumverts, heminumindices, hemiindices);
-                glCullFace(GL_BACK);
-            }
-            glScalef(1, 1, -1);
+            glCullFace(GL_FRONT);
+            drawexpverts(heminumverts, heminumindices, hemiindices);
+            glCullFace(GL_BACK);
+            LOCALPARAMF(side, (-1));
         }
         drawexpverts(heminumverts, heminumindices, hemiindices);
         if(i) glDepthFunc(GL_LESS);
@@ -281,8 +274,8 @@ struct fireballrenderer : listrenderer
 
         if(isfoggedsphere(psize*WOBBLE, p->o)) return;
 
-        glPushMatrix();
-        glTranslatef(o.x, o.y, o.z);
+        glmatrix m = camprojmatrix;
+        m.translate(o);
 
         bool inside = o.dist(camera1->o) <= psize*WOBBLE;
         vec oc(o);
@@ -294,8 +287,8 @@ struct fireballrenderer : listrenderer
         float rotangle = lastmillis/1000.0f*143;
         if(explosion2d)
         {
-            glRotatef(yaw, 0, 0, 1);
-            glRotatef(pitch, 1, 0, 0);
+            m.rotate_around_z(yaw*RAD);
+            m.rotate_around_x(pitch*RAD);
             rotdir = vec(0, 0, 1);
         }
         else
@@ -314,6 +307,10 @@ struct fireballrenderer : listrenderer
             LOCALPARAMF(texgenT, (0.5f*t.x, 0.5f*t.y, 0.5f*t.z, 0.5f));
         }
 
+        m.rotate(rotangle*RAD, vec(-rotdir.x, rotdir.y, -rotdir.z));
+        m.scale(-psize, psize, -psize);
+        LOCALPARAM(explosionmatrix, m);
+
         LOCALPARAM(center, o);
         LOCALPARAMF(animstate, (size, psize, pmax, lastmillis/1000.0f));
         if(2*(p->size + pmax)*WOBBLE >= softexplosionblend)
@@ -325,11 +322,7 @@ struct fireballrenderer : listrenderer
             LOCALPARAMF(softparams, (0, -1, inside ? blend/(2*255.0f) : 0));
         }
 
-        glRotatef(rotangle, -rotdir.x, rotdir.y, -rotdir.z);
-        glScalef(-psize, psize, -psize);
         drawexplosion(inside, color[0]*ldrscaleb, color[1]*ldrscaleb, color[2]*ldrscaleb, blend/255.0f);
-
-        glPopMatrix();
     }
 };
 static fireballrenderer fireballs("packages/particles/explosion.png"), bluefireballs("packages/particles/plasma.png");

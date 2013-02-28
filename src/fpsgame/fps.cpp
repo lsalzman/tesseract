@@ -709,8 +709,9 @@ namespace game
     void drawammohud(fpsent *d)
     {
         float x = HICON_X + 2*HICON_STEP, y = HICON_Y, sz = HICON_SIZE;
-        glPushMatrix();
-        glScalef(1/3.2f, 1/3.2f, 1);
+        pushhudmatrix();
+        hudmatrix.scale(1/3.2f, 1/3.2f, 1);
+        flushhudmatrix();
         float xup = (x+sz)*3.2f, yup = y*3.2f + 0.1f*sz;
         loopi(3)
         {
@@ -743,13 +744,14 @@ namespace game
             xcycle -= sz;
             drawicon(HICON_FIST+gun, xcycle, ycycle, sz);
         }
-        glPopMatrix();
+        pophudmatrix();
     }
 
     void drawhudicons(fpsent *d)
     {
-        glPushMatrix();
-        glScalef(2, 2, 1);
+        pushhudmatrix();
+        hudmatrix.scale(2, 2, 1);
+        flushhudmatrix();
 
         draw_textf("%d", (HICON_X + HICON_SIZE + HICON_SPACE)/2, HICON_TEXTY/2, d->state==CS_DEAD ? 0 : d->health);
         if(d->state!=CS_DEAD)
@@ -758,7 +760,7 @@ namespace game
             draw_textf("%d", (HICON_X + 2*HICON_STEP + HICON_SIZE + HICON_SPACE)/2, HICON_TEXTY/2, d->ammo[d->gunselect]);
         }
 
-        glPopMatrix();
+        pophudmatrix();
 
         drawicon(HICON_HEALTH, HICON_X, HICON_Y);
         if(d->state!=CS_DEAD)
@@ -772,8 +774,9 @@ namespace game
 
     void gameplayhud(int w, int h)
     {
-        glPushMatrix();
-        glScalef(h/1800.0f, h/1800.0f, 1);
+        pushhudmatrix();
+        hudmatrix.scale(h/1800.0f, h/1800.0f, 1);
+        flushhudmatrix();
 
         if(player1->state==CS_SPECTATOR)
         {
@@ -804,7 +807,7 @@ namespace game
             if(cmode) cmode->drawhud(d, w, h);
         }
 
-        glPopMatrix();
+        pophudmatrix();
     }
 
     int clipconsole(int w, int h)
