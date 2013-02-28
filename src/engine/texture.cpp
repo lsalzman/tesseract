@@ -443,7 +443,6 @@ int formatsize(GLenum format)
     }
 }
 
-VARFP(hwmipmap, 0, 0, 1, initwarning("texture filtering", INIT_LOAD));
 VARFP(usenp2, 0, 0, 1, initwarning("texture quality", INIT_LOAD));
 
 void resizetexture(int w, int h, bool mipmap, bool canreduce, GLenum target, int compress, int &tw, int &th)
@@ -509,7 +508,7 @@ void uploadtexture(GLenum target, GLenum internal, int tw, int th, GLenum format
         if(target==GL_TEXTURE_1D) glTexImage1D(target, level, internal, tw, 0, format, type, src);
         else glTexImage2D(target, level, internal, tw, th, 0, format, type, src);
         if(row > 0) glPixelStorei(GL_UNPACK_ROW_LENGTH, row = 0);
-        if(!mipmap || (hasGM && hwmipmap) || max(tw, th) <= 1) break;
+        if(!mipmap || max(tw, th) <= 1) break;
         int srcw = tw, srch = th;
         if(tw > 1) tw /= 2;
         if(th > 1) th /= 2;
@@ -586,8 +585,6 @@ void setuptexparameters(int tnum, const void *pixels, int clamp, int filter, GLe
                 (bilinear ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR) :
                 (bilinear ? GL_LINEAR_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_NEAREST)) :
             (filter && bilinear ? GL_LINEAR : GL_NEAREST));
-    if(hasGM && filter > 1 && pixels && hwmipmap && !uncompressedformat(format))
-        glTexParameteri(target, GL_GENERATE_MIPMAP_SGIS, GL_TRUE);
 }
 
 static GLenum textype(GLenum component, GLenum &format)
@@ -599,8 +596,6 @@ static GLenum textype(GLenum component, GLenum &format)
         case GL_R32F:
         case GL_RG16F:
         case GL_RG32F:
-        case GL_FLOAT_RG16_NV:
-        case GL_FLOAT_R32_NV:
         case GL_RGB16F_ARB:
         case GL_RGB32F_ARB:
         case GL_R11F_G11F_B10F_EXT:
@@ -741,8 +736,6 @@ bool floatformat(GLenum format)
         case GL_R32F:
         case GL_RG16F:
         case GL_RG32F:
-        case GL_FLOAT_RG16_NV:
-        case GL_FLOAT_R32_NV:
         case GL_RGB16F_ARB:
         case GL_RGB32F_ARB:
         case GL_R11F_G11F_B10F_EXT:

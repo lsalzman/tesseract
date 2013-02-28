@@ -118,46 +118,25 @@ VAR(dbgubo, 0, 0, 1);
 static void bindglsluniform(Shader &s, UniformLoc &u)
 {
     u.loc = glGetUniformLocation_(s.program, u.name);
-    if(!u.blockname) return;
-    if(hasUBO)
+    if(!u.blockname || !hasUBO) return;
+    GLuint bidx = glGetUniformBlockIndex_(s.program, u.blockname);
+    GLuint uidx = GL_INVALID_INDEX;
+    glGetUniformIndices_(s.program, 1, &u.name, &uidx);
+    if(bidx != GL_INVALID_INDEX && uidx != GL_INVALID_INDEX)
     {
-        GLuint bidx = glGetUniformBlockIndex_(s.program, u.blockname);
-        GLuint uidx = GL_INVALID_INDEX;
-        glGetUniformIndices_(s.program, 1, &u.name, &uidx);
-        if(bidx != GL_INVALID_INDEX && uidx != GL_INVALID_INDEX)
-        {
-            GLint sizeval = 0, offsetval = 0, strideval = 0;
-            glGetActiveUniformBlockiv_(s.program, bidx, GL_UNIFORM_BLOCK_DATA_SIZE, &sizeval);
-            if(sizeval <= 0) return;
-            glGetActiveUniformsiv_(s.program, 1, &uidx, GL_UNIFORM_OFFSET, &offsetval);
-            if(u.stride > 0)
-            {
-                glGetActiveUniformsiv_(s.program, 1, &uidx, GL_UNIFORM_ARRAY_STRIDE, &strideval);
-                if(strideval > u.stride) return;
-            }
-            u.offset = offsetval;
-            u.size = sizeval;
-            glUniformBlockBinding_(s.program, bidx, u.binding);
-            if(dbgubo) conoutf(CON_DEBUG, "UBO: %s:%s:%d, offset: %d, size: %d, stride: %d", u.name, u.blockname, u.binding, offsetval, sizeval, strideval);
-        }
-    }
-    else if(hasBUE)
-    {
-        GLint size = glGetUniformBufferSize_(s.program, u.loc), stride = 0;
-        if(size <= 0) return;
+        GLint sizeval = 0, offsetval = 0, strideval = 0;
+        glGetActiveUniformBlockiv_(s.program, bidx, GL_UNIFORM_BLOCK_DATA_SIZE, &sizeval);
+        if(sizeval <= 0) return;
+        glGetActiveUniformsiv_(s.program, 1, &uidx, GL_UNIFORM_OFFSET, &offsetval);
         if(u.stride > 0)
         {
-            defformatstring(elem1name)("%s[1]", u.name);
-            GLint elem1loc = glGetUniformLocation_(s.program, elem1name);
-            if(elem1loc == -1) return;
-            GLintptr elem0off = glGetUniformOffset_(s.program, u.loc),
-                     elem1off = glGetUniformOffset_(s.program, elem1loc);
-            stride = elem1off - elem0off;
-            if(stride > u.stride) return;
+            glGetActiveUniformsiv_(s.program, 1, &uidx, GL_UNIFORM_ARRAY_STRIDE, &strideval);
+            if(strideval > u.stride) return;
         }
-        u.offset = 0;
-        u.size = size;
-        if(dbgubo) conoutf(CON_DEBUG, "BUE: %s:%s:%d, offset: %d, size: %d, stride: %d", u.name, u.blockname, u.binding, 0, size, stride);
+        u.offset = offsetval;
+        u.size = sizeval;
+        glUniformBlockBinding_(s.program, bidx, u.binding);
+        if(dbgubo) conoutf(CON_DEBUG, "UBO: %s:%s:%d, offset: %d, size: %d, stride: %d", u.name, u.blockname, u.binding, offsetval, sizeval, strideval);
     }
 }
 

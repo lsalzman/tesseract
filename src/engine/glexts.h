@@ -448,8 +448,3 @@ typedef GLint (APIENTRYP PFNGLGETUNIFORMBUFFERSIZEEXTPROC) (GLuint program, GLin
 typedef GLintptr (APIENTRYP PFNGLGETUNIFORMOFFSETEXTPROC) (GLuint program, GLint location);
 #endif
 
-// GL_EXT_bindable_uniform
-extern PFNGLUNIFORMBUFFEREXTPROC        glUniformBuffer_;
-extern PFNGLGETUNIFORMBUFFERSIZEEXTPROC glGetUniformBufferSize_;
-extern PFNGLGETUNIFORMOFFSETEXTPROC     glGetUniformOffset_;
-

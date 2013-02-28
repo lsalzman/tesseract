@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasS3TC = false, hasFXT1 = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasGM = false, hasNVFB = false, hasSGIDT = false, hasSGISH = false, hasDT = false, hasSH = false, hasNVPCF = false, hasPBO = false, hasFBB = false, hasFBMS = false, hasTMS = false, hasMSS = false, hasFBMSBS = false, hasNVFBMSC = false, hasNVTMS = false, hasUBO = false, hasBUE = false, hasMBR = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false, hasDBGO = false, hasGPU4 = false, hasGPU5 = false;
+bool hasVBO = false, hasDRE = false, hasOQ = false, hasTR = false, hasT3D = false, hasFBO = false, hasAFBO = false, hasDS = false, hasTF = false, hasCBF = false, hasBE = false, hasBC = false, hasCM = false, hasNP2 = false, hasTC = false, hasS3TC = false, hasFXT1 = false, hasMT = false, hasAF = false, hasMDA = false, hasGLSL = false, hasDT = false, hasSH = false, hasPBO = false, hasFBB = false, hasFBMS = false, hasTMS = false, hasMSS = false, hasFBMSBS = false, hasNVFBMSC = false, hasNVTMS = false, hasUBO = false, hasMBR = false, hasDB = false, hasTG = false, hasT4 = false, hasTQ = false, hasPF = false, hasTRG = false, hasDBT = false, hasDC = false, hasDBGO = false, hasGPU4 = false, hasGPU5 = false;
 bool mesa = false, intel = false, ati = false, nvidia = false;
 
 int hasstencil = 0;
@@ -165,11 +165,6 @@ PFNGLUNIFORMBLOCKBINDINGPROC     glUniformBlockBinding_     = NULL;
 PFNGLBINDBUFFERBASEPROC          glBindBufferBase_          = NULL;
 PFNGLBINDBUFFERRANGEPROC         glBindBufferRange_         = NULL;
 
-// GL_EXT_bindable_uniform
-PFNGLUNIFORMBUFFEREXTPROC        glUniformBuffer_        = NULL;
-PFNGLGETUNIFORMBUFFERSIZEEXTPROC glGetUniformBufferSize_ = NULL;
-PFNGLGETUNIFORMOFFSETEXTPROC     glGetUniformOffset_     = NULL;
-
 // GL_EXT_depth_bounds_test
 PFNGLDEPTHBOUNDSEXTPROC glDepthBounds_ = NULL;
 
@@ -219,9 +214,7 @@ VAR(ati_ubo_bug, 0, 0, 1);
 VAR(ati_pf_bug, 0, 0, 1);
 VAR(intel_immediate_bug, 0, 0, 1);
 VAR(intel_vertexarray_bug, 0, 0, 1);
-VAR(usetexrect, 1, 0, 0);
 VAR(useubo, 1, 0, 0);
-VAR(usebue, 1, 0, 0);
 VAR(usetexgather, 1, 0, 0);
 VAR(usetexcompress, 1, 0, 0);
 
@@ -347,16 +340,10 @@ void gl_checkextensions()
     // floating point FBOs not fully supported until 10.5
     if(osversion>=0x0A0500)
 #endif
-    if(hasext(exts, "GL_ARB_texture_float") || hasext(exts, "GL_ATI_texture_float"))
+    if(hasext(exts, "GL_ARB_texture_float"))
     {
         hasTF = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_float extension.");
-    }
-
-    if(hasext(exts, "GL_NV_float_buffer")) 
-    {
-        hasNVFB = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_NV_float_buffer extension.");
     }
 
     if(hasext(exts, "GL_ARB_texture_rg"))
@@ -625,25 +612,12 @@ void gl_checkextensions()
         if(ati) ati_ubo_bug = 1;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_uniform_buffer_object extension.");
     }
-    else if(hasext(exts, "GL_EXT_bindable_uniform"))
-    {
-        glUniformBuffer_        = (PFNGLUNIFORMBUFFEREXTPROC)       getprocaddress("glUniformBufferEXT");
-        glGetUniformBufferSize_ = (PFNGLGETUNIFORMBUFFERSIZEEXTPROC)getprocaddress("glGetUniformBufferSizeEXT");
-        glGetUniformOffset_     = (PFNGLGETUNIFORMOFFSETEXTPROC)    getprocaddress("glGetUniformOffsetEXT");
-
-        usebue = 1;
-        hasBUE = true;
-        if(ati) ati_ubo_bug = 1;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_bindable_uniform extension.");
-    }
 
     if(hasext(exts, "GL_ARB_texture_rectangle"))
     {
-        usetexrect = 1;
         hasTR = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_texture_rectangle extension.");
     }
-    //else if(hasMT) conoutf(CON_WARN, "WARNING: No texture rectangle support. (no full screen shaders)");
     else fatal("Texture rectangle support is required!");
 
     if(hasext(exts, "GL_EXT_texture3D"))
@@ -755,36 +729,19 @@ void gl_checkextensions()
        if(dbgexts) conoutf(CON_INIT, "Using GL_EXT_texture_filter_anisotropic extension.");
     }
 
-    if(hasext(exts, "GL_SGIS_generate_mipmap"))
-    {
-        hasGM = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_SGIS_generate_mipmap extension.");
-    }
-
     if(hasext(exts, "GL_ARB_depth_texture"))
     {
-        hasSGIDT = hasDT = true;
+        hasDT = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_depth_texture extension.");
     }
-    else if(hasext(exts, "GL_SGIX_depth_texture"))
-    {
-        hasSGIDT = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_SGIX_depth_texture extension.");
-    }
-    if(!hasSGIDT && !hasDT) fatal("Depth texture support is required!");
+    else fatal("Depth texture support is required!");
 
     if(hasext(exts, "GL_ARB_shadow"))
     {
-        hasSGISH = hasSH = true;
-        if(nvidia || (ati && strstr(renderer, "Radeon HD"))) hasNVPCF = true;
+        hasSH = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_shadow extension.");
     }
-    else if(hasext(exts, "GL_SGIX_shadow"))
-    {
-        hasSGISH = true;
-        if(dbgexts) conoutf(CON_INIT, "Using GL_SGIX_shadow extension.");
-    }
-    if(!hasSGISH && !hasSH) fatal("Shadow mapping support is required!");
+    else fatal("Shadow mapping support is required!");
 
     if(hasext(exts, "GL_ARB_texture_gather"))
     {
