@@ -446,31 +446,29 @@ void gl_checkextensions()
 
     if(hasext(exts, "GL_ARB_occlusion_query"))
     {
-        GLint bits;
         glGetQueryiv_ = (PFNGLGETQUERYIVARBPROC)getprocaddress("glGetQueryivARB");
-        glGetQueryiv_(GL_SAMPLES_PASSED_ARB, GL_QUERY_COUNTER_BITS_ARB, &bits);
-        if(bits)
-        {
-            glGenQueries_ =        (PFNGLGENQUERIESARBPROC)       getprocaddress("glGenQueriesARB");
-            glDeleteQueries_ =     (PFNGLDELETEQUERIESARBPROC)    getprocaddress("glDeleteQueriesARB");
-            glBeginQuery_ =        (PFNGLBEGINQUERYARBPROC)       getprocaddress("glBeginQueryARB");
-            glEndQuery_ =          (PFNGLENDQUERYARBPROC)         getprocaddress("glEndQueryARB");
-            glGetQueryObjectiv_ =  (PFNGLGETQUERYOBJECTIVARBPROC) getprocaddress("glGetQueryObjectivARB");
-            glGetQueryObjectuiv_ = (PFNGLGETQUERYOBJECTUIVARBPROC)getprocaddress("glGetQueryObjectuivARB");
-            hasOQ = true;
-            if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_occlusion_query extension.");
+        glGenQueries_ =        (PFNGLGENQUERIESARBPROC)       getprocaddress("glGenQueriesARB");
+        glDeleteQueries_ =     (PFNGLDELETEQUERIESARBPROC)    getprocaddress("glDeleteQueriesARB");
+        glBeginQuery_ =        (PFNGLBEGINQUERYARBPROC)       getprocaddress("glBeginQueryARB");
+        glEndQuery_ =          (PFNGLENDQUERYARBPROC)         getprocaddress("glEndQueryARB");
+        glGetQueryObjectiv_ =  (PFNGLGETQUERYOBJECTIVARBPROC) getprocaddress("glGetQueryObjectivARB");
+        glGetQueryObjectuiv_ = (PFNGLGETQUERYOBJECTUIVARBPROC)getprocaddress("glGetQueryObjectuivARB");
+        hasOQ = true;
+        if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_occlusion_query extension.");
 #if defined(__APPLE__) && SDL_BYTEORDER == SDL_BIG_ENDIAN
-            if(ati && (osversion<0x0A0500)) ati_oq_bug = 1;
+        if(ati && (osversion<0x0A0500)) ati_oq_bug = 1;
 #endif
-            //if(ati_oq_bug) conoutf(CON_WARN, "WARNING: Using ATI occlusion query bug workaround. (use \"/ati_oq_bug 0\" to disable if unnecessary)");
+        //if(ati_oq_bug) conoutf(CON_WARN, "WARNING: Using ATI occlusion query bug workaround. (use \"/ati_oq_bug 0\" to disable if unnecessary)");
+        GLint bits = 0;
+        glGetQueryiv_(GL_SAMPLES_PASSED_ARB, GL_QUERY_COUNTER_BITS_ARB, &bits);
+        if(!bits)
+        {
+            conoutf(CON_WARN, "WARNING: No occlusion query support!");
+            extern int vacubesize, oqfrags;
+            vacubesize = 64;
         }
     }
-    if(!hasOQ)
-    {
-        conoutf(CON_WARN, "WARNING: No occlusion query support! (large maps may be SLOW)");
-        extern int vacubesize;
-        vacubesize = 64;
-    }
+    else fatal("Occlusion query support is required!");
 
     if(hasext(exts, "GL_EXT_timer_query") || hasext(exts, "GL_ARB_timer_query"))
     {

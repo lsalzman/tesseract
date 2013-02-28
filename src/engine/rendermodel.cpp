@@ -871,7 +871,7 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
 
     if(flags&MDL_CULL_QUERY)
     {
-        if(!hasOQ || !oqfrags || !oqdynent || !d) flags &= ~MDL_CULL_QUERY;
+        if(!oqfrags || !oqdynent || !d) flags &= ~MDL_CULL_QUERY;
     }
 
     if(flags&MDL_NOBATCH)

@@ -422,7 +422,7 @@ void rendermapmodels()
     findvisiblemms(ents);
 
     static int skipoq = 0;
-    bool doquery = hasOQ && oqfrags && oqmm;
+    bool doquery = oqfrags && oqmm;
 
     for(octaentities *oe = visiblemms; oe; oe = oe->next) if(oe->distance>=0)
     {
@@ -1526,7 +1526,7 @@ extern void renderradiancehints();
 
 void rendergeom()
 {
-    bool doOQ = hasOQ && oqfrags && oqgeom && !drawtex,
+    bool doOQ = oqfrags && oqgeom && !drawtex,
          doZP = doOQ && zpass;
     renderstate cur;
     if(!doZP) 

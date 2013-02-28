@@ -2829,7 +2829,7 @@ void collectlights()
 
     lightorder.sort(sortlights);
 
-    if(!drawtex && smquery && hasOQ && oqfrags && oqlights) loopv(lightorder)
+    if(!drawtex && smquery && oqfrags && oqlights) loopv(lightorder)
     {
         int idx = lightorder[i];
         lightinfo &l = lights[idx];
