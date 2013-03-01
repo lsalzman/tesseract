@@ -983,7 +983,6 @@ struct gui : g3d_gui
     void draw()
     {
         cb->gui(*this, layoutpass);
-        varray::disable();
     }
 };
 
@@ -1224,6 +1223,8 @@ void g3d_render()
         loopvrev(guis2d) guis2d[i].draw();
 
         glDisable(GL_BLEND);
+
+        varray::disable();
     }
 
     flusheditors();

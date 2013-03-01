@@ -440,16 +440,21 @@ struct captureclientmode : clientmode
             }
             else
             {
-                if(!blips) glBegin(GL_QUADS);
+                if(!blips) 
+                {
+                    varray::defvertex(2);
+                    varray::deftexcoord0();
+                    varray::begin(GL_QUADS);
+                }
                 float x = 0.5f*(dir.x*fw/blipsize - fw), y = 0.5f*(dir.y*fh/blipsize - fh);
-                glTexCoord2f(0.0f, 0.0f); glVertex2f(x,    y);
-                glTexCoord2f(1.0f, 0.0f); glVertex2f(x+fw, y);
-                glTexCoord2f(1.0f, 1.0f); glVertex2f(x+fw, y+fh);
-                glTexCoord2f(0.0f, 1.0f); glVertex2f(x,    y+fh);
+                varray::attribf(x,    y);    varray::attribf(0, 0);
+                varray::attribf(x+fw, y);    varray::attribf(1, 0);
+                varray::attribf(x+fw, y+fh); varray::attribf(1, 1);
+                varray::attribf(x,    y+fh); varray::attribf(0, 1);
             }
             blips++;
         }
-        if(blips && !basenumbers) glEnd();
+        if(blips && !basenumbers) varray::end();
     }
 
     int respawnwait(fpsent *d)

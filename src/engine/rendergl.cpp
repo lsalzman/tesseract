@@ -1702,7 +1702,6 @@ void hudquad(float x, float y, float w, float h, float tx, float ty, float tw, f
     varray::attribf(x,   y+h); varray::attribf(tx,      ty + th);
     varray::attribf(x+w, y+h); varray::attribf(tx + tw, ty + th);
     varray::end();
-    varray::disable();
 }
 
 void debugquad(float x, float y, float w, float h, float tx, float ty, float tw, float th)
@@ -2394,11 +2393,7 @@ void drawdamagecompass(int w, int h)
         scale -= float(curtime)/damagecompassfade;
         damagedirs[i] = scale > 0 ? (pow(logscale, scale) - 1) / (logscale - 1) : 0;
     }
-    if(dirs)
-    {
-        varray::end();
-        varray::disable();
-    }
+    if(dirs) varray::end();
 }
 
 int damageblendmillis = 0;
@@ -2693,6 +2688,8 @@ void gl_drawhud(int w, int h)
     pophudmatrix();
 
     drawcrosshair(w, h);
+
+    varray::disable();
 
     glDisable(GL_BLEND);
 

@@ -17,25 +17,29 @@ namespace game
         vec pos = vec(d->o).sub(minimapcenter).mul(minimapscale).add(0.5f), dir;
         vecfromyawpitch(camera1->yaw, 0, 1, 0, dir);
         float scale = calcradarscale();
-        glBegin(GL_TRIANGLE_FAN);
+        varray::defvertex(2);
+        varray::deftexcoord0();
+        varray::begin(GL_TRIANGLE_FAN);
         loopi(16)
         {
-            vec tc = vec(dir).rotate_around_z(i/16.0f*2*M_PI);
-            glTexCoord2f(1.0f - (pos.x + tc.x*scale*minimapscale.x), pos.y + tc.y*scale*minimapscale.y);
             vec v = vec(0, -1, 0).rotate_around_z(i/16.0f*2*M_PI);
-            glVertex2f(x + 0.5f*s*(1.0f + v.x), y + 0.5f*s*(1.0f + v.y));
+            varray::attribf(x + 0.5f*s*(1.0f + v.x), y + 0.5f*s*(1.0f + v.y));
+            vec tc = vec(dir).rotate_around_z(i/16.0f*2*M_PI);
+            varray::attribf(1.0f - (pos.x + tc.x*scale*minimapscale.x), pos.y + tc.y*scale*minimapscale.y);
         }
-        glEnd();
+        varray::end();
     }
 
     void drawradar(float x, float y, float s)
     {
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0.0f, 0.0f); glVertex2f(x,   y);
-        glTexCoord2f(1.0f, 0.0f); glVertex2f(x+s, y);
-        glTexCoord2f(0.0f, 1.0f); glVertex2f(x,   y+s);
-        glTexCoord2f(1.0f, 1.0f); glVertex2f(x+s, y+s);
-        glEnd();
+        varray::defvertex(2);
+        varray::deftexcoord0();
+        varray::begin(GL_TRIANGLE_STRIP);
+        varray::attribf(x,   y);   varray::attribf(0, 0);
+        varray::attribf(x+s, y);   varray::attribf(1, 0);
+        varray::attribf(x,   y+s); varray::attribf(0, 1);
+        varray::attribf(x+s, y+s); varray::attribf(1, 1);
+        varray::end();
     }
 
     void drawteammate(fpsent *d, float x, float y, float s, fpsent *o, float scale)
@@ -50,10 +54,10 @@ namespace game
               by = y + s*0.5f*(1.0f + dir.y);
         vec v(-0.5f, -0.5f, 0);
         v.rotate_around_z((90+o->yaw-camera1->yaw)*RAD);
-        glTexCoord2f(0.0f, 0.0f); glVertex2f(bx + bs*v.x, by + bs*v.y);
-        glTexCoord2f(1.0f, 0.0f); glVertex2f(bx + bs*v.y, by - bs*v.x);
-        glTexCoord2f(1.0f, 1.0f); glVertex2f(bx - bs*v.x, by - bs*v.y);
-        glTexCoord2f(0.0f, 1.0f); glVertex2f(bx - bs*v.y, by + bs*v.x);
+        varray::attribf(bx + bs*v.x, by + bs*v.y); varray::attribf(0, 0);
+        varray::attribf(bx + bs*v.y, by - bs*v.x); varray::attribf(1, 0);
+        varray::attribf(bx - bs*v.x, by - bs*v.y); varray::attribf(1, 1);
+        varray::attribf(bx - bs*v.y, by + bs*v.x); varray::attribf(0, 1);
     }
 
     void drawteammates(fpsent *d, float x, float y, float s)
@@ -69,12 +73,14 @@ namespace game
                 if(!alive++) 
                 {
                     settexture(isteam(d->team, player1->team) ? "packages/hud/blip_blue_alive.png" : "packages/hud/blip_red_alive.png");
-                    glBegin(GL_QUADS);
+                    varray::defvertex(2);
+                    varray::deftexcoord0();
+                    varray::begin(GL_QUADS);
                 }
                 drawteammate(d, x, y, s, o, scale);
             }
         }
-        if(alive) glEnd();
+        if(alive) varray::end();
         loopv(players) 
         {
             fpsent *o = players[i];
@@ -83,12 +89,14 @@ namespace game
                 if(!dead++) 
                 {
                     settexture(isteam(d->team, player1->team) ? "packages/hud/blip_blue_dead.png" : "packages/hud/blip_red_dead.png");
-                    glBegin(GL_QUADS);
+                    varray::defvertex(2);
+                    varray::deftexcoord0();
+                    varray::begin(GL_QUADS);
                 }
                 drawteammate(d, x, y, s, o, scale);
             }
         }
-        if(dead) glEnd();
+        if(dead) varray::end();
     }
         
     #include "capture.h"
