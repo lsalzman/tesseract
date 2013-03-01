@@ -114,7 +114,6 @@
 			<Option weight="0" />
 		</Unit>
 		<Unit filename="..\engine\explosion.h" />
-		<Unit filename="..\engine\glexts.h" />
 		<Unit filename="..\engine\grass.cpp" />
 		<Unit filename="..\engine\hitzone.h" />
 		<Unit filename="..\engine\iqm.h" />
@@ -157,7 +156,6 @@
 		<Unit filename="..\engine\textedit.h" />
 		<Unit filename="..\engine\texture.cpp" />
 		<Unit filename="..\engine\texture.h" />
-		<Unit filename="..\engine\varray.h" />
 		<Unit filename="..\engine\vertmodel.h" />
 		<Unit filename="..\engine\water.cpp" />
 		<Unit filename="..\engine\world.cpp" />
@@ -231,11 +229,13 @@
 		<Unit filename="..\shared\ents.h" />
 		<Unit filename="..\shared\geom.cpp" />
 		<Unit filename="..\shared\geom.h" />
+		<Unit filename="..\shared\glexts.h" />
 		<Unit filename="..\shared\iengine.h" />
 		<Unit filename="..\shared\igame.h" />
 		<Unit filename="..\shared\stream.cpp" />
 		<Unit filename="..\shared\tools.cpp" />
 		<Unit filename="..\shared\tools.h" />
+		<Unit filename="..\shared\varray.h" />
 		<Unit filename="..\shared\zip.cpp" />
 		<Unit filename="mingw.rc">
 			<Option compilerVar="WINDRES" />

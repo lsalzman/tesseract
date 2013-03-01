@@ -377,8 +377,7 @@ struct meterrenderer : listrenderer
     void startrender()
     {
          glDisable(GL_BLEND);
-         varray::enable();
-         varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
+         varray::defvertex();
     }
 
     void endrender()

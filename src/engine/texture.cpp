@@ -2090,14 +2090,11 @@ void forcecubemapload(GLuint tex)
     glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, tex);
     if(!blend) glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glBegin(GL_TRIANGLES);
-    loopi(3)
-    {
-        glColor4f(1, 1, 1, 0);
-        glTexCoord3f(0, 0, 1);
-        glVertex2f(0, 0);
-    }
-    glEnd();
+    varray::defvertex();
+    varray::begin(GL_TRIANGLES);
+    loopi(3) varray::attribf(0, 0, 0);
+    varray::end();
+    varray::disable();
     if(!blend) glDisable(GL_BLEND);
     if(depthtest) glEnable(GL_DEPTH_TEST);
 }

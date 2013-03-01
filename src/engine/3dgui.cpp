@@ -324,6 +324,7 @@ struct gui : g3d_gui
             int x1 = int(floor(screen->w*(xi*scale.x+origin.x))), y1 = int(floor(screen->h*(1 - ((yi+ys)*scale.y+origin.y)))),
                 x2 = int(ceil(screen->w*((xi+xs)*scale.x+origin.x))), y2 = int(ceil(screen->h*(1 - (yi*scale.y+origin.y))));
             glDisable(GL_BLEND);
+            varray::disable();
             modelpreview::start(x1, y1, x2-x1, y2-y1, overlaid);
             game::renderplayerpreview(model, team, weap);
             modelpreview::end();
@@ -369,6 +370,7 @@ struct gui : g3d_gui
             int x1 = int(floor(screen->w*(xi*scale.x+origin.x))), y1 = int(floor(screen->h*(1 - ((yi+ys)*scale.y+origin.y)))),
                 x2 = int(ceil(screen->w*((xi+xs)*scale.x+origin.x))), y2 = int(ceil(screen->h*(1 - (yi*scale.y+origin.y))));
             glDisable(GL_BLEND);
+            varray::disable();
             modelpreview::start(x1, y1, x2-x1, y2-y1, overlaid);
             model *m = loadmodel(name);
             if(m)
@@ -535,26 +537,27 @@ struct gui : g3d_gui
 
     void rect_(float x, float y, float w, float h, int usetc = -1, bool lines = false) 
     {
-        glBegin(lines ? GL_LINE_LOOP : GL_TRIANGLE_STRIP);
-        static const GLfloat tc[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
-        if(usetc>=0) glTexCoord2fv(tc[usetc]); 
-        glVertex2f(x, y);
-        if(usetc>=0) glTexCoord2fv(tc[(usetc+1)%4]);
-        glVertex2f(x + w, y);
+        varray::defvertex(2);
+        if(usetc >= 0) varray::deftexcoord0();
+        varray::begin(lines ? GL_LINE_LOOP : GL_TRIANGLE_STRIP);
+        static const vec2 tc[4] = { vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1) };
+        varray::attribf(x, y);
+        if(usetc>=0) varray::attrib(tc[usetc]); 
+        varray::attribf(x + w, y);
+        if(usetc>=0) varray::attrib(tc[(usetc+1)%4]);
         if(lines)
         {
-            if(usetc>=0) glTexCoord2fv(tc[(usetc+2)%4]);
-            glVertex2f(x + w, y + h);
+            varray::attribf(x + w, y + h);
+            if(usetc>=0) varray::attrib(tc[(usetc+2)%4]);
         }
-        if(usetc>=0) glTexCoord2fv(tc[(usetc+3)%4]);
-        glVertex2f(x, y + h);
+        varray::attribf(x, y + h);
+        if(usetc>=0) varray::attrib(tc[(usetc+3)%4]);
         if(!lines)
         {
-            if(usetc>=0) glTexCoord2fv(tc[(usetc+2)%4]);
-            glVertex2f(x + w, y + h);
+            varray::attribf(x + w, y + h);
+            if(usetc>=0) varray::attrib(tc[(usetc+2)%4]);
         }
-        glEnd();
-        xtraverts += 4;
+        xtraverts += varray::end();
         
     }
 
@@ -645,48 +648,50 @@ struct gui : g3d_gui
         }
         SETSHADER(hudrgb);
         const vec &color = hit ? vec(1, 0.5f, 0.5f) : vec(1, 1, 1);
-        float tc[4][2] = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
+        vec2 tc[4] = { vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1) };
         int xoff = vslot.offset.x, yoff = vslot.offset.y;
         if(vslot.rotation)
         {
-            if((vslot.rotation&5) == 1) { swap(xoff, yoff); loopk(4) swap(tc[k][0], tc[k][1]); }
-            if(vslot.rotation >= 2 && vslot.rotation <= 4) { xoff *= -1; loopk(4) tc[k][0] *= -1; }
-            if(vslot.rotation <= 2 || vslot.rotation == 5) { yoff *= -1; loopk(4) tc[k][1] *= -1; }
+            if((vslot.rotation&5) == 1) { swap(xoff, yoff); loopk(4) swap(tc[k].x, tc[k].y); }
+            if(vslot.rotation >= 2 && vslot.rotation <= 4) { xoff *= -1; loopk(4) tc[k].x *= -1; }
+            if(vslot.rotation <= 2 || vslot.rotation == 5) { yoff *= -1; loopk(4) tc[k].y *= -1; }
         }
-        loopk(4) { tc[k][0] = tc[k][0]/xt - float(xoff)/t->xs; tc[k][1] = tc[k][1]/yt - float(yoff)/t->ys; }
+        loopk(4) { tc[k].x = tc[k].x/xt - float(xoff)/t->xs; tc[k].y = tc[k].y/yt - float(yoff)/t->ys; }
         if(slot.loaded) glColor3f(color.x*vslot.colorscale.x, color.y*vslot.colorscale.y, color.z*vslot.colorscale.z);
         else glColor3fv(color.v);
         glBindTexture(GL_TEXTURE_2D, t->id);
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2fv(tc[0]); glVertex2f(x,    y);
-        glTexCoord2fv(tc[1]); glVertex2f(x+xs, y);
-        glTexCoord2fv(tc[3]); glVertex2f(x,    y+ys);
-        glTexCoord2fv(tc[2]); glVertex2f(x+xs, y+ys);
-        glEnd();
+        varray::defvertex(2);
+        varray::deftexcoord0();
+        varray::begin(GL_TRIANGLE_STRIP);
+        varray::attribf(x,    y);    varray::attrib(tc[0]);
+        varray::attribf(x+xs, y);    varray::attrib(tc[1]);
+        varray::attribf(x,    y+ys); varray::attrib(tc[3]);
+        varray::attribf(x+xs, y+ys); varray::attrib(tc[2]);
+        varray::end();
         if(glowtex)
         {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE);
             glBindTexture(GL_TEXTURE_2D, glowtex->id);
             if(hit || overlaid) glColor3f(color.x*vslot.glowcolor.x, color.y*vslot.glowcolor.y, color.z*vslot.glowcolor.z);
             else glColor3fv(vslot.glowcolor.v);
-            glBegin(GL_TRIANGLE_STRIP);
-            glTexCoord2fv(tc[0]); glVertex2f(x,    y);
-            glTexCoord2fv(tc[1]); glVertex2f(x+xs, y);
-            glTexCoord2fv(tc[3]); glVertex2f(x,    y+ys);
-            glTexCoord2fv(tc[2]); glVertex2f(x+xs, y+ys);
-            glEnd();
+            varray::begin(GL_TRIANGLE_STRIP);
+            varray::attribf(x,    y);    varray::attrib(tc[0]);
+            varray::attribf(x+xs, y);    varray::attrib(tc[1]);
+            varray::attribf(x,    y+ys); varray::attrib(tc[3]);
+            varray::attribf(x+xs, y+ys); varray::attrib(tc[2]);
+            varray::end();
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         }
         if(layertex)
         {
             glBindTexture(GL_TEXTURE_2D, layertex->id);
             glColor3f(color.x*layer->colorscale.x, color.y*layer->colorscale.y, color.z*layer->colorscale.z);
-            glBegin(GL_TRIANGLE_STRIP);
-            glTexCoord2fv(tc[0]); glVertex2f(x+xs/2, y+ys/2);
-            glTexCoord2fv(tc[1]); glVertex2f(x+xs,   y+ys/2);
-            glTexCoord2fv(tc[3]); glVertex2f(x+xs/2, y+ys);
-            glTexCoord2fv(tc[2]); glVertex2f(x+xs,   y+ys);
-            glEnd();
+            varray::begin(GL_TRIANGLE_STRIP);
+            varray::attribf(x+xs/2, y+ys/2); varray::attrib(tc[0]);
+            varray::attribf(x+xs,   y+ys/2); varray::attrib(tc[1]);
+            varray::attribf(x+xs/2, y+ys);   varray::attrib(tc[3]);
+            varray::attribf(x+xs,   y+ys);   varray::attrib(tc[2]);
+            varray::end();
         }
             
         hudshader->set();
@@ -824,12 +829,11 @@ struct gui : g3d_gui
                         xstep = gapw+x+left-xo; 
                         tright = tleft+xstep*wscale;
                     }
-                    if(!quads) { quads = true; glBegin(GL_QUADS); }
-                    glTexCoord2f(tleft,  ttop);    glVertex2f(xo,       yo);
-                    glTexCoord2f(tright, ttop);    glVertex2f(xo+xstep, yo);
-                    glTexCoord2f(tright, tbottom); glVertex2f(xo+xstep, yo+ystep);
-                    glTexCoord2f(tleft,  tbottom); glVertex2f(xo,       yo+ystep);
-                    xtraverts += 4;
+                    if(!quads) { quads = true; varray::defvertex(2); varray::deftexcoord0(); varray::begin(GL_QUADS); }
+                    varray::attribf(xo,       yo);       varray::attribf(tleft,  ttop);
+                    varray::attribf(xo+xstep, yo);       varray::attribf(tright, ttop);
+                    varray::attribf(xo+xstep, yo+ystep); varray::attribf(tright, tbottom);
+                    varray::attribf(xo,       yo+ystep); varray::attribf(tleft,  tbottom);
                     if(!(p.flags&0x01)) break;
                     xo += xstep;
                 }
@@ -838,7 +842,7 @@ struct gui : g3d_gui
                 yo += ystep;
             }
         }
-        if(quads) glEnd();
+        if(quads) xtraverts += varray::end();
     } 
 
     vec origin, scale, *savedorigin;
@@ -979,6 +983,7 @@ struct gui : g3d_gui
     void draw()
     {
         cb->gui(*this, layoutpass);
+        varray::disable();
     }
 };
 

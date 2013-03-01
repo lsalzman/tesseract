@@ -9,10 +9,8 @@
 #include "octa.h"
 #include "light.h"
 #include "bih.h"
-#include "glexts.h"
 #include "texture.h"
 #include "model.h"
-#include "varray.h"
 
 extern dynent *player;
 extern physent *camera1;                // special ent that acts as camera, same object as player1 in FPS mode
@@ -146,10 +144,13 @@ extern bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, floa
 extern bool calcspotscissor(const vec &origin, float radius, const vec &dir, int spot, const vec &spotx, const vec &spoty, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2);
 extern int pushscissor(float sx1, float sy1, float sx2, float sy2);
 extern void popscissor();
+extern void screenquad();
 extern void screenquad(float sw, float sh);
 extern void screenquad(float sw, float sh, float sw2, float sh2);
 extern void screenquadoffset(float x, float y, float w, float h);
 extern void screenquadoffset(float x, float y, float w, float h, float x2, float y2, float w2, float h2);
+extern void hudquad(float x, float y, float w, float h, float tx = 0, float ty = 0, float tw = 1, float th = 1);
+extern void debugquad(float x, float y, float w, float h, float tx = 0, float ty = 0, float tw = 1, float th = 1);
 extern void recomputecamera();
 extern float calcfrustumboundsphere(float nearplane, float farplane,  const vec &pos, const vec &view, vec &center);
 extern void setfogcolor(const vec &v);

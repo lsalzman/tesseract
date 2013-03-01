@@ -62,17 +62,17 @@ static void renderlightning(Texture *tex, const vec &o, const vec &d, float sz)
         dir1.sub(cur);
         dir2.sub(camera1->o);
         across.cross(dir2, dir1).normalize().mul(sz);
-        varray::attrib<float>(cur.x-across.x, cur.y-across.y, cur.z-across.z);
-            varray::attrib<float>(scroll, 1);
-        varray::attrib<float>(cur.x+across.x, cur.y+across.y, cur.z+across.z);
-            varray::attrib<float>(scroll, 0);
+        varray::attribf(cur.x-across.x, cur.y-across.y, cur.z-across.z);
+            varray::attribf(scroll, 1);
+        varray::attribf(cur.x+across.x, cur.y+across.y, cur.z+across.z);
+            varray::attribf(scroll, 0);
         scroll += scrollscale;
         if(j+1==numsteps)
         {
-            varray::attrib<float>(next.x-across.x, next.y-across.y, next.z-across.z);
-                varray::attrib<float>(scroll, 1);
-            varray::attrib<float>(next.x+across.x, next.y+across.y, next.z+across.z);
-                varray::attrib<float>(scroll, 0);
+            varray::attribf(next.x-across.x, next.y-across.y, next.z-across.z);
+                varray::attribf(scroll, 1);
+            varray::attribf(next.x+across.x, next.y+across.y, next.z+across.z);
+                varray::attribf(scroll, 0);
         }
         cur = next;
     }
@@ -88,7 +88,6 @@ struct lightningrenderer : listrenderer
     void startrender()
     {
         glDisable(GL_CULL_FACE);
-        varray::enable();
         varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
         varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
     }

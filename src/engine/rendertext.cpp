@@ -192,17 +192,17 @@ static float draw_char(Texture *&tex, int c, float x, float y, float scale)
 
     if(textmatrix)
     {
-        varray::attrib(textmatrix->transform(vec2(x1, y1))); varray::attrib<float>(tx1, ty1);
-        varray::attrib(textmatrix->transform(vec2(x2, y1))); varray::attrib<float>(tx2, ty1);
-        varray::attrib(textmatrix->transform(vec2(x2, y2))); varray::attrib<float>(tx2, ty2);
-        varray::attrib(textmatrix->transform(vec2(x1, y2))); varray::attrib<float>(tx1, ty2);
+        varray::attrib(textmatrix->transform(vec2(x1, y1))); varray::attribf(tx1, ty1);
+        varray::attrib(textmatrix->transform(vec2(x2, y1))); varray::attribf(tx2, ty1);
+        varray::attrib(textmatrix->transform(vec2(x2, y2))); varray::attribf(tx2, ty2);
+        varray::attrib(textmatrix->transform(vec2(x1, y2))); varray::attribf(tx1, ty2);
     }
     else
     {
-        varray::attrib<float>(x1, y1); varray::attrib<float>(tx1, ty1);
-        varray::attrib<float>(x2, y1); varray::attrib<float>(tx2, ty1);
-        varray::attrib<float>(x2, y2); varray::attrib<float>(tx2, ty2);
-        varray::attrib<float>(x1, y2); varray::attrib<float>(tx1, ty2);
+        varray::attribf(x1, y1); varray::attribf(tx1, ty1);
+        varray::attribf(x2, y1); varray::attribf(tx2, ty1);
+        varray::attribf(x2, y2); varray::attribf(tx2, ty2);
+        varray::attribf(x1, y2); varray::attribf(tx1, ty2);
     }
 
     return scale*info.advance;
@@ -363,9 +363,8 @@ void draw_text(const char *str, int left, int top, int r, int g, int b, int a, i
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindTexture(GL_TEXTURE_2D, tex->id);
     glColor4ub(color.x, color.y, color.z, a);
-    varray::enable();
-    varray::defattrib(varray::ATTRIB_VERTEX, textmatrix ? 3 : 2, GL_FLOAT);
-    varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
+    varray::defvertex(textmatrix ? 3 : 2);
+    varray::deftexcoord0();
     varray::begin(GL_QUADS);
     TEXTSKELETON
     TEXTEND(cursor)

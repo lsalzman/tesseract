@@ -608,12 +608,7 @@ void viewsmaa()
         case 4: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaaareatex); tw = SMAA_AREATEX_WIDTH; th = SMAA_AREATEX_HEIGHT; break;
         case 5: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaasearchtex); tw = SMAA_SEARCHTEX_WIDTH; th = SMAA_SEARCHTEX_HEIGHT; break;
     }
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, th); glVertex2i(0, 0);
-    glTexCoord2f(tw, th); glVertex2i(w, 0);
-    glTexCoord2f(0, 0); glVertex2i(0, h);
-    glTexCoord2f(tw, 0); glVertex2i(w, h);
-    glEnd();
+    debugquad(0, 0, w, h, 0, 0, tw, th);
 }
 
 void dosmaa(GLuint outfbo = 0, bool split = false)

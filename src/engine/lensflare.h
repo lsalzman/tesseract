@@ -139,7 +139,6 @@ struct flarerenderer : partrenderer
         glDisable(GL_DEPTH_TEST);
         if(!tex) tex = textureload(texname);
         glBindTexture(GL_TEXTURE_2D, tex->id);
-        varray::enable();
         varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
         varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
         varray::defattrib(varray::ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE); 
@@ -167,17 +166,17 @@ struct flarerenderer : partrenderer
                 color[3] = ft.alpha;
                 const float tsz = 0.25; //flares are aranged in 4x4 grid
                 float tx = tsz*(tex&0x03), ty = tsz*((tex>>2)&0x03);
-                varray::attrib<float>(o.x+(-camright.x+camup.x)*sz, o.y+(-camright.y+camup.y)*sz, o.z+(-camright.z+camup.z)*sz);
-                    varray::attrib<float>(tx,     ty+tsz);                                       
+                varray::attribf(o.x+(-camright.x+camup.x)*sz, o.y+(-camright.y+camup.y)*sz, o.z+(-camright.z+camup.z)*sz);
+                    varray::attribf(tx,     ty+tsz);                                       
                     varray::attribv<4, uchar>(color);
-                varray::attrib<float>(o.x+( camright.x+camup.x)*sz, o.y+( camright.y+camup.y)*sz, o.z+( camright.z+camup.z)*sz);
-                    varray::attrib<float>(tx+tsz, ty+tsz);
+                varray::attribf(o.x+( camright.x+camup.x)*sz, o.y+( camright.y+camup.y)*sz, o.z+( camright.z+camup.z)*sz);
+                    varray::attribf(tx+tsz, ty+tsz);
                     varray::attribv<4, uchar>(color);
-                varray::attrib<float>(o.x+( camright.x-camup.x)*sz, o.y+( camright.y-camup.y)*sz, o.z+( camright.z-camup.z)*sz);
-                    varray::attrib<float>(tx+tsz, ty);
+                varray::attribf(o.x+( camright.x-camup.x)*sz, o.y+( camright.y-camup.y)*sz, o.z+( camright.z-camup.z)*sz);
+                    varray::attribf(tx+tsz, ty);
                     varray::attribv<4, uchar>(color);
-                varray::attrib<float>(o.x+(-camright.x-camup.x)*sz, o.y+(-camright.y-camup.y)*sz, o.z+(-camright.z-camup.z)*sz);
-                    varray::attrib<float>(tx,     ty);
+                varray::attribf(o.x+(-camright.x-camup.x)*sz, o.y+(-camright.y-camup.y)*sz, o.z+(-camright.z-camup.z)*sz);
+                    varray::attribf(tx,     ty);
                     varray::attribv<4, uchar>(color);
             }
         }

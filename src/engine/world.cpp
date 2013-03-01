@@ -538,16 +538,17 @@ VAR(showentradius, 0, 1, 1);
 void renderentring(const extentity &e, float radius, int axis)
 {
     if(radius <= 0) return;
-    glBegin(GL_LINE_LOOP);
+    varray::defvertex();
+    varray::begin(GL_LINE_LOOP);
     loopi(15)
     {
         vec p(e.o);
         const vec2 &sc = sincos360[i*(360/15)];
         p[axis>=2 ? 1 : 0] += radius*sc.x;
         p[axis>=1 ? 2 : 1] += radius*sc.y;
-        glVertex3fv(p.v);
+        varray::attrib(p);
     }
-    glEnd();
+    varray::end();
 }
 
 void renderentsphere(const extentity &e, float radius)
@@ -559,10 +560,11 @@ void renderentsphere(const extentity &e, float radius)
 void renderentattachment(const extentity &e)
 {
     if(!e.attached) return;
-    glBegin(GL_LINES);
-    glVertex3fv(e.o.v);
-    glVertex3fv(e.attached->o.v);
-    glEnd();
+    varray::defvertex();
+    varray::begin(GL_LINES);
+    varray::attrib(e.o);
+    varray::attrib(e.attached->o);
+    varray::end();
 }
 
 void renderentarrow(const extentity &e, const vec &dir, float radius)
@@ -573,20 +575,18 @@ void renderentarrow(const extentity &e, const vec &dir, float radius)
     spoke.orthogonal(dir);
     spoke.normalize();
     spoke.mul(arrowsize);
-    glBegin(GL_LINES);
-    glVertex3fv(e.o.v);
-    glVertex3fv(target.v);
-    glEnd();
-    glBegin(GL_TRIANGLE_FAN);
-    glVertex3fv(target.v);
-    loopi(5)
-    {
-        vec p(spoke);
-        p.rotate(2*M_PI*i/4.0f, dir);
-        p.add(arrowbase);
-        glVertex3fv(p.v);
-    }
-    glEnd();
+
+    varray::defvertex();
+
+    varray::begin(GL_LINES);
+    varray::attrib(e.o);
+    varray::attrib(target);
+    varray::end();
+
+    varray::begin(GL_TRIANGLE_FAN);
+    varray::attrib(target);
+    loopi(5) varray::attrib(vec(spoke).rotate(2*M_PI*i/4.0f, dir).add(arrowbase));
+    varray::end();
 }
 
 void renderentcone(const extentity &e, const vec &dir, float radius, float angle)
@@ -596,25 +596,20 @@ void renderentcone(const extentity &e, const vec &dir, float radius, float angle
     spoke.orthogonal(dir);
     spoke.normalize();
     spoke.mul(radius*sinf(angle*RAD));
-    glBegin(GL_LINES);
+    
+    varray::defvertex();
+
+    varray::begin(GL_LINES);
     loopi(8)
     {
-        vec p(spoke);
-        p.rotate(2*M_PI*i/8.0f, dir);
-        p.add(spot);
-        glVertex3fv(e.o.v);
-        glVertex3fv(p.v);
+        varray::attrib(e.o);
+        varray::attrib(vec(spoke).rotate(2*M_PI*i/8.0f, dir).add(spot));
     }
-    glEnd();
-    glBegin(GL_LINE_LOOP);
-    loopi(8)
-    {
-        vec p(spoke);
-        p.rotate(2*M_PI*i/8.0f, dir);
-        p.add(spot);
-        glVertex3fv(p.v);
-    }
-    glEnd();
+    varray::end();
+
+    varray::begin(GL_LINE_LOOP);
+    loopi(8) varray::attrib(vec(spoke).rotate(2*M_PI*i/8.0f, dir).add(spot));
+    varray::end();
 }
 
 void renderentradius(extentity &e, bool color)
@@ -711,6 +706,7 @@ void renderentselection(const vec &o, const vec &ray, bool entmoving)
         glDepthFunc(GL_LESS);
         loopv(entgroup) entfocus(entgroup[i], renderentradius(e, true));
         if(enthover>=0) entfocus(enthover, renderentradius(e, true));
+        varray::disable();
     }
 }
 

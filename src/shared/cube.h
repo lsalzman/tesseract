@@ -66,6 +66,10 @@
 #include "geom.h"
 #include "ents.h"
 #include "command.h"
+#ifndef STANDALONE
+#include "glexts.h"
+#include "varray.h"
+#endif
 
 #include "iengine.h"
 #include "igame.h"

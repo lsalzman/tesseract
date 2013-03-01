@@ -13,10 +13,19 @@ namespace varray
 
     extern vector<uchar> data;
 
-    extern void enable();
     extern void begin(GLenum mode);
-    extern void defattrib(int type, int size, GLenum format);
+    extern void defattribs(const char *fmt);
+    extern void defattrib(int type, int size, int format);
 
+    #define VARRAY_DEFATTRIBALIAS(name, type, defaultsize, defaultformat) \
+        static inline void def##name(int size = defaultsize, int format = defaultformat) { defattrib(type, size, format); }
+
+    VARRAY_DEFATTRIBALIAS(vertex, ATTRIB_VERTEX, 3, GL_FLOAT)
+    VARRAY_DEFATTRIBALIAS(color, ATTRIB_COLOR, 3, GL_FLOAT)
+    VARRAY_DEFATTRIBALIAS(normal, ATTRIB_NORMAL, 3, GL_FLOAT)
+    VARRAY_DEFATTRIBALIAS(texcoord0, ATTRIB_TEXCOORD0, 2, GL_FLOAT)
+    VARRAY_DEFATTRIBALIAS(texcoord1, ATTRIB_TEXCOORD1, 2, GL_FLOAT)
+    
     template<class T>
     static inline void attrib(T x)
     {
@@ -57,9 +66,29 @@ namespace varray
         data.put((const uchar *)v, N*sizeof(T)); 
     }
 
-    static inline void attrib(const vec &v) { attrib(v.x, v.y, v.z); }
-    static inline void attrib(const vec2 &v) { attrib(v.x, v.y); }
-    static inline void attrib(const vec4 &v) { attrib(v.x, v.y, v.z, v.w); }
+    #define VARRAY_ATTRIBALIAS(suffix, type) \
+        static inline void attrib##suffix(type x) { attrib<type>(x); } \
+        static inline void attrib##suffix(type x, type y) { attrib<type>(x, y); } \
+        static inline void attrib##suffix(type x, type y, type z) { attrib<type>(x, y, z); } \
+        static inline void attrib##suffix(type x, type y, type z, type w) { attrib<type>(x, y, z, w); }
+
+    VARRAY_ATTRIBALIAS(f, float)
+    VARRAY_ATTRIBALIAS(d, double)
+    VARRAY_ATTRIBALIAS(b, char)
+    VARRAY_ATTRIBALIAS(ub, uchar)
+    VARRAY_ATTRIBALIAS(s, short)
+    VARRAY_ATTRIBALIAS(us, ushort)
+    VARRAY_ATTRIBALIAS(i, int)
+    VARRAY_ATTRIBALIAS(ui, uint)
+
+    static inline void attrib(const vec &v) { attribf(v.x, v.y, v.z); }
+    static inline void attrib(const vec2 &v) { attribf(v.x, v.y); }
+    static inline void attrib(const vec4 &v) { attribf(v.x, v.y, v.z, v.w); }
+    static inline void attrib(const ivec &v) { attribi(v.x, v.y, v.z); }
+    static inline void attrib(const ivec2 &v) { attribi(v.x, v.y); }
+    static inline void attrib(const ivec4 &v) { attribi(v.x, v.y, v.z, v.w); }
+    static inline void attrib(const bvec &b) { attribub(b.x, b.y, b.z); }
+    static inline void attrib(const bvec &b, uchar w) { attribub(b.x, b.y, b.z, w); }
 
     extern int end();
     extern void disable();
@@ -83,25 +112,18 @@ namespace varray
     };
 
     vector<uchar> data;
-    static attribinfo attribs[MAXATTRIBS], lastattribs[MAXATTRIBS];
+    static attribinfo attribdefs[MAXATTRIBS], lastattribs[MAXATTRIBS];
     static int enabled = 0, numattribs = 0, attribmask = 0, numlastattribs = 0, lastattribmask = 0, vertexsize = 0, lastvertexsize = 0;
     static GLenum primtype = GL_TRIANGLES;
     static uchar *lastbuf = NULL;
     static bool changedattribs = false;
-
-    void enable()
-    {
-        enabled = 0;
-        numlastattribs = lastattribmask = lastvertexsize = 0;
-        lastbuf = NULL;
-    }
 
     void begin(GLenum mode)
     {
         primtype = mode;
     }
 
-    void defattrib(int type, int size, GLenum format)
+    void defattrib(int type, int size, int format)
     {
         if(type == ATTRIB_VERTEX)
         {
@@ -110,25 +132,38 @@ namespace varray
         }
         changedattribs = true;
         attribmask |= type;
-        attribinfo &a = attribs[numattribs++];
+        attribinfo &a = attribdefs[numattribs++];
         a.type = type;
         a.size = size;
         a.format = format;
         switch(format)
         {
-            case GL_UNSIGNED_BYTE:  a.formatsize = 1; break;
-            case GL_BYTE:           a.formatsize = 1; break;
-            case GL_UNSIGNED_SHORT: a.formatsize = 2; break;
-            case GL_SHORT:          a.formatsize = 2; break;
-            case GL_UNSIGNED_INT:   a.formatsize = 4; break;
-            case GL_INT:            a.formatsize = 4; break;
-            case GL_FLOAT:          a.formatsize = 4; break;
-            case GL_DOUBLE:         a.formatsize = 8; break;
-            default:                a.formatsize = 0; break;
+            case 'B': case GL_UNSIGNED_BYTE:  a.formatsize = 1; a.format = GL_UNSIGNED_BYTE; break;
+            case 'b': case GL_BYTE:           a.formatsize = 1; a.format = GL_BYTE; break;
+            case 'S': case GL_UNSIGNED_SHORT: a.formatsize = 2; a.format = GL_UNSIGNED_SHORT; break;
+            case 's': case GL_SHORT:          a.formatsize = 2; a.format = GL_SHORT; break;
+            case 'I': case GL_UNSIGNED_INT:   a.formatsize = 4; a.format = GL_UNSIGNED_INT; break;
+            case 'i': case GL_INT:            a.formatsize = 4; a.format = GL_INT; break;
+            case 'f': case GL_FLOAT:          a.formatsize = 4; a.format = GL_FLOAT; break;
+            case 'd': case GL_DOUBLE:         a.formatsize = 8; a.format = GL_DOUBLE; break;
+            default:                          a.formatsize = 0; a.format = GL_FALSE; break;
         }
         a.formatsize *= size;
         a.offset = vertexsize;
         vertexsize += a.formatsize;
+    }
+
+    void defattribs(const char *fmt)
+    {
+        for(;; fmt += 3) switch(*fmt)
+        {
+            case 'v': defattrib(ATTRIB_VERTEX, fmt[1]-'0', fmt[2]); break;
+            case 'c': defattrib(ATTRIB_COLOR, fmt[1]-'0', fmt[2]); break;
+            case 'n': defattrib(ATTRIB_NORMAL, fmt[1]-'0', fmt[2]); break;
+            case 't': defattrib(ATTRIB_TEXCOORD0, fmt[1]-'0', fmt[2]); break;
+            case 'T': defattrib(ATTRIB_TEXCOORD1, fmt[2]-'0', fmt[2]); break; 
+            default: return;
+        }
     }
 
     static inline void setattrib(const attribinfo &a, uchar *buf)
@@ -202,7 +237,7 @@ namespace varray
             uchar *src = buf;
             loopi(numattribs)
             {
-                const attribinfo &a = attribs[i];
+                const attribinfo &a = attribdefs[i];
                 if(forceattribs || a != lastattribs[i])
                 {
                     setattrib(a, src);
@@ -236,6 +271,8 @@ namespace varray
             glClientActiveTexture_(GL_TEXTURE0_ARB);
         }
         enabled = 0;
+        numlastattribs = lastattribmask = lastvertexsize = 0;
+        lastbuf = NULL;
     }
 #endif
 }

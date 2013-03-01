@@ -599,32 +599,33 @@ struct editor
 
                 hudnotextureshader->set();
                 glColor3ub(0xA0, 0x80, 0x80);
-                glBegin(GL_QUADS);
+                varray::defvertex(2);
+                varray::begin(GL_QUADS);
                 if(psy == pey) 
                 {
-                    glVertex2f(x+psx, y+psy);
-                    glVertex2f(x+pex, y+psy);
-                    glVertex2f(x+pex, y+pey+FONTH);
-                    glVertex2f(x+psx, y+pey+FONTH);
+                    varray::attribf(x+psx, y+psy);
+                    varray::attribf(x+pex, y+psy);
+                    varray::attribf(x+pex, y+pey+FONTH);
+                    varray::attribf(x+psx, y+pey+FONTH);
                 } 
                 else 
-                {   glVertex2f(x+psx,        y+psy);
-                    glVertex2f(x+psx,        y+psy+FONTH);
-                    glVertex2f(x+pixelwidth, y+psy+FONTH);
-                    glVertex2f(x+pixelwidth, y+psy);
+                {   varray::attribf(x+psx,        y+psy);
+                    varray::attribf(x+psx,        y+psy+FONTH);
+                    varray::attribf(x+pixelwidth, y+psy+FONTH);
+                    varray::attribf(x+pixelwidth, y+psy);
                     if(pey-psy > FONTH) 
                     {
-                        glVertex2f(x,            y+psy+FONTH);
-                        glVertex2f(x+pixelwidth, y+psy+FONTH);
-                        glVertex2f(x+pixelwidth, y+pey);
-                        glVertex2f(x,            y+pey);
+                        varray::attribf(x,            y+psy+FONTH);
+                        varray::attribf(x+pixelwidth, y+psy+FONTH);
+                        varray::attribf(x+pixelwidth, y+pey);
+                        varray::attribf(x,            y+pey);
                     }
-                    glVertex2f(x,     y+pey);
-                    glVertex2f(x,     y+pey+FONTH);
-                    glVertex2f(x+pex, y+pey+FONTH);
-                    glVertex2f(x+pex, y+pey);
+                    varray::attribf(x,     y+pey);
+                    varray::attribf(x,     y+pey+FONTH);
+                    varray::attribf(x+pex, y+pey+FONTH);
+                    varray::attribf(x+pex, y+pey);
                 }
-                glEnd();
+                varray::end();
                 hudshader->set();
             }
         }
@@ -641,16 +642,19 @@ struct editor
             {   
                 hudnotextureshader->set();
                 glColor3ub(0x80, 0xA0, 0x80);
-                glBegin(GL_TRIANGLE_STRIP);
-                glVertex2f(x,         y+h+FONTH);
-                glVertex2f(x,         y+h+height);
-                glVertex2f(x-FONTW/2, y+h+FONTH);
-                glVertex2f(x-FONTW/2, y+h+height);
-                glEnd();
+                varray::defvertex(2);
+                varray::begin(GL_TRIANGLE_STRIP);
+                varray::attribf(x,         y+h+FONTH);
+                varray::attribf(x,         y+h+height);
+                varray::attribf(x-FONTW/2, y+h+FONTH);
+                varray::attribf(x-FONTW/2, y+h+height);
+                varray::end();
                 hudshader->set();
             }
             h+=height;
         }
+
+        varray::disable();
     }
 };
 

@@ -410,7 +410,6 @@
     <ClInclude Include="..\engine\animmodel.h" />
     <ClInclude Include="..\engine\bih.h" />
     <ClInclude Include="..\engine\explosion.h" />
-    <ClInclude Include="..\engine\glexts.h" />
     <ClInclude Include="..\engine\hitzone.h" />
     <ClInclude Include="..\engine\iqm.h" />
     <ClInclude Include="..\engine\lensflare.h" />
@@ -427,15 +426,16 @@
     <ClInclude Include="..\engine\smd.h" />
     <ClInclude Include="..\engine\textedit.h" />
     <ClInclude Include="..\engine\texture.h" />
-    <ClInclude Include="..\engine\varray.h" />
     <ClInclude Include="..\engine\vertmodel.h" />
     <ClInclude Include="..\shared\command.h" />
     <ClInclude Include="..\shared\cube.h" />
     <ClInclude Include="..\shared\ents.h" />
     <ClInclude Include="..\shared\geom.h" />
+    <ClInclude Include="..\shared\glexts.h" />
     <ClInclude Include="..\shared\iengine.h" />
     <ClInclude Include="..\shared\igame.h" />
     <ClInclude Include="..\shared\tools.h" />
+    <ClInclude Include="..\shared\varray.h" />
     <ClInclude Include="..\fpsgame\ai.h" />
     <ClInclude Include="..\fpsgame\aiman.h" />
     <ClInclude Include="..\fpsgame\capture.h" />

@@ -132,6 +132,16 @@ void restorebackground()
     renderbackground(backgroundcaption[0] ? backgroundcaption : NULL, backgroundmapshot, backgroundmapname[0] ? backgroundmapname : NULL, backgroundmapinfo, true);
 }
 
+void bgquad(float x, float y, float w, float h, float tx = 0, float ty = 0, float tw = 1, float th = 1)
+{
+    varray::begin(GL_TRIANGLE_STRIP);
+    varray::attribf(x,   y);   varray::attribf(tx,      ty);
+    varray::attribf(x+w, y);   varray::attribf(tx + tw, ty);
+    varray::attribf(x,   y+h); varray::attribf(tx,      ty + th);
+    varray::attribf(x+w, y+h); varray::attribf(tx + tw, ty + th);
+    varray::end();
+}
+
 void renderbackground(const char *caption, Texture *mapshot, const char *mapname, const char *mapinfo, bool restore, bool force)
 {
     if(!inbetweenframes && !force) return;
@@ -177,59 +187,36 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
     }
     else if(lastupdate != lastmillis) lastupdate = lastmillis;
 
+    varray::defvertex(2);
+    varray::deftexcoord0();
+
     loopi(restore ? 1 : 3)
     {
         glColor3f(1, 1, 1);
         settexture("data/background.png", 0);
         float bu = w*0.67f/256.0f + backgroundu, bv = h*0.67f/256.0f + backgroundv;
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0,  0);  glVertex2f(0, 0);
-        glTexCoord2f(bu, 0);  glVertex2f(w, 0);
-        glTexCoord2f(0,  bv); glVertex2f(0, h);
-        glTexCoord2f(bu, bv); glVertex2f(w, h);
-        glEnd();
-        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        bgquad(0, 0, w, h, 0, 0, bu, bv);
         glEnable(GL_BLEND);
 #if 0
         settexture("<premul>data/background_detail.png", 0);
         float du = w*0.8f/512.0f + detailu, dv = h*0.8f/512.0f + detailv;
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0,  0);  glVertex2f(0, 0);
-        glTexCoord2f(du, 0);  glVertex2f(w, 0);
-        glTexCoord2f(0,  dv); glVertex2f(0, h);
-        glTexCoord2f(du, dv); glVertex2f(w, h);
-        glEnd();
+        bgquad(0, 0, w, h, 0, 0, du, dv);
         settexture("<premul>data/background_decal.png", 3);
-        glBegin(GL_QUADS);
         loopj(numdecals)
         {
             float hsz = decals[j].size, hx = clamp(decals[j].x, hsz, w-hsz), hy = clamp(decals[j].y, hsz, h-hsz), side = decals[j].side;
-            glTexCoord2f(side,   0); glVertex2f(hx-hsz, hy-hsz);
-            glTexCoord2f(1-side, 0); glVertex2f(hx+hsz, hy-hsz);
-            glTexCoord2f(1-side, 1); glVertex2f(hx+hsz, hy+hsz);
-            glTexCoord2f(side,   1); glVertex2f(hx-hsz, hy+hsz);
+            bgquad(hx-hsz, hy-hsz, 2*hsz, 2*hsz, side, 0, 1-2*side, 1); 
         }
-        glEnd();
 #endif
         float lh = 0.5f*min(w, h), lw = lh*2,
               lx = 0.5f*(w - lw), ly = 0.5f*(h*0.5f - lh);
         settexture(/*(maxtexsize ? min(maxtexsize, hwtexsize) : hwtexsize) >= 1024 && (screen->w > 1280 || screen->h > 800) ? "<premul>data/logo_1024.png" :*/ "<premul>data/logo.png", 3);
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0, 0); glVertex2f(lx,    ly);
-        glTexCoord2f(1, 0); glVertex2f(lx+lw, ly);
-        glTexCoord2f(0, 1); glVertex2f(lx,    ly+lh);
-        glTexCoord2f(1, 1); glVertex2f(lx+lw, ly+lh);
-        glEnd();
+        bgquad(lx, ly, lw, lh);
 
         float bh = 0.1f*min(w, h), bw = bh*2,
               bx = w - 1.1f*bw, by = h - 1.1f*bh;
         settexture("<premul>data/cube2badge.png", 3);
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0, 0); glVertex2f(bx,    by);
-        glTexCoord2f(1, 0); glVertex2f(bx+bw, by);
-        glTexCoord2f(0, 1); glVertex2f(bx,    by+bh);
-        glTexCoord2f(1, 1); glVertex2f(bx+bw, by+bh);
-        glEnd();
+        bgquad(bx, by, bw, bh);
 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         if(caption)
@@ -257,12 +244,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
             if(mapshot && mapshot!=notexture)
             {
                 glBindTexture(GL_TEXTURE_2D, mapshot->id);
-                glBegin(GL_TRIANGLE_STRIP);
-                glTexCoord2f(0, 0); glVertex2f(x,    y);
-                glTexCoord2f(1, 0); glVertex2f(x+sz, y);
-                glTexCoord2f(0, 1); glVertex2f(x,    y+sz);
-                glTexCoord2f(1, 1); glVertex2f(x+sz, y+sz);
-                glEnd();
+                bgquad(x, y, sz, sz);
             }
             else
             {
@@ -278,12 +260,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             }        
             settexture("data/mapshot_frame.png", 3);
-            glBegin(GL_TRIANGLE_STRIP);
-            glTexCoord2f(0, 0); glVertex2f(x,    y);
-            glTexCoord2f(1, 0); glVertex2f(x+sz, y);
-            glTexCoord2f(0, 1); glVertex2f(x,    y+sz);
-            glTexCoord2f(1, 1); glVertex2f(x+sz, y+sz);
-            glEnd();
+            bgquad(x, y, sz, sz);
             if(mapname)
             {
                 int tw = text_width(mapname);
@@ -310,6 +287,8 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         glDisable(GL_BLEND);
         if(!restore) swapbuffers();
     }
+
+    varray::disable();
 
     if(!restore)
     {
@@ -348,6 +327,9 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     resethudmatrix();
     hudshader->set();
 
+    varray::defvertex(2);
+    varray::deftexcoord0();
+
     glColor3f(1, 1, 1);
 
     float fh = 0.075f*min(w, h), fw = fh*10,
@@ -356,12 +338,7 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
           fu1 = 0/512.0f, fu2 = 511/512.0f,
           fv1 = 0/64.0f, fv2 = 52/64.0f;
     settexture("data/loading_frame.png", 3);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(fu1, fv1); glVertex2f(fx,    fy);
-    glTexCoord2f(fu2, fv1); glVertex2f(fx+fw, fy);
-    glTexCoord2f(fu1, fv2); glVertex2f(fx,    fy+fh);
-    glTexCoord2f(fu2, fv2); glVertex2f(fx+fw, fy+fh);
-    glEnd();
+    bgquad(fx, fy, fw, fh, fu1, fv1, fu2-fu1, fv2-fv1);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -376,22 +353,9 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     if(bar > 0)
     {
         settexture("data/loading_bar.png", 3);
-        glBegin(GL_QUADS);
-        glTexCoord2f(su1, bv1); glVertex2f(bx,    by);
-        glTexCoord2f(su2, bv1); glVertex2f(bx+sw, by);
-        glTexCoord2f(su2, bv2); glVertex2f(bx+sw, by+bh);
-        glTexCoord2f(su1, bv2); glVertex2f(bx,    by+bh);
-
-        glTexCoord2f(su2, bv1); glVertex2f(bx+sw, by);
-        glTexCoord2f(eu1, bv1); glVertex2f(ex,    by);
-        glTexCoord2f(eu1, bv2); glVertex2f(ex,    by+bh);
-        glTexCoord2f(su2, bv2); glVertex2f(bx+sw, by+bh);
-
-        glTexCoord2f(eu1, bv1); glVertex2f(ex,    by);
-        glTexCoord2f(eu2, bv1); glVertex2f(ex+ew, by);
-        glTexCoord2f(eu2, bv2); glVertex2f(ex+ew, by+bh);
-        glTexCoord2f(eu1, bv2); glVertex2f(ex,    by+bh);
-        glEnd();
+        bgquad(bx, by, sw, bh, su1, bv1, su2-su1, bv2-bv1);
+        bgquad(bx+sw, by, ex-(bx+sw), bh, su2, bv1, eu1-su2, bv2-bv1);
+        bgquad(ex, by, ew, bh, eu1, bv1, eu2-eu1, bv2-bv1);
     }
 
     if(text)
@@ -413,24 +377,16 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     {
         glBindTexture(GL_TEXTURE_2D, tex);
         float sz = 0.35f*min(w, h), x = 0.5f*(w-sz), y = 0.5f*min(w, h) - sz/15;
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0, 0); glVertex2f(x,    y);
-        glTexCoord2f(1, 0); glVertex2f(x+sz, y);
-        glTexCoord2f(0, 1); glVertex2f(x,    y+sz);
-        glTexCoord2f(1, 1); glVertex2f(x+sz, y+sz);
-        glEnd();
+        bgquad(x, y, sz, sz);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         settexture("data/mapshot_frame.png", 3);
-        glBegin(GL_TRIANGLE_STRIP);
-        glTexCoord2f(0, 0); glVertex2f(x,    y);
-        glTexCoord2f(1, 0); glVertex2f(x+sz, y);
-        glTexCoord2f(0, 1); glVertex2f(x,    y+sz);
-        glTexCoord2f(1, 1); glVertex2f(x+sz, y+sz);
-        glEnd();
+        bgquad(x, y, sz, sz);
         glDisable(GL_BLEND);
     }
+    
+    varray::disable();
 
     swapbuffers();
 }

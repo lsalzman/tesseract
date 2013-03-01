@@ -244,12 +244,7 @@ void viewao()
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2] ? aotex[2] : aotex[0]);
     int tw = aotex[2] ? gw : aow, th = aotex[2] ? gh : aoh;
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, th); glVertex2f(0, 0);
-    glTexCoord2f(tw, th); glVertex2f(w, 0);
-    glTexCoord2f(0, 0); glVertex2f(0, h);
-    glTexCoord2f(tw, 0); glVertex2f(w, h);
-    glEnd();
+    debugquad(0, 0, w, h, 0, 0, tw, th);
 }
 
 void renderao()
@@ -1270,12 +1265,7 @@ void viewdepth()
     SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, gh); glVertex2f(0, 0);
-    glTexCoord2f(gw, gh); glVertex2f(w, 0);
-    glTexCoord2f(0, 0); glVertex2f(0, h);
-    glTexCoord2f(gw, 0); glVertex2f(w, h);
-    glEnd();
+    debugquad(0, 0, w, h, 0, 0, gw, gh);
 }
 
 VAR(debugrefract, 0, 0, 1);
@@ -1286,12 +1276,7 @@ void viewrefract()
     SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, gh); glVertex2f(0, 0);
-    glTexCoord2f(gw, gh); glVertex2f(w, 0);
-    glTexCoord2f(0, 0); glVertex2f(0, h);
-    glTexCoord2f(gw, 0); glVertex2f(w, h);
-    glEnd();
+    debugquad(0, 0, w, h, 0, 0, gw, gh);
 }
 
 #define RH_MAXSPLITS 4
@@ -1421,32 +1406,30 @@ VARFP(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
 VAR(debugrsm, 0, 0, 2);
 void viewrsm()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
     SETSHADER(hudrect);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, debugrsm == 2 ? rsmnormaltex : rsmcolortex);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, 0); glVertex2f(screen->w-w, screen->h-h);
-    glTexCoord2f(rsmsize, 0); glVertex2f(screen->w, screen->h-h);
-    glTexCoord2f(0, rsmsize); glVertex2f(screen->w-w, screen->h);
-    glTexCoord2f(rsmsize, rsmsize); glVertex2f(screen->w, screen->h);
-    glEnd();
+    debugquad(x, y, w, h, 0, 0, rsmsize, rsmsize);
 }
 
 VAR(debugrh, 0, 0, RH_MAXSPLITS*(128 + 2));
 void viewrh()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
     SETSHADER(hud3d);
     glColor3f(1, 1, 1);
     glBindTexture(GL_TEXTURE_3D, rhtex[1]);
     float z = (debugrh-1+0.5f)/float((rhgrid+2*rhborder)*rhsplits);
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord3f(0, 0, z); glVertex2f(screen->w-w, screen->h-h);
-    glTexCoord3f(1, 0, z); glVertex2f(screen->w, screen->h-h);
-    glTexCoord3f(0, 1, z); glVertex2f(screen->w-w, screen->h);
-    glTexCoord3f(1, 1, z); glVertex2f(screen->w, screen->h);
-    glEnd();
+    varray::defvertex(2);
+    varray::deftexcoord0(3);
+    varray::begin(GL_TRIANGLE_STRIP);
+    varray::attribf(x,   y);   varray::attribf(0, 0, z);
+    varray::attribf(x+w, y);   varray::attribf(1, 0, z);
+    varray::attribf(x,   y+h); varray::attribf(0, 1, z);
+    varray::attribf(x+w, y+h); varray::attribf(1, 1, z);
+    varray::end();
+    varray::disable();
 }
 
 #define SHADOWATLAS_SIZE 4096
@@ -1559,7 +1542,7 @@ static inline bool usesmcomparemode() { return !usegatherforsm() || (hasTG && ha
 
 void viewshadowatlas()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
     float tw = 1, th = 1;
     if(shadowatlastarget == GL_TEXTURE_RECTANGLE_ARB)
     {
@@ -1571,12 +1554,7 @@ void viewshadowatlas()
     glColor3f(1, 1, 1);
     glBindTexture(shadowatlastarget, shadowatlastex);
     if(usesmcomparemode()) setsmnoncomparemode();
-    glBegin(GL_TRIANGLE_STRIP);
-    glTexCoord2f(0, 0); glVertex2f(screen->w-w, screen->h-h);
-    glTexCoord2f(tw, 0); glVertex2f(screen->w, screen->h-h);
-    glTexCoord2f(0, th); glVertex2f(screen->w-w, screen->h);
-    glTexCoord2f(tw, th); glVertex2f(screen->w, screen->h);
-    glEnd();
+    debugquad(x, y, w, h, 0, 0, tw, th);
     if(usesmcomparemode()) setsmcomparemode();
 }
 VAR(debugshadowatlas, 0, 0, 1);
@@ -2303,6 +2281,16 @@ FVAR(lightradiustweak, 1, 1.11f, 2);
 VAR(lighttilestrip, 0, 1, 1);
 VAR(lighttilestripthreshold, 1, 8, 8);
 
+static inline void lightquad(float z = -1)
+{
+    varray::begin(GL_TRIANGLE_STRIP);
+    varray::attribf( 1, -1, z);
+    varray::attribf(-1, -1, z);
+    varray::attribf( 1,  1, z);
+    varray::attribf(-1,  1, z);
+    varray::end();
+}
+
 void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 = 1, const uint *tilemask = NULL, int stencilmask = 0, int msaapass = 0)
 {
     Shader *s = drawtex == DRAWTEX_MINIMAP ? deferredminimapshader : (msaapass <= 0 ? deferredlightshader : (msaapass > 1 ? deferredmsaasampleshader : deferredmsaapixelshader));
@@ -2384,6 +2372,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         if(!batchsunlight) sunpass = true;
     }
 
+    varray::defvertex(3);
+
     int btx1, bty1, btx2, bty2;
     calctilebounds(bsx1, bsy1, bsx2, bsy2, btx1, bty1, btx2, bty2);
     if(msaapass == 1)
@@ -2397,12 +2387,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
         glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
         SETSHADER(msaaedgedetect);
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex3f( 1, -1, -1);
-        glVertex3f(-1, -1, -1);
-        glVertex3f( 1,  1, -1);
-        glVertex3f(-1,  1, -1);
-        glEnd();
+        lightquad();
         glStencilFunc(GL_EQUAL, stencilmask, ~0);
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -2419,12 +2404,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         s->set();
         glScissor(tx1, ty1, tx2-tx1, ty2-ty1);
         if(depthtestlights && depth) { glDisable(GL_DEPTH_TEST); depth = false; }
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex3f( 1, -1, -1);
-        glVertex3f(-1, -1, -1);
-        glVertex3f( 1,  1, -1);
-        glVertex3f(-1,  1, -1);
-        glEnd();
+        lightquad();
         lightpassesused++;
     }
 
@@ -2442,6 +2422,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
  
     if(!lighttilebatch)
     {
+        varray::disable();
         if(!lightspherevbuf) initlightsphere(10, 5);
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, lightspherevbuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, lightsphereebuf);
@@ -2685,12 +2666,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                     if(hasDBT && depthtestlights > 1) glDepthBounds_(sz1*0.5f + 0.5f, sz2*0.5f + 0.5f);
 
                     // FIXME: render light geometry here
-                    glBegin(GL_TRIANGLE_STRIP);
-                    glVertex3f( 1, -1, sz1);
-                    glVertex3f(-1, -1, sz1);
-                    glVertex3f( 1,  1, sz1);
-                    glVertex3f(-1,  1, sz1);
-                    glEnd();
+                    lightquad(sz1);
 
                     lightpassesused++;
                 }
@@ -2700,6 +2676,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             }
         }
     }
+
+    varray::disable();
 
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
@@ -2718,6 +2696,7 @@ VAR(debuglightscissor, 0, 0, 1);
 void viewlightscissor()
 {
     vector<extentity *> &ents = entities::getents();
+    varray::defvertex(2);
     loopv(entgroup)
     {
         int idx = entgroup[i];
@@ -2731,15 +2710,16 @@ void viewlightscissor()
                 glColor3f(l.color.x/255, l.color.y/255, l.color.z/255);
                 float x1 = (l.sx1+1)/2*screen->w, x2 = (l.sx2+1)/2*screen->w,
                       y1 = (1-l.sy1)/2*screen->h, y2 = (1-l.sy2)/2*screen->h;
-                glBegin(GL_TRIANGLE_STRIP);
-                glVertex2f(x1, y1);
-                glVertex2f(x2, y1);
-                glVertex2f(x1, y2);
-                glVertex2f(x2, y2);
-                glEnd();
+                varray::begin(GL_TRIANGLE_STRIP);
+                varray::attribf(x1, y1);
+                varray::attribf(x2, y1);
+                varray::attribf(x1, y2);
+                varray::attribf(x2, y2);
+                varray::end();
             }
         }
     }
+    varray::disable();
 }
 
 static inline bool calclightscissor(lightinfo &l)
@@ -2829,6 +2809,7 @@ void collectlights()
 
     lightorder.sort(sortlights);
 
+    bool queried = false;
     if(!drawtex && smquery && oqfrags && oqlights) loopv(lightorder)
     {
         int idx = lightorder[i];
@@ -2860,6 +2841,11 @@ void collectlights()
             l.query = newquery(&l);
             if(l.query)
             {
+                if(!queried)
+                {
+                    varray::defvertex();
+                    queried = true;
+                }
                 startquery(l.query);
                 ivec bo = bbmin, br = bbmax;
                 br.sub(bo).add(1);
@@ -2868,6 +2854,7 @@ void collectlights()
             }
         }
     }
+    if(queried) varray::disable();
 }
 
 static inline void addlighttiles(const lightinfo &l, int idx)
@@ -2953,6 +2940,33 @@ void packlights()
     lightsvisible = lightorder.length() - lightsoccluded;
 }
 
+static inline void rhquad(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2, float tz)
+{
+    varray::begin(GL_TRIANGLE_STRIP);
+    varray::attribf(x2, y1); varray::attribf(tx2, ty1, tz);
+    varray::attribf(x1, y1); varray::attribf(tx1, ty1, tz);
+    varray::attribf(x2, y2); varray::attribf(tx2, ty2, tz);
+    varray::attribf(x1, y2); varray::attribf(ty1, ty2, tz);
+    varray::end();
+}
+
+static inline void rhquad(float dx1, float dy1, float dx2, float dy2, float dtx1, float dty1, float dtx2, float dty2, float dtz,
+                          float px1, float py1, float px2, float py2, float ptx1, float pty1, float ptx2, float pty2, float ptz)
+{
+    varray::begin(GL_TRIANGLE_STRIP);
+    varray::attribf(dx2, dy1); varray::attribf(dtx2, dty1, dtz);
+        varray::attribf(px2, py1); varray::attribf(ptx2, pty1, ptz);
+    varray::attribf(dx1, dy1); varray::attribf(dtx1, dty1, dtz);
+        varray::attribf(px1, py1); varray::attribf(ptx1, pty1, ptz);
+    varray::attribf(dx1, dy2); varray::attribf(dtx1, dty2, dtz);
+        varray::attribf(px1, py2); varray::attribf(ptx1, pty2, ptz);
+    varray::attribf(dx2, dy2); varray::attribf(dtx2, dty2, dtz);
+        varray::attribf(px2, py2); varray::attribf(ptx2, pty2, ptz);
+    varray::attribf(dx2, dy1); varray::attribf(dtx2, dty1, dtz);
+        varray::attribf(px2, py1); varray::attribf(ptx2, pty1, ptz);
+    varray::end();
+}
+
 void radiancehints::renderslices()
 {
     if(rhcache) loopi(3) swap(rhtex[i], rhtex[i+3]);
@@ -2987,6 +3001,9 @@ void radiancehints::renderslices()
     glActiveTexture_(GL_TEXTURE0_ARB);
 
     glClearColor(0.5f, 0.5f, 0.5f, 0);
+
+    varray::defvertex(2);
+    varray::deftexcoord0(3);
 
     loopirev(rhsplits)
     {
@@ -3070,13 +3087,7 @@ void radiancehints::renderslices()
                 bz = bz*next.scale.z + next.offset.z;
 
                 SETSHADER(radiancehintsborder);
-
-                glBegin(GL_TRIANGLE_STRIP);
-                glTexCoord3f(btx2, bty1, bz); glVertex2f(bvx2, bvy1);
-                glTexCoord3f(btx1, bty1, bz); glVertex2f(bvx1, bvy1);
-                glTexCoord3f(btx2, bty2, bz); glVertex2f(bvx2, bvy2);
-                glTexCoord3f(btx1, bty2, bz); glVertex2f(bvx1, bvy2);
-                glEnd();
+                rhquad(bvx1, bvy1, bvx2, bvy2, btx1, bty1, btx2, bty2, bz);
             }
             else
             {
@@ -3127,19 +3138,8 @@ void radiancehints::renderslices()
                     if(px1 != tx1 || px2 != tx2 || py1 != ty1 || py2 != ty2)
                     {
                         radiancehintsshader->set();
-
-                        glBegin(GL_TRIANGLE_STRIP);
-                        glTexCoord3f(px2, py1, z); glVertex2f(pvx2, pvy1);
-                            glTexCoord3f(tx2, ty1, z); glVertex2f(vx2, vy1);
-                        glTexCoord3f(px1, py1, z); glVertex2f(pvx1, pvy1);
-                            glTexCoord3f(tx1, ty1, z); glVertex2f(vx1, vy1);
-                        glTexCoord3f(px1, py2, z); glVertex2f(pvx1, pvy2);
-                            glTexCoord3f(tx1, ty2, z); glVertex2f(vx1, vy2);
-                        glTexCoord3f(px2, py2, z); glVertex2f(pvx2, pvy2);
-                            glTexCoord3f(tx2, ty2, z); glVertex2f(vx2, vy2);
-                        glTexCoord3f(px2, py1, z); glVertex2f(pvx2, pvy1);
-                            glTexCoord3f(tx2, ty1, z); glVertex2f(vx2, vy1);
-                        glEnd();
+                        rhquad(pvx1, pvy1, pvx2, pvy2, px1, py1, px2, py2, z,
+                                vx1,  vy1,  vx2,  vy2, tx1, ty1, tx2, ty2, z);
                     }
 
                     if(z > dmin.z && z < dmax.z)
@@ -3161,57 +3161,28 @@ void radiancehints::renderslices()
                             if(dx1 != px1 || dx2 != px2 || dy1 != py1 || dy2 != py2)
                             {
                                 SETSHADER(radiancehintscached);
-
-                                glBegin(GL_TRIANGLE_STRIP);
-                                glTexCoord3f(dtx2, dty1, dz); glVertex2f(dvx2, dvy1);
-                                    glTexCoord3f(ptx2, pty1, pz); glVertex2f(pvx2, pvy1);
-                                glTexCoord3f(dtx1, dty1, dz); glVertex2f(dvx1, dvy1);
-                                    glTexCoord3f(ptx1, pty1, pz); glVertex2f(pvx1, pvy1);
-                                glTexCoord3f(dtx1, dty2, dz); glVertex2f(dvx1, dvy2);
-                                    glTexCoord3f(ptx1, pty2, pz); glVertex2f(pvx1, pvy2);
-                                glTexCoord3f(dtx2, dty2, dz); glVertex2f(dvx2, dvy2);
-                                    glTexCoord3f(ptx2, pty2, pz); glVertex2f(pvx2, pvy2);
-                                glTexCoord3f(dtx2, dty1, dz); glVertex2f(dvx2, dvy1);
-                                    glTexCoord3f(ptx2, pty1, pz); glVertex2f(pvx2, pvy1);
-                                glEnd();
+                                rhquad(dvx1, dvy1, dvx2, dvy2, dtx1, dty1, dtx2, dty2, dz,
+                                       pvx1, pvy1, pvx2, pvy2, ptx1, pty1, ptx2, pty2, pz);
                             }
 
                             radiancehintsshader->set();
-
-                            glBegin(GL_TRIANGLE_STRIP);
-                            glTexCoord3f(dx2, dy1, z); glVertex2f(dvx2, dvy1);
-                            glTexCoord3f(dx1, dy1, z); glVertex2f(dvx1, dvy1);
-                            glTexCoord3f(dx2, dy2, z); glVertex2f(dvx2, dvy2);
-                            glTexCoord3f(dx1, dy2, z); glVertex2f(dvx1, dvy2);
-                            glEnd();
-
+                            rhquad(dvx1, dvy1, dvx2, dvy2, dx1, dy1, dx2, dy2, z);
                             continue;
                         }
                     }
 
                     SETSHADER(radiancehintscached);
-
-                    glBegin(GL_TRIANGLE_STRIP);
-                    glTexCoord3f(ptx2, pty1, pz); glVertex2f(pvx2, pvy1);
-                    glTexCoord3f(ptx1, pty1, pz); glVertex2f(pvx1, pvy1);
-                    glTexCoord3f(ptx2, pty2, pz); glVertex2f(pvx2, pvy2);
-                    glTexCoord3f(ptx1, pty2, pz); glVertex2f(pvx1, pvy2);
-                    glEnd();
-
+                    rhquad(pvx1, pvy1, pvx2, pvy2, ptx1, pty1, ptx2, pty2, pz);
                     continue;
                 }
             }
 
             radiancehintsshader->set();
-
-            glBegin(GL_TRIANGLE_STRIP);
-            glTexCoord3f(tx2, ty1, z); glVertex2f(vx2, vy1);
-            glTexCoord3f(tx1, ty1, z); glVertex2f(vx1, vy1);
-            glTexCoord3f(tx2, ty2, z); glVertex2f(vx2, vy2);
-            glTexCoord3f(tx1, ty2, z); glVertex2f(vx1, vy2);
-            glEnd();
+            rhquad(vx1, vy1, vx2, vy2, tx1, ty1, tx2, ty2, z);
         }
     }
+
+    varray::disable();
 }
 
 void renderradiancehints()

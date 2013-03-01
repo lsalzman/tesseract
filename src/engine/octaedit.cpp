@@ -10,15 +10,15 @@ void boxs(int orient, vec o, const vec &s)
     float f = !outline ? 0 : (dc>0 ? 0.2f : -0.2f);
     o[D[d]] += float(dc) * s[D[d]] + f,
 
-    glBegin(GL_LINE_LOOP);
+    varray::defvertex();
+    varray::begin(GL_LINE_LOOP);
 
-    glVertex3fv(o.v); o[R[d]] += s[R[d]];
-    glVertex3fv(o.v); o[C[d]] += s[C[d]];
-    glVertex3fv(o.v); o[R[d]] -= s[R[d]];
-    glVertex3fv(o.v);
-
-    glEnd();
-    xtraverts += 4;
+    varray::attrib(o); o[R[d]] += s[R[d]];
+    varray::attrib(o); o[C[d]] += s[C[d]];
+    varray::attrib(o); o[R[d]] -= s[R[d]];
+    varray::attrib(o);
+    
+    xtraverts += varray::end();
 }
 
 void boxs3D(const vec &o, vec s, int g)
@@ -40,23 +40,23 @@ void boxsgrid(int orient, vec o, vec s, int g)
 
     o[D[d]] += dc * s[D[d]]*g + f;
 
-    glBegin(GL_LINES);
+    varray::defvertex();
+    varray::begin(GL_LINES);
     loop(x, xs) {
         o[R[d]] += g;
-        glVertex3fv(o.v);
+        varray::attrib(o);
         o[C[d]] += ys*g;
-        glVertex3fv(o.v);
+        varray::attrib(o);
         o[C[d]] = oy;
     }
     loop(y, ys) {
         o[C[d]] += g;
         o[R[d]] = ox;
-        glVertex3fv(o.v);
+        varray::attrib(o);
         o[R[d]] += xs*g;
-        glVertex3fv(o.v);
+        varray::attrib(o);
     }
-    glEnd();
-    xtraverts += 2*int(xs+ys);
+    xtraverts += varray::end();
 }
 
 selinfo sel, lastsel;
@@ -2283,6 +2283,9 @@ void rendertexturepanel(int w, int h)
 
         int y = 50, gap = 10;
 
+        varray::defvertex(2);
+        varray::deftexcoord0();
+
         loopi(7)
         {
             int s = (i == 3 ? 285 : 220), ti = curtexindex+i-3;
@@ -2302,15 +2305,15 @@ void rendertexturepanel(int w, int h)
                 }
                 float sx = min(1.0f, tex->xs/(float)tex->ys), sy = min(1.0f, tex->ys/(float)tex->xs);
                 int x = w*1800/h-s-50, r = s;
-                float tc[4][2] = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
+                vec2 tc[4] = { vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1) };
                 float xoff = vslot.offset.x, yoff = vslot.offset.y;
                 if(vslot.rotation)
                 {
-                    if((vslot.rotation&5) == 1) { swap(xoff, yoff); loopk(4) swap(tc[k][0], tc[k][1]); }
-                    if(vslot.rotation >= 2 && vslot.rotation <= 4) { xoff *= -1; loopk(4) tc[k][0] *= -1; }
-                    if(vslot.rotation <= 2 || vslot.rotation == 5) { yoff *= -1; loopk(4) tc[k][1] *= -1; }
+                    if((vslot.rotation&5) == 1) { swap(xoff, yoff); loopk(4) swap(tc[k].x, tc[k].y); }
+                    if(vslot.rotation >= 2 && vslot.rotation <= 4) { xoff *= -1; loopk(4) tc[k].x *= -1; }
+                    if(vslot.rotation <= 2 || vslot.rotation == 5) { yoff *= -1; loopk(4) tc[k].y *= -1; }
                 }
-                loopk(4) { tc[k][0] = tc[k][0]/sx - xoff/tex->xs; tc[k][1] = tc[k][1]/sy - yoff/tex->ys; }
+                loopk(4) { tc[k].x = tc[k].x/sx - xoff/tex->xs; tc[k].x = tc[k].x/sy - yoff/tex->ys; }
                 glBindTexture(GL_TEXTURE_2D, tex->id);
                 loopj(glowtex ? 3 : 2)
                 {
@@ -2321,24 +2324,22 @@ void rendertexturepanel(int w, int h)
                         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
                         glColor4f(vslot.glowcolor.x, vslot.glowcolor.y, vslot.glowcolor.z, texpaneltimer/1000.0f);
                     }
-                    glBegin(GL_TRIANGLE_STRIP);
-                    glTexCoord2fv(tc[0]); glVertex2f(x,   y);
-                    glTexCoord2fv(tc[1]); glVertex2f(x+r, y);
-                    glTexCoord2fv(tc[3]); glVertex2f(x,   y+r);
-                    glTexCoord2fv(tc[2]); glVertex2f(x+r, y+r);
-                    glEnd();
-                    xtraverts += 4;
+                    varray::begin(GL_TRIANGLE_STRIP);
+                    varray::attribf(x,   y);   varray::attrib(tc[0]);
+                    varray::attribf(x+r, y);   varray::attrib(tc[1]);
+                    varray::attribf(x,   y+r); varray::attrib(tc[3]);
+                    varray::attribf(x+r, y+r); varray::attrib(tc[2]);
+                    xtraverts += varray::end();
                     if(j==1 && layertex)
                     {
                         glColor4f(layer->colorscale.x, layer->colorscale.y, layer->colorscale.z, texpaneltimer/1000.0f);
                         glBindTexture(GL_TEXTURE_2D, layertex->id);
-                        glBegin(GL_TRIANGLE_STRIP);
-                        glTexCoord2fv(tc[0]); glVertex2f(x+r/2, y+r/2);
-                        glTexCoord2fv(tc[1]); glVertex2f(x+r,   y+r/2);
-                        glTexCoord2fv(tc[3]); glVertex2f(x+r/2, y+r);
-                        glTexCoord2fv(tc[2]); glVertex2f(x+r,   y+r);
-                        glEnd();
-                        xtraverts += 4;
+                        varray::begin(GL_TRIANGLE_STRIP);
+                        varray::attribf(x+r/2, y+r/2); varray::attrib(tc[0]);
+                        varray::attribf(x+r,   y+r/2); varray::attrib(tc[1]);
+                        varray::attribf(x+r/2, y+r);   varray::attrib(tc[3]);
+                        varray::attribf(x+r,   y+r);   varray::attrib(tc[2]);
+                        xtraverts += varray::end();
                     }
                     if(!j)
                     {
@@ -2352,7 +2353,9 @@ void rendertexturepanel(int w, int h)
             y += s+gap;
         }
 
+        varray::disable();
         pophudmatrix(true, false);
         hudshader->set();
     }
 }
+

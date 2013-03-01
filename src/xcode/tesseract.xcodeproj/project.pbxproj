@@ -377,7 +377,6 @@
 				B9AC7A860D06DB44005506F8 /* bih.h */,
 				B9AC7A8B0D06DB44005506F8 /* engine.h */,
 				D18B8FBE0DB0AF8200171439 /* explosion.h */,
-				B9AC7A8B0D06DB44005506F8 /* glexts.h */,
 				D19E775D11977E82003753EF /* iqm.h */,
 				D18B8FBF0DB0AF8200171439 /* lensflare.h */,
 				D18B8FC00DB0AF8200171439 /* lightning.h */,
@@ -395,7 +394,6 @@
 				D19E776011977E82003753EF /* smd.h */,
 				D16C16910E04812500A522EB /* textedit.h */,
 				B9AC7AA70D06DB44005506F8 /* texture.h */,
-				D19E776111977E82003753EF /* varray.h */,
 				B9AC7AA80D06DB44005506F8 /* vertmodel.h */,
 				B9AC7AAB0D06DB44005506F8 /* world.h */,
 			);
@@ -440,9 +438,11 @@
 				B9AC7AC30D06DB44005506F8 /* cube.h */,
 				B9AC7AC40D06DB44005506F8 /* ents.h */,
 				B9AC7AC60D06DB44005506F8 /* geom.h */,
+                B9AC7A8B0D06DB44005506F8 /* glexts.h */,
 				B9AC7AC70D06DB44005506F8 /* iengine.h */,
 				B9AC7AC80D06DB44005506F8 /* igame.h */,
 				B9AC7ACE0D06DB44005506F8 /* tools.h */,
+                D19E776111977E82003753EF /* varray.h */,
 			);
 			name = shared;
 			path = ../shared;

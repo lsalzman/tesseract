@@ -66,12 +66,14 @@ void rendercaustics(float surface, float syl, float syr)
     glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
     setupcaustics(0, surface);
     SETSHADER(caustics);
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex2f(1, -1);
-    glVertex2f(-1, -1);
-    glVertex2f(1, syr);
-    glVertex2f(-1, syl);
-    glEnd();
+    varray::defvertex(2);
+    varray::begin(GL_TRIANGLE_STRIP);
+    varray::attribf(1, -1);
+    varray::attribf(-1, -1);
+    varray::attribf(1, syr);
+    varray::attribf(-1, syl);
+    varray::end();
+    varray::disable();
 }
 
 void renderwaterfog(int mat, float surface)
@@ -119,12 +121,14 @@ void renderwaterfog(int mat, float surface)
     GLOBALPARAM(waterfogmatrix, m);
 
     SETSHADER(waterfog);
-    glBegin(GL_TRIANGLE_STRIP);
-    glVertex2f(1, -1);
-    glVertex2f(-1, -1);
-    glVertex2f(1, syr);
-    glVertex2f(-1, syl);
-    glEnd();
+    varray::defvertex(2);
+    varray::begin(GL_TRIANGLE_STRIP);
+    varray::attribf(1, -1);
+    varray::attribf(-1, -1);
+    varray::attribf(1, syr);
+    varray::attribf(-1, syl);
+    varray::end();
+    varray::disable();
 
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
@@ -140,7 +144,7 @@ static float whscale, whoffset;
 #define VERTW(vertw, defbody, body) \
     static inline void def##vertw() \
     { \
-        varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT); \
+        varray::defvertex(); \
         defbody; \
     } \
     static inline void vertw(float v1, float v2, float v3) \
@@ -149,19 +153,19 @@ static float whscale, whoffset;
         float s = angle - int(angle) - 0.5f; \
         s *= 8 - fabs(s)*16; \
         float h = WATER_AMPLITUDE*s-WATER_OFFSET; \
-        varray::attrib<float>(v1, v2, v3+h); \
+        varray::attribf(v1, v2, v3+h); \
         body; \
     }
 #define VERTWN(vertw, defbody, body) \
     static inline void def##vertw() \
     { \
-        varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT); \
+        varray::defvertex(); \
         defbody; \
     } \
     static inline void vertw(float v1, float v2, float v3) \
     { \
         float h = -WATER_OFFSET; \
-        varray::attrib<float>(v1, v2, v3+h); \
+        varray::attribf(v1, v2, v3+h); \
         body; \
     }
 #define VERTWT(vertwt, defbody, body) \
@@ -173,27 +177,27 @@ static float whscale, whoffset;
     })
 
 VERTW(vertwt, {
-    varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
+    varray::deftexcoord0();
 }, {
-    varray::attrib<float>(v1/8.0f, v2/8.0f);
+    varray::attribf(v1/8.0f, v2/8.0f);
 })
 VERTWN(vertwtn, {
-    varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
+    varray::deftexcoord0();
 }, {
-    varray::attrib<float>(v1/8.0f, v2/8.0f);
+    varray::attribf(v1/8.0f, v2/8.0f);
 })
 
 static float lavaxk = 1.0f, lavayk = 1.0f, lavascroll = 0.0f;
 
 VERTW(vertl, {
-    varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
+    varray::deftexcoord0();
 }, {
-    varray::attrib<float>(lavaxk*(v1+lavascroll), lavayk*(v2+lavascroll));
+    varray::attribf(lavaxk*(v1+lavascroll), lavayk*(v2+lavascroll));
 })
 VERTWN(vertln, {
-    varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
+    varray::deftexcoord0();
 }, {
-    varray::attrib<float>(lavaxk*(v1+lavascroll), lavayk*(v2+lavascroll));
+    varray::attribf(lavaxk*(v1+lavascroll), lavayk*(v2+lavascroll));
 })
 
 #define renderwaterstrips(vertw, z) { \
@@ -467,9 +471,9 @@ static void renderwaterfall(const materialsurface &m, float offset, const vec *n
 {
     if(varray::data.empty())
     {
-        varray::defattrib(varray::ATTRIB_VERTEX, 3, GL_FLOAT);
-        if(normal) varray::defattrib(varray::ATTRIB_NORMAL, 3, GL_FLOAT);
-        varray::defattrib(varray::ATTRIB_TEXCOORD0, 2, GL_FLOAT);
+        varray::defvertex();
+        if(normal) varray::defnormal();
+        varray::deftexcoord0();
         varray::begin(GL_QUADS);
     }
     float x = m.o.x, y = m.o.y, zmin = m.o.z, zmax = zmin;
@@ -482,19 +486,19 @@ static void renderwaterfall(const materialsurface &m, float offset, const vec *n
 #define GENFACEVERTX(orient, vert, mx,my,mz, sx,sy,sz) \
             { \
                 vec v(mx sx, my sy, mz sz); \
-                varray::attrib<float>(v.x, v.y, v.z); \
+                varray::attribf(v.x, v.y, v.z); \
                 GENFACENORMAL \
-                varray::attrib<float>(wfxscale*v.y, -wfyscale*(v.z+wfscroll)); \
+                varray::attribf(wfxscale*v.y, -wfyscale*(v.z+wfscroll)); \
             }
 #undef GENFACEVERTY
 #define GENFACEVERTY(orient, vert, mx,my,mz, sx,sy,sz) \
             { \
                 vec v(mx sx, my sy, mz sz); \
-                varray::attrib<float>(v.x, v.y, v.z); \
+                varray::attribf(v.x, v.y, v.z); \
                 GENFACENORMAL \
-                varray::attrib<float>(wfxscale*v.x, -wfyscale*(v.z+wfscroll)); \
+                varray::attribf(wfxscale*v.x, -wfyscale*(v.z+wfscroll)); \
             }
-#define GENFACENORMAL varray::attrib<float>(n.x, n.y, n.z);
+#define GENFACENORMAL varray::attribf(n.x, n.y, n.z);
     if(normal)
     {
         vec n = *normal;
