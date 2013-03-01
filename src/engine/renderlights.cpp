@@ -3801,30 +3801,25 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
 
     SETSHADER(modelpreview);
 
-    if(background || outfbo)
+    if(outfbo)
     {
-        if(!outfbo && scissor) glEnable(GL_SCISSOR_TEST);
         screenquad(vieww, viewh);
-        if(!outfbo && scissor) glDisable(GL_SCISSOR_TEST);
 
-        if(outfbo)
-        {
-           glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0); 
-           glViewport(x, y, w, h);
-           glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[0]);
-           SETSHADER(scalelinear);
-        }
+        glBindFramebuffer_(GL_FRAMEBUFFER_EXT, 0); 
+        glViewport(x, y, w, h);
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[0]);
+        SETSHADER(scalelinear);
     }
     
     if(!background)
     {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_BLEND);
-        if(scissor) glEnable(GL_SCISSOR_TEST);
-        screenquad(vieww, viewh);
-        if(scissor) glDisable(GL_SCISSOR_TEST);
-        glDisable(GL_BLEND);
     }
+    if(scissor) glEnable(GL_SCISSOR_TEST);
+    screenquad(vieww, viewh);
+    if(scissor) glDisable(GL_SCISSOR_TEST);
+    if(!background) glDisable(GL_BLEND);
 
     GLERROR;
     

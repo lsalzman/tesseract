@@ -1638,82 +1638,67 @@ void screenquad()
     varray::disable();
 }
 
+#define SCREENQUAD1(x1, y1, x2, y2, sx1, sy1, sx2, sy2) { \
+    varray::defvertex(2); \
+    varray::deftexcoord0(); \
+    varray::begin(GL_TRIANGLE_STRIP); \
+    varray::attribf(x2, y1); varray::attribf(sx2, sy1); \
+    varray::attribf(x1, y1); varray::attribf(sx1, sy1); \
+    varray::attribf(x2, y2); varray::attribf(sx2, sy2); \
+    varray::attribf(x1, y2); varray::attribf(sx1, sy2); \
+    varray::end(); \
+}
+
 void screenquad(float sw, float sh)
 {
-    varray::defvertex(2);
-    varray::deftexcoord0();
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(1, -1); varray::attribf(sw, 0);
-    varray::attribf(-1, -1); varray::attribf(0, 0);
-    varray::attribf(1, 1); varray::attribf(sw, sh);
-    varray::attribf(-1, 1); varray::attribf(0, sh);
-    varray::end();
+    SCREENQUAD1(-1, -1, 1, 1, 0, 0, sw, sh);
     varray::disable();
+}
+
+void screenquadflipped(float sw, float sh)
+{
+    SCREENQUAD1(-1, -1, 1, 1, 0, sh, sw, 0);
+    varray::disable();
+}
+
+#define SCREENQUAD2(x1, y1, x2, y2, sx1, sy1, sx2, sy2, tx1, ty1, tx2, ty2) { \
+    varray::defvertex(2); \
+    varray::deftexcoord0(); \
+    varray::deftexcoord1(); \
+    varray::begin(GL_TRIANGLE_STRIP); \
+    varray::attribf(x2, y1); varray::attribf(sx2, sy1); varray::attribf(tx2, ty1); \
+    varray::attribf(x1, y1); varray::attribf(sx1, sy1); varray::attribf(tx1, ty1); \
+    varray::attribf(x2, y2); varray::attribf(sx2, sy2); varray::attribf(tx2, ty2); \
+    varray::attribf(x1, y2); varray::attribf(sx1, sy2); varray::attribf(tx1, ty2); \
+    varray::end(); \
 }
 
 void screenquad(float sw, float sh, float sw2, float sh2)
 {
-    varray::defvertex(2);
-    varray::deftexcoord0();
-    varray::deftexcoord1();
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(1, -1); varray::attribf(sw, 0); varray::attribf(sw2, 0);
-    varray::attribf(-1, -1); varray::attribf(0, 0); varray::attribf(0, 0);
-    varray::attribf(1, 1); varray::attribf(sw, sh); varray::attribf(sw2, sh2);
-    varray::attribf(-1, 1); varray::attribf(0, sh); varray::attribf(0, sh2);
-    varray::end();
+    SCREENQUAD2(-1, -1, 1, 1, 0, 0, sw, sh, 0, 0, sw2, sh2);
     varray::disable();
 }
 
 void screenquadoffset(float x, float y, float w, float h)
 {
-    varray::defvertex(2);
-    varray::deftexcoord0();
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(1, -1); varray::attribf(x + w, y);
-    varray::attribf(-1, -1); varray::attribf(x, y);
-    varray::attribf(1, 1); varray::attribf(x + w, y + h);
-    varray::attribf(-1, 1); varray::attribf(x, y + h);
-    varray::end();
+    SCREENQUAD1(-1, -1, 1, 1, x, y, x+w, y+h);
     varray::disable();
 }
 
 void screenquadoffset(float x, float y, float w, float h, float x2, float y2, float w2, float h2)
 {
-    varray::defvertex(2);
-    varray::deftexcoord0();
-    varray::deftexcoord1();
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(1, -1); varray::attribf(x+w, y); varray::attribf(x2+w2, y2);
-    varray::attribf(-1, -1); varray::attribf(x, y); varray::attribf(x2, y2);
-    varray::attribf(1, 1); varray::attribf(x+w, y+h); varray::attribf(x2+w2, y2+h2);
-    varray::attribf(-1, 1); varray::attribf(x, y+h); varray::attribf(x2, y2+h2);
-    varray::end();
+    SCREENQUAD2(-1, -1, 1, 1, x, y, x+w, y+h, x2, y2, x2+w2, y2+h2);
     varray::disable();
 }
 
 void hudquad(float x, float y, float w, float h, float tx, float ty, float tw, float th)
 {
-    varray::defvertex(2);
-    varray::deftexcoord0();
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(x,   y);   varray::attribf(tx,      ty);
-    varray::attribf(x+w, y);   varray::attribf(tx + tw, ty);
-    varray::attribf(x,   y+h); varray::attribf(tx,      ty + th);
-    varray::attribf(x+w, y+h); varray::attribf(tx + tw, ty + th);
-    varray::end();
+    SCREENQUAD1(x, y, x+w, y+h, tx, ty, tx+tw, ty+th);
 }
 
 void debugquad(float x, float y, float w, float h, float tx, float ty, float tw, float th)
 {
-    varray::defvertex(2);
-    varray::deftexcoord0();
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(x,   y);   varray::attribf(tx,    ty+th);
-    varray::attribf(x+w, y);   varray::attribf(tx+tw, ty+th);
-    varray::attribf(x,   y+h); varray::attribf(tx,    ty);
-    varray::attribf(x+w, y+h); varray::attribf(tx+tw, ty);
-    varray::end();
+    SCREENQUAD1(x, y, x+w, y+h, tx, ty+th, tx+tw, ty);
     varray::disable();
 }
 

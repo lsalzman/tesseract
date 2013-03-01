@@ -1061,9 +1061,9 @@ namespace recorder
             {
                 glBindFramebuffer_(GL_FRAMEBUFFER_EXT, encodefb); 
                 glBindTexture(GL_TEXTURE_RECTANGLE_ARB, scaletex[0]); 
-                glViewport(0, 0, m.w/4, m.h); SETSHADER(moviey); screenquad(m.w, m.h);
-                glViewport(m.w/4, 0, m.w/8, m.h/2); SETSHADER(moviev); screenquad(m.w, m.h);
-                glViewport(m.w/4, m.h/2, m.w/8, m.h/2); SETSHADER(movieu); screenquad(m.w, m.h);
+                glViewport(0, 0, m.w/4, m.h); SETSHADER(moviey); screenquadflipped(m.w, m.h);
+                glViewport(m.w/4, 0, m.w/8, m.h/2); SETSHADER(movieu); screenquadflipped(m.w, m.h);
+                glViewport(m.w/4, m.h/2, m.w/8, m.h/2); SETSHADER(moviev); screenquadflipped(m.w, m.h);
                 const uint planesize = m.w * m.h;
                 glPixelStorei(GL_PACK_ALIGNMENT, texalign(m.video, m.w/4, 4)); 
                 glReadPixels(0, 0, m.w/4, m.h, GL_BGRA, GL_UNSIGNED_BYTE, m.video);

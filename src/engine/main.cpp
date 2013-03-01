@@ -153,10 +153,6 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
     getbackgroundres(w, h);
     gettextres(w, h);
 
-    hudmatrix.ortho(0, w, h, 0, -1, 1);
-    resethudmatrix();
-    hudshader->set();
-
     static int lastupdate = -1, lastw = -1, lasth = -1;
     static float backgroundu = 0, backgroundv = 0;
 #if 0
@@ -187,11 +183,15 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
     }
     else if(lastupdate != lastmillis) lastupdate = lastmillis;
 
-    varray::defvertex(2);
-    varray::deftexcoord0();
-
     loopi(restore ? 1 : 3)
     {
+        hudmatrix.ortho(0, w, h, 0, -1, 1);
+        resethudmatrix();
+        hudshader->set();
+
+        varray::defvertex(2);
+        varray::deftexcoord0();
+
         glColor3f(1, 1, 1);
         settexture("data/background.png", 0);
         float bu = w*0.67f/256.0f + backgroundu, bv = h*0.67f/256.0f + backgroundv;
@@ -285,10 +285,11 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
             }
         }
         glDisable(GL_BLEND);
+
+        varray::disable();
+
         if(!restore) swapbuffers();
     }
-
-    varray::disable();
 
     if(!restore)
     {

@@ -3,12 +3,15 @@ namespace varray
 #ifndef VARRAY_INTERNAL
     enum
     {
-        ATTRIB_VERTEX    = 1<<0,
-        ATTRIB_COLOR     = 1<<1,
-        ATTRIB_NORMAL    = 1<<2,
-        ATTRIB_TEXCOORD0 = 1<<3,
-        ATTRIB_TEXCOORD1 = 1<<4,
-        MAXATTRIBS       = 5
+        ATTRIB_VERTEX       = 0,
+        ATTRIB_COLOR        = 1,
+        ATTRIB_TEXCOORD0    = 2,
+        ATTRIB_TEXCOORD1    = 3,
+        ATTRIB_NORMAL       = 4,
+        ATTRIB_TANGENT      = 5,
+        ATTRIB_BONEWEIGHT   = 6,
+        ATTRIB_BONEINDEX    = 7, 
+        MAXATTRIBS          = 8
     };
 
     extern vector<uchar> data;
@@ -17,15 +20,32 @@ namespace varray
     extern void defattribs(const char *fmt);
     extern void defattrib(int type, int size, int format);
 
-    #define VARRAY_DEFATTRIBALIAS(name, type, defaultsize, defaultformat) \
+    #define VARRAY_DEFATTRIB(name, type, defaultsize, defaultformat) \
         static inline void def##name(int size = defaultsize, int format = defaultformat) { defattrib(type, size, format); }
 
-    VARRAY_DEFATTRIBALIAS(vertex, ATTRIB_VERTEX, 3, GL_FLOAT)
-    VARRAY_DEFATTRIBALIAS(color, ATTRIB_COLOR, 3, GL_FLOAT)
-    VARRAY_DEFATTRIBALIAS(normal, ATTRIB_NORMAL, 3, GL_FLOAT)
-    VARRAY_DEFATTRIBALIAS(texcoord0, ATTRIB_TEXCOORD0, 2, GL_FLOAT)
-    VARRAY_DEFATTRIBALIAS(texcoord1, ATTRIB_TEXCOORD1, 2, GL_FLOAT)
-    
+    VARRAY_DEFATTRIB(vertex, ATTRIB_VERTEX, 3, GL_FLOAT)
+    VARRAY_DEFATTRIB(color, ATTRIB_COLOR, 3, GL_FLOAT)
+    VARRAY_DEFATTRIB(texcoord0, ATTRIB_TEXCOORD0, 2, GL_FLOAT)
+    VARRAY_DEFATTRIB(texcoord1, ATTRIB_TEXCOORD1, 2, GL_FLOAT)
+    VARRAY_DEFATTRIB(normal, ATTRIB_NORMAL, 3, GL_FLOAT)
+    VARRAY_DEFATTRIB(tangent, ATTRIB_TANGENT, 4, GL_FLOAT)
+    VARRAY_DEFATTRIB(boneweight, ATTRIB_BONEWEIGHT, 4, GL_UNSIGNED_BYTE)
+    VARRAY_DEFATTRIB(boneindex, ATTRIB_BONEINDEX, 4, GL_UNSIGNED_BYTE)
+
+    #define VARRAY_INITATTRIB(name, index, suffix, type) \
+        static inline void name##suffix(type x) { glVertexAttrib1##suffix##_(index, x); } \
+        static inline void name##suffix(type x, type y) { glVertexAttrib2##suffix##_(index, x, y); } \
+        static inline void name##suffix(type x, type y, type z) { glVertexAttrib3##suffix##_(index, x, y, z); } \
+        static inline void name##suffix(type x, type y, type z, type w) { glVertexAttrib4##suffix##_(index, x, y, z, w); }
+    #define VARRAY_INITATTRIBN(name, index, suffix, type, defaultw) \
+        static inline void name##suffix(type x, type y, type z, type w = defaultw) { glVertexAttrib4N##suffix##_(index, x, y, z, w); }
+
+    VARRAY_INITATTRIB(vertex, ATTRIB_VERTEX, f, float)
+    VARRAY_INITATTRIB(color, ATTRIB_COLOR, f, float)
+    VARRAY_INITATTRIBN(color, ATTRIB_COLOR, ub, uchar, 255)
+    VARRAY_INITATTRIB(texcoord0, ATTRIB_TEXCOORD0, f, float)
+    VARRAY_INITATTRIB(texcoord1, ATTRIB_TEXCOORD1, f, float)
+
     template<class T>
     static inline void attrib(T x)
     {
@@ -66,20 +86,20 @@ namespace varray
         data.put((const uchar *)v, N*sizeof(T)); 
     }
 
-    #define VARRAY_ATTRIBALIAS(suffix, type) \
+    #define VARRAY_ATTRIB(suffix, type) \
         static inline void attrib##suffix(type x) { attrib<type>(x); } \
         static inline void attrib##suffix(type x, type y) { attrib<type>(x, y); } \
         static inline void attrib##suffix(type x, type y, type z) { attrib<type>(x, y, z); } \
         static inline void attrib##suffix(type x, type y, type z, type w) { attrib<type>(x, y, z, w); }
 
-    VARRAY_ATTRIBALIAS(f, float)
-    VARRAY_ATTRIBALIAS(d, double)
-    VARRAY_ATTRIBALIAS(b, char)
-    VARRAY_ATTRIBALIAS(ub, uchar)
-    VARRAY_ATTRIBALIAS(s, short)
-    VARRAY_ATTRIBALIAS(us, ushort)
-    VARRAY_ATTRIBALIAS(i, int)
-    VARRAY_ATTRIBALIAS(ui, uint)
+    VARRAY_ATTRIB(f, float)
+    VARRAY_ATTRIB(d, double)
+    VARRAY_ATTRIB(b, char)
+    VARRAY_ATTRIB(ub, uchar)
+    VARRAY_ATTRIB(s, short)
+    VARRAY_ATTRIB(us, ushort)
+    VARRAY_ATTRIB(i, int)
+    VARRAY_ATTRIB(ui, uint)
 
     static inline void attrib(const vec &v) { attribf(v.x, v.y, v.z); }
     static inline void attrib(const vec2 &v) { attribf(v.x, v.y); }
@@ -155,14 +175,22 @@ namespace varray
 
     void defattribs(const char *fmt)
     {
-        for(;; fmt += 3) switch(*fmt)
+        for(;; fmt += 3) 
         {
-            case 'v': defattrib(ATTRIB_VERTEX, fmt[1]-'0', fmt[2]); break;
-            case 'c': defattrib(ATTRIB_COLOR, fmt[1]-'0', fmt[2]); break;
-            case 'n': defattrib(ATTRIB_NORMAL, fmt[1]-'0', fmt[2]); break;
-            case 't': defattrib(ATTRIB_TEXCOORD0, fmt[1]-'0', fmt[2]); break;
-            case 'T': defattrib(ATTRIB_TEXCOORD1, fmt[2]-'0', fmt[2]); break; 
-            default: return;
+            GLenum format;
+            switch(fmt[0])
+            {
+                case 'v': format = ATTRIB_VERTEX; break;
+                case 'c': format = ATTRIB_COLOR; break;
+                case 't': format = ATTRIB_TEXCOORD0; break;
+                case 'T': format = ATTRIB_TEXCOORD1; break; 
+                case 'n': format = ATTRIB_NORMAL; break;
+                case 'x': format = ATTRIB_TANGENT; break;
+                case 'w': format = ATTRIB_BONEWEIGHT; break;
+                case 'i': format = ATTRIB_BONEINDEX; break;
+                default: return;
+            }
+            defattrib(format, fmt[1]-'0', fmt[2]);
         }
     }
 
@@ -171,29 +199,41 @@ namespace varray
         switch(a.type)
         {
             case ATTRIB_VERTEX:
-                if(!(enabled&a.type)) glEnableClientState(GL_VERTEX_ARRAY);
+                if(!(enabled&(1<<ATTRIB_VERTEX))) glEnableClientState(GL_VERTEX_ARRAY);
                 glVertexPointer(a.size, a.format, vertexsize, buf);
                 break;
             case ATTRIB_COLOR:
-                if(!(enabled&a.type)) glEnableClientState(GL_COLOR_ARRAY);
+                if(!(enabled&(1<<ATTRIB_COLOR))) glEnableClientState(GL_COLOR_ARRAY);
                 glColorPointer(a.size, a.format, vertexsize, buf);
                 break;
-            case ATTRIB_NORMAL:
-                if(!(enabled&a.type)) glEnableClientState(GL_NORMAL_ARRAY);
-                glNormalPointer(a.format, vertexsize, buf);
-                break;
             case ATTRIB_TEXCOORD0:
-                if(!(enabled&a.type)) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+                if(!(enabled&(1<<ATTRIB_TEXCOORD0))) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
                 glTexCoordPointer(a.size, a.format, vertexsize, buf);
                 break;
             case ATTRIB_TEXCOORD1:
                 glClientActiveTexture_(GL_TEXTURE1_ARB);
-                if(!(enabled&a.type)) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+                if(!(enabled&(1<<ATTRIB_TEXCOORD1))) glEnableClientState(GL_TEXTURE_COORD_ARRAY);
                 glTexCoordPointer(a.size, a.format, vertexsize, buf);
                 glClientActiveTexture_(GL_TEXTURE0_ARB);
                 break;
+            case ATTRIB_NORMAL:
+                if(!(enabled&(1<<ATTRIB_NORMAL))) glEnableClientState(GL_NORMAL_ARRAY);
+                glNormalPointer(a.format, vertexsize, buf);
+                break;
+            case ATTRIB_TANGENT:
+                if(!(enabled&(1<<ATTRIB_TANGENT))) glEnableVertexAttribArray_(ATTRIB_TANGENT);
+                glVertexAttribPointer_(ATTRIB_TANGENT, a.size, a.format, GL_TRUE, vertexsize, buf);
+                break;
+            case ATTRIB_BONEWEIGHT:
+                if(!(enabled&(1<<ATTRIB_BONEWEIGHT))) glEnableVertexAttribArray_(ATTRIB_BONEWEIGHT);
+                glVertexAttribPointer_(ATTRIB_BONEWEIGHT, a.size, a.format, GL_TRUE, vertexsize, buf);
+                break;
+            case ATTRIB_BONEINDEX:
+                if(!(enabled&(1<<ATTRIB_BONEINDEX))) glEnableVertexAttribArray_(ATTRIB_BONEINDEX);
+                glVertexAttribPointer_(ATTRIB_BONEINDEX, a.size, a.format, GL_FALSE, vertexsize, buf);
+                break;
         }
-        enabled |= a.type;
+        enabled |= 1<<a.type;
     }
 
     static inline void unsetattrib(const attribinfo &a)
@@ -206,9 +246,6 @@ namespace varray
             case ATTRIB_COLOR:
                 glDisableClientState(GL_COLOR_ARRAY);
                 break;
-            case ATTRIB_NORMAL:
-                glDisableClientState(GL_NORMAL_ARRAY);
-                break;
             case ATTRIB_TEXCOORD0:
                 glDisableClientState(GL_TEXTURE_COORD_ARRAY);
                 break;
@@ -217,8 +254,16 @@ namespace varray
                 glDisableClientState(GL_TEXTURE_COORD_ARRAY);
                 glClientActiveTexture_(GL_TEXTURE0_ARB);
                 break;
+            case ATTRIB_NORMAL:
+                glDisableClientState(GL_NORMAL_ARRAY);
+                break;
+            case ATTRIB_TANGENT:
+            case ATTRIB_BONEWEIGHT:
+            case ATTRIB_BONEINDEX:
+                glDisableVertexAttribArray_(a.type);
+                break;
         }
-        enabled &= ~a.type;
+        enabled &= ~(1<<a.type);
     }
 
     int end()
@@ -232,7 +277,7 @@ namespace varray
             if(diffmask) loopi(numlastattribs)
             {
                 const attribinfo &a = lastattribs[i];
-                if(diffmask & a.type) unsetattrib(a);
+                if(diffmask & (1<<a.type)) unsetattrib(a);
             }
             uchar *src = buf;
             loopi(numattribs)
@@ -260,16 +305,19 @@ namespace varray
     void disable()
     {
         if(!enabled) return;
-        if(enabled&ATTRIB_VERTEX) glDisableClientState(GL_VERTEX_ARRAY);
-        if(enabled&ATTRIB_COLOR) glDisableClientState(GL_COLOR_ARRAY);
-        if(enabled&ATTRIB_NORMAL) glDisableClientState(GL_NORMAL_ARRAY);
-        if(enabled&ATTRIB_TEXCOORD0) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        if(enabled&ATTRIB_TEXCOORD1)
+        if(enabled&(1<<ATTRIB_VERTEX)) glDisableClientState(GL_VERTEX_ARRAY);
+        if(enabled&(1<<ATTRIB_COLOR)) glDisableClientState(GL_COLOR_ARRAY);
+        if(enabled&(1<<ATTRIB_TEXCOORD0)) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        if(enabled&(1<<ATTRIB_TEXCOORD1))
         {
             glClientActiveTexture_(GL_TEXTURE1_ARB);
             glDisableClientState(GL_TEXTURE_COORD_ARRAY);
             glClientActiveTexture_(GL_TEXTURE0_ARB);
         }
+        if(enabled&(1<<ATTRIB_NORMAL)) glDisableClientState(GL_NORMAL_ARRAY);
+        if(enabled&(1<<ATTRIB_TANGENT)) glDisableVertexAttribArray_(ATTRIB_TANGENT);
+        if(enabled&(1<<ATTRIB_BONEWEIGHT)) glDisableVertexAttribArray_(ATTRIB_BONEWEIGHT);
+        if(enabled&(1<<ATTRIB_BONEINDEX)) glDisableVertexAttribArray_(ATTRIB_BONEINDEX);
         enabled = 0;
         numlastattribs = lastattribmask = lastvertexsize = 0;
         lastbuf = NULL;
