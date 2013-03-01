@@ -437,7 +437,7 @@ void rendermapmodels()
         }
         if(rendered && oe->query) endmodelquery();
     }
-    rendermodelbatches();
+    rendermapmodelbatches();
     resetmodelbatches();
 
     bool queried = false;

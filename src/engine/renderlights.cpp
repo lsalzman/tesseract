@@ -3227,7 +3227,7 @@ void renderradiancehints()
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
 
         renderrsmgeom(rhdyntex!=0);
-        rendermodelbatches(rhdynmm!=0);
+        rendershadowmodelbatches(rhdynmm!=0);
 
         rh.renderslices();
     }
@@ -3275,7 +3275,7 @@ void rendercsmshadowmaps()
         shadowside = i;
 
         rendershadowmapworld();
-        rendermodelbatches();
+        rendershadowmodelbatches();
     }
 
     clearbatchedmapmodels();
@@ -3410,7 +3410,7 @@ void rendershadowmaps()
             shadowside = 0;
 
             if(mesh) rendershadowmesh(mesh); else rendershadowmapworld();
-            rendermodelbatches();
+            rendershadowmodelbatches();
         }
         else
         {
@@ -3441,7 +3441,7 @@ void rendershadowmaps()
                 shadowside = side;
 
                 if(mesh) rendershadowmesh(mesh); else rendershadowmapworld();
-                rendermodelbatches();
+                rendershadowmodelbatches();
             }
         }
 

@@ -477,7 +477,12 @@ struct batchedmodel
 {
     vec pos, center;
     float radius, yaw, pitch, sizescale;
-    int anim, basetime, basetime2, flags, visible, attached;
+    int anim, basetime, basetime2, flags, attached;
+    union
+    {
+        int visible;
+        int culled;
+    };
     dynent *d;
     occludequery *query;
     int next;
@@ -533,7 +538,15 @@ static inline void renderbatchedmodel(model *m, batchedmodel &b)
 
 VARP(maxmodelradiusdistance, 10, 200, 1000);
 
-static inline void rendermodelquery(model *m, dynent *d, const vec &center, float radius)
+static inline void enablecullmodelquery()
+{
+    nocolorshader->set();
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDepthMask(GL_FALSE);
+    varray::defvertex();
+}
+
+static inline void rendercullmodelquery(model *m, dynent *d, const vec &center, float radius)
 {
     if(fabs(camera1->o.x-center.x) < radius+1 &&
        fabs(camera1->o.y-center.y) < radius+1 &&
@@ -544,39 +557,26 @@ static inline void rendermodelquery(model *m, dynent *d, const vec &center, floa
     }
     d->query = newquery(d);
     if(!d->query) return;
-    nocolorshader->set();
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    glDepthMask(GL_FALSE);
-    varray::defvertex();
     startquery(d->query);
     int br = int(radius*2)+1;
     drawbb(ivec(int(center.x-radius), int(center.y-radius), int(center.z-radius)), ivec(br, br, br));
     endquery(d->query);
+}
+
+static inline void disablecullmodelquery()
+{
     varray::disable();
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glDepthMask(GL_TRUE);
 }
 
-static inline bool cullmodel(model *m, const vec &center, float radius, int flags, dynent *d = NULL)
+static inline int cullmodel(model *m, const vec &center, float radius, int flags, dynent *d = NULL)
 {
-    if(flags&MDL_CULL_DIST && center.dist(camera1->o)/radius>maxmodelradiusdistance) return true;
-    if(flags&MDL_CULL_VFC && isfoggedsphere(radius, center)) return true;
-    if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius))
-    {
-        if(d)
-        {
-            d->occluded = OCCLUDE_PARENT;
-            if(flags&MDL_CULL_QUERY) rendermodelquery(m, d, center, radius);
-        }
-        return true;
-    }
-    else if(flags&MDL_CULL_QUERY && d->query && d->query->owner==d && checkquery(d->query))
-    {
-        if(d->occluded<OCCLUDE_BB) d->occluded++;
-        rendermodelquery(m, d, center, radius);
-        return true;
-    }
-    return false;
+    if(flags&MDL_CULL_DIST && center.dist(camera1->o)/radius>maxmodelradiusdistance) return MDL_CULL_DIST;
+    if(flags&MDL_CULL_VFC && isfoggedsphere(radius, center)) return MDL_CULL_VFC;
+    if(flags&MDL_CULL_OCCLUDED && modeloccluded(center, radius)) return MDL_CULL_OCCLUDED;
+    else if(flags&MDL_CULL_QUERY && d->query && d->query->owner==d && checkquery(d->query)) return MDL_CULL_QUERY;
+    return 0;
 }
 
 static inline int shadowmaskmodel(const vec &center, float radius)
@@ -670,15 +670,14 @@ int batcheddynamicmodelbounds(int mask, vec &bbmin, vec &bbmax)
     return vis;
 }
 
-void rendermodelbatches(bool dynmodel)
+void rendershadowmodelbatches(bool dynmodel)
 {
     loopv(batches)
     {
         modelbatch &b = batches[i];
         if(b.batched < 0 || (!dynmodel && (!(b.flags&MDL_MAPMODEL) || b.m->animated()))) continue;
         bool rendered = false;
-        occludequery *query = NULL;
-        if(shadowmapping) for(int j = b.batched; j >= 0;)
+        for(int j = b.batched; j >= 0;)
         {
             batchedmodel &bm = batchedmodels[j];
             j = bm.next;
@@ -686,7 +685,19 @@ void rendermodelbatches(bool dynmodel)
             if(!rendered) { b.m->startrender(); rendered = true; }
             renderbatchedmodel(b.m, bm);
         }
-        else if(b.flags&MDL_MAPMODEL) for(int j = b.batched; j >= 0;)
+        if(rendered) b.m->endrender();
+    }
+}
+
+void rendermapmodelbatches()
+{
+    loopv(batches)
+    {
+        modelbatch &b = batches[i];
+        if(b.batched < 0 || !(b.flags&MDL_MAPMODEL)) continue;
+        bool rendered = false;
+        occludequery *query = NULL;
+        for(int j = b.batched; j >= 0;)
         {
             batchedmodel &bm = batchedmodels[j];
             j = bm.next;
@@ -696,19 +707,32 @@ void rendermodelbatches(bool dynmodel)
                 query = bm.query;
                 if(query) startquery(query);
             }
-            if(!rendered) 
-            { 
-                b.m->startrender(); 
-                rendered = true; 
-                setaamask(b.m->animated()); 
+            if(!rendered)
+            {
+                b.m->startrender();
+                rendered = true;
+                setaamask(b.m->animated());
             }
             renderbatchedmodel(b.m, bm);
         }
-        else for(int j = b.batched; j >= 0;)
+        if(query) endquery(query);
+        if(rendered) b.m->endrender();
+    }
+}
+    
+void rendermodelbatches()
+{
+    loopv(batches)
+    {
+        modelbatch &b = batches[i];
+        if(b.batched < 0 || b.flags&MDL_MAPMODEL) continue;
+        bool rendered = false;
+        for(int j = b.batched; j >= 0;)
         {
             batchedmodel &bm = batchedmodels[j];
             j = bm.next;
-            if(cullmodel(b.m, bm.center, bm.radius, bm.flags, bm.d)) continue;
+            bm.culled = cullmodel(b.m, bm.center, bm.radius, bm.flags, bm.d);
+            if(bm.culled) continue;
             if(!rendered) 
             { 
                 b.m->startrender(); 
@@ -728,8 +752,22 @@ void rendermodelbatches(bool dynmodel)
             }
             renderbatchedmodel(b.m, bm);
         }
-        if(query) endquery(query);
         if(rendered) b.m->endrender();
+        if(b.flags&MDL_CULL_QUERY) 
+        {
+            bool queried = false;
+            for(int j = b.batched; j >= 0;) 
+            {
+                batchedmodel &bm = batchedmodels[j];
+                j = bm.next;
+                if(bm.culled&(MDL_CULL_OCCLUDED|MDL_CULL_QUERY) && bm.flags&MDL_CULL_QUERY)
+                {
+                    if(!queried) { enablecullmodelquery(); queried = true; }
+                    rendercullmodelquery(b.m, bm.d, bm.center, bm.radius);
+                }
+            }
+            if(queried) disablecullmodelquery();
+        }
     }
 }
 
@@ -878,7 +916,17 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
 
     if(flags&MDL_NOBATCH)
     {
-        if(cullmodel(m, center, radius, flags, d)) return;
+        int culled = cullmodel(m, center, radius, flags, d);
+        if(culled)
+        {
+            if(culled&(MDL_CULL_OCCLUDED|MDL_CULL_QUERY) && flags&MDL_CULL_QUERY)
+            {
+                enablecullmodelquery();
+                rendercullmodelquery(m, d, center, radius);
+                disablecullmodelquery();
+            }
+            return;
+        }
         if(flags&MDL_CULL_QUERY) 
         {
             d->query = newquery(d);
@@ -905,6 +953,7 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
     b.basetime2 = basetime2;
     b.sizescale = size;
     b.flags = flags;
+    b.visible = 0;
     b.d = d;
     b.attached = a ? modelattached.length() : -1;
     if(a) for(int i = 0;; i++) { modelattached.add(a[i]); if(!a[i].tag) break; }
