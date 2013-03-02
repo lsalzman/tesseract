@@ -692,9 +692,9 @@ void renderentselection(const vec &o, const vec &ray, bool entmoving)
             (a = eo).z = eo.z - fmod(eo.z, worldsize); (b = es).z = a.x + worldsize; boxs3D(a, b, 1);
         }
         varray::colorub(150,0,0);
-        glLineWidth(5);
+        glDisable(GL_BLEND);
         boxs(entorient, eo, es);
-        glLineWidth(1);
+        glEnable(GL_BLEND);
     }
 
     if(showentradius && (entgroup.length() || enthover >= 0))
