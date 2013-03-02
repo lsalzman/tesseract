@@ -1077,7 +1077,7 @@ void setcammatrix()
     }
 }
 
-void setcamprojmatrix(bool init = true)
+void setcamprojmatrix(bool init = true, bool flush = false)
 {
     if(init) setcammatrix();
 
@@ -1094,6 +1094,8 @@ void setcamprojmatrix(bool init = true)
 
     GLOBALPARAM(camprojmatrix, camprojmatrix);
     GLOBALPARAM(lineardepthscale, projmatrix.lineardepthscale()); //(invprojmatrix.c.z, invprojmatrix.d.z));
+
+    if(flush && Shader::lastshader) Shader::lastshader->flushparams();
 }
 
 glmatrix hudmatrix, hudmatrixstack[64];
@@ -1371,7 +1373,7 @@ void enablepolygonoffset(GLenum type)
     projmatrix = nojittermatrix;
     nooffsetmatrix = projmatrix;
     projmatrix.d.z += depthoffset * projmatrix.c.z;
-    setcamprojmatrix(false);
+    setcamprojmatrix(false, true);
 }
 
 void disablepolygonoffset(GLenum type)
@@ -1383,7 +1385,7 @@ void disablepolygonoffset(GLenum type)
     }
    
     projmatrix = nooffsetmatrix; 
-    setcamprojmatrix(false);
+    setcamprojmatrix(false, true);
 }
 
 static int scissoring = 0;
