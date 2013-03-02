@@ -1,9 +1,5 @@
 // GL_ARB_multitexture
 extern PFNGLACTIVETEXTUREARBPROC       glActiveTexture_;
-extern PFNGLCLIENTACTIVETEXTUREARBPROC glClientActiveTexture_;
-extern PFNGLMULTITEXCOORD2FARBPROC     glMultiTexCoord2f_;
-extern PFNGLMULTITEXCOORD3FARBPROC     glMultiTexCoord3f_;
-extern PFNGLMULTITEXCOORD4FARBPROC     glMultiTexCoord4f_;
 
 // GL_ARB_vertex_buffer_object
 extern PFNGLGENBUFFERSARBPROC       glGenBuffers_;

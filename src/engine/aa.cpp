@@ -599,7 +599,7 @@ void viewsmaa()
 {
     int w = min(screen->w, screen->h)*1.0f, h = (w*screen->h)/screen->w, tw = gw, th = gh;
     SETSHADER(hudrect);
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
     switch(debugsmaa)
     {
         case 1: glBindTexture(GL_TEXTURE_RECTANGLE_ARB, smaatex[0]); break;

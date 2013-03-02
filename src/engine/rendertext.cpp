@@ -233,7 +233,7 @@ static void text_color(char c, char *stack, int size, int &sp, bvec color, int a
             case '7': color = bvec(255, 255, 255); break;   // white
             // provided color: everything else
         }
-        glColor4ub(color.x, color.y, color.z, a);
+        varray::color(color, a);
     } 
 }
 
@@ -362,7 +362,7 @@ void draw_text(const char *str, int left, int top, int r, int g, int b, int a, i
     Texture *tex = curfont->texs[0];
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindTexture(GL_TEXTURE_2D, tex->id);
-    glColor4ub(color.x, color.y, color.z, a);
+    varray::color(color, a);
     varray::defvertex(textmatrix ? 3 : 2);
     varray::deftexcoord0();
     varray::begin(GL_QUADS);
@@ -371,7 +371,7 @@ void draw_text(const char *str, int left, int top, int r, int g, int b, int a, i
     xtraverts += varray::end();
     if(cursor >= 0 && (totalmillis/250)&1)
     {
-        glColor4ub(r, g, b, a);
+        varray::color(color, a);
         if(maxwidth != -1 && cx >= maxwidth) { cx = 0; cy += FONTH; }
         draw_char(tex, '_', left+cx, top+cy, scale);
         xtraverts += varray::end();

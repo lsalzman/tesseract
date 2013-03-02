@@ -110,13 +110,13 @@ struct lightningrenderer : listrenderer
         pe.extendbb(d, size);
     }
 
-    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
+    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts)
     {
         blend = min(blend<<2, 255);
         if(type&PT_MOD) //multiply alpha into color
-            glColor3ub((color[0]*blend)>>8, (color[1]*blend)>>8, (color[2]*blend)>>8);
+            varray::colorub((p->color.r*blend)>>8, (p->color.g*blend)>>8, (p->color.b*blend)>>8);
         else
-            glColor4ub(color[0], color[1], color[2], blend);
+            varray::color(p->color, blend);
         renderlightning(tex, o, d, p->size);
     }
 };

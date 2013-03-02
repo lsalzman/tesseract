@@ -148,11 +148,14 @@ static void linkglslprogram(Shader &s, bool msg = true)
     {
         glAttachShader_(s.program, s.vsobj);
         glAttachShader_(s.program, s.psobj);
+        uint attribs = 0;
         loopv(s.attriblocs)
         {
             AttribLoc &a = s.attriblocs[i];
             glBindAttribLocation_(s.program, a.loc, a.name);
+            attribs |= 1<<a.loc;
         }
+        loopi(varray::MAXATTRIBS) if(!(attribs&(1<<i))) glBindAttribLocation_(s.program, i, varray::attribnames[i]);
         glLinkProgram_(s.program);
         glGetProgramiv_(s.program, GL_LINK_STATUS, &success);
     }
@@ -592,31 +595,41 @@ void setupshaders()
 
     standardshader = true;
     nullshader = newshader(0, "<init>null",
+        "attribute vec4 vvertex;\n"
         "void main(void) {\n"
-        "   gl_Position = gl_Vertex;\n"
+        "   gl_Position = vvertex;\n"
         "}\n",
         "void main(void) {\n"
         "   gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n"
         "}\n");
     hudshader = newshader(0, "<init>hud", 
+        "attribute vec4 vvertex, vcolor;\n"
+        "attribute vec2 vtexcoord0;\n"
         "uniform mat4 hudmatrix;\n"
+        "varying vec2 texcoord0;\n"
+        "varying vec4 color;\n"
         "void main(void) {\n"
-        "    gl_Position = hudmatrix * gl_Vertex;\n"
-        "    gl_TexCoord[0].xy = gl_MultiTexCoord0.xy;\n"
-        "    gl_FrontColor = gl_Color;\n"
+        "    gl_Position = hudmatrix * vvertex;\n"
+        "    texcoord0 = vtexcoord0;\n"
+        "    color = vcolor;\n"
         "}\n",
         "uniform sampler2D tex0;\n"
+        "varying vec2 texcoord0;\n"
+        "varying vec4 color;\n"
         "void main(void) {\n"
-        "    gl_FragColor = gl_Color * texture2D(tex0, gl_TexCoord[0].xy);\n"
+        "    gl_FragColor = color * texture2D(tex0, texcoord0);\n"
         "}\n");
     hudnotextureshader = newshader(0, "<init>hudnotexture",
+        "attribute vec4 vvertex, vcolor;\n"
         "uniform mat4 hudmatrix;"
+        "varying vec4 color;\n"
         "void main(void) {\n"
-        "    gl_Position = hudmatrix * gl_Vertex;\n"
-        "    gl_FrontColor = gl_Color;\n"
+        "    gl_Position = hudmatrix * vvertex;\n"
+        "    color = vcolor;\n"
         "}\n",
+        "varying vec4 color;\n"
         "void main(void) {\n"
-        "    gl_FragColor = gl_Color;\n"
+        "    gl_FragColor = color;\n"
         "}\n");
     standardshader = false;
 

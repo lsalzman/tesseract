@@ -443,9 +443,9 @@ void rendereditcursor()
     if(!moving && !hovering && !hidecursor)
     {
         if(hmapedit==1)
-            glColor3ub(0, hmapsel ? 255 : 40, 0);
+            varray::colorub(0, hmapsel ? 255 : 40, 0);
         else
-            glColor3ub(120,120,120);
+            varray::colorub(120,120,120);
         boxs(orient, lu.tovec(), vec(lusize));
     }
 
@@ -453,11 +453,11 @@ void rendereditcursor()
     if(havesel)
     {
         d = dimension(sel.orient);
-        glColor3ub(50,50,50);   // grid
+        varray::colorub(50,50,50);   // grid
         boxsgrid(sel.orient, sel.o.tovec(), sel.s.tovec(), sel.grid);
-        glColor3ub(200,0,0);    // 0 reference
+        varray::colorub(200,0,0);    // 0 reference
         boxs3D(sel.o.tovec().sub(0.5f*min(gridsize*0.25f, 2.0f)), vec(min(gridsize*0.25f, 2.0f)), 1);
-        glColor3ub(200,200,200);// 2D selection box
+        varray::colorub(200,200,200);// 2D selection box
         vec co(sel.o.v), cs(sel.s.v);
         co[R[d]] += 0.5f*(sel.cx*gridsize);
         co[C[d]] += 0.5f*(sel.cy*gridsize);
@@ -466,9 +466,9 @@ void rendereditcursor()
         cs[D[d]] *= gridsize;
         boxs(sel.orient, co, cs);
         if(hmapedit==1)         // 3D selection box
-            glColor3ub(0,120,0);
+            varray::colorub(0,120,0);
         else 
-            glColor3ub(0,0,120);
+            varray::colorub(0,0,120);
         boxs3D(sel.o.tovec(), sel.s.tovec(), sel.grid);
     }
    
@@ -2317,12 +2317,12 @@ void rendertexturepanel(int w, int h)
                 glBindTexture(GL_TEXTURE_2D, tex->id);
                 loopj(glowtex ? 3 : 2)
                 {
-                    if(j < 2) glColor4f(j*vslot.colorscale.x, j*vslot.colorscale.y, j*vslot.colorscale.z, texpaneltimer/1000.0f);
+                    if(j < 2) varray::color(vec(vslot.colorscale).mul(j), texpaneltimer/1000.0f);
                     else
                     {
                         glBindTexture(GL_TEXTURE_2D, glowtex->id);
                         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-                        glColor4f(vslot.glowcolor.x, vslot.glowcolor.y, vslot.glowcolor.z, texpaneltimer/1000.0f);
+                        varray::color(vslot.glowcolor, texpaneltimer/1000.0f);
                     }
                     varray::begin(GL_TRIANGLE_STRIP);
                     varray::attribf(x,   y);   varray::attrib(tc[0]);
@@ -2332,7 +2332,7 @@ void rendertexturepanel(int w, int h)
                     xtraverts += varray::end();
                     if(j==1 && layertex)
                     {
-                        glColor4f(layer->colorscale.x, layer->colorscale.y, layer->colorscale.z, texpaneltimer/1000.0f);
+                        varray::color(layer->colorscale, texpaneltimer/1000.0f);
                         glBindTexture(GL_TEXTURE_2D, layertex->id);
                         varray::begin(GL_TRIANGLE_STRIP);
                         varray::attribf(x+r/2, y+r/2); varray::attrib(tc[0]);

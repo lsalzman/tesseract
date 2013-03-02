@@ -23,10 +23,6 @@ PFNGLGETBUFFERSUBDATAARBPROC glGetBufferSubData_ = NULL;
 
 // GL_ARB_multitexture
 PFNGLACTIVETEXTUREARBPROC       glActiveTexture_       = NULL;
-PFNGLCLIENTACTIVETEXTUREARBPROC glClientActiveTexture_ = NULL;
-PFNGLMULTITEXCOORD2FARBPROC     glMultiTexCoord2f_     = NULL;
-PFNGLMULTITEXCOORD3FARBPROC     glMultiTexCoord3f_     = NULL;
-PFNGLMULTITEXCOORD4FARBPROC     glMultiTexCoord4f_     = NULL;
 
 // GL_ARB_occlusion_query
 PFNGLGENQUERIESARBPROC        glGenQueries_        = NULL;
@@ -322,10 +318,6 @@ void gl_checkextensions()
     if(hasext(exts, "GL_ARB_multitexture"))
     {
         glActiveTexture_       = (PFNGLACTIVETEXTUREARBPROC)      getprocaddress("glActiveTextureARB");
-        glClientActiveTexture_ = (PFNGLCLIENTACTIVETEXTUREARBPROC)getprocaddress("glClientActiveTextureARB");
-        glMultiTexCoord2f_     = (PFNGLMULTITEXCOORD2FARBPROC)    getprocaddress("glMultiTexCoord2fARB");
-        glMultiTexCoord3f_     = (PFNGLMULTITEXCOORD3FARBPROC)    getprocaddress("glMultiTexCoord3fARB");
-        glMultiTexCoord4f_     = (PFNGLMULTITEXCOORD4FARBPROC)    getprocaddress("glMultiTexCoord4fARB");
         hasMT = true;
         if(dbgexts) conoutf(CON_INIT, "Using GL_ARB_multitexture extension.");
     }
@@ -1797,7 +1789,7 @@ static void setfog(int fogmat, float below = 0, float blend = 1, int abovemat = 
     GLOBALPARAMF(fogparams, (start, end, 1/(end - start)));
 }
 
-static void blendfogoverlay(int fogmat, float below, float blend, float *overlay)
+static void blendfogoverlay(int fogmat, float below, float blend, vec &overlay)
 {
     float maxc;
     switch(fogmat&MATF_VOLUME)
@@ -1807,23 +1799,21 @@ static void blendfogoverlay(int fogmat, float below, float blend, float *overlay
             const bvec &wcol = getwatercolor(fogmat), &wdeepcol = getwaterdeepcolor(fogmat);
             int wfog = getwaterfog(fogmat), wdeep = getwaterdeep(fogmat);
             float deepfade = clamp(below/max(wdeep, wfog), 0.0f, 1.0f);
-            vec color;
-            loopk(3) color[k] = wcol[k]*(1-deepfade) + wdeepcol[k]*deepfade;
-            maxc = max(color[0], max(color[1], color[2]));
-            loopk(3) overlay[k] += blend*max(0.4f, color[k]/min(32.0f + maxc*7.0f/8.0f, 255.0f));
+            vec color = vec(wcol.r, wcol.g, wcol.b).lerp(vec(wdeepcol.r, wdeepcol.g, wdeepcol.b), deepfade);
+            overlay.add(color.div(min(32.0f + max(color.r, max(color.g, color.b))*7.0f/8.0f, 255.0f)).max(0.4f).mul(blend));
             break;
         }
 
         case MAT_LAVA:
         {
             const bvec &lcol = getlavacolor(fogmat);
-            maxc = max(lcol[0], max(lcol[1], lcol[2]));
-            loopk(3) overlay[k] += blend*max(0.4f, lcol[k]/min(32.0f + maxc*7.0f/8.0f, 255.0f));
+            maxc = max(lcol.r, max(lcol.g, lcol.b));
+            overlay.add(vec(lcol.r, lcol.g, lcol.b).div(min(32.0f + maxc*7.0f/8.0f, 255.0f)).max(0.4f).mul(blend));
             break;
         }
 
         default:
-            loopk(3) overlay[k] += blend;
+            overlay.add(blend);
             break;
     }
 }
@@ -1834,11 +1824,11 @@ void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_ZERO, GL_SRC_COLOR);
-    float overlay[3] = { 0, 0, 0 };
+    vec overlay(0, 0, 0);
     blendfogoverlay(fogmat, fogbelow, fogblend, overlay);
     blendfogoverlay(abovemat, 0, 1-fogblend, overlay);
 
-    glColor3fv(overlay);
+    varray::color(overlay);
     screenquad();
 
     glDisable(GL_BLEND);
@@ -2354,7 +2344,7 @@ void drawdamagecompass(int w, int h)
         if(!dirs)
         {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glColor4f(1, 0, 0, damagecompassalpha/100.0f);
+            varray::colorf(1, 0, 0, damagecompassalpha/100.0f);
             varray::defvertex();
             varray::begin(GL_TRIANGLES);
         }
@@ -2411,7 +2401,7 @@ void drawdamagescreen(int w, int h)
     float fade = damagescreenalpha/100.0f;
     if(damageblendmillis - lastmillis < damagescreenfade)
         fade *= float(damageblendmillis - lastmillis)/damagescreenfade;
-    glColor4f(fade, fade, fade, fade);
+    varray::colorf(fade, fade, fade, fade);
 
     hudquad(0, 0, w, h);
 }
@@ -2495,7 +2485,7 @@ void drawcrosshair(int w, int h)
     }
     if(crosshair->type&Texture::ALPHA) glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     else glBlendFunc(GL_ONE, GL_ONE);
-    glColor3f(r, g, b);
+    varray::colorf(r, g, b);
     float x = cx*w - (windowhit ? 0 : chsize/2.0f);
     float y = cy*h - (windowhit ? 0 : chsize/2.0f);
     glBindTexture(GL_TEXTURE_2D, crosshair->id);
@@ -2526,7 +2516,7 @@ void gl_drawhud(int w, int h)
     resethudmatrix();
     hudshader->set();
     
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
 
     debuglights();
 

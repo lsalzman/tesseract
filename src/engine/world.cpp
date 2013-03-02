@@ -617,14 +617,14 @@ void renderentradius(extentity &e, bool color)
     switch(e.type)
     {
         case ET_LIGHT:
-            if(color) glColor3f(e.attr2/255.0f, e.attr3/255.0f, e.attr4/255.0f);
+            if(color) varray::colorf(e.attr2/255.0f, e.attr3/255.0f, e.attr4/255.0f);
             renderentsphere(e, e.attr1);
             break;
 
         case ET_SPOTLIGHT:
             if(e.attached)
             {
-                if(color) glColor3f(0, 1, 1);
+                if(color) varray::colorf(0, 1, 1);
                 float radius = e.attached->attr1;
                 if(!radius) radius = 2*e.o.dist(e.attached->o);
                 vec dir = vec(e.o).sub(e.attached->o).normalize();
@@ -635,14 +635,14 @@ void renderentradius(extentity &e, bool color)
             break;
 
         case ET_SOUND:
-            if(color) glColor3f(0, 1, 1);
+            if(color) varray::colorf(0, 1, 1);
             renderentsphere(e, e.attr2);
             break;
 
         case ET_ENVMAP:
         {
             extern int envmapradius;
-            if(color) glColor3f(0, 1, 1);
+            if(color) varray::colorf(0, 1, 1);
             renderentsphere(e, e.attr1 ? max(0, min(10000, int(e.attr1))) : envmapradius);
             break;
         }
@@ -650,7 +650,7 @@ void renderentradius(extentity &e, bool color)
         case ET_MAPMODEL:
         case ET_PLAYERSTART:
         {
-            if(color) glColor3f(0, 1, 1);
+            if(color) varray::colorf(0, 1, 1);
             entities::entradius(e, color);
             vec dir;
             vecfromyawpitch(e.attr1, 0, 1, 0, dir);
@@ -661,7 +661,7 @@ void renderentradius(extentity &e, bool color)
         default:
             if(e.type>=ET_GAMESPECIFIC) 
             {
-                if(color) glColor3f(0, 1, 1);
+                if(color) varray::colorf(0, 1, 1);
                 entities::entradius(e, color);
             }
             break;
@@ -673,7 +673,7 @@ void renderentselection(const vec &o, const vec &ray, bool entmoving)
     if(noentedit()) return;
     vec eo, es;
 
-    glColor3ub(0, 40, 0);
+    varray::colorub(0, 40, 0);
     loopv(entgroup) entfocus(entgroup[i],     
         entselectionbox(e, eo, es);
         boxs3D(eo, es, 1);
@@ -686,12 +686,12 @@ void renderentselection(const vec &o, const vec &ray, bool entmoving)
         if(entmoving && entmovingshadow==1)
         {
             vec a, b;
-            glColor3ub(20, 20, 20);
+            varray::colorub(20, 20, 20);
             (a = eo).x = eo.x - fmod(eo.x, worldsize); (b = es).x = a.x + worldsize; boxs3D(a, b, 1);  
             (a = eo).y = eo.y - fmod(eo.y, worldsize); (b = es).y = a.x + worldsize; boxs3D(a, b, 1);  
             (a = eo).z = eo.z - fmod(eo.z, worldsize); (b = es).z = a.x + worldsize; boxs3D(a, b, 1);
         }
-        glColor3ub(150,0,0);
+        varray::colorub(150,0,0);
         glLineWidth(5);
         boxs(entorient, eo, es);
         glLineWidth(1);
@@ -700,7 +700,7 @@ void renderentselection(const vec &o, const vec &ray, bool entmoving)
     if(showentradius && (entgroup.length() || enthover >= 0))
     {
         glDepthFunc(GL_GREATER);
-        glColor3f(0.25f, 0.25f, 0.25f);
+        varray::colorf(0.25f, 0.25f, 0.25f);
         loopv(entgroup) entfocus(entgroup[i], renderentradius(e, false));
         if(enthover>=0) entfocus(enthover, renderentradius(e, false));
         glDepthFunc(GL_LESS);

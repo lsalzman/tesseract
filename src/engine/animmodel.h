@@ -439,8 +439,8 @@ struct animmodel : model
             if(lastvbuf!=vbuf)
             {
                 glBindBuffer_(GL_ARRAY_BUFFER_ARB, vbuf);
-                if(!lastvbuf) glEnableClientState(GL_VERTEX_ARRAY);
-                glVertexPointer(3, GL_FLOAT, stride, v);
+                if(!lastvbuf) varray::enablevertex();
+                varray::vertexpointer(stride, v);
                 lastvbuf = vbuf;
             }
         }
@@ -449,12 +449,12 @@ struct animmodel : model
         {
             if(!enabletc)
             {
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+                varray::enabletexcoord0();
                 enabletc = true;
             }
             if(lasttcbuf!=lastvbuf)
             {
-                glTexCoordPointer(2, GL_FLOAT, stride, v);
+                varray::texcoord0pointer(stride, v);
                 lasttcbuf = lastvbuf;
             }
         }
@@ -463,12 +463,12 @@ struct animmodel : model
         {
             if(!enablenormals)
             {
-                glEnableClientState(GL_NORMAL_ARRAY);
+                varray::enablenormal();
                 enablenormals = true;
             }
             if(lastnbuf!=lastvbuf)
             {
-                glNormalPointer(GL_FLOAT, stride, v);
+                varray::normalpointer(stride, v);
                 lastnbuf = lastvbuf;
             }
         }
@@ -477,12 +477,12 @@ struct animmodel : model
         {
             if(!enabletangents)
             {
-                glEnableVertexAttribArray_(1);
+                varray::enabletangent();
                 enabletangents = true;
             }
             if(lastxbuf!=lastvbuf)
             {
-                glVertexAttribPointer_(1, 4, GL_FLOAT, GL_FALSE, stride, v);
+                varray::tangentpointer(stride, v);
                 lastxbuf = lastvbuf;
             }
         }
@@ -491,14 +491,14 @@ struct animmodel : model
         {
             if(!enablebones)
             {
-                glEnableVertexAttribArray_(6);
-                glEnableVertexAttribArray_(7);
+                varray::enableboneweight();
+                varray::enableboneindex();
                 enablebones = true;
             }
             if(lastbbuf!=lastvbuf)
             {
-                glVertexAttribPointer_(6, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride, wv);
-                glVertexAttribPointer_(7, 4, GL_UNSIGNED_BYTE, GL_FALSE, stride, bv);
+                varray::boneweightpointer(stride, wv);
+                varray::boneindexpointer(stride, bv);
                 lastbbuf = lastvbuf;
             }
         }

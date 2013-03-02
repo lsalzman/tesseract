@@ -192,7 +192,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         varray::defvertex(2);
         varray::deftexcoord0();
 
-        glColor3f(1, 1, 1);
+        varray::colorf(1, 1, 1);
         settexture("data/background.png", 0);
         float bu = w*0.67f/256.0f + backgroundu, bv = h*0.67f/256.0f + backgroundv;
         bgquad(0, 0, w, h, 0, 0, bu, bv);
@@ -331,7 +331,7 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     varray::defvertex(2);
     varray::deftexcoord0();
 
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
 
     float fh = 0.075f*min(w, h), fw = fh*10,
           fx = renderedframe ? w - fw - fh/4 : 0.5f*(w - fw), 

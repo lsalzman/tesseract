@@ -147,7 +147,7 @@ void draw_env_overlay(int w, Texture *overlay = NULL, float tx = 0, float ty = 0
     float z = w*cloudheight, tsz = 0.5f*(1-cloudfade)/cloudscale, psz = w*(1-cloudfade);
     glBindTexture(GL_TEXTURE_2D, overlay ? overlay->id : notexture->id);
     vec color = vec::hexcolor(cloudcolour);
-    glColor4f(color.r, color.g, color.b, cloudalpha);
+    varray::color(color, cloudalpha);
     varray::defvertex();
     varray::deftexcoord0();
     varray::begin(GL_TRIANGLE_FAN);
@@ -333,18 +333,18 @@ static void drawdome()
     glBindBuffer_(GL_ARRAY_BUFFER_ARB, domevbuf);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, domeebuf);
 
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glVertexPointer(3, GL_FLOAT, sizeof(domevert), &domeverts->pos);
-    glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(domevert), &domeverts->color);
+    varray::vertexpointer(sizeof(domevert), &domeverts->pos);
+    varray::colorpointer(sizeof(domevert), &domeverts->color);
+    varray::enablevertex();
+    varray::enablecolor();
 
     if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, 0, domenumverts-1, domenumindices + fogdomecap*domecapindices, GL_UNSIGNED_SHORT, domeindices);
     else glDrawElements(GL_TRIANGLES, domenumindices + fogdomecap*domecapindices, GL_UNSIGNED_SHORT, domeindices);
     xtraverts += domenumverts;
     glde++;
 
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
+    varray::disablevertex();
+    varray::disablecolor();
 
     glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
@@ -413,8 +413,7 @@ void drawskybox(int farplane)
 
     if(clampsky) glDepthRange(1, 1);
 
-    vec color = vec::hexcolor(skyboxcolour);
-    glColor3f(color.r, color.g, color.b);
+    varray::color(vec::hexcolor(skyboxcolour));
 
     glmatrix skymatrix = cammatrix, skyprojmatrix;
     skymatrix.d = vec4(0, 0, 0, 1);
@@ -436,8 +435,7 @@ void drawskybox(int farplane)
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        color = vec::hexcolor(cloudboxcolour);
-        glColor4f(color.r, color.g, color.b, cloudboxalpha);
+        varray::color(vec::hexcolor(cloudboxcolour), cloudboxalpha);
 
         skymatrix = cammatrix;
         skymatrix.d = vec4(0, 0, 0, 1);

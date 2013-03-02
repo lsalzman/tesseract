@@ -496,7 +496,7 @@ void rendermatgrid()
                 case MAT_ALPHA:    color = bvec(85,  0, 85); break; // pink
                 default: continue;
             }
-            glColor3f(color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb);
+            varray::colorf(color.x*ldrscaleb, color.y*ldrscaleb, color.z*ldrscaleb);
             lastmat = m.material;
         }
         drawmaterial(m, -0.1f);
@@ -802,7 +802,7 @@ void rendereditmaterials()
                 case MAT_ALPHA:    color = bvec(  0, 255,   0); break; // pink
                 default: continue;
             }
-            glColor3ub(color.x, color.y, color.z);
+            varray::color(color);
             lastmat = m.material;
         }
         drawmaterial(m, -0.1f);

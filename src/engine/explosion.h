@@ -156,8 +156,8 @@ static void setupexplosion()
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, hemivbuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, hemiebuf);
 
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glVertexPointer(3, GL_FLOAT, sizeof(vec), hemiverts);
+        varray::vertexpointer(sizeof(vec), hemiverts);
+        varray::enablevertex();
     }
     else
     {
@@ -166,10 +166,10 @@ static void setupexplosion()
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, spherevbuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, sphereebuf);
 
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glVertexPointer(3, GL_FLOAT, sizeof(spherevert), &sphereverts->pos);
-        glTexCoordPointer(2, GL_FLOAT, sizeof(spherevert), &sphereverts->s);
+        varray::vertexpointer(sizeof(spherevert), &sphereverts->pos);
+        varray::texcoord0pointer(sizeof(spherevert), &sphereverts->s);
+        varray::enablevertex();
+        varray::enabletexcoord0();
     }
 }
 
@@ -195,7 +195,7 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
         LOCALPARAMF(side, (inside ? -1 : 1));
         loopi(inside ? 2 : 1)
         {
-            glColor4f(r, g, b, i ? a/2 : a);
+            varray::colorf(r, g, b, i ? a/2 : a);
             if(i) glDepthFunc(GL_GEQUAL);
             drawexpverts(spherenumverts, spherenumindices, sphereindices);
             if(i) glDepthFunc(GL_LESS);
@@ -204,7 +204,7 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
     }
     loopi(inside ? 2 : 1)
     {
-        glColor4f(r, g, b, i ? a/2 : a);
+        varray::colorf(r, g, b, i ? a/2 : a);
         LOCALPARAMF(side, (1));
         if(i) glDepthFunc(GL_GEQUAL);
         if(inside)
@@ -221,8 +221,8 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
 
 static void cleanupexplosion()
 {
-    glDisableClientState(GL_VERTEX_ARRAY);
-    if(!explosion2d) glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    varray::disablevertex();
+    if(!explosion2d) varray::disabletexcoord0();
 
     glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
@@ -266,7 +266,7 @@ struct fireballrenderer : listrenderer
         pe.extendbb(o, (size+1+pe.ent->attr2)*WOBBLE); 
     }
 
-    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
+    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts)
     {
         float pmax = p->val,
               size = p->fade ? float(ts)/p->fade : 1,
@@ -324,7 +324,7 @@ struct fireballrenderer : listrenderer
             LOCALPARAMF(softparams, (0, -1, inside ? blend/(2*255.0f) : 0));
         }
 
-        drawexplosion(inside, color[0]*ldrscaleb, color[1]*ldrscaleb, color[2]*ldrscaleb, blend/255.0f);
+        drawexplosion(inside, p->color.r*ldrscaleb, p->color.g*ldrscaleb, p->color.b*ldrscaleb, blend/255.0f);
     }
 };
 static fireballrenderer fireballs("packages/particles/explosion.png"), bluefireballs("packages/particles/plasma.png");

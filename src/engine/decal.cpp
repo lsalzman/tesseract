@@ -209,16 +209,16 @@ struct decalrenderer
         glDepthMask(GL_FALSE);
         glEnable(GL_BLEND);
 
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        glEnableClientState(GL_COLOR_ARRAY);
+        varray::enablevertex();
+        varray::enabletexcoord0();
+        varray::enablecolor();
     }
 
     static void cleanuprenderstate()
     {
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        glDisableClientState(GL_COLOR_ARRAY);
+        varray::disablevertex();
+        varray::disabletexcoord0();
+        varray::disablecolor();
 
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
@@ -251,9 +251,9 @@ struct decalrenderer
 
         glBindTexture(GL_TEXTURE_2D, tex->id);
 
-        glVertexPointer(3, GL_FLOAT, sizeof(decalvert), &verts->pos);
-        glTexCoordPointer(2, GL_FLOAT, sizeof(decalvert), &verts->u);
-        glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(decalvert), &verts->color);
+        varray::vertexpointer(sizeof(decalvert), &verts->pos);
+        varray::texcoord0pointer(sizeof(decalvert), &verts->u);
+        varray::colorpointer(sizeof(decalvert), &verts->color);
 
         int count = endvert < startvert ? maxverts - startvert : endvert - startvert;
         glDrawArrays(GL_TRIANGLES, startvert, count);

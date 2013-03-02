@@ -598,7 +598,7 @@ struct editor
                 if(ey > maxy) { ey = maxy; pey = pixelheight - FONTH; pex = pixelwidth; }
 
                 hudnotextureshader->set();
-                glColor3ub(0xA0, 0x80, 0x80);
+                varray::colorub(0xA0, 0x80, 0x80);
                 varray::defvertex(2);
                 varray::begin(GL_QUADS);
                 if(psy == pey) 
@@ -641,7 +641,7 @@ struct editor
             if(linewrap && height > FONTH) // line wrap indicator
             {   
                 hudnotextureshader->set();
-                glColor3ub(0x80, 0xA0, 0x80);
+                varray::colorub(0x80, 0xA0, 0x80);
                 varray::defvertex(2);
                 varray::begin(GL_TRIANGLE_STRIP);
                 varray::attribf(x,         y+h+FONTH);

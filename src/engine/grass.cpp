@@ -244,15 +244,13 @@ void rendergrass()
 
     glDisable(GL_CULL_FACE);
 
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, sizeof(grassvert), grassverts[0].pos.v);
-
-    glEnableClientState(GL_COLOR_ARRAY);
-    glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(grassvert), grassverts[0].color);
-
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glTexCoordPointer(2, GL_FLOAT, sizeof(grassvert), &grassverts[0].u);
-
+    varray::vertexpointer(sizeof(grassvert), grassverts[0].pos.v);
+    varray::colorpointer(sizeof(grassvert), grassverts[0].color);
+    varray::texcoord0pointer(sizeof(grassvert), &grassverts[0].u);
+    varray::enablevertex();
+    varray::enablecolor();
+    varray::enabletexcoord0();
+ 
     static Shader *grassshader = NULL;
     if(!grassshader) grassshader = lookupshaderbyname("grass");
     
@@ -286,9 +284,9 @@ void rendergrass()
         xtravertsva += 4*g.numquads;
     }
 
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    varray::disablevertex();
+    varray::disablecolor();
+    varray::disabletexcoord0();
 
     glEnable(GL_CULL_FACE);
 }

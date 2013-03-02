@@ -241,7 +241,7 @@ void viewao()
     if(!ao) return;
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
     SETSHADER(hudrect);
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, aotex[2] ? aotex[2] : aotex[0]);
     int tw = aotex[2] ? gw : aow, th = aotex[2] ? gh : aoh;
     debugquad(0, 0, w, h, 0, 0, tw, th);
@@ -1263,7 +1263,7 @@ void viewdepth()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
     SETSHADER(hudrect);
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
     debugquad(0, 0, w, h, 0, 0, gw, gh);
 }
@@ -1274,7 +1274,7 @@ void viewrefract()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
     SETSHADER(hudrect);
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, refracttex);
     debugquad(0, 0, w, h, 0, 0, gw, gh);
 }
@@ -1408,7 +1408,7 @@ void viewrsm()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
     SETSHADER(hudrect);
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE_ARB, debugrsm == 2 ? rsmnormaltex : rsmcolortex);
     debugquad(x, y, w, h, 0, 0, rsmsize, rsmsize);
 }
@@ -1418,7 +1418,7 @@ void viewrh()
 {
     int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
     SETSHADER(hud3d);
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_3D, rhtex[1]);
     float z = (debugrh-1+0.5f)/float((rhgrid+2*rhborder)*rhsplits);
     varray::defvertex(2);
@@ -1551,7 +1551,7 @@ void viewshadowatlas()
         SETSHADER(hudrect);
     }
     else hudshader->set();
-    glColor3f(1, 1, 1);
+    varray::colorf(1, 1, 1);
     glBindTexture(shadowatlastarget, shadowatlastex);
     if(usesmcomparemode()) setsmnoncomparemode();
     debugquad(x, y, w, h, 0, 0, tw, th);
@@ -2426,8 +2426,8 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         if(!lightspherevbuf) initlightsphere(10, 5);
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, lightspherevbuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, lightsphereebuf);
-        glVertexPointer(3, GL_FLOAT, sizeof(vec), lightsphereverts);
-        glEnableClientState(GL_VERTEX_ARRAY);
+        varray::vertexpointer(sizeof(vec), lightsphereverts);
+        varray::enablevertex();
 
         if(hasDC && depthclamplights) glEnable(GL_DEPTH_CLAMP_NV);
 
@@ -2535,7 +2535,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
 
         if(hasDC && depthclamplights) glDisable(GL_DEPTH_CLAMP_NV);
 
-        glDisableClientState(GL_VERTEX_ARRAY);
+        varray::disablevertex();
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
     }
@@ -2707,7 +2707,7 @@ void viewlightscissor()
             {
                 lightinfo &l = lights[j];
                 if(l.sx1 >= l.sx2 || l.sy1 >= l.sy2 || l.sz1 >= l.sz2) break;
-                glColor3f(l.color.x/255, l.color.y/255, l.color.z/255);
+                varray::colorf(l.color.x/255, l.color.y/255, l.color.z/255);
                 float x1 = (l.sx1+1)/2*screen->w, x2 = (l.sx2+1)/2*screen->w,
                       y1 = (1-l.sy1)/2*screen->h, y2 = (1-l.sy2)/2*screen->h;
                 varray::begin(GL_TRIANGLE_STRIP);

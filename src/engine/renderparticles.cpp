@@ -329,7 +329,7 @@ struct listrenderer : partrenderer
     
     virtual void startrender() = 0;
     virtual void endrender() = 0;
-    virtual void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color) = 0;
+    virtual void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts) = 0;
 
     void render() 
     {
@@ -347,7 +347,7 @@ struct listrenderer : partrenderer
             calc(p, blend, ts, o, d);
             if(blend > 0) 
             {
-                renderpart(p, o, d, blend, ts, p->color.v);
+                renderpart(p, o, d, blend, ts);
 
                 if(p->fade > 5)
                 {
@@ -386,7 +386,7 @@ struct meterrenderer : listrenderer
          glEnable(GL_BLEND);
     }
 
-    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
+    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts)
     {
         int basetype = type&0xFF;
         float scale = FONTH*p->size/80.0f, right = 8, left = p->progress/100.0f*right;
@@ -398,7 +398,7 @@ struct meterrenderer : listrenderer
 
         if(outlinemeters)
         {
-            glColor3f(0, 0.8f, 0);
+            varray::colorf(0, 0.8f, 0);
             varray::begin(GL_TRIANGLE_STRIP);
             loopk(10)
             {
@@ -410,8 +410,8 @@ struct meterrenderer : listrenderer
             varray::end();
         }
 
-        if(basetype==PT_METERVS) glColor3ubv(p->color2);
-        else glColor3f(0, 0, 0);
+        if(basetype==PT_METERVS) varray::colorub(p->color2[0], p->color2[1], p->color2[2]);
+        else varray::colorf(0, 0, 0);
         varray::begin(GL_TRIANGLE_STRIP);
         loopk(10)
         {
@@ -424,7 +424,7 @@ struct meterrenderer : listrenderer
 
         if(outlinemeters)
         {
-            glColor3f(0, 0.8f, 0);
+            varray::colorf(0, 0.8f, 0);
             varray::begin(GL_TRIANGLE_FAN);
             loopk(10)
             {
@@ -435,7 +435,7 @@ struct meterrenderer : listrenderer
             varray::end();
         }
 
-        glColor3ubv(color);
+        varray::color(p->color);
         varray::begin(GL_TRIANGLE_STRIP);
         loopk(10)
         {
@@ -468,7 +468,7 @@ struct textrenderer : listrenderer
         if(p->text && p->flags&1) delete[] p->text;
     }
 
-    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts, uchar *color)
+    void renderpart(listparticle *p, const vec &o, const vec &d, int blend, int ts)
     {
         float scale = p->size/80.0f, xoff = -text_width(p->text)/2, yoff = 0;
         if((type&0xFF)==PT_TEXTUP) { xoff += detrnd((size_t)p, 100)-50; yoff -= detrnd((size_t)p, 101); }
@@ -480,7 +480,7 @@ struct textrenderer : listrenderer
         m.translate(xoff, yoff, 50);
 
         textmatrix = &m;
-        draw_text(p->text, 0, 0, color[0], color[1], color[2], blend);
+        draw_text(p->text, 0, 0, p->color.r, p->color.g, p->color.b, blend);
         textmatrix = NULL;
     } 
 };
@@ -770,9 +770,9 @@ struct varenderer : partrenderer
     {   
         if(!tex) tex = textureload(texname, texclamp);
         glBindTexture(GL_TEXTURE_2D, tex->id);
-        glVertexPointer(3, GL_FLOAT, sizeof(partvert), &verts->pos);
-        glTexCoordPointer(2, GL_FLOAT, sizeof(partvert), &verts->u);
-        glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(partvert), &verts->color);
+        varray::vertexpointer(sizeof(partvert), &verts->pos);
+        varray::texcoord0pointer(sizeof(partvert), &verts->u);
+        varray::colorpointer(sizeof(partvert), &verts->color);
         glDrawArrays(GL_QUADS, 0, numparts*4);
     }
 };
@@ -919,15 +919,15 @@ void renderparticles()
             {
                 if(flags&0x01)
                 {
-                    glEnableClientState(GL_VERTEX_ARRAY);
-                    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                    glEnableClientState(GL_COLOR_ARRAY);
+                    varray::enablevertex();
+                    varray::enabletexcoord0();
+                    varray::enablecolor();
                 } 
                 else
                 {
-                    glDisableClientState(GL_VERTEX_ARRAY);
-                    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-                    glDisableClientState(GL_COLOR_ARRAY);
+                    varray::disablevertex();
+                    varray::disabletexcoord0();
+                    varray::disablecolor();
                 }
             }
             if(changedbits&PT_LERP) { if(flags&PT_LERP) resetfogcolor(); else zerofogcolor(); }
@@ -966,9 +966,9 @@ void renderparticles()
         if(!(lastflags&PT_LERP)) resetfogcolor();
         if(lastflags&0x01)
         {
-            glDisableClientState(GL_VERTEX_ARRAY);
-            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-            glDisableClientState(GL_COLOR_ARRAY);
+            varray::disablevertex();
+            varray::disabletexcoord0();
+            varray::disablecolor();
         }
         glDisable(GL_BLEND);
         glDepthMask(GL_TRUE);
