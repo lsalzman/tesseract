@@ -425,8 +425,10 @@ GLenum compressedformat(GLenum format, int w, int h, int force = 0)
         case GL_RGB5:
         case GL_RGB8:
         case GL_LUMINANCE:
+        case GL_LUMINANCE8:
         case GL_RGB: return usetexcompress > 1 ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT : GL_COMPRESSED_RGB;
         case GL_LUMINANCE_ALPHA:
+        case GL_LUMINANCE8_ALPHA8:
         case GL_RGBA: return usetexcompress > 1 ? GL_COMPRESSED_RGBA_S3TC_DXT5_EXT : GL_COMPRESSED_RGBA;
     }
     return format;
@@ -436,8 +438,10 @@ int formatsize(GLenum format)
 {
     switch(format)
     {
+        case GL_RED:
         case GL_LUMINANCE:
         case GL_ALPHA: return 1;
+        case GL_RG:
         case GL_LUMINANCE_ALPHA: return 2;
         case GL_RGB: return 3;
         case GL_RGBA: return 4;
@@ -596,8 +600,16 @@ static GLenum textype(GLenum component, GLenum &format)
     {
         case GL_R16F:
         case GL_R32F:
+            if(!format) format = GL_RED;
+            type = GL_FLOAT;
+            break;
+
         case GL_RG16F:
         case GL_RG32F:
+            if(!format) format = GL_RG;
+            type = GL_FLOAT;
+            break;
+ 
         case GL_RGB16F:
         case GL_RGB32F:
         case GL_R11F_G11F_B10F:
@@ -623,12 +635,16 @@ static GLenum textype(GLenum component, GLenum &format)
             type = GL_UNSIGNED_INT_24_8;
             break;
 
-        case GL_RED:
         case GL_R8:
         case GL_R16:
-        case GL_RG:
+            if(!format) format = GL_RED;
+            break;
+
         case GL_RG8:
         case GL_RG16:
+            if(!format) format = GL_RG;
+            break;
+
         case GL_RGB5:
         case GL_RGB8:
         case GL_RGB16:

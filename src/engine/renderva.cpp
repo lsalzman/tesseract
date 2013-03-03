@@ -1548,8 +1548,6 @@ VAR(oqgeom, 0, 1, 1);
 
 extern void renderradiancehints();
 
-VAR(foo, 0, 0, 1);
-
 void rendergeom()
 {
     bool doOQ = oqfrags && oqgeom && !drawtex, multipassing = false;
@@ -1620,7 +1618,7 @@ void rendergeom()
         for(vtxarray *va = visibleva; va; va = va->next) if(va->texs && va->occluded >= OCCLUDE_GEOM)
         {
             if((va->parent && va->parent->occluded >= OCCLUDE_BB) ||
-                    (va->query && !foo && checkquery(va->query)))
+                    (va->query && checkquery(va->query)))
             {
                 va->occluded = OCCLUDE_BB;
                 continue;

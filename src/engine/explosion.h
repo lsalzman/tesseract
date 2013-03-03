@@ -72,7 +72,7 @@ static GLuint createexpmodtex(int size, float minval)
     }
     GLuint tex = 0;
     glGenTextures(1, &tex);
-    createtexture(tex, size, size, data, 3, 2, GL_ALPHA);
+    createtexture(tex, size, size, data, 3, 2, hasTRG ? GL_R8 : GL_LUMINANCE8);
     delete[] data;
     return tex;
 }
