@@ -288,13 +288,13 @@ static void initdome(const bvec &color, float minalpha = 0.0f, float maxalpha = 
     }
 
     if(!domevbuf) glGenBuffers_(1, &domevbuf);
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, domevbuf);
-    glBufferData_(GL_ARRAY_BUFFER_ARB, domenumverts*sizeof(domevert), domeverts, GL_STATIC_DRAW_ARB);
+    glBindBuffer_(GL_ARRAY_BUFFER, domevbuf);
+    glBufferData_(GL_ARRAY_BUFFER, domenumverts*sizeof(domevert), domeverts, GL_STATIC_DRAW);
     DELETEA(domeverts);
 
     if(!domeebuf) glGenBuffers_(1, &domeebuf);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, domeebuf);
-    glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, (domenumindices + domecapindices)*sizeof(GLushort), domeindices, GL_STATIC_DRAW_ARB);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, domeebuf);
+    glBufferData_(GL_ELEMENT_ARRAY_BUFFER, (domenumindices + domecapindices)*sizeof(GLushort), domeindices, GL_STATIC_DRAW);
     DELETEA(domeindices);
 }
 
@@ -330,24 +330,23 @@ static void drawdome()
         domeclipz = fogdomeclip;
     }
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, domevbuf);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, domeebuf);
+    glBindBuffer_(GL_ARRAY_BUFFER, domevbuf);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, domeebuf);
 
     varray::vertexpointer(sizeof(domevert), &domeverts->pos);
     varray::colorpointer(sizeof(domevert), &domeverts->color);
     varray::enablevertex();
     varray::enablecolor();
 
-    if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, 0, domenumverts-1, domenumindices + fogdomecap*domecapindices, GL_UNSIGNED_SHORT, domeindices);
-    else glDrawElements(GL_TRIANGLES, domenumindices + fogdomecap*domecapindices, GL_UNSIGNED_SHORT, domeindices);
+    glDrawRangeElements_(GL_TRIANGLES, 0, domenumverts-1, domenumindices + fogdomecap*domecapindices, GL_UNSIGNED_SHORT, domeindices);
     xtraverts += domenumverts;
     glde++;
 
     varray::disablevertex();
     varray::disablecolor();
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void cleanupsky()

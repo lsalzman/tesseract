@@ -38,10 +38,10 @@ void setupcaustics(int tmu, float surface = -1e16f)
     float frac = float(lastmillis%causticmillis)/causticmillis;
     loopi(2)
     {
-        glActiveTexture_(GL_TEXTURE0_ARB+tmu+i);
+        glActiveTexture_(GL_TEXTURE0+tmu+i);
         glBindTexture(GL_TEXTURE_2D, caustictex[(tex+i)%NUMCAUSTICS]->id);
     }
-    glActiveTexture_(GL_TEXTURE0_ARB);
+    glActiveTexture_(GL_TEXTURE0);
     float blendscale = causticcontrast, blendoffset = 1;
     if(surface > -1e15f)
     {
@@ -81,10 +81,10 @@ void renderwaterfog(int mat, float surface)
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
 
-    glActiveTexture_(GL_TEXTURE9_ARB);
+    glActiveTexture_(GL_TEXTURE9);
     if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
-    else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-    glActiveTexture_(GL_TEXTURE0_ARB);
+    else glBindTexture(GL_TEXTURE_RECTANGLE, gdepthtex);
+    glActiveTexture_(GL_TEXTURE0);
 
     vec p[4] = 
     {
@@ -537,9 +537,9 @@ void renderlava()
         {
             Texture *tex = lslot.sts.inrange(0) ? lslot.sts[0].t: notexture;
             glBindTexture(GL_TEXTURE_2D, tex->id);
-            glActiveTexture_(GL_TEXTURE1_ARB);
+            glActiveTexture_(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, lslot.sts.inrange(2) ? lslot.sts[2].t->id : notexture->id);
-            glActiveTexture_(GL_TEXTURE0_ARB);
+            glActiveTexture_(GL_TEXTURE0);
 
             vector<materialsurface> &surfs = lavasurfs[k];
             loopv(surfs) renderlava(surfs[i], tex, lslot.scale);
@@ -558,9 +558,9 @@ void renderlava()
             wfyscale = TEX_SCALE/(tex->ys*lslot.scale);
 
             glBindTexture(GL_TEXTURE_2D, tex->id);
-            glActiveTexture_(GL_TEXTURE1_ARB);
+            glActiveTexture_(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, lslot.sts.inrange(3) ? lslot.sts[3].t->id : notexture->id);
-            glActiveTexture_(GL_TEXTURE0_ARB);
+            glActiveTexture_(GL_TEXTURE0);
 
             vector<materialsurface> &surfs = lavafallsurfs[k];
             loopv(surfs) 
@@ -605,16 +605,16 @@ void renderwaterfalls()
         else SETSHADER(waterfall);
  
         glBindTexture(GL_TEXTURE_2D, tex->id);
-        glActiveTexture_(GL_TEXTURE1_ARB);
+        glActiveTexture_(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(4) ? wslot.sts[4].t->id : notexture->id);
-        glActiveTexture_(GL_TEXTURE2_ARB);
+        glActiveTexture_(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(5) ? wslot.sts[5].t->id : notexture->id);
         if(waterfallenv)
         {
-            glActiveTexture_(GL_TEXTURE3_ARB);
-            glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(wslot));
+            glActiveTexture_(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, lookupenvmap(wslot));
         }
-        glActiveTexture_(GL_TEXTURE0_ARB);
+        glActiveTexture_(GL_TEXTURE0);
 
         loopv(surfs) 
         {
@@ -635,15 +635,15 @@ void renderwater()
         MSlot &wslot = lookupmaterialslot(MAT_WATER+k);
 
         glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(2) ? wslot.sts[2].t->id : notexture->id);
-        glActiveTexture_(GL_TEXTURE1_ARB);
+        glActiveTexture_(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(3) ? wslot.sts[3].t->id : notexture->id);
         if(caustics && causticscale && causticmillis) setupcaustics(2);
         if(waterenvmap && !waterreflect && drawtex != DRAWTEX_MINIMAP)
         {
-            glActiveTexture_(GL_TEXTURE4_ARB);
-            glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(wslot));
+            glActiveTexture_(GL_TEXTURE4);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, lookupenvmap(wslot));
         }
-        glActiveTexture_(GL_TEXTURE0_ARB);
+        glActiveTexture_(GL_TEXTURE0);
 
         float colorscale = 0.5f/255, refractscale = colorscale/ldrscale, reflectscale = 0.5f/ldrscale;
         const bvec &color = getwatercolor(k);

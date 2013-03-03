@@ -194,14 +194,14 @@ struct animmodel : model
             }
             if(n && n!=lastnormalmap)
             {
-                glActiveTexture_(GL_TEXTURE3_ARB);
+                glActiveTexture_(GL_TEXTURE3);
                 activetmu = 3;
                 glBindTexture(GL_TEXTURE_2D, n->id);
                 lastnormalmap = n;
             }
             if(decal && decal!=lastdecal)
             {
-                glActiveTexture_(GL_TEXTURE4_ARB);
+                glActiveTexture_(GL_TEXTURE4);
                 activetmu = 4;
                 glBindTexture(GL_TEXTURE_2D, decal->id);
                 lastdecal = n;
@@ -225,7 +225,7 @@ struct animmodel : model
             }
             if(m!=lastmasks && m!=notexture)
             {
-                glActiveTexture_(GL_TEXTURE1_ARB);
+                glActiveTexture_(GL_TEXTURE1);
                 activetmu = 1;
                 glBindTexture(GL_TEXTURE_2D, m->id);
                 lastmasks = m;
@@ -235,13 +235,13 @@ struct animmodel : model
                 GLuint emtex = envmap ? envmap->id : closestenvmaptex;
                 if(lastenvmaptex!=emtex)
                 {
-                    glActiveTexture_(GL_TEXTURE0_ARB+envmaptmu);
+                    glActiveTexture_(GL_TEXTURE0+envmaptmu);
                     activetmu = envmaptmu;
-                    glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, emtex);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, emtex);
                     lastenvmaptex = emtex;
                 }
             }
-            if(activetmu != 0) glActiveTexture_(GL_TEXTURE0_ARB);
+            if(activetmu != 0) glActiveTexture_(GL_TEXTURE0);
             setshaderparams(b, as, m!=notexture, s->type&Texture::ALPHA && alphatest > 0);
             setshader(b, as, m!=notexture, s->type&Texture::ALPHA && alphatest > 0);
         }
@@ -433,12 +433,12 @@ struct animmodel : model
         {
             if(lastebuf!=ebuf)
             {
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, ebuf);
                 lastebuf = ebuf;
             }
             if(lastvbuf!=vbuf)
             {
-                glBindBuffer_(GL_ARRAY_BUFFER_ARB, vbuf);
+                glBindBuffer_(GL_ARRAY_BUFFER, vbuf);
                 if(!lastvbuf) varray::enablevertex();
                 varray::vertexpointer(stride, v);
                 lastvbuf = vbuf;
@@ -1422,8 +1422,8 @@ struct animmodel : model
 
     static void disablevbo()
     {
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+        glBindBuffer_(GL_ARRAY_BUFFER, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
         varray::disablevertex();
         if(enabletc) disabletc();
         if(enablenormals) disablenormals();

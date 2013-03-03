@@ -13,10 +13,8 @@ static Shader *slotshader = NULL;
 static vector<SlotShaderParam> slotparams;
 static bool standardshader = false, forceshaders = true, loadedshaders = false;
 
-VAR(maxtexcoords, 1, 0, 0);
 VAR(maxvsuniforms, 1, 0, 0);
 VAR(maxfsuniforms, 1, 0, 0);
-VAR(maxvaryings, 1, 0, 0);
 //VAR(dbgshader, 0, 0, 2);
 VAR(dbgshader, 0, 1, 2);
 
@@ -182,57 +180,6 @@ static void linkglslprogram(Shader &s, bool msg = true)
         glDeleteProgram_(s.program);
         s.program = 0;
     }
-}
-
-bool checkglslsupport()
-{
-    const GLchar *vsstr = 
-        "void main(void) {\n" 
-        "    gl_Position = ftransform();\n"
-        "}\n";
-#if 0
-    /* check if GLSL profile supports loops
-     */
-    const GLchar *psstr = 
-        "uniform int N;\n"
-        "uniform vec4 delta;\n"
-        "void main(void) {\n"
-        "   vec4 test = vec4(0.0, 0.0, 0.0, 0.0);\n"
-        "   for(int i = 0; i < N; i++)  test += delta;\n"
-        "   gl_FragColor = test;\n"
-        "}\n";
-#else
-    const GLchar *psstr =
-        "void main(void) {\n"
-        "   gl_FragColor = vec4(0.0);\n"
-        "}\n";
-#endif
-    GLuint vsobj = glCreateShader_(GL_VERTEX_SHADER), psobj = glCreateShader_(GL_FRAGMENT_SHADER);
-    GLuint program = glCreateProgram_();
-    GLint success = 0;
-    if(vsobj && psobj && program)
-    {
-        glShaderSource_(vsobj, 1, &vsstr, NULL);
-        glCompileShader_(vsobj);
-        glGetShaderiv_(vsobj, GL_COMPILE_STATUS, &success);
-        if(success) 
-        {
-            glShaderSource_(psobj, 1, &psstr, NULL);
-            glCompileShader_(psobj);
-            glGetShaderiv_(psobj, GL_COMPILE_STATUS, &success);
-            if(success)
-            {
-                glAttachShader_(program, vsobj);
-                glAttachShader_(program, psobj);
-                glLinkProgram_(program); 
-                glGetProgramiv_(program, GL_LINK_STATUS, &success);
-            }
-        }
-    }
-    if(vsobj) glDeleteShader_(vsobj);
-    if(psobj) glDeleteShader_(psobj);
-    if(program) glDeleteProgram_(program);
-    return success!=0;
 }
 
 int getlocalparam(const char *name)
@@ -588,10 +535,6 @@ void setupshaders()
     maxvsuniforms = val/4;
     glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &val);
     maxfsuniforms = val/4;
-    glGetIntegerv(GL_MAX_VARYING_FLOATS, &val);
-    maxvaryings = val;
-    glGetIntegerv(GL_MAX_TEXTURE_COORDS, &val);
-    maxtexcoords = val;
 
     standardshader = true;
     nullshader = newshader(0, "<init>null",
@@ -1128,7 +1071,7 @@ static int allocatepostfxtex(int scale)
     postfxtex &t = postfxtexs.add();
     t.scale = scale;
     glGenTextures(1, &t.id);
-    createtexture(t.id, max(postfxw>>scale, 1), max(postfxh>>scale, 1), NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE_ARB);
+    createtexture(t.id, max(postfxw>>scale, 1), max(postfxh>>scale, 1), NULL, 3, 1, GL_RGB, GL_TEXTURE_RECTANGLE);
     return postfxtexs.length()-1;
 }
 
@@ -1162,9 +1105,9 @@ GLuint setuppostfx(int w, int h, GLuint outfbo)
     loopv(postfxtexs) postfxtexs[i].used = -1;
     
     if(!postfxfb) glGenFramebuffers_(1, &postfxfb);
-    glBindFramebuffer_(GL_FRAMEBUFFER_EXT, postfxfb);
+    glBindFramebuffer_(GL_FRAMEBUFFER, postfxfb);
     int tex = allocatepostfxtex(0);
-    glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, postfxtexs[tex].id, 0);
+    glFramebufferTexture2D_(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, postfxtexs[tex].id, 0);
     bindgdepth();
 
     postfxbinds[0] = tex;
@@ -1185,12 +1128,12 @@ void renderpostfx(GLuint outfbo)
         int tex = -1;
         if(!postfxpasses.inrange(i+1))
         {
-            glBindFramebuffer_(GL_FRAMEBUFFER_EXT, outfbo);
+            glBindFramebuffer_(GL_FRAMEBUFFER, outfbo);
         }
         else
         {
             tex = allocatepostfxtex(p.outputscale);
-            glFramebufferTexture2D_(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, postfxtexs[tex].id, 0);
+            glFramebufferTexture2D_(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, postfxtexs[tex].id, 0);
         }
 
         int w = tex >= 0 ? max(postfxw>>postfxtexs[tex].scale, 1) : postfxw, 
@@ -1206,11 +1149,11 @@ void renderpostfx(GLuint outfbo)
                 tw = max(postfxw>>postfxtexs[postfxbinds[j]].scale, 1);
                 th = max(postfxh>>postfxtexs[postfxbinds[j]].scale, 1);
             }
-            else glActiveTexture_(GL_TEXTURE0_ARB + tmu);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, postfxtexs[postfxbinds[j]].id);
+            else glActiveTexture_(GL_TEXTURE0 + tmu);
+            glBindTexture(GL_TEXTURE_RECTANGLE, postfxtexs[postfxbinds[j]].id);
             ++tmu;
         }
-        if(tmu) glActiveTexture_(GL_TEXTURE0_ARB);
+        if(tmu) glActiveTexture_(GL_TEXTURE0);
         screenquad(tw, th);
 
         loopj(NUMPOSTFXBINDS) if(p.freeinputs&(1<<j) && postfxbinds[j] >= 0)
@@ -1361,10 +1304,10 @@ void setblurshader(int pass, int size, int radius, float *weights, float *offset
     if(radius<1 || radius>MAXBLURRADIUS) return; 
     static Shader *blurshader[7][2] = { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } },
                   *blurrectshader[7][2] = { { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL }, { NULL, NULL } };
-    Shader *&s = (target == GL_TEXTURE_RECTANGLE_ARB ? blurrectshader : blurshader)[radius-1][pass];
+    Shader *&s = (target == GL_TEXTURE_RECTANGLE ? blurrectshader : blurshader)[radius-1][pass];
     if(!s)
     {
-        defformatstring(name)("blur%c%d%s", 'x'+pass, radius, target == GL_TEXTURE_RECTANGLE_ARB ? "rect" : "");
+        defformatstring(name)("blur%c%d%s", 'x'+pass, radius, target == GL_TEXTURE_RECTANGLE ? "rect" : "");
         s = lookupshaderbyname(name);
     }
     s->set();

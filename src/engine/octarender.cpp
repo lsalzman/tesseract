@@ -44,9 +44,9 @@ void genvbo(int type, void *buf, int len, vtxarray **vas, int numva)
 {
     GLuint vbo;
     glGenBuffers_(1, &vbo);
-    GLenum target = type==VBO_VBUF ? GL_ARRAY_BUFFER_ARB : GL_ELEMENT_ARRAY_BUFFER_ARB;
+    GLenum target = type==VBO_VBUF ? GL_ARRAY_BUFFER : GL_ELEMENT_ARRAY_BUFFER;
     glBindBuffer_(target, vbo);
-    glBufferData_(target, len, buf, GL_STATIC_DRAW_ARB);
+    glBufferData_(target, len, buf, GL_STATIC_DRAW);
     glBindBuffer_(target, 0);
 
     vboinfo &vbi = vbos[vbo]; 

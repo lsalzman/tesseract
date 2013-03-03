@@ -901,10 +901,10 @@ void renderparticles()
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);             
 
-            glActiveTexture_(GL_TEXTURE2_ARB);
+            glActiveTexture_(GL_TEXTURE2);
             if(msaasamples) glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msdepthtex);
-            else glBindTexture(GL_TEXTURE_RECTANGLE_ARB, gdepthtex);
-            glActiveTexture_(GL_TEXTURE0_ARB);
+            else glBindTexture(GL_TEXTURE_RECTANGLE, gdepthtex);
+            glActiveTexture_(GL_TEXTURE0);
 
             particleshader->set();
             LOCALPARAMF(colorscale, (ldrscale, ldrscale, ldrscale, 1));

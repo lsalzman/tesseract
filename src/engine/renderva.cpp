@@ -4,8 +4,7 @@
 
 static inline void drawtris(GLsizei numindices, const GLvoid *indices, ushort minvert, ushort maxvert)
 {
-    if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, minvert, maxvert, numindices, GL_UNSIGNED_SHORT, indices);
-    else glDrawElements(GL_TRIANGLES, numindices, GL_UNSIGNED_SHORT, indices);
+    glDrawRangeElements_(GL_TRIANGLES, minvert, maxvert, numindices, GL_UNSIGNED_SHORT, indices);
     glde++;
 }
 
@@ -316,7 +315,7 @@ bool checkquery(occludequery *query, bool nowait)
             glGetQueryObjectiv_(query->id, GL_QUERY_RESULT_AVAILABLE, &avail);
             if(!avail) return false;
         }
-        glGetQueryObjectuiv_(query->id, GL_QUERY_RESULT_ARB, &fragments);
+        glGetQueryObjectuiv_(query->id, GL_QUERY_RESULT, &fragments);
         query->fragments = fragments;
     }
     return fragments < uint(oqfrags);
@@ -538,8 +537,8 @@ void renderoutline()
 
         if(!prev || va->vbuf != prev->vbuf)
         {
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+            glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->ebuf);
             varray::vertexpointer(sizeof(vertex), ((vertex *)0)->pos.v);
         }
 
@@ -563,8 +562,8 @@ void renderoutline()
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
     varray::disablevertex();
 }
 
@@ -594,8 +593,8 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
 
         if(!prev || va->vbuf != prev->vbuf)
         {
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+            glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->ebuf);
             varray::vertexpointer(sizeof(vertex), ((vertex *)0)->pos.v);
         }
 
@@ -609,8 +608,8 @@ void renderblendbrush(GLuint tex, float x, float y, float w, float h)
 
     glDepthFunc(GL_LESS);
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
     varray::disablevertex();
 }
  
@@ -915,8 +914,8 @@ void rendershadowmapworld()
     {
         if(!prev || va->vbuf != prev->vbuf)
         {
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+            glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->ebuf);
             varray::vertexpointer(sizeof(vertex), ((vertex *)0)->pos.v);
         }
 
@@ -933,8 +932,8 @@ void rendershadowmapworld()
         {
             if(!prev || va->vbuf != prev->vbuf)
             {
-                glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->skybuf);
+                glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->skybuf);
                 varray::vertexpointer(sizeof(vertex), ((vertex *)0)->pos.v);
             }
 
@@ -945,8 +944,8 @@ void rendershadowmapworld()
         }
     }
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
     varray::disablevertex();
 }
 
@@ -1033,8 +1032,8 @@ struct renderstate
 
 static inline void disablevbuf(renderstate &cur)
 {
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
     cur.vbuf = 0;
 }
 
@@ -1224,8 +1223,8 @@ static inline void disablevattribs(renderstate &cur, bool all = true)
 
 static void changevbuf(renderstate &cur, int pass, vtxarray *va)
 {
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+    glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->ebuf);
     cur.vbuf = va->vbuf;
 
     vertex *vdata = (vertex *)0;
@@ -1248,20 +1247,20 @@ static void changebatchtmus(renderstate &cur, int pass, geombatch &b)
         GLuint emtex = lookupenvmap(b.es.envmap);
         if(cur.textures[tmu]!=emtex)
         {
-            glActiveTexture_(GL_TEXTURE0_ARB+tmu);
-            glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, cur.textures[tmu] = emtex);
+            glActiveTexture_(GL_TEXTURE0+tmu);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[tmu] = emtex);
             changed = true;
         }
     }
     if(b.es.layer&LAYER_BOTTOM && (cur.blendx != (b.va->o.x&~0xFFF) || cur.blendy != (b.va->o.y&~0xFFF)))
     {
-        glActiveTexture_(GL_TEXTURE7_ARB);
+        glActiveTexture_(GL_TEXTURE7);
         bindblendtexture(b.va->o);
         cur.blendx = b.va->o.x&~0xFFF;
         cur.blendy = b.va->o.y&~0xFFF;
         changed = true;
     }  
-    if(changed) glActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
+    if(changed) glActiveTexture_(GL_TEXTURE0+cur.diffusetmu);
 }
 
 static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
@@ -1307,21 +1306,21 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         {
             if(envmaptmu>=0 && t.t && cur.textures[envmaptmu]!=t.t->id)
             {
-                glActiveTexture_(GL_TEXTURE0_ARB+envmaptmu);
-                glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, cur.textures[envmaptmu] = t.t->id);
+                glActiveTexture_(GL_TEXTURE0+envmaptmu);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[envmaptmu] = t.t->id);
             }
         }
         else 
         {
             if(cur.textures[tmu]!=t.t->id)
             {
-                glActiveTexture_(GL_TEXTURE0_ARB+tmu);
+                glActiveTexture_(GL_TEXTURE0+tmu);
                 glBindTexture(GL_TEXTURE_2D, cur.textures[tmu] = t.t->id);
             }
             if(++tmu >= 8) break;
         }
     }
-    glActiveTexture_(GL_TEXTURE0_ARB+cur.diffusetmu);
+    glActiveTexture_(GL_TEXTURE0+cur.diffusetmu);
 
     cur.slot = &slot;
     cur.vslot = &vslot;
@@ -1534,7 +1533,7 @@ void cleanupva()
 
 void setupgeom(renderstate &cur)
 {
-    glActiveTexture_(GL_TEXTURE0_ARB);
+    glActiveTexture_(GL_TEXTURE0);
     GLOBALPARAMF(colorparams, (1, 1, 1, 1));
     GLOBALPARAMF(blendlayer, (1.0f));
 }
@@ -1716,8 +1715,8 @@ void renderrsmgeom(bool dyntex)
         {
             if(!prev || va->vbuf != prev->vbuf)
             {
-                glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->skybuf);
+                glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+                glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->skybuf);
                 varray::vertexpointer(sizeof(vertex), ((vertex *)0)->pos.v);
             }
 
@@ -1828,8 +1827,8 @@ void renderrefractmask()
 
         if(!prev || va->vbuf != prev->vbuf)
         {
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->ebuf);
+            glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->ebuf);
             varray::vertexpointer(sizeof(vertex), ((vertex *)0)->pos.v);
         }
 
@@ -1837,8 +1836,8 @@ void renderrefractmask()
         xtravertsva += 3*va->refracttris;
     }
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
     varray::disablevertex();
 }
 
@@ -1894,8 +1893,8 @@ bool renderexplicitsky(bool outline)
                     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
                 }
             }
-            glBindBuffer_(GL_ARRAY_BUFFER_ARB, va->vbuf);
-            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, va->skybuf);
+            glBindBuffer_(GL_ARRAY_BUFFER, va->vbuf);
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, va->skybuf);
             varray::vertexpointer(sizeof(vertex), ((vertex *)0)->pos.v);
         }
         drawvaskytris(va);
@@ -1914,8 +1913,8 @@ bool renderexplicitsky(bool outline)
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
     varray::disablevertex();
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
     return true;
 }
 
@@ -2010,14 +2009,14 @@ static void flushshadowmeshdraws(shadowmesh &m, int sides, shadowdrawinfo draws[
         draws[i].reset();
     }
 
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, ebuf);
-    glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, numindexes*sizeof(ushort), indexes, GL_STATIC_DRAW_ARB);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, ebuf);
+    glBufferData_(GL_ELEMENT_ARRAY_BUFFER, numindexes*sizeof(ushort), indexes, GL_STATIC_DRAW);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
     delete[] indexes;
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, vbuf);
-    glBufferData_(GL_ARRAY_BUFFER_ARB, shadowverts.verts.length()*sizeof(vec), shadowverts.verts.getbuf(), GL_STATIC_DRAW_ARB);
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, vbuf);
+    glBufferData_(GL_ARRAY_BUFFER, shadowverts.verts.length()*sizeof(vec), shadowverts.verts.getbuf(), GL_STATIC_DRAW);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
     shadowverts.clear(); 
 
     shadowvbos.add(ebuf);
@@ -2140,15 +2139,15 @@ void rendershadowmesh(shadowmesh *m)
     while(draw >= 0)
     {
         shadowdraw &d = shadowdraws[draw];
-        if(ebuf != d.ebuf) { glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, d.ebuf); ebuf = d.ebuf; }
-        if(vbuf != d.vbuf) { glBindBuffer_(GL_ARRAY_BUFFER_ARB, d.vbuf); vbuf = d.vbuf; varray::vertexpointer(sizeof(vec), 0); }
+        if(ebuf != d.ebuf) { glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, d.ebuf); ebuf = d.ebuf; }
+        if(vbuf != d.vbuf) { glBindBuffer_(GL_ARRAY_BUFFER, d.vbuf); vbuf = d.vbuf; varray::vertexpointer(sizeof(vec), 0); }
         drawtris(3*d.tris, (ushort *)0 + d.offset, d.minvert, d.maxvert);
         xtravertsva += 3*d.tris;
         draw = d.next;
     }
 
     varray::disablevertex();
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
 }
  

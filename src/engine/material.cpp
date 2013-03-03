@@ -715,9 +715,9 @@ void renderglass()
         glassxscale = TEX_SCALE/(tex->xs*gslot.scale);
         glassyscale = TEX_SCALE/(tex->ys*gslot.scale);
 
-        glActiveTexture_(GL_TEXTURE1_ARB);
+        glActiveTexture_(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, tex->id);
-        glActiveTexture_(GL_TEXTURE0_ARB);
+        glActiveTexture_(GL_TEXTURE0);
 
         float refractscale = (0.5f/255)/ldrscale;
         const bvec &col = getglasscolor(k);
@@ -736,7 +736,7 @@ void renderglass()
                 xtraverts += varray::end();
                 if(m.envmap != EMID_NONE && glassenv) SETSHADER(glassenv);
                 else SETSHADER(glass);
-                glBindTexture(GL_TEXTURE_CUBE_MAP_ARB, lookupenvmap(m.envmap));
+                glBindTexture(GL_TEXTURE_CUBE_MAP, lookupenvmap(m.envmap));
                 envmap = m.envmap;
             }
             drawglass(m, 0.1f, &matnormals[m.orient]);

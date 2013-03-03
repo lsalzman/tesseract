@@ -46,13 +46,13 @@ static void inithemisphere(int hres, int depth)
     loopi(hres) genface(depth, 0, i+1, 1+(i+1)%hres);
 
     if(!hemivbuf) glGenBuffers_(1, &hemivbuf);
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, hemivbuf);
-    glBufferData_(GL_ARRAY_BUFFER_ARB, heminumverts*sizeof(vec), hemiverts, GL_STATIC_DRAW_ARB);
+    glBindBuffer_(GL_ARRAY_BUFFER, hemivbuf);
+    glBufferData_(GL_ARRAY_BUFFER, heminumverts*sizeof(vec), hemiverts, GL_STATIC_DRAW);
     DELETEA(hemiverts);
 
     if(!hemiebuf) glGenBuffers_(1, &hemiebuf);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, hemiebuf);
-    glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, heminumindices*sizeof(GLushort), hemiindices, GL_STATIC_DRAW_ARB);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, hemiebuf);
+    glBufferData_(GL_ELEMENT_ARRAY_BUFFER, heminumindices*sizeof(GLushort), hemiindices, GL_STATIC_DRAW);
     DELETEA(hemiindices);
 }
 
@@ -126,13 +126,13 @@ static void initsphere(int slices, int stacks)
     }
 
     if(!spherevbuf) glGenBuffers_(1, &spherevbuf);
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, spherevbuf);
-    glBufferData_(GL_ARRAY_BUFFER_ARB, spherenumverts*sizeof(spherevert), sphereverts, GL_STATIC_DRAW_ARB);
+    glBindBuffer_(GL_ARRAY_BUFFER, spherevbuf);
+    glBufferData_(GL_ARRAY_BUFFER, spherenumverts*sizeof(spherevert), sphereverts, GL_STATIC_DRAW);
     DELETEA(sphereverts);
 
     if(!sphereebuf) glGenBuffers_(1, &sphereebuf);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, sphereebuf);
-    glBufferData_(GL_ELEMENT_ARRAY_BUFFER_ARB, spherenumindices*sizeof(GLushort), sphereindices, GL_STATIC_DRAW_ARB);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, sphereebuf);
+    glBufferData_(GL_ELEMENT_ARRAY_BUFFER, spherenumindices*sizeof(GLushort), sphereindices, GL_STATIC_DRAW);
     DELETEA(sphereindices);
 }
 
@@ -153,8 +153,8 @@ static void setupexplosion()
     if(explosion2d)
     {
         if(!hemivbuf) inithemisphere(5, 2);
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, hemivbuf);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, hemiebuf);
+        glBindBuffer_(GL_ARRAY_BUFFER, hemivbuf);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, hemiebuf);
 
         varray::vertexpointer(sizeof(vec), hemiverts);
         varray::enablevertex();
@@ -163,8 +163,8 @@ static void setupexplosion()
     {
         if(!spherevbuf) initsphere(12, 6);
 
-        glBindBuffer_(GL_ARRAY_BUFFER_ARB, spherevbuf);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, sphereebuf);
+        glBindBuffer_(GL_ARRAY_BUFFER, spherevbuf);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, sphereebuf);
 
         varray::vertexpointer(sizeof(spherevert), &sphereverts->pos);
         varray::texcoord0pointer(sizeof(spherevert), &sphereverts->s);
@@ -175,8 +175,7 @@ static void setupexplosion()
 
 static void drawexpverts(int numverts, int numindices, GLushort *indices)
 {
-    if(hasDRE) glDrawRangeElements_(GL_TRIANGLES, 0, numverts-1, numindices, GL_UNSIGNED_SHORT, indices);
-    else glDrawElements(GL_TRIANGLES, numindices, GL_UNSIGNED_SHORT, indices);
+    glDrawRangeElements_(GL_TRIANGLES, 0, numverts-1, numindices, GL_UNSIGNED_SHORT, indices);
     xtraverts += numindices;
     glde++;
 }
@@ -185,10 +184,10 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
 {
     if(lastexpmodtex != expmodtex[inside ? 1 : 0])
     {
-        glActiveTexture_(GL_TEXTURE1_ARB);
+        glActiveTexture_(GL_TEXTURE1);
         lastexpmodtex = expmodtex[inside ? 1 :0];
         glBindTexture(GL_TEXTURE_2D, lastexpmodtex);
-        glActiveTexture_(GL_TEXTURE0_ARB);
+        glActiveTexture_(GL_TEXTURE0);
     }
     if(!explosion2d)
     {
@@ -224,8 +223,8 @@ static void cleanupexplosion()
     varray::disablevertex();
     if(!explosion2d) varray::disabletexcoord0();
 
-    glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 static void deleteexplosions()
