@@ -528,59 +528,6 @@ Shader *newshader(int type, const char *name, const char *vs, const char *ps, Sh
     return &s;
 }
 
-void setupshaders()
-{
-    GLint val;
-    glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &val);
-    maxvsuniforms = val/4;
-    glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &val);
-    maxfsuniforms = val/4;
-
-    standardshader = true;
-    nullshader = newshader(0, "<init>null",
-        "attribute vec4 vvertex;\n"
-        "void main(void) {\n"
-        "   gl_Position = vvertex;\n"
-        "}\n",
-        "void main(void) {\n"
-        "   gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n"
-        "}\n");
-    hudshader = newshader(0, "<init>hud", 
-        "attribute vec4 vvertex, vcolor;\n"
-        "attribute vec2 vtexcoord0;\n"
-        "uniform mat4 hudmatrix;\n"
-        "varying vec2 texcoord0;\n"
-        "varying vec4 color;\n"
-        "void main(void) {\n"
-        "    gl_Position = hudmatrix * vvertex;\n"
-        "    texcoord0 = vtexcoord0;\n"
-        "    color = vcolor;\n"
-        "}\n",
-        "uniform sampler2D tex0;\n"
-        "varying vec2 texcoord0;\n"
-        "varying vec4 color;\n"
-        "void main(void) {\n"
-        "    gl_FragColor = color * texture2D(tex0, texcoord0);\n"
-        "}\n");
-    hudnotextureshader = newshader(0, "<init>hudnotexture",
-        "attribute vec4 vvertex, vcolor;\n"
-        "uniform mat4 hudmatrix;"
-        "varying vec4 color;\n"
-        "void main(void) {\n"
-        "    gl_Position = hudmatrix * vvertex;\n"
-        "    color = vcolor;\n"
-        "}\n",
-        "varying vec4 color;\n"
-        "void main(void) {\n"
-        "    gl_FragColor = color;\n"
-        "}\n");
-    standardshader = false;
-
-    if(!nullshader || !hudshader || !hudnotextureshader) fatal("failed to setup shaders");
-
-    dummyslot.shader = nullshader;
-}
-
 static const char *findglslmain(const char *s)
 {
     const char *main = strstr(s, "main");
@@ -608,7 +555,8 @@ static void gengenericvariant(Shader &s, const char *sname, const char *vs, cons
             memset(vspragma, ' ', olen);
             vspragma += olen;
             char *end = vspragma + strcspn(vspragma, "\n\r");
-            int endlen = strspn(end, "\n\r");
+            end += strspn(end, "\n\r");
+            int endlen = strcspn(end, "\n\r");
             memset(end, ' ', endlen);
         }
     }
@@ -623,12 +571,15 @@ static void gengenericvariant(Shader &s, const char *sname, const char *vs, cons
             memset(pspragma, ' ', olen);
             pspragma += olen;
             char *end = pspragma + strcspn(pspragma, "\n\r");
-            int endlen = strspn(end, "\n\r");
+            end += strspn(end, "\n\r");
+            int endlen = strcspn(end, "\n\r");
             memset(end, ' ', endlen);
         }
     }
     defformatstring(varname)("<variant:%d,%d>%s", s.variants[row].length(), row, sname);
-    defformatstring(reuse)("%d", row);
+    string reuse;
+    if(s.variants[row].length()) formatstring(reuse)("%d", row);
+    else copystring(reuse, "");
     newshader(s.type, varname, vschanged ? vsv.getbuf() : reuse, pschanged ? psv.getbuf() : reuse, &s, row);
 }
 
@@ -703,6 +654,62 @@ static void genuniformdefs(vector<char> &vsbuf, vector<char> &psbuf, const char 
     }
     vsbuf.put(vsmain, strlen(vsmain)+1);
     psbuf.put(psmain, strlen(psmain)+1);
+}
+
+void setupshaders()
+{
+    GLint val;
+    glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &val);
+    maxvsuniforms = val/4;
+    glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, &val);
+    maxfsuniforms = val/4;
+
+    standardshader = true;
+    nullshader = newshader(0, "<init>null",
+        "attribute vec4 vvertex;\n"
+        "void main(void) {\n"
+        "   gl_Position = vvertex;\n"
+        "}\n",
+        "void main(void) {\n"
+        "   gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n"
+        "}\n");
+    hudshader = newshader(0, "<init>hud",
+        "attribute vec4 vvertex, vcolor;\n"
+        "attribute vec2 vtexcoord0;\n"
+        "uniform mat4 hudmatrix;\n"
+        "varying vec2 texcoord0;\n"
+        "varying vec4 colorscale;\n"
+        "void main(void) {\n"
+        "    gl_Position = hudmatrix * vvertex;\n"
+        "    texcoord0 = vtexcoord0;\n"
+        "    colorscale = vcolor;\n"
+        "}\n",
+        "uniform sampler2D tex0;\n"
+        "varying vec2 texcoord0;\n"
+        "varying vec4 colorscale;\n"
+        "void main(void) {\n"
+        "    #pragma CUBE2_variantoverride vec4 color = texture2D(tex0, texcoord0).rrrg;\n"
+        "    vec4 color = texture2D(tex0, texcoord0);\n"
+        "    gl_FragColor = colorscale * color;\n"
+        "}\n");
+    if(hudshader) gengenericvariant(*hudshader, hudshader->name, hudshader->vsstr, hudshader->psstr, 0);
+    hudnotextureshader = newshader(0, "<init>hudnotexture",
+        "attribute vec4 vvertex, vcolor;\n"
+        "uniform mat4 hudmatrix;"
+        "varying vec4 color;\n"
+        "void main(void) {\n"
+        "    gl_Position = hudmatrix * vvertex;\n"
+        "    color = vcolor;\n"
+        "}\n",
+        "varying vec4 color;\n"
+        "void main(void) {\n"
+        "    gl_FragColor = color;\n"
+        "}\n");
+    standardshader = false;
+
+    if(!nullshader || !hudshader || !hudnotextureshader) fatal("failed to setup shaders");
+
+    dummyslot.shader = nullshader;
 }
 
 VAR(defershaders, 0, 1, 1);
@@ -817,6 +824,7 @@ void shader(int *type, char *name, char *vs, char *ps)
     Shader *s = newshader(*type, name, vs, ps);
     if(s)
     {
+        if(strstr(ps, "#pragma CUBE2_variant") || strstr(vs, "#pragma CUBE2_variant")) gengenericvariant(*s, name, vs, ps, 0);
     }
     slotparams.shrink(0);
 }

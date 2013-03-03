@@ -22,7 +22,8 @@ enum
     DF_INVMOD     = 1<<2,
     DF_OVERBRIGHT = 1<<3,
     DF_ADD        = 1<<4,
-    DF_SATURATE   = 1<<5
+    DF_SATURATE   = 1<<5,
+    DF_GREY       = 1<<6
 };
 
 VARFP(maxdecaltris, 1, 1024, 16384, initdecals());
@@ -234,7 +235,7 @@ struct decalrenderer
         if(flags&DF_OVERBRIGHT) 
         {
             glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR); 
-            SETSHADER(overbrightdecal);
+            SETVARIANT(overbrightdecal, flags&DF_GREY && hasTRG ? 0 : -1, 0);
         }
         else 
         {
@@ -242,11 +243,9 @@ struct decalrenderer
             else if(flags&DF_ADD) glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
             else glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-            if(flags&DF_SATURATE)
-            {
-                SETSHADER(saturatedecal);
-            }
-            else SETSHADER(decal);
+            SETVARIANT(decal, flags&DF_GREY && hasTRG ? 0 : -1, 0);
+            float colorscale = flags&DF_SATURATE ? 2 : 1; 
+            LOCALPARAMF(colorscale, (colorscale, colorscale, colorscale, 1));
         }
 
         glBindTexture(GL_TEXTURE_2D, tex->id);
@@ -558,9 +557,9 @@ struct decalrenderer
 
 decalrenderer decals[] =
 {
-    decalrenderer("<grey>packages/particles/scorch.png", DF_ROTATE, 500),
-    decalrenderer("<grey>packages/particles/blood.png", DF_RND4|DF_ROTATE|DF_INVMOD),
-    decalrenderer("<grey>packages/particles/bullet.png", DF_OVERBRIGHT)
+    decalrenderer("<grey>packages/particles/scorch.png", DF_GREY|DF_ROTATE, 500),
+    decalrenderer("<grey>packages/particles/blood.png", DF_GREY|DF_RND4|DF_ROTATE|DF_INVMOD),
+    decalrenderer("<grey>packages/particles/bullet.png", DF_GREY|DF_OVERBRIGHT)
 };
 
 void initdecals()

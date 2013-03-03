@@ -593,7 +593,7 @@ void setuptexparameters(int tnum, const void *pixels, int clamp, int filter, GLe
             (filter && bilinear ? GL_LINEAR : GL_NEAREST));
 }
 
-static GLenum textype(GLenum component, GLenum &format)
+static GLenum textype(GLenum &component, GLenum &format)
 {
     GLenum type = GL_UNSIGNED_BYTE;
     switch(component)
@@ -716,8 +716,8 @@ static GLenum texformat(int bpp)
 {
     switch(bpp)
     {
-        case 1: return GL_LUMINANCE;
-        case 2: return GL_LUMINANCE_ALPHA;
+        case 1: return hasTRG ? GL_RED : GL_LUMINANCE;
+        case 2: return hasTRG ? GL_RG : GL_LUMINANCE_ALPHA;
         case 3: return GL_RGB;
         case 4: return GL_RGBA;
         default: return 0;
