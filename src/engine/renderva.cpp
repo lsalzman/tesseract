@@ -1205,7 +1205,7 @@ static inline void enablevattribs(renderstate &cur, bool all = true)
     {
         varray::enabletexcoord0();
         varray::enablenormal();
-        varray::enablecolor();
+        varray::enabletangent();
     }
     cur.vattribs = true;
 }
@@ -1217,7 +1217,7 @@ static inline void disablevattribs(renderstate &cur, bool all = true)
     {
         varray::disabletexcoord0();
         varray::disablenormal();
-        varray::disablecolor();
+        varray::disabletangent();
     }
     cur.vattribs = false;
 }
@@ -1235,7 +1235,7 @@ static void changevbuf(renderstate &cur, int pass, vtxarray *va)
     {
         varray::texcoord0pointer(sizeof(vertex), vdata->tc.v);
         varray::normalpointer(sizeof(vertex), vdata->norm.v, GL_BYTE);
-        varray::colorpointer(sizeof(vertex), vdata->tangent.v);
+        varray::tangentpointer(sizeof(vertex), vdata->tangent.v, GL_BYTE);
     }
 }
 

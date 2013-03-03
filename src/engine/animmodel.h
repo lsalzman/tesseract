@@ -1397,26 +1397,26 @@ struct animmodel : model
 
     static void disablebones()
     {
-        glDisableVertexAttribArray_(6);
-        glDisableVertexAttribArray_(7);
+        varray::disableboneweight();
+        varray::disableboneindex();
         enablebones = false;
     }
 
     static void disabletangents()
     {
-        glDisableVertexAttribArray_(1);
+        varray::disabletangent();
         enabletangents = false;
     }
 
     static void disabletc()
     {
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        varray::disabletexcoord0();
         enabletc = false;
     }
 
     static void disablenormals()
     {
-        glDisableClientState(GL_NORMAL_ARRAY);
+        varray::disablenormal();
         enablenormals = false;
     }
 
@@ -1424,7 +1424,7 @@ struct animmodel : model
     {
         glBindBuffer_(GL_ARRAY_BUFFER_ARB, 0);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-        glDisableClientState(GL_VERTEX_ARRAY);
+        varray::disablevertex();
         if(enabletc) disabletc();
         if(enablenormals) disablenormals();
         if(enabletangents) disabletangents();
