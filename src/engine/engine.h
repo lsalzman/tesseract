@@ -27,7 +27,8 @@ extern const uchar fvmasks[64];
 extern const uchar faceedgesidx[6][4];
 extern bool inbetweenframes, renderedframe;
 
-extern SDL_Surface *screen;
+extern SDL_Window *screen;
+extern int screenw, screenh;
 
 extern vector<int> entgroup;
 
@@ -132,7 +133,7 @@ extern void glerror(const char *file, int line, GLenum error);
 #define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
 
 extern void gl_checkextensions();
-extern void gl_init(int w, int h, int bpp);
+extern void gl_init(int w, int h);
 extern void cleangl();
 extern void gl_drawframe(int w, int h);
 extern void gl_drawmainmenu(int w, int h);
@@ -544,7 +545,8 @@ extern void checksleep(int millis);
 extern void clearsleep(bool clearoverrides = true);
 
 // console
-extern void keypress(int code, bool isdown, int cooked);
+extern void keypress(int code, bool isdown);
+extern void textinput(const char *str, int len);
 extern int rendercommand(int x, int y, int w);
 extern int renderconsole(int w, int h, int abovehud);
 extern void conoutf(const char *s, ...) PRINTFARGS(1, 2);
@@ -662,6 +664,8 @@ extern bool renderexplicitsky(bool outline = false);
 // 3dgui
 extern void g3d_render();
 extern bool g3d_windowhit(bool on, bool act);
+extern bool g3d_key(int code, bool isdown);
+extern bool g3d_input(const char *str, int len);
 
 // menus
 extern int mainmenu;

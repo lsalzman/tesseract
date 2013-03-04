@@ -598,7 +598,7 @@ VAR(debugsmaa, 0, 0, 5);
 
 void viewsmaa()
 {
-    int w = min(screen->w, screen->h)*1.0f, h = (w*screen->h)/screen->w, tw = gw, th = gh;
+    int w = min(screenw, screenh)*1.0f, h = (w*screenh)/screenw, tw = gw, th = gh;
     SETSHADER(hudrect);
     varray::colorf(1, 1, 1);
     switch(debugsmaa)

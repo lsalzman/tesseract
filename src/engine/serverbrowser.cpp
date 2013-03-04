@@ -71,7 +71,7 @@ void resolverinit()
         resolverthread &rt = resolverthreads.add();
         rt.query = NULL;
         rt.starttime = 0;
-        rt.thread = SDL_CreateThread(resolverloop, &rt);
+        rt.thread = SDL_CreateThread(resolverloop, "resolver", &rt);
     }
     SDL_UnlockMutex(resolvermutex);
 }
@@ -81,10 +81,7 @@ void resolverstop(resolverthread &rt)
     SDL_LockMutex(resolvermutex);
     if(rt.query)
     {
-#ifndef __APPLE__
-        SDL_KillThread(rt.thread);
-#endif
-        rt.thread = SDL_CreateThread(resolverloop, &rt);
+        rt.thread = SDL_CreateThread(resolverloop, "resolver", &rt);
     }
     rt.query = NULL;
     rt.starttime = 0;
@@ -233,7 +230,7 @@ int connectwithtimeout(ENetSocket sock, const char *hostname, const ENetAddress 
     if(!conncond) conncond = SDL_CreateCond();
     SDL_LockMutex(connmutex);
     connectdata cd = { sock, address, -1 };
-    connthread = SDL_CreateThread(connectthread, &cd);
+    connthread = SDL_CreateThread(connectthread, "connect", &cd);
 
     int starttime = SDL_GetTicks(), timeout = 0;
     for(;;)

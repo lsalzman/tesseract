@@ -254,7 +254,8 @@ ICOMMAND(searcheditbinds, "s", (char *action), searchbinds(action, keym::ACTION_
 void inputcommand(char *init, char *action = NULL, char *prompt = NULL, char *flags = NULL) // turns input to the command line on or off
 {
     commandmillis = init ? totalmillis : -1;
-    SDL_EnableUNICODE(commandmillis >= 0 ? 1 : 0);
+    if(commandmillis >= 0) SDL_StartTextInput();
+    else SDL_StopTextInput();
     if(!editmode) keyrepeat(commandmillis >= 0);
     copystring(commandbuf, init ? init : "");
     DELETEA(commandaction);
@@ -275,76 +276,24 @@ void inputcommand(char *init, char *action = NULL, char *prompt = NULL, char *fl
 ICOMMAND(saycommand, "C", (char *init), inputcommand(init));
 COMMAND(inputcommand, "ssss");
 
-#if !defined(WIN32) && !defined(__APPLE__)
-#include <X11/Xlib.h>
-#include <SDL_syswm.h>
-#endif
-
 void pasteconsole()
 {
-#ifdef WIN32
-    UINT fmt = CF_UNICODETEXT;
-    if(!IsClipboardFormatAvailable(fmt)) 
-    {
-        fmt = CF_TEXT;
-        if(!IsClipboardFormatAvailable(fmt)) return; 
-    }
-    if(!OpenClipboard(NULL)) return;
-    HANDLE h = GetClipboardData(fmt);
-    size_t commandlen = strlen(commandbuf);
-    int cblen = int(GlobalSize(h)), decoded = 0;
-    ushort *cb = (ushort *)GlobalLock(h);
-    switch(fmt)
-    {
-        case CF_UNICODETEXT:
-            decoded = min(int(sizeof(commandbuf)-1-commandlen), cblen/2);
-            loopi(decoded) commandbuf[commandlen++] = uni2cube(cb[i]);
-            break;
-        case CF_TEXT:
-            decoded = min(int(sizeof(commandbuf)-1-commandlen), cblen);
-            memcpy(&commandbuf[commandlen], cb, decoded);
-            break;
-    }    
-    commandbuf[commandlen + decoded] = '\0';
-    GlobalUnlock(cb);
-    CloseClipboard();
-#elif defined(__APPLE__)
-	extern char *mac_pasteconsole(int *cblen);
-    int cblen = 0;
-	uchar *cb = (uchar *)mac_pasteconsole(&cblen);
+    if(!SDL_HasClipboardText()) return;
+    char *cb = SDL_GetClipboardText();
     if(!cb) return;
+    int cbsize = strlen(cb);
     size_t commandlen = strlen(commandbuf);
-    int decoded = decodeutf8((uchar *)&commandbuf[commandlen], int(sizeof(commandbuf)-1-commandlen), cb, cblen);
-    commandbuf[commandlen + decoded] = '\0';
-    free(cb);
-	#else
-    SDL_SysWMinfo wminfo;
-    SDL_VERSION(&wminfo.version); 
-    wminfo.subsystem = SDL_SYSWM_X11;
-    if(!SDL_GetWMInfo(&wminfo)) return;
-    int cbsize;
-    uchar *cb = (uchar *)XFetchBytes(wminfo.info.x11.display, &cbsize);
-    if(!cb || !cbsize) return;
-    size_t commandlen = strlen(commandbuf);
-    for(uchar *cbline = cb, *cbend; commandlen + 1 < sizeof(commandbuf) && cbline < &cb[cbsize]; cbline = cbend + 1)
+    for(char *cbline = cb, *cbend; commandlen + 1 < sizeof(commandbuf) && cbline < &cb[cbsize]; cbline = cbend + 1)
     {
-        cbend = (uchar *)memchr(cbline, '\0', &cb[cbsize] - cbline);
+        cbend = (char *)memchr(cbline, '\0', &cb[cbsize] - cbline);
         if(!cbend) cbend = &cb[cbsize];
         int cblen = int(cbend-cbline), commandmax = int(sizeof(commandbuf)-1-commandlen); 
-        loopi(cblen) if((cbline[i]&0xC0) == 0x80) 
-        { 
-            commandlen += decodeutf8((uchar *)&commandbuf[commandlen], commandmax, cbline, cblen);
-            goto nextline;
-        }
-        cblen = min(cblen, commandmax);
-        loopi(cblen) commandbuf[commandlen++] = uni2cube(*cbline++);
-    nextline:
+        commandlen += decodeutf8((uchar *)&commandbuf[commandlen], commandmax, (const uchar *)cbline, cblen);
         commandbuf[commandlen] = '\n';
         if(commandlen + 1 < sizeof(commandbuf) && cbend < &cb[cbsize]) ++commandlen;
         commandbuf[commandlen] = '\0';
     }
-    XFree(cb);
-#endif
+    SDL_free(cb);
 }
 
 struct hline
@@ -469,7 +418,27 @@ void execbind(keym &k, bool isdown)
     k.pressed = isdown;
 }
 
-void consolekey(int code, bool isdown, int cooked)
+void consoleinput(const char *str, int len)
+{
+    resetcomplete();
+    int cmdlen = (int)strlen(commandbuf), cmdspace = int(sizeof(commandbuf)) - (cmdlen+1);
+    len = min(len, cmdspace);
+    if(len <= 0) return;
+    if(commandpos<0) 
+    {
+        memcpy(&commandbuf[cmdlen], str, len);
+        cmdlen += len;
+    }
+    else
+    {
+        memmove(&commandbuf[commandpos+len], &commandbuf[commandpos], len - commandpos);
+        memcpy(&commandbuf[commandpos], str, len);
+        commandpos += len;
+    }
+    commandbuf[cmdlen+1] = '\0';
+}
+
+void consolekey(int code, bool isdown)
 {
     #ifdef __APPLE__
         #define MOD_KEYS (KMOD_LMETA|KMOD_RMETA) 
@@ -541,25 +510,7 @@ void consolekey(int code, bool isdown, int cooked)
                 break;
 
             case SDLK_v:
-                if(SDL_GetModState()&MOD_KEYS) { pasteconsole(); return; }
-                // fall through
-
-            default:
-                resetcomplete();
-                if(cooked)
-                {
-                    size_t len = (int)strlen(commandbuf);
-                    if(len+1<sizeof(commandbuf))
-                    {
-                        if(commandpos<0) commandbuf[len] = cooked;
-                        else
-                        {
-                            memmove(&commandbuf[commandpos+1], &commandbuf[commandpos], len - commandpos);
-                            commandbuf[commandpos++] = cooked;
-                        }
-                        commandbuf[len+1] = '\0';
-                    }
-                }
+                if(SDL_GetModState()&MOD_KEYS) pasteconsole();
                 break;
         }
     }
@@ -593,15 +544,21 @@ void consolekey(int code, bool isdown, int cooked)
     }
 }
 
-extern bool menukey(int code, bool isdown, int cooked);
+void textinput(const char *str, int len)
+{
+    if(!g3d_input(str, len))
+    {
+        if(commandmillis >= 0) consoleinput(str, len);
+    }
+}
 
-void keypress(int code, bool isdown, int cooked)
+void keypress(int code, bool isdown)
 {
     keym *haskey = keyms.access(code);
     if(haskey && haskey->pressed) execbind(*haskey, isdown); // allow pressed keys to release
-    else if(!menukey(code, isdown, cooked)) // 3D GUI mouse button intercept   
+    else if(!g3d_key(code, isdown)) // 3D GUI mouse button intercept   
     {
-        if(commandmillis >= 0) consolekey(code, isdown, cooked);
+        if(commandmillis >= 0) consolekey(code, isdown);
         else if(haskey) execbind(*haskey, isdown);
     }
 }

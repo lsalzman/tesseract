@@ -428,7 +428,7 @@ struct editor
         }
     }
 
-    void key(int code, int cooked)
+    void key(int code)
     {
         switch(code) 
         {
@@ -507,12 +507,14 @@ struct editor
             case SDLK_RSHIFT:
                 break;
             case SDLK_RETURN:    
-                cooked = '\n';
-                // fall through
-            default:
-                insert(cooked);
+                insert('\n');
                 break;
         }
+    }
+
+    void input(const char *str, int len)
+    {
+        loopi(len) insert(str[i]);
     }
 
     void hit(int hitx, int hity, bool dragged)

@@ -239,7 +239,7 @@ void initao()
 void viewao()
 {
     if(!ao) return;
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    int w = min(screenw, screenh)/2, h = (w*screenh)/screenw;
     SETSHADER(hudrect);
     varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE, aotex[2] ? aotex[2] : aotex[0]);
@@ -1261,7 +1261,7 @@ VAR(debugdepth, 0, 0, 1);
 
 void viewdepth()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    int w = min(screenw, screenh)/2, h = (w*screenh)/screenw;
     SETSHADER(hudrect);
     varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE, gdepthtex);
@@ -1272,7 +1272,7 @@ VAR(debugrefract, 0, 0, 1);
 
 void viewrefract()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w;
+    int w = min(screenw, screenh)/2, h = (w*screenh)/screenw;
     SETSHADER(hudrect);
     varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE, refracttex);
@@ -1406,7 +1406,7 @@ VARFP(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
 VAR(debugrsm, 0, 0, 2);
 void viewrsm()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
+    int w = min(screenw, screenh)/2, h = (w*screenh)/screenw, x = screenw-w, y = screenh-h;
     SETSHADER(hudrect);
     varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_RECTANGLE, debugrsm == 2 ? rsmnormaltex : rsmcolortex);
@@ -1416,7 +1416,7 @@ void viewrsm()
 VAR(debugrh, 0, 0, RH_MAXSPLITS*(128 + 2));
 void viewrh()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
+    int w = min(screenw, screenh)/2, h = (w*screenh)/screenw, x = screenw-w, y = screenh-h;
     SETSHADER(hud3d);
     varray::colorf(1, 1, 1);
     glBindTexture(GL_TEXTURE_3D, rhtex[1]);
@@ -1542,7 +1542,7 @@ static inline bool usesmcomparemode() { return !usegatherforsm() || (hasTG && ha
 
 void viewshadowatlas()
 {
-    int w = min(screen->w, screen->h)/2, h = (w*screen->h)/screen->w, x = screen->w-w, y = screen->h-h;
+    int w = min(screenw, screenh)/2, h = (w*screenh)/screenw, x = screenw-w, y = screenh-h;
     float tw = 1, th = 1;
     if(shadowatlastarget == GL_TEXTURE_RECTANGLE)
     {
@@ -2706,8 +2706,8 @@ void viewlightscissor()
                 lightinfo &l = lights[j];
                 if(l.sx1 >= l.sx2 || l.sy1 >= l.sy2 || l.sz1 >= l.sz2) break;
                 varray::colorf(l.color.x/255, l.color.y/255, l.color.z/255);
-                float x1 = (l.sx1+1)/2*screen->w, x2 = (l.sx2+1)/2*screen->w,
-                      y1 = (1-l.sy1)/2*screen->h, y2 = (1-l.sy2)/2*screen->h;
+                float x1 = (l.sx1+1)/2*screenw, x2 = (l.sx2+1)/2*screenw,
+                      y1 = (1-l.sy1)/2*screenh, y2 = (1-l.sy2)/2*screenh;
                 varray::begin(GL_TRIANGLE_STRIP);
                 varray::attribf(x1, y1);
                 varray::attribf(x2, y1);
@@ -3821,7 +3821,7 @@ void shademodelpreview(int x, int y, int w, int h, bool background, bool scissor
 
     GLERROR;
     
-    glViewport(0, 0, screen->w, screen->h);
+    glViewport(0, 0, screenw, screenh);
 }
 
 void shadegbuffer()

@@ -932,7 +932,7 @@ void printtimers(int conw, int conh)
 }
          
 
-void gl_init(int w, int h, int bpp)
+void gl_init(int w, int h)
 {
     glViewport(0, 0, w, h);
     glClearColor(0, 0, 0, 0);
@@ -943,7 +943,6 @@ void gl_init(int w, int h, int bpp)
     glDisable(GL_STENCIL_TEST);
     glStencilFunc(GL_ALWAYS, 0, ~0);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    glShadeModel(GL_SMOOTH);
     
     glEnable(GL_LINE_SMOOTH);
     //glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
@@ -1807,7 +1806,7 @@ void drawminimap()
 
     drawtex = DRAWTEX_MINIMAP;
 
-    setupframe(screen->w, screen->h);
+    setupframe(screenw, screenh);
 
     int size = 1<<minimapsize, sizelimit = min(hwtexsize, min(vieww, viewh));
     while(size > sizelimit) size /= 2;
@@ -2029,7 +2028,7 @@ namespace modelpreview
         modelpreview::background = background;
         modelpreview::scissor = scissor;
 
-        setupgbuffer(screen->w, screen->h);
+        setupgbuffer(screenw, screenh);
 
         useshaderbyname("modelpreview");
 
