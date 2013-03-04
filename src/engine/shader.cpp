@@ -101,7 +101,7 @@ static void showglslinfo(GLenum type, GLuint obj, const char *name, const char *
     }
 }
 
-static void compileglslshader(GLenum type, GLuint &obj, const char *def, const char *name, bool msg = true) 
+static void compileglslshader(Shader &s, GLenum type, GLuint &obj, const char *def, const char *name, bool msg = true) 
 {
     const char *source = def + strspn(def, " \t\r\n"); 
     const char *parts[16];
@@ -114,8 +114,8 @@ static void compileglslshader(GLenum type, GLuint &obj, const char *def, const c
                 (glslversion >= 140 ?
                     "#version 140\n" :
                     (glslversion >= 130 ?
-                        "#version 130" :
-                        "#version 120")));
+                        "#version 130\n" :
+                        "#version 120\n")));
     if(glslversion >= 130 && glslversion < 330 && hasEAL)
         parts[numparts++] = "#extension GL_ARB_explicit_attrib_location : enable\n";
     if(glslversion < 140)
@@ -130,7 +130,9 @@ static void compileglslshader(GLenum type, GLuint &obj, const char *def, const c
         else if(type == GL_FRAGMENT_SHADER) 
         {
             parts[numparts++] = "#define varying in\n";
-            if(glslversion >= 330 || hasEAL) parts[numparts++] = "#define fragdata(loc, name, type) layout(location = loc) out type name;\n";
+            parts[numparts++] = glslversion >= 300 || hasEAL ?
+                "#define fragdata(loc, name, type) layout(location = loc) out type name;\n" :
+                "#define fragdata(loc, name, type) out type name;\n";
         }
         parts[numparts++] =
             "#define texture1D(sampler, coords) texture(sampler, coords)\n"
@@ -146,34 +148,20 @@ static void compileglslshader(GLenum type, GLuint &obj, const char *def, const c
     else if(type == GL_FRAGMENT_SHADER) 
     {
         parts[numparts++] = "#define fragdata(loc, name, type)\n";
-        const char *s = source;
-        int numdefs = 0;
-        while((s = strstr(s, "fragdata(")))
+        loopv(s.fragdatalocs)
         {
-            int loc = strtol(s + 9, (char **)&s, 0);
-            if(loc < 0 || loc > 3) continue;
-
-            s += strspn(s, ", \t\r\n");
-            const char *name = s;
-            s += strcspn(s, ", \t\r\n");
-            string defname;
-            int namelen = min(int(sizeof(defname)-1), int(s-name));
-            memcpy(defname, name, namelen);
-            defname[namelen++] = '\0';
-
-            s += strspn(s, ", \t\r\n");
-            const char *type = s;
-            s += strcspn(s, ") \t\r\n");
-            const char *swizzle = "";
-            if(!strncmp(type, "vec3", s-type)) swizzle = ".rgb";
-            else if(!strncmp(type, "vec2", s-type)) swizzle = ".rg";
-            else if(!strncmp(type, "float", s-type)) swizzle = ".r";
-
+            FragDataLoc &d = s.fragdatalocs[i]; 
+            if(i >= 4) break;
             static string defs[4];
-            string &def = defs[numdefs++];
-            formatstring(def)("#define %s gl_FragData[%d]%s\n", defname, loc, swizzle);
-            parts[numparts++] = def;
-            if(numdefs >= 4) break;
+            const char *swizzle = "";
+            switch(d.format)
+            {
+                case GL_FLOAT_VEC2: swizzle = ".rg"; break;
+                case GL_FLOAT_VEC3: swizzle = ".rgb"; break;
+                case GL_FLOAT: swizzle = ".r"; break;
+            }
+            formatstring(defs[i])("#define %s gl_FragData[%d]%s\n", d.name, d.loc, swizzle);
+            parts[numparts++] = defs[i];
         }  
     }
     parts[numparts++] = source; 
@@ -235,10 +223,10 @@ static void linkglslprogram(Shader &s, bool msg = true)
             attribs |= 1<<a.loc;
         }
         loopi(varray::MAXATTRIBS) if(!(attribs&(1<<i))) glBindAttribLocation_(s.program, i, varray::attribnames[i]);
-        if(glslversion >= 130 && glslversion < 330 && !hasEAL) loopi(4)
+        if(glslversion >= 130 && glslversion < 330 && !hasEAL && glversion >= 300) loopv(s.fragdatalocs) 
         {
-            static const char * const fragdatanames[4] = { "fragdata0", "fragdata1", "fragdata2", "fragdata3" };
-            glBindFragDataLocation_(s.program, i, fragdatanames[i]);  
+            FragDataLoc &d = s.fragdatalocs[i];
+            glBindFragDataLocation_(s.program, d.loc, d.name);
         }
         glLinkProgram_(s.program);
         glGetProgramiv_(s.program, GL_LINK_STATUS, &success);
@@ -265,6 +253,39 @@ static void linkglslprogram(Shader &s, bool msg = true)
         if(msg) showglslinfo(GL_FALSE, s.program, s.name);
         glDeleteProgram_(s.program);
         s.program = 0;
+    }
+}
+
+void findfragdatalocs(Shader &s, const char *psstr)
+{
+    if(glslversion >= 330 || (glslversion >= 130 && hasEAL)) return;
+
+    const char *ps = psstr;
+    if(ps) while((ps = strstr(ps, "fragdata(")))
+    {
+        int loc = strtol(ps + 9, (char **)&ps, 0);
+        if(loc < 0 || loc > 3) continue;
+
+        ps += strspn(ps, ", \t\r\n");
+        const char *namestart = ps;
+        ps += strcspn(ps, "), \t\r\n");
+        string name;
+        int namelen = min(int(sizeof(name)-1), int(ps-namestart));
+        memcpy(name, namestart, namelen);
+        name[namelen++] = '\0';
+
+        ps += strspn(ps, ", \t\r\n");
+        const char *type = ps;
+        ps += strcspn(ps, ") \t\r\n");
+        GLenum format = GL_FLOAT_VEC4;
+        if(ps > type)
+        {
+            if(!strncmp(type, "vec3", ps-type)) format = GL_FLOAT_VEC3;
+            else if(!strncmp(type, "vec2", ps-type)) format = GL_FLOAT_VEC2;
+            else if(!strncmp(type, "float", ps-type)) format = GL_FLOAT;
+        }
+
+        s.fragdatalocs.add(FragDataLoc(getshaderparamname(name), loc, format));
     }
 }
 
@@ -500,9 +521,9 @@ void Shader::bindprograms()
 bool Shader::compile()
 {
     if(!vsstr) vsobj = !reusevs || reusevs->type&SHADER_INVALID ? 0 : reusevs->vsobj;
-    else compileglslshader(GL_VERTEX_SHADER,   vsobj, vsstr, name, dbgshader || !variantshader);
+    else compileglslshader(*this, GL_VERTEX_SHADER,   vsobj, vsstr, name, dbgshader || !variantshader);
     if(!psstr) psobj = !reuseps || reuseps->type&SHADER_INVALID ? 0 : reuseps->psobj;
-    else compileglslshader(GL_FRAGMENT_SHADER, psobj, psstr, name, dbgshader || !variantshader);
+    else compileglslshader(*this, GL_FRAGMENT_SHADER, psobj, psstr, name, dbgshader || !variantshader);
     linkglslprogram(*this, !variantshader);
     return program!=0;
 }
@@ -527,6 +548,7 @@ void Shader::cleanup(bool invalid)
         DELETEA(defer);
         defaultparams.setsize(0);
         attriblocs.setsize(0);
+        fragdatalocs.setsize(0);
         uniformlocs.setsize(0);
         altshader = NULL;
         loopi(MAXSHADERDETAIL) fastshader[i] = this;
@@ -603,6 +625,9 @@ Shader *newshader(int type, const char *name, const char *vs, const char *ps, Sh
     s.uniformlocs.setsize(0);
     genattriblocs(s, vs, ps);
     genuniformlocs(s, vs, ps);
+    s.fragdatalocs.setsize(0);
+    if(s.reuseps) s.fragdatalocs = s.reuseps->fragdatalocs;
+    else findfragdatalocs(s, ps);
     if(!s.compile())
     {
         s.cleanup(true);

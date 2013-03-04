@@ -126,6 +126,14 @@ struct AttribLoc
     AttribLoc(const char *name = NULL, int loc = -1) : name(name), loc(loc) {}
 };
 
+struct FragDataLoc
+{
+    const char *name;
+    int loc;
+    GLenum format;
+    FragDataLoc(const char *name = NULL, int loc = -1, GLenum format = GL_FALSE) : name(name), loc(loc), format(format) {}
+};
+
 struct Shader
 {
     static Shader *lastshader;
@@ -143,6 +151,7 @@ struct Shader
     Shader *reusevs, *reuseps;
     vector<UniformLoc> uniformlocs;
     vector<AttribLoc> attriblocs;
+    vector<FragDataLoc> fragdatalocs;
 
     Shader() : name(NULL), vsstr(NULL), psstr(NULL), defer(NULL), type(SHADER_DEFAULT), program(0), vsobj(0), psobj(0), detailshader(NULL), variantshader(NULL), altshader(NULL), standard(false), forced(false), used(false), native(true), reusevs(NULL), reuseps(NULL) 
     {
