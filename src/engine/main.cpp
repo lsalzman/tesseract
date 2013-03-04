@@ -390,13 +390,12 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     swapbuffers();
 }
 
+bool grabinput = false, minimized = false, canrelativemouse = true, relativemouse = false, allowrepeat = false;
+
 void keyrepeat(bool on)
 {
-//    SDL_EnableKeyRepeat(on ? SDL_DEFAULT_REPEAT_DELAY : 0,
-//                             SDL_DEFAULT_REPEAT_INTERVAL);
+    allowrepeat = on;
 }
-
-bool grabinput = false, minimized = false, canrelativemouse = true, relativemouse = false;
 
 void inputgrab(bool on)
 {
@@ -627,7 +626,6 @@ static bool filterevent(const SDL_Event &event)
     switch(event.type)
     {
         case SDL_MOUSEMOTION:
-            #ifndef WIN32
             if(grabinput && !relativemouse)
             {
                 if(event.motion.x == screenw / 2 && event.motion.y == screenh / 2) 
@@ -637,7 +635,6 @@ static bool filterevent(const SDL_Event &event)
                     return false;  // let mac users drag windows via the title bar
                 #endif
             }
-            #endif
             break;
     }
     return true;
@@ -740,7 +737,8 @@ void checkinput()
 
             case SDL_KEYDOWN:
             case SDL_KEYUP:
-                keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED);
+                if(allowrepeat || !event.key.repeat)
+                    keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED);
                 break;
 
             case SDL_WINDOWEVENT:

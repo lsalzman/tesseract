@@ -427,15 +427,14 @@ void consoleinput(const char *str, int len)
     if(commandpos<0) 
     {
         memcpy(&commandbuf[cmdlen], str, len);
-        cmdlen += len;
     }
     else
     {
-        memmove(&commandbuf[commandpos+len], &commandbuf[commandpos], len - commandpos);
+        memmove(&commandbuf[commandpos+len], &commandbuf[commandpos], cmdlen - commandpos);
         memcpy(&commandbuf[commandpos], str, len);
         commandpos += len;
     }
-    commandbuf[cmdlen+1] = '\0';
+    commandbuf[cmdlen + len] = '\0';
 }
 
 void consolekey(int code, bool isdown)
