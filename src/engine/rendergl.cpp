@@ -299,8 +299,8 @@ void gl_checkextensions()
     conoutf(CON_INIT, "Driver: %s", version);
 
 #ifdef __APPLE__
-    extern int mac_osversion();
-    int osversion = mac_osversion();  /* 0x0A0500 = 10.5 (Leopard) */
+    // extern int mac_osversion();
+    // int osversion = mac_osversion();  /* 0x0A0600 = 10.6, assumed minimum */
 #endif
 
     if(strstr(renderer, "Mesa") || strstr(version, "Mesa"))
@@ -479,12 +479,6 @@ void gl_checkextensions()
         oqfrags = 0;
     }
  
-#ifdef __APPLE__
-    /* VBOs over 256KB seem to destroy performance on 10.5, but not in 10.6 */
-    extern int maxvbosize;
-    if(osversion < 0x0A0600) maxvbosize = min(maxvbosize, 8192);  
-#endif
-
     if(glversion >= 300 || hasext("GL_ARB_vertex_array_object"))
     {
         glBindVertexArray_ =    (PFNGLBINDVERTEXARRAYPROC)   getprocaddress("glBindVertexArray");
@@ -513,10 +507,6 @@ void gl_checkextensions()
     }
     else
     {
-#ifdef __APPLE__
-        // floating point FBOs not fully supported until 10.5
-        if(osversion>=0x0A0500)
-#endif
         if(hasext("GL_ARB_texture_float"))
         {
             hasTF = true;
