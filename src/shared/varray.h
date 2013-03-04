@@ -214,7 +214,12 @@ namespace varray
 
     void drawquads(int offset, int count)
     {
-        if(offset + count >= MAXQUADS) count = max(MAXQUADS - offset, 0);
+        if(count <= 0) return;
+        if(offset + count > MAXQUADS) 
+        {
+            if(offset >= MAXQUADS) return;
+            count = MAXQUADS - offset;
+        }
         glDrawRangeElements_(GL_TRIANGLES, offset*4, (offset + count)*4-1, count*6, GL_UNSIGNED_SHORT, (ushort *)0 + offset*6); 
     }
 
