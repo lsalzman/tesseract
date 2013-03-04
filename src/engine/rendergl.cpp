@@ -2602,5 +2602,6 @@ void cleanupgl()
 {
     clearminimap();
     cleanuptimers();
+    varray::cleanup();
 }
 

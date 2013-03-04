@@ -143,6 +143,11 @@ namespace varray
 
     extern int end();
     extern void disable();
+    extern void cleanup();
+
+    extern void enablequads();
+    extern void disablequads();
+    extern void drawquads(int offset, int count);
 
 #else
     struct attribinfo
@@ -169,6 +174,49 @@ namespace varray
     static GLenum primtype = GL_TRIANGLES;
     static uchar *lastbuf = NULL;
     static bool changedattribs = false;
+    static GLuint quadindexes = 0;
+    static bool quadsenabled = false;
+
+    #define MAXQUADS (0x10000/4)
+
+    void enablequads()
+    {
+        quadsenabled = true;
+
+        if(quadindexes)
+        {
+            glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, quadindexes);
+            return;
+        }
+
+        glGenBuffers_(1, &quadindexes);
+        ushort *data = new ushort[MAXQUADS*6], *dst = data;
+        for(int idx = 0; idx < MAXQUADS*4; idx += 4, dst += 6)
+        {
+            dst[0] = idx;
+            dst[1] = idx + 1;
+            dst[2] = idx + 2;
+            dst[3] = idx + 0;
+            dst[4] = idx + 2;
+            dst[5] = idx + 3;
+        }
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, quadindexes);
+        glBufferData_(GL_ELEMENT_ARRAY_BUFFER, MAXQUADS*6*sizeof(ushort), data, GL_STATIC_DRAW);
+        delete[] data;
+    }
+
+    void disablequads()
+    {
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+        quadsenabled = false;
+    }
+
+    void drawquads(int offset, int count)
+    {
+        if(offset + count >= MAXQUADS) count = max(MAXQUADS - offset, 0);
+        glDrawRangeElements_(GL_TRIANGLES, offset*4, (offset + count)*4-1, count*6, GL_UNSIGNED_SHORT, (ushort *)0 + offset*6); 
+    }
 
     void begin(GLenum mode)
     {
@@ -287,7 +335,16 @@ namespace varray
             changedattribs = false;
         }
         int numvertexes = data.length()/vertexsize;
-        glDrawArrays(primtype, 0, numvertexes);
+        if(primtype == GL_QUADS) 
+        {
+            if(!quadsenabled) enablequads();
+            drawquads(0, numvertexes/4);
+        }
+        else 
+        {
+            if(quadsenabled) disablequads();
+            glDrawArrays(primtype, 0, numvertexes);
+        }
         data.setsize(0);
         return numvertexes;
     }
@@ -298,6 +355,12 @@ namespace varray
         for(int i = 0; enabled; i++) if(enabled&(1<<i)) { glDisableVertexAttribArray_(i); enabled &= ~(1<<i); }
         numlastattribs = lastattribmask = lastvertexsize = 0;
         lastbuf = NULL;
+        if(quadsenabled) disablequads();
+    }
+
+    void cleanup()
+    {
+        if(quadindexes) { glDeleteBuffers_(1, &quadindexes); quadindexes = 0; }
     }
 #endif
 }

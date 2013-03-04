@@ -774,7 +774,9 @@ struct varenderer : partrenderer
         varray::vertexpointer(sizeof(partvert), &verts->pos);
         varray::texcoord0pointer(sizeof(partvert), &verts->u);
         varray::colorpointer(sizeof(partvert), &verts->color);
-        glDrawArrays(GL_QUADS, 0, numparts*4);
+        varray::enablequads();
+        varray::drawquads(0, numparts);
+        varray::disablequads();
     }
 };
 typedef varenderer<PT_PART> quadrenderer;
@@ -821,8 +823,8 @@ static partrenderer *parts[] =
     &flares                                                                                        // lens flares - must be done last
 };
 
-VARFP(maxparticles, 10, 4000, 40000, particleinit());
-VARFP(fewparticles, 10, 100, 40000, particleinit());
+VARFP(maxparticles, 10, 4000, 10000, particleinit());
+VARFP(fewparticles, 10, 100, 10000, particleinit());
 
 void particleinit() 
 {

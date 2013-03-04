@@ -158,7 +158,7 @@ static void gengrassquads(grassgroup *&group, const grasswedge &w, const grasstr
             group = &grassgroups.add();
             group->tri = &g;
             group->tex = tex->id;
-            group->offset = grassverts.length();
+            group->offset = grassverts.length()/4;
             group->numquads = 0;
             if(lastgrassanim!=lastmillis) animategrass();
         }
@@ -250,6 +250,7 @@ void rendergrass()
     varray::enablevertex();
     varray::enablecolor();
     varray::enabletexcoord0();
+    varray::enablequads();
  
     static Shader *grassshader = NULL;
     if(!grassshader) grassshader = lookupshaderbyname("grass");
@@ -280,10 +281,11 @@ void rendergrass()
             blend = g.tri->blend;
         }
 
-        glDrawArrays(GL_QUADS, g.offset, 4*g.numquads);
+        varray::drawquads(g.offset, g.numquads);
         xtravertsva += 4*g.numquads;
     }
 
+    varray::disablequads();
     varray::disablevertex();
     varray::disablecolor();
     varray::disabletexcoord0();
