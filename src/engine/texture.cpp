@@ -1927,7 +1927,8 @@ static void texcombine(Slot &s, int index, Slot::Tex &t, bool forceload = false)
     {
         case TEX_DIFFUSE:
         case TEX_NORMAL:
-            if(!ts.compressed) loopv(s.sts)
+            if(ts.compressed) break;
+            loopv(s.sts)
             {
                 Slot::Tex &a = s.sts[i];
                 if(a.combined!=index) continue;
@@ -1942,6 +1943,7 @@ static void texcombine(Slot &s, int index, Slot::Tex &t, bool forceload = false)
                 }
                 break; // only one combination
             }
+            if(ts.bpp < 3) forcergbimage(ts);
             break;
     }
     t.t = newtexture(NULL, key.getbuf(), ts, 0, true, true, true, compress);

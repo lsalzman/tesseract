@@ -589,6 +589,7 @@ typedef void (APIENTRYP PFNGLUNIFORMBLOCKBINDINGPROC) (GLuint program, GLuint un
 #define GL_R11F_G11F_B10F                 0x8C3A
 typedef void (APIENTRYP PFNGLBINDBUFFERRANGEPROC) (GLenum target, GLuint index, GLuint buffer, GLintptr offset, GLsizeiptr size);
 typedef void (APIENTRYP PFNGLBINDBUFFERBASEPROC) (GLenum target, GLuint index, GLuint buffer);
+typedef void (APIENTRYP PFNGLBINDFRAGDATALOCATIONPROC) (GLuint program, GLuint color, const GLchar *name);
 typedef void (APIENTRYP PFNGLCLAMPCOLORPROC) (GLenum target, GLenum clamp);
 typedef const GLubyte * (APIENTRYP PFNGLGETSTRINGIPROC) (GLenum name, GLuint index);
 #elif GL_GLEXT_VERSION < 43
@@ -597,6 +598,7 @@ typedef void (APIENTRYP PFNGLBINDBUFFERBASEPROC) (GLenum target, GLuint index, G
 #endif
 
 extern PFNGLGETSTRINGIPROC glGetStringi_;
+extern PFNGLBINDFRAGDATALOCATIONPROC glBindFragDataLocation_;
 
 #ifndef GL_VERSION_3_1
 #define GL_VERSION_3_1 1

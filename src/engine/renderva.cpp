@@ -1017,7 +1017,7 @@ struct renderstate
     float refractscale;
     vec refractcolor;
     int blendx, blendy;
-    GLuint textures[8];
+    GLuint textures[7];
     Slot *slot, *texgenslot;
     VSlot *vslot, *texgenvslot;
     vec2 texgenscroll;
@@ -1026,7 +1026,7 @@ struct renderstate
     renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), vattribs(false), vquery(false), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscroll(0, 0), texgendim(-1), texgenmillis(lastmillis)
     {
         loopk(4) color[k] = 1;
-        loopk(8) textures[k] = 0;
+        loopk(7) textures[k] = 0;
     }
 };
 
@@ -1241,14 +1241,13 @@ static void changevbuf(renderstate &cur, int pass, vtxarray *va)
 static void changebatchtmus(renderstate &cur, int pass, geombatch &b)
 {
     bool changed = false;
-    int tmu = cur.diffusetmu+1;
     if(b.vslot.slot->shader->type&SHADER_ENVMAP && b.es.envmap!=EMID_CUSTOM)
     {
         GLuint emtex = lookupenvmap(b.es.envmap);
-        if(cur.textures[tmu]!=emtex)
+        if(cur.textures[6]!=emtex)
         {
-            glActiveTexture_(GL_TEXTURE0+tmu);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[tmu] = emtex);
+            glActiveTexture_(GL_TEXTURE6);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[6] = emtex);
             changed = true;
         }
     }
@@ -1296,18 +1295,17 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         cur.colorscale = vslot.colorscale;
         GLOBALPARAMF(colorparams, (vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1));
     }
-    int tmu = cur.diffusetmu+1, envmaptmu = -1;
-    if(slot.shader->type&SHADER_ENVMAP) envmaptmu = tmu++;
+    int tmu = cur.diffusetmu+1;
     loopvj(slot.sts)
     {
         Slot::Tex &t = slot.sts[j];
         if(t.type==TEX_DIFFUSE || t.combined>=0) continue;
         if(t.type==TEX_ENVMAP)
         {
-            if(envmaptmu>=0 && t.t && cur.textures[envmaptmu]!=t.t->id)
+            if(slot.shader->type&SHADER_ENVMAP && t.t && cur.textures[6]!=t.t->id)
             {
-                glActiveTexture_(GL_TEXTURE0+envmaptmu);
-                glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[envmaptmu] = t.t->id);
+                glActiveTexture_(GL_TEXTURE6);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[6] = t.t->id);
             }
         }
         else 
@@ -1317,7 +1315,7 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
                 glActiveTexture_(GL_TEXTURE0+tmu);
                 glBindTexture(GL_TEXTURE_2D, cur.textures[tmu] = t.t->id);
             }
-            if(++tmu >= 8) break;
+            if(++tmu >= 7) break;
         }
     }
     glActiveTexture_(GL_TEXTURE0+cur.diffusetmu);

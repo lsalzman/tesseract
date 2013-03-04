@@ -582,7 +582,7 @@ struct BlendBrush
     void gentex()
     {
         if(!tex) glGenTextures(1, &tex);
-        uchar *buf = new uchar[2*w*h];
+        uchar *buf = new uchar[w*h];
         uchar *dst = buf, *src = data;
         loopi(h)
         {
@@ -650,8 +650,8 @@ struct BlendTexture
         size = sz;
         if(data) delete[] data;
         data = new uchar[size*size];
-        format = hasTRG ? GL_R8 : GL_LUMINANCE8;
-        createtexture(tex, size, size, NULL, 3, 1, format);
+        format = hasTRG ? GL_RED : GL_LUMINANCE;
+        createtexture(tex, size, size, NULL, 3, 1, hasTRG ? GL_R8 : GL_LUMINANCE8);
         valid = false;
         return true;
     }

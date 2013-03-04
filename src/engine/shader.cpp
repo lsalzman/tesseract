@@ -66,7 +66,7 @@ Shader *generateshader(const char *name, const char *fmt, ...)
     return s;
 }
 
-static void showglslinfo(GLenum type, GLuint obj, const char *name, const char *source)
+static void showglslinfo(GLenum type, GLuint obj, const char *name, const char **parts = NULL, int numparts = 0)
 {
     GLint length = 0;
     if(type) glGetShaderiv_(obj, GL_INFO_LOG_LENGTH, &length);
@@ -81,13 +81,20 @@ static void showglslinfo(GLenum type, GLuint obj, const char *name, const char *
             if(type) glGetShaderInfoLog_(obj, length, &length, log);
             else glGetProgramInfoLog_(obj, length, &length, log);
             fprintf(l, "%s\n", log);
-            if(source) loopi(1000)
+            int numlines = 0;
+            loopi(numparts)
             {
-                const char *next = strchr(source, '\n');
-                fprintf(l, "%d: ", i+1);
-                fwrite(source, 1, next ? next - source + 1 : strlen(source), l); 
-                if(!next) { fputc('\n', l); break; }
-                source = next + 1;
+                const char *part = parts[i]; 
+                while(numlines < 1000)
+                {
+                    if(!*part) break;
+                    const char *next = strchr(part, '\n');
+                    numlines++;
+                    fprintf(l, "%d: ", numlines);
+                    fwrite(part, 1, next ? next - part + 1 : strlen(part), l); 
+                    if(!next) { fputc('\n', l); break; }
+                    part = next + 1;
+                }
             } 
             delete[] log;
         }
@@ -96,19 +103,93 @@ static void showglslinfo(GLenum type, GLuint obj, const char *name, const char *
 
 static void compileglslshader(GLenum type, GLuint &obj, const char *def, const char *name, bool msg = true) 
 {
-    const GLchar *source = (const GLchar *)(def + strspn(def, " \t\r\n")); 
+    const char *source = def + strspn(def, " \t\r\n"); 
+    const char *parts[16];
+    int numparts = 0;
+    parts[numparts++] = 
+        glslversion >= 330 ? 
+            "#version 330\n" :
+            (glslversion >= 150 ?
+                "#version 150\n" :
+                (glslversion >= 140 ?
+                    "#version 140\n" :
+                    (glslversion >= 130 ?
+                        "#version 130" :
+                        "#version 120")));
+    if(glslversion >= 130 && glslversion < 330 && hasEAL)
+        parts[numparts++] = "#extension GL_ARB_explicit_attrib_location : enable\n";
+    if(glslversion < 140)
+        parts[numparts++] = "#extension GL_ARB_texture_rectangle : enable\n";
+    if(glslversion < 150 && hasTMS)
+        parts[numparts++] = "#extension GL_ARB_texture_multisample : enable\n";
+    if(glslversion >= 130)
+    {
+        if(type == GL_VERTEX_SHADER) parts[numparts++] = 
+            "#define attribute in\n"
+            "#define varying out\n";
+        else if(type == GL_FRAGMENT_SHADER) 
+        {
+            parts[numparts++] = "#define varying in\n";
+            if(glslversion >= 330 || hasEAL) parts[numparts++] = "#define fragdata(loc, name, type) layout(location = loc) out type name;\n";
+        }
+        parts[numparts++] =
+            "#define texture1D(sampler, coords) texture(sampler, coords)\n"
+            "#define texture2D(sampler, coords) texture(sampler, coords)\n"
+            "#define texture2DProj(sampler, coords) texture(sampler, coords)\n"
+            "#define texture3D(sampler, coords) texture(sampler, coords)\n"
+            "#define textureCube(sampler, coords) texture(sampler, coords)\n";
+        if(glslversion >= 140) parts[numparts++] = 
+            "#define texture2DRect(sampler, coords) texture(sampler, coords)\n"
+            "#define texture2DRectProj(sampler, coords) textureProj(sampler, coords)\n"
+            "#define shadow2DRect(sampler, coords) texture(sampler, coords)\n";
+    }
+    else if(type == GL_FRAGMENT_SHADER) 
+    {
+        parts[numparts++] = "#define fragdata(loc, name, type)\n";
+        const char *s = source;
+        int numdefs = 0;
+        while((s = strstr(s, "fragdata(")))
+        {
+            int loc = strtol(s + 9, (char **)&s, 0);
+            if(loc < 0 || loc > 3) continue;
+
+            s += strspn(s, ", \t\r\n");
+            const char *name = s;
+            s += strcspn(s, ", \t\r\n");
+            string defname;
+            int namelen = min(int(sizeof(defname)-1), int(s-name));
+            memcpy(defname, name, namelen);
+            defname[namelen++] = '\0';
+
+            s += strspn(s, ", \t\r\n");
+            const char *type = s;
+            s += strcspn(s, ") \t\r\n");
+            const char *swizzle = "";
+            if(!strncmp(type, "vec3", s-type)) swizzle = ".rgb";
+            else if(!strncmp(type, "vec2", s-type)) swizzle = ".rg";
+            else if(!strncmp(type, "float", s-type)) swizzle = ".r";
+
+            static string defs[4];
+            string &def = defs[numdefs++];
+            formatstring(def)("#define %s gl_FragData[%d]%s\n", defname, loc, swizzle);
+            parts[numparts++] = def;
+            if(numdefs >= 4) break;
+        }  
+    }
+    parts[numparts++] = source; 
+
     obj = glCreateShader_(type);
-    glShaderSource_(obj, 1, &source, NULL);
+    glShaderSource_(obj, numparts, (const GLchar **)parts, NULL);
     glCompileShader_(obj);
     GLint success;
     glGetShaderiv_(obj, GL_COMPILE_STATUS, &success);
     if(!success) 
     {
-        if(msg) showglslinfo(type, obj, name, source);
+        if(msg) showglslinfo(type, obj, name, parts, numparts);
         glDeleteShader_(obj);
         obj = 0;
     }
-    else if(dbgshader > 1 && msg) showglslinfo(type, obj, name, source);
+    else if(dbgshader > 1 && msg) showglslinfo(type, obj, name, parts, numparts);
 }  
 
 VAR(dbgubo, 0, 0, 1);
@@ -154,6 +235,11 @@ static void linkglslprogram(Shader &s, bool msg = true)
             attribs |= 1<<a.loc;
         }
         loopi(varray::MAXATTRIBS) if(!(attribs&(1<<i))) glBindAttribLocation_(s.program, i, varray::attribnames[i]);
+        if(glslversion >= 130 && glslversion < 330 && !hasEAL) loopi(4)
+        {
+            static const char * const fragdatanames[4] = { "fragdata0", "fragdata1", "fragdata2", "fragdata3" };
+            glBindFragDataLocation_(s.program, i, fragdatanames[i]);  
+        }
         glLinkProgram_(s.program);
         glGetProgramiv_(s.program, GL_LINK_STATUS, &success);
     }
@@ -176,7 +262,7 @@ static void linkglslprogram(Shader &s, bool msg = true)
     }
     else if(s.program)
     {
-        if(msg) showglslinfo(GL_FALSE, s.program, s.name, NULL);
+        if(msg) showglslinfo(GL_FALSE, s.program, s.name);
         glDeleteProgram_(s.program);
         s.program = 0;
     }
@@ -302,7 +388,7 @@ void Shader::allocparams(Slot *slot)
             if(loc != -1) glUniform1i_(loc, val); \
         } while(0)
         int loc, tmu = 1;
-        if(type & SHADER_ENVMAP) UNIFORMTEX("envmap", tmu++);
+        if(type & SHADER_ENVMAP) UNIFORMTEX("envmap", 6);
         if(type & SHADER_REFRACT) 
         {
             UNIFORMTEX("refractmask", 7);
@@ -614,8 +700,8 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
         const char *psdef = "\n#define FOG_COLOR ";
         const char *psfog =
             pspragma && !strncmp(pspragma+pragmalen, "rgba", 4) ?
-                "\ngl_FragColor = mix((FOG_COLOR), gl_FragColor, clamp((fogparams.y - lineardepth)*fogparams.z, 0.0, 1.0));\n" :
-                "\ngl_FragColor.rgb = mix((FOG_COLOR).rgb, gl_FragColor.rgb, clamp((fogparams.y - lineardepth)*fogparams.z, 0.0, 1.0));\n";
+                "\nfragcolor = mix((FOG_COLOR), fragcolor, clamp((fogparams.y - lineardepth)*fogparams.z, 0.0, 1.0));\n" :
+                "\nfragcolor.rgb = mix((FOG_COLOR).rgb, fragcolor.rgb, clamp((fogparams.y - lineardepth)*fogparams.z, 0.0, 1.0));\n";
         int clen = 0;
         if(pspragma)
         {
@@ -670,8 +756,9 @@ void setupshaders()
         "void main(void) {\n"
         "   gl_Position = vvertex;\n"
         "}\n",
+        "fragdata(0, fragcolor, vec4)\n"
         "void main(void) {\n"
-        "   gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);\n"
+        "   fragcolor = vec4(1.0, 0.0, 1.0, 1.0);\n"
         "}\n");
     hudshader = newshader(0, "<init>hud",
         "attribute vec4 vvertex, vcolor;\n"
@@ -687,10 +774,11 @@ void setupshaders()
         "uniform sampler2D tex0;\n"
         "varying vec2 texcoord0;\n"
         "varying vec4 colorscale;\n"
+        "fragdata(0, fragcolor, vec4)\n"
         "void main(void) {\n"
         "    #pragma CUBE2_variantoverride vec4 color = texture2D(tex0, texcoord0).rrrg;\n"
         "    vec4 color = texture2D(tex0, texcoord0);\n"
-        "    gl_FragColor = colorscale * color;\n"
+        "    fragcolor = colorscale * color;\n"
         "}\n");
     if(hudshader) gengenericvariant(*hudshader, hudshader->name, hudshader->vsstr, hudshader->psstr, 0);
     hudnotextureshader = newshader(0, "<init>hudnotexture",
@@ -702,8 +790,9 @@ void setupshaders()
         "    color = vcolor;\n"
         "}\n",
         "varying vec4 color;\n"
+        "fragdata(0, fragcolor, vec4)\n"
         "void main(void) {\n"
-        "    gl_FragColor = color;\n"
+        "    fragcolor = color;\n"
         "}\n");
     standardshader = false;
 

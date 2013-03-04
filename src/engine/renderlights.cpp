@@ -57,12 +57,12 @@ void setupbloom(int w, int h)
 
     static uchar gray[3] = { 32, 32, 32 };
     static float grayf[3] = { 0.125f, 0.125f, 0.125f };
-    createtexture(bloomtex[4], 1, 1, hasTF ? (void *)grayf : (void *)gray, 3, 1, hasTF ? GL_RGB16F : GL_RGB16, GL_TEXTURE_RECTANGLE);
+    createtexture(bloomtex[4], 1, 1, hasTF ? (void *)grayf : (void *)gray, 3, 1, hasTF ? GL_RGB16F : GL_RGB16);
 
     loopi(5 + (bloomformat != GL_RGB ? 1 : 0))
     {
         glBindFramebuffer_(GL_FRAMEBUFFER, bloomfbo[i]);
-        glFramebufferTexture2D_(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, bloomtex[i], 0);
+        glFramebufferTexture2D_(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, i==4 ? GL_TEXTURE_2D : GL_TEXTURE_RECTANGLE, bloomtex[i], 0);
 
         if(glCheckFramebufferStatus_(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             fatal("failed allocating bloom buffer!");
@@ -1107,7 +1107,7 @@ void processhdr(GLuint outfbo, int aa)
     b0h = b1h = bloomh;
 
     glActiveTexture_(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_RECTANGLE, bloomtex[4]);
+    glBindTexture(GL_TEXTURE_2D, bloomtex[4]);
     glActiveTexture_(GL_TEXTURE0);
 
     glBindFramebuffer_(GL_FRAMEBUFFER, b0fbo);
