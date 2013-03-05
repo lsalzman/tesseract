@@ -35,6 +35,9 @@ struct grassvert
 
 static vector<grassvert> grassverts;
 static GLuint grassvbo = 0;
+static int grassvbosize = 0;
+
+VAR(maxgrass, 10, 10000, 10000);
 
 struct grassgroup
 {
@@ -154,6 +157,8 @@ static void gengrassquads(grassgroup *&group, const grasswedge &w, const grasstr
             p2.sub(vec(across).mul(rightb));
         }
 
+        if(grassverts.length() >= 4*maxgrass) break;
+
         if(!group)
         {
             group = &grassgroups.add();
@@ -242,7 +247,10 @@ void generategrass()
 
     if(!grassvbo) glGenBuffers_(1, &grassvbo);
     glBindBuffer_(GL_ARRAY_BUFFER, grassvbo);
-    glBufferData_(GL_ARRAY_BUFFER, grassverts.length()*sizeof(grassvert), grassverts.getbuf(), GL_STREAM_DRAW);
+    int size = grassverts.length()*sizeof(grassvert);
+    grassvbosize = max(grassvbosize, size);
+    glBufferData_(GL_ARRAY_BUFFER, grassvbosize, size == grassvbosize ? grassverts.getbuf() : NULL, GL_STREAM_DRAW);
+    if(size != grassvbosize) glBufferSubData_(GL_ARRAY_BUFFER, 0, size, grassverts.getbuf());
     glBindBuffer_(GL_ARRAY_BUFFER, 0);
 }
 
@@ -308,5 +316,6 @@ void rendergrass()
 void cleanupgrass()
 {
     if(grassvbo) { glDeleteBuffers_(1, &grassvbo); grassvbo = 0; }
+    grassvbosize = 0;
 }
 

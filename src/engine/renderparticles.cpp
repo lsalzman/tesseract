@@ -181,7 +181,6 @@ struct partrenderer
     virtual void render() = 0;
     virtual bool haswork() = 0;
     virtual int count() = 0; //for debug
-    virtual bool usesvertexarray() { return false; } 
     virtual void cleanup() {}
 
     virtual void seedemitter(particleemitter &pe, const vec &o, const vec &d, int fade, float size, int gravity)
@@ -598,10 +597,11 @@ struct varenderer : partrenderer
     partvert *verts;
     particle *parts;
     int maxparts, numparts, lastupdate, rndmask;
+    GLuint vbo;
 
     varenderer(const char *texname, int type, int collide = 0) 
         : partrenderer(texname, 3, type, collide),
-          verts(NULL), parts(NULL), maxparts(0), numparts(0), lastupdate(-1), rndmask(0)
+          verts(NULL), parts(NULL), maxparts(0), numparts(0), lastupdate(-1), rndmask(0), vbo(0)
     {
         if(type & PT_HFLIP) rndmask |= 0x01;
         if(type & PT_VFLIP) rndmask |= 0x02;
@@ -609,6 +609,11 @@ struct varenderer : partrenderer
         if(type & PT_RND4) rndmask |= 0x03<<5;
     }
     
+    void cleanup()
+    {
+        if(vbo) { glDeleteBuffers_(1, &vbo); vbo = 0; }
+    }
+
     void init(int n)
     {
         DELETEA(parts);
@@ -619,7 +624,7 @@ struct varenderer : partrenderer
         numparts = 0;
         lastupdate = -1;
     }
-        
+    
     void reset() 
     {
         numparts = 0;
@@ -646,8 +651,6 @@ struct varenderer : partrenderer
     {
         return (numparts > 0);
     }
-
-    bool usesvertexarray() { return true; }
 
     particle *addpart(const vec &o, const vec &d, int fade, int color, float size, int gravity) 
     {
@@ -745,7 +748,7 @@ struct varenderer : partrenderer
 
     void update()
     {
-        if(lastmillis == lastupdate) return;
+        if(lastmillis == lastupdate && vbo) return;
         lastupdate = lastmillis;
       
         loopi(numparts)
@@ -765,18 +768,35 @@ struct varenderer : partrenderer
             }
             else genverts(p, vs, (p->flags&0x80)!=0);
         }
+
+        if(!vbo) glGenBuffers_(1, &vbo);
+        glBindBuffer_(GL_ARRAY_BUFFER, vbo);
+        glBufferData_(GL_ARRAY_BUFFER, maxparts*4*sizeof(partvert), NULL, GL_STREAM_DRAW);
+        glBufferSubData_(GL_ARRAY_BUFFER, 0, numparts*4*sizeof(partvert), verts);
+        glBindBuffer_(GL_ARRAY_BUFFER, 0);
     }
     
     void render()
     {   
         if(!tex) tex = textureload(texname, texclamp);
         glBindTexture(GL_TEXTURE_2D, tex->id);
+
+        glBindBuffer_(GL_ARRAY_BUFFER, vbo);
         varray::vertexpointer(sizeof(partvert), &verts->pos);
         varray::texcoord0pointer(sizeof(partvert), &verts->u);
         varray::colorpointer(sizeof(partvert), &verts->color);
+        varray::enablevertex();
+        varray::enabletexcoord0();
+        varray::enablecolor();
         varray::enablequads();
+
         varray::drawquads(0, numparts);
+
         varray::disablequads();
+        varray::disablevertex();
+        varray::disabletexcoord0();
+        varray::disablecolor();
+        glBindBuffer_(GL_ARRAY_BUFFER, 0);
     }
 };
 typedef varenderer<PT_PART> quadrenderer;
@@ -911,26 +931,9 @@ void renderparticles()
             glActiveTexture_(GL_TEXTURE0);
         }
         
-        uint flags = p->type & flagmask;
-        if(p->usesvertexarray()) flags |= 0x01; //0x01 = VA marker
-        uint changedbits = (flags ^ lastflags);
-        if(changedbits != 0x0000)
+        uint flags = p->type & flagmask, changedbits = (flags ^ lastflags);
+        if(changedbits)
         {
-            if(changedbits&0x01)
-            {
-                if(flags&0x01)
-                {
-                    varray::enablevertex();
-                    varray::enabletexcoord0();
-                    varray::enablecolor();
-                } 
-                else
-                {
-                    varray::disablevertex();
-                    varray::disabletexcoord0();
-                    varray::disablecolor();
-                }
-            }
             if(changedbits&PT_LERP) { if(flags&PT_LERP) resetfogcolor(); else zerofogcolor(); }
             if(changedbits&(PT_LERP|PT_MOD))
             {
@@ -966,12 +969,6 @@ void renderparticles()
     {
         if(lastflags&(PT_LERP|PT_MOD)) glBlendFunc(GL_SRC_ALPHA, GL_ONE);
         if(!(lastflags&PT_LERP)) resetfogcolor();
-        if(lastflags&0x01)
-        {
-            varray::disablevertex();
-            varray::disabletexcoord0();
-            varray::disablecolor();
-        }
         glDisable(GL_BLEND);
         glDepthMask(GL_TRUE);
     }
