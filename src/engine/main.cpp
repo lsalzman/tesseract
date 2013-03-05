@@ -9,7 +9,7 @@ void cleanup()
     recorder::stop();
     cleanupserver();
     SDL_SetRelativeMouseMode(SDL_FALSE);
-    SDL_ShowCursor(SDL_ENABLE);
+    SDL_ShowCursor(SDL_TRUE);
     cleargamma();
     freeocta(worldroot);
     extern void clear_command(); clear_command();
@@ -48,7 +48,7 @@ void fatal(const char *s, ...)    // failure exit
             if(SDL_WasInit(SDL_INIT_VIDEO))
             {
                 SDL_SetRelativeMouseMode(SDL_FALSE);
-                SDL_ShowCursor(SDL_ENABLE);
+                SDL_ShowCursor(SDL_TRUE);
                 cleargamma();
             }
             #ifdef WIN32
@@ -401,8 +401,13 @@ void inputgrab(bool on)
 {
     if(on)
     {
-        SDL_ShowCursor(SDL_DISABLE);
-        if(canrelativemouse)
+        SDL_ShowCursor(SDL_FALSE);
+        if(!(SDL_GetWindowFlags(screen) & SDL_WINDOW_FULLSCREEN))
+        {
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            relativemouse = false;
+        }
+        else if(canrelativemouse)
         {
             if(SDL_SetRelativeMouseMode(SDL_TRUE) >= 0) relativemouse = true;
             else canrelativemouse = false;
@@ -410,7 +415,7 @@ void inputgrab(bool on)
     }
     else 
     {
-        SDL_ShowCursor(SDL_ENABLE);
+        SDL_ShowCursor(SDL_TRUE);
         if(relativemouse)
         {
             SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -1051,7 +1056,7 @@ int main(int argc, char **argv)
 
     logoutf("init: video: misc");
     keyrepeat(false);
-    SDL_ShowCursor(SDL_DISABLE);
+    SDL_ShowCursor(SDL_FALSE);
 
     logoutf("init: gl");
     gl_checkextensions();
