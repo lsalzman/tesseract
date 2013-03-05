@@ -260,7 +260,7 @@ static void linkglslprogram(Shader &s, bool msg = true)
 
 void findfragdatalocs(Shader &s, const char *psstr)
 {
-    if(glslversion >= 330 || (glslversion >= 130 && hasEAL)) return;
+    if(glslversion >= 330 || (glslversion >= 150 && hasEAL)) return;
 
     const char *ps = psstr;
     if(ps) while((ps = strstr(ps, "fragdata(")))
