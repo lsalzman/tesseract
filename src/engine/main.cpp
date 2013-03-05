@@ -550,10 +550,27 @@ void setupscreen()
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     screen = SDL_CreateWindow("Tesseract", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, scr_w, scr_h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_INPUT_FOCUS | SDL_WINDOW_MOUSE_FOCUS | flags);
-    if(!screen) fatal("Failed to create OpenGL window: %s", SDL_GetError());
+    if(!screen) fatal("failed to create OpenGL window: %s", SDL_GetError());
     
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     glcontext = SDL_GL_CreateContext(screen);
-    if(!glcontext) fatal("failed to Create OpenGL context: %s", SDL_GetError());
+    if(!glcontext)
+    {
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        glcontext = SDL_GL_CreateContext(screen);
+        if(!glcontext) 
+        {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 0);
+            glcontext = SDL_GL_CreateContext(screen);
+            if(!glcontext) fatal("failed to create OpenGL context: %s", SDL_GetError());
+        }
+    }
 
     SDL_GetWindowSize(screen, &screenw, &screenh);
 

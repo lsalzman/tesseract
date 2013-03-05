@@ -118,7 +118,7 @@ static void compileglslshader(Shader &s, GLenum type, GLuint &obj, const char *d
                         "#version 120\n")));
     if(glslversion < 130 && hasGPU4)
         parts[numparts++] = "#extension GL_EXT_gpu_shader4 : enable\n";
-    if(glslversion >= 130 && glslversion < 330 && hasEAL)
+    if(glslversion >= 150 && glslversion < 330 && hasEAL)
         parts[numparts++] = "#extension GL_ARB_explicit_attrib_location : enable\n";
     if(glslversion < 140)
         parts[numparts++] = "#extension GL_ARB_texture_rectangle : enable\n";
@@ -132,7 +132,7 @@ static void compileglslshader(Shader &s, GLenum type, GLuint &obj, const char *d
         else if(type == GL_FRAGMENT_SHADER) 
         {
             parts[numparts++] = "#define varying in\n";
-            parts[numparts++] = glslversion >= 300 || hasEAL ?
+            parts[numparts++] = glslversion >= 330 || (glslversion >= 150 && hasEAL) ?
                 "#define fragdata(loc, name, type) layout(location = loc) out type name;\n" :
                 "#define fragdata(loc, name, type) out type name;\n";
         }
@@ -225,7 +225,7 @@ static void linkglslprogram(Shader &s, bool msg = true)
             attribs |= 1<<a.loc;
         }
         loopi(varray::MAXATTRIBS) if(!(attribs&(1<<i))) glBindAttribLocation_(s.program, i, varray::attribnames[i]);
-        if(glslversion >= 130 && glslversion < 330 && !hasEAL && glversion >= 300) loopv(s.fragdatalocs) 
+        if(glslversion >= 130 && glslversion < 330 && (glslversion < 150 || !hasEAL) && glversion >= 300) loopv(s.fragdatalocs) 
         {
             FragDataLoc &d = s.fragdatalocs[i];
             glBindFragDataLocation_(s.program, d.loc, d.name);
