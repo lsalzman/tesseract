@@ -35,9 +35,9 @@
 					<Add option="-s" />
 					<Add option="-m64" />
 					<Add option="-mwindows" />
-					<Add library="SDL" />
-					<Add library="SDL_image" />
-					<Add library="SDL_mixer" />
+					<Add library="SDL2" />
+					<Add library="SDL2_image" />
+					<Add library="SDL2_mixer" />
 					<Add library="zlib1" />
 					<Add library="opengl32" />
 					<Add library="enet" />

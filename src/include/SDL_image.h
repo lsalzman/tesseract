@@ -1,6 +1,6 @@
 /*
   SDL_image:  An example image loading library for use with SDL
-  Copyright (C) 1997-2012 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -35,9 +35,9 @@ extern "C" {
 
 /* Printable format: "%d.%d.%d", MAJOR, MINOR, PATCHLEVEL
 */
-#define SDL_IMAGE_MAJOR_VERSION	1
-#define SDL_IMAGE_MINOR_VERSION	2
-#define SDL_IMAGE_PATCHLEVEL	12
+#define SDL_IMAGE_MAJOR_VERSION	2
+#define SDL_IMAGE_MINOR_VERSION	0
+#define SDL_IMAGE_PATCHLEVEL	0
 
 /* This macro can be used to fill a version structure with the compile-time
  * version of the SDL_image library.
@@ -80,10 +80,16 @@ extern DECLSPEC void SDLCALL IMG_Quit(void);
    surface afterwards by calling:
 	SDL_SetColorKey(image, SDL_RLEACCEL, image->format->colorkey);
  */
-extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadTyped_RW(SDL_RWops *src, int freesrc, char *type);
+extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadTyped_RW(SDL_RWops *src, int freesrc, const char *type);
 /* Convenience functions */
 extern DECLSPEC SDL_Surface * SDLCALL IMG_Load(const char *file);
 extern DECLSPEC SDL_Surface * SDLCALL IMG_Load_RW(SDL_RWops *src, int freesrc);
+
+/* Load an image directly into a render texture.
+ */
+extern DECLSPEC SDL_Texture * SDLCALL IMG_LoadTexture(SDL_Renderer *renderer, const char *file);
+extern DECLSPEC SDL_Texture * SDLCALL IMG_LoadTexture_RW(SDL_Renderer *renderer, SDL_RWops *src, int freesrc);
+extern DECLSPEC SDL_Texture * SDLCALL IMG_LoadTextureTyped_RW(SDL_Renderer *renderer, SDL_RWops *src, int freesrc, const char *type);
 
 /* Invert the alpha of a surface for use with OpenGL
    This function is now a no-op, and only provided for backwards compatibility.
