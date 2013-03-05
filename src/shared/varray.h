@@ -1,3 +1,5 @@
+extern int glversion;
+
 namespace varray
 {
 #ifndef VARRAY_INTERNAL
@@ -180,11 +182,12 @@ namespace varray
     #define MAXQUADS (0x10000/4)
     static GLuint quadindexes = 0;
     static bool quadsenabled = false;
-    static GLuint defaultvao = 0;
 
     #define MAXVBOSIZE (4*1024*1024)
     static GLuint vbo = 0;
     static int vbooffset = MAXVBOSIZE;
+
+    static GLuint defaultvao = 0;
 
     void enablequads()
     {
@@ -332,14 +335,15 @@ namespace varray
             }
             else if(!lastvertexsize) glBindBuffer_(GL_ARRAY_BUFFER, vbo);
             glBufferSubData_(GL_ARRAY_BUFFER, vbooffset, data.length(), data.getbuf());    
-            if(vertexsize == lastvertexsize && (uchar *)vbooffset >= lastbuf && 
-                (primtype != GL_QUADS || 
-                    int((uchar *)vbooffset - lastbuf) + data.length() <= vertexsize*4*MAXQUADS))
+            buf = (uchar *)0 + vbooffset;
+            if(vertexsize == lastvertexsize && buf >= lastbuf)
             {
-                buf = lastbuf; 
-                start = int((uchar *)vbooffset - lastbuf);
+                start = int(buf - lastbuf)/vertexsize;
+                if(primtype == GL_QUADS && (start%4 || start + data.length()/vertexsize >= 4*MAXQUADS))
+                    start = 0;
+                else buf = lastbuf; 
             }
-            else buf = (uchar *)vbooffset;
+            vbooffset += data.length();
         }
         bool forceattribs = numattribs != numlastattribs || vertexsize != lastvertexsize || buf != lastbuf;
         if(forceattribs || changedattribs)
@@ -375,10 +379,8 @@ namespace varray
         }
         else 
         {
-            if(quadsenabled) disablequads();
             glDrawArrays(primtype, start, numvertexes);
         }
-        if(glversion >= 300) vbooffset += data.length();
         data.setsize(0);
         return numvertexes;
     }
@@ -405,9 +407,11 @@ namespace varray
     void cleanup()
     {
         if(quadindexes) { glDeleteBuffers_(1, &quadindexes); quadindexes = 0; }
-        if(defaultvao) { glDeleteVertexArrays_(1, &defaultvao); defaultvao = 0; }
+
         if(vbo) { glDeleteBuffers_(1, &vbo); vbo = 0; }
         vbooffset = MAXVBOSIZE;
+
+        if(defaultvao) { glDeleteVertexArrays_(1, &defaultvao); defaultvao = 0; }
     }
 #endif
 }
