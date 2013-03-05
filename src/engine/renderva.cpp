@@ -1527,6 +1527,7 @@ void cleanupva()
 {
     clearvas(worldroot);
     clearqueries();
+    cleanupgrass();
 }
 
 void setupgeom(renderstate &cur)

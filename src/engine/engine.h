@@ -686,6 +686,7 @@ extern void updatemumble();
 // grass
 extern void generategrass();
 extern void rendergrass();
+extern void cleanupgrass();
 
 // blendmap
 extern int blendpaintmode;

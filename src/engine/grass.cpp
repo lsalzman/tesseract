@@ -34,6 +34,7 @@ struct grassvert
 };
 
 static vector<grassvert> grassverts;
+static GLuint grassvbo = 0;
 
 struct grassgroup
 {
@@ -236,6 +237,13 @@ void generategrass()
         if(va->distance > grassdist) continue;
         gengrassquads(va);
     }
+
+    if(grassgroups.empty()) return;
+
+    if(!grassvbo) glGenBuffers_(1, &grassvbo);
+    glBindBuffer_(GL_ARRAY_BUFFER, grassvbo);
+    glBufferData_(GL_ARRAY_BUFFER, grassverts.length()*sizeof(grassvert), grassverts.getbuf(), GL_STREAM_DRAW);
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
 }
 
 void rendergrass()
@@ -243,6 +251,8 @@ void rendergrass()
     if(!grass || !grassdist || grassgroups.empty() || dbggrass) return;
 
     glDisable(GL_CULL_FACE);
+
+    glBindBuffer_(GL_ARRAY_BUFFER, grassvbo);
 
     varray::vertexpointer(sizeof(grassvert), grassverts[0].pos.v);
     varray::colorpointer(sizeof(grassvert), grassverts[0].color);
@@ -290,6 +300,13 @@ void rendergrass()
     varray::disablecolor();
     varray::disabletexcoord0();
 
+    glBindBuffer_(GL_ARRAY_BUFFER, 0);
+
     glEnable(GL_CULL_FACE);
+}
+
+void cleanupgrass()
+{
+    if(grassvbo) { glDeleteBuffers_(1, &grassvbo); grassvbo = 0; }
 }
 
