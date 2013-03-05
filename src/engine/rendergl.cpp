@@ -946,6 +946,8 @@ void gl_init(int w, int h)
 
     renderpath = R_GLSLANG;
 
+    varray::setup();
+
     extern void setupshaders();
     setupshaders();
 
