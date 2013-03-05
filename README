@@ -21,6 +21,7 @@ It provides a bunch of new rendering features such as:
 * screen-space reflections and refractions for water and glass (use as many water planes as you want now!)
 * screen-space refractive alpha cubes
 * deferred MSAA/CSAA, subpixel morphological anti-aliasing (SMAA 1x, T2x, S2x, and 4x), FXAA, and temporal AA
+* runs on both OpenGL Core (3.0+) and legacy (2.1+) contexts
 
 Install:
 
