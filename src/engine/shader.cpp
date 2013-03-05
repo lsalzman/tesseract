@@ -710,7 +710,7 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     const char *vsmain = findglslmain(vs), *vsend = strrchr(vs, '}');
     if(vsmain && vsend)
     {
-        if(shaderhasvar(vs, "lineardepth"))
+        if(!shaderhasvar(vs, "lineardepth"))
         {
             vsbuf.put(vs, vsmain - vs);
             const char *fogparams = "\nuniform vec2 lineardepthscale;\nvarying float lineardepth;\n";
@@ -725,7 +725,7 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     if(psmain && psend)
     {
         psbuf.put(ps, psmain - ps);
-        if(shaderhasvar(ps, "lineardepth"))
+        if(!shaderhasvar(ps, "lineardepth"))
         {
             const char *foginterp = "\nvarying float lineardepth;\n";
             psbuf.put(foginterp, strlen(foginterp));
