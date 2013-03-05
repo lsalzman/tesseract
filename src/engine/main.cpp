@@ -402,12 +402,15 @@ void inputgrab(bool on)
     if(on)
     {
         SDL_ShowCursor(SDL_FALSE);
+    #ifndef WIN32
         if(!(SDL_GetWindowFlags(screen) & SDL_WINDOW_FULLSCREEN))
         {
             SDL_SetRelativeMouseMode(SDL_FALSE);
             relativemouse = false;
         }
-        else if(canrelativemouse)
+        else 
+    #endif
+        if(canrelativemouse)
         {
             if(SDL_SetRelativeMouseMode(SDL_TRUE) >= 0) relativemouse = true;
             else canrelativemouse = false;
