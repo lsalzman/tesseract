@@ -39,6 +39,7 @@ struct decalrenderer
     int maxdecals, startdecal, enddecal;
     decalvert *verts;
     int maxverts, startvert, endvert, availverts;
+    GLuint vbo;
 
     decalrenderer(const char *texname, int flags = 0, int fadeintime = 0, int fadeouttime = 1000, int timetolive = -1)
         : texname(texname), flags(flags),
@@ -46,6 +47,7 @@ struct decalrenderer
           tex(NULL),
           decals(NULL), maxdecals(0), startdecal(0), enddecal(0),
           verts(NULL), maxverts(0), startvert(0), endvert(0), availverts(0),
+          vbo(0), 
           decalu(0), decalv(0)
     {
     }
@@ -228,6 +230,11 @@ struct decalrenderer
         disablepolygonoffset(GL_POLYGON_OFFSET_FILL);
     }
 
+    void cleanup()
+    {
+        if(vbo) { glDeleteBuffers_(1, &vbo); vbo = 0; }
+    }
+
     void render()
     {
         if(startvert==endvert) return;
@@ -250,11 +257,19 @@ struct decalrenderer
 
         glBindTexture(GL_TEXTURE_2D, tex->id);
 
-        varray::vertexpointer(sizeof(decalvert), &verts->pos);
-        varray::texcoord0pointer(sizeof(decalvert), &verts->u);
-        varray::colorpointer(sizeof(decalvert), &verts->color);
-
         int count = endvert < startvert ? maxverts - startvert : endvert - startvert;
+
+        if(!vbo) glGenBuffers_(1, &vbo);
+        glBindBuffer_(GL_ARRAY_BUFFER, vbo);
+        glBufferData_(GL_ARRAY_BUFFER, maxverts*sizeof(decalvert), NULL, GL_STREAM_DRAW);
+        glBufferSubData_(GL_ARRAY_BUFFER, startvert*sizeof(decalvert), count*sizeof(decalvert), &verts[startvert]);
+        if(endvert < startvert)
+            glBufferSubData_(GL_ARRAY_BUFFER, 0, endvert*sizeof(decalvert), verts);
+
+        varray::vertexpointer(sizeof(decalvert), &((decalvert *)0)->pos);
+        varray::texcoord0pointer(sizeof(decalvert), &((decalvert *)0)->u);
+        varray::colorpointer(sizeof(decalvert), &((decalvert *)0)->color);
+
         glDrawArrays(GL_TRIANGLES, startvert, count);
         if(endvert < startvert) 
         {
@@ -263,8 +278,7 @@ struct decalrenderer
         }
         xtravertsva += count;
 
-        extern int intel_vertexarray_bug;
-        if(intel_vertexarray_bug) glFlush();
+        glBindBuffer_(GL_ARRAY_BUFFER, 0);
     }
 
     decalinfo &newdecal()
@@ -594,6 +608,11 @@ void renderdecals()
     }
     if(!rendered) return;
     decalrenderer::cleanuprenderstate();
+}
+
+void cleanupdecals()
+{
+    loopi(sizeof(decals)/sizeof(decals[0])) decals[i].cleanup();
 }
 
 VARP(maxdecaldistance, 1, 512, 10000);
