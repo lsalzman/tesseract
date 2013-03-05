@@ -1026,7 +1026,7 @@ int main(int argc, char **argv)
     }
     initing = NOT_INITING;
 
-    numcpus = clamp(guessnumcpus(), 1, 16);
+    numcpus = clamp(SDL_GetCPUCount(), 1, 16);
 
     if(dedicated <= 1)
     {
