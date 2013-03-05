@@ -458,37 +458,33 @@ fpsgame/game.h.gch: shared/command.h shared/glexts.h shared/varray.h
 fpsgame/game.h.gch: shared/iengine.h shared/igame.h fpsgame/ai.h
 
 shared/crypto-standalone.o: shared/cube.h shared/tools.h shared/geom.h
-shared/crypto-standalone.o: shared/ents.h shared/command.h shared/glexts.h
-shared/crypto-standalone.o: shared/varray.h shared/iengine.h shared/igame.h
+shared/crypto-standalone.o: shared/ents.h shared/command.h shared/iengine.h
+shared/crypto-standalone.o: shared/igame.h
 shared/stream-standalone.o: shared/cube.h shared/tools.h shared/geom.h
-shared/stream-standalone.o: shared/ents.h shared/command.h shared/glexts.h
-shared/stream-standalone.o: shared/varray.h shared/iengine.h shared/igame.h
+shared/stream-standalone.o: shared/ents.h shared/command.h shared/iengine.h
+shared/stream-standalone.o: shared/igame.h
 shared/tools-standalone.o: shared/cube.h shared/tools.h shared/geom.h
-shared/tools-standalone.o: shared/ents.h shared/command.h shared/glexts.h
-shared/tools-standalone.o: shared/varray.h shared/iengine.h shared/igame.h
+shared/tools-standalone.o: shared/ents.h shared/command.h shared/iengine.h
+shared/tools-standalone.o: shared/igame.h
 engine/command-standalone.o: engine/engine.h shared/cube.h shared/tools.h
 engine/command-standalone.o: shared/geom.h shared/ents.h shared/command.h
-engine/command-standalone.o: shared/glexts.h shared/varray.h shared/iengine.h
-engine/command-standalone.o: shared/igame.h engine/world.h
+engine/command-standalone.o: shared/iengine.h shared/igame.h engine/world.h
 engine/server-standalone.o: engine/engine.h shared/cube.h shared/tools.h
 engine/server-standalone.o: shared/geom.h shared/ents.h shared/command.h
-engine/server-standalone.o: shared/glexts.h shared/varray.h shared/iengine.h
-engine/server-standalone.o: shared/igame.h engine/world.h
+engine/server-standalone.o: shared/iengine.h shared/igame.h engine/world.h
 engine/worldio-standalone.o: engine/engine.h shared/cube.h shared/tools.h
 engine/worldio-standalone.o: shared/geom.h shared/ents.h shared/command.h
-engine/worldio-standalone.o: shared/glexts.h shared/varray.h shared/iengine.h
-engine/worldio-standalone.o: shared/igame.h engine/world.h
+engine/worldio-standalone.o: shared/iengine.h shared/igame.h engine/world.h
 fpsgame/entities-standalone.o: fpsgame/game.h shared/cube.h shared/tools.h
 fpsgame/entities-standalone.o: shared/geom.h shared/ents.h shared/command.h
-fpsgame/entities-standalone.o: shared/glexts.h shared/varray.h
 fpsgame/entities-standalone.o: shared/iengine.h shared/igame.h fpsgame/ai.h
 fpsgame/server-standalone.o: fpsgame/game.h shared/cube.h shared/tools.h
 fpsgame/server-standalone.o: shared/geom.h shared/ents.h shared/command.h
-fpsgame/server-standalone.o: shared/glexts.h shared/varray.h shared/iengine.h
-fpsgame/server-standalone.o: shared/igame.h fpsgame/ai.h fpsgame/capture.h
-fpsgame/server-standalone.o: fpsgame/ctf.h fpsgame/collect.h
-fpsgame/server-standalone.o: fpsgame/extinfo.h fpsgame/aiman.h
+fpsgame/server-standalone.o: shared/iengine.h shared/igame.h fpsgame/ai.h
+fpsgame/server-standalone.o: fpsgame/capture.h fpsgame/ctf.h
+fpsgame/server-standalone.o: fpsgame/collect.h fpsgame/extinfo.h
+fpsgame/server-standalone.o: fpsgame/aiman.h
 
 engine/master-standalone.o: shared/cube.h shared/tools.h shared/geom.h
-engine/master-standalone.o: shared/ents.h shared/command.h shared/glexts.h
-engine/master-standalone.o: shared/varray.h shared/iengine.h shared/igame.h
+engine/master-standalone.o: shared/ents.h shared/command.h shared/iengine.h
+engine/master-standalone.o: shared/igame.h
