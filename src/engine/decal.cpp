@@ -266,9 +266,10 @@ struct decalrenderer
         if(endvert < startvert)
             glBufferSubData_(GL_ARRAY_BUFFER, 0, endvert*sizeof(decalvert), verts);
 
-        varray::vertexpointer(sizeof(decalvert), &((decalvert *)0)->pos);
-        varray::texcoord0pointer(sizeof(decalvert), &((decalvert *)0)->u);
-        varray::colorpointer(sizeof(decalvert), &((decalvert *)0)->color);
+        const decalvert *ptr = 0;
+        varray::vertexpointer(sizeof(decalvert), &ptr->pos);
+        varray::texcoord0pointer(sizeof(decalvert), &ptr->u);
+        varray::colorpointer(sizeof(decalvert), &ptr->color);
 
         glDrawArrays(GL_TRIANGLES, startvert, count);
         if(endvert < startvert) 

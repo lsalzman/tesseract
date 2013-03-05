@@ -782,9 +782,10 @@ struct varenderer : partrenderer
         glBindTexture(GL_TEXTURE_2D, tex->id);
 
         glBindBuffer_(GL_ARRAY_BUFFER, vbo);
-        varray::vertexpointer(sizeof(partvert), &((partvert *)0)->pos);
-        varray::texcoord0pointer(sizeof(partvert), &((partvert *)0)->u);
-        varray::colorpointer(sizeof(partvert), &((partvert *)0)->color);
+        const partvert *ptr = 0;
+        varray::vertexpointer(sizeof(partvert), &ptr->pos);
+        varray::texcoord0pointer(sizeof(partvert), &ptr->u);
+        varray::colorpointer(sizeof(partvert), &ptr->color);
         varray::enablevertex();
         varray::enabletexcoord0();
         varray::enablecolor();

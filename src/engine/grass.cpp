@@ -262,9 +262,10 @@ void rendergrass()
 
     glBindBuffer_(GL_ARRAY_BUFFER, grassvbo);
 
-    varray::vertexpointer(sizeof(grassvert), ((grassvert *)0)->pos.v);
-    varray::colorpointer(sizeof(grassvert), ((grassvert *)0)->color);
-    varray::texcoord0pointer(sizeof(grassvert), &((grassvert *)0)->u);
+    const grassvert *ptr = 0;
+    varray::vertexpointer(sizeof(grassvert), ptr->pos.v);
+    varray::colorpointer(sizeof(grassvert), ptr->color);
+    varray::texcoord0pointer(sizeof(grassvert), &ptr->u);
     varray::enablevertex();
     varray::enablecolor();
     varray::enabletexcoord0();
