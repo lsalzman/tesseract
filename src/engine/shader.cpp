@@ -696,12 +696,6 @@ static void gengenericvariant(Shader &s, const char *sname, const char *vs, cons
     newshader(s.type, varname, vschanged ? vsv.getbuf() : reuse, pschanged ? psv.getbuf() : reuse, &s, row);
 }
 
-static inline bool shaderhasvar(const char *str, const char *name)
-{
-    const char *use = strstr(str, name);
-    return use && (use == str || !iscubealnum(use[-1])) && !iscubealnum(use[strlen(name)]);
-}
-
 static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps)
 {
     const char *vspragma = strstr(vs, "#pragma CUBE2_fog"), *pspragma = strstr(ps, "#pragma CUBE2_fog");
@@ -710,7 +704,7 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     const char *vsmain = findglslmain(vs), *vsend = strrchr(vs, '}');
     if(vsmain && vsend)
     {
-        if(!shaderhasvar(vs, "lineardepth"))
+        if(!strstr(vs, "lineardepth"))
         {
             vsbuf.put(vs, vsmain - vs);
             const char *fogparams = "\nuniform vec2 lineardepthscale;\nvarying float lineardepth;\n";
@@ -725,7 +719,7 @@ static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *v
     if(psmain && psend)
     {
         psbuf.put(ps, psmain - ps);
-        if(!shaderhasvar(ps, "lineardepth"))
+        if(!strstr(ps, "lineardepth"))
         {
             const char *foginterp = "\nvarying float lineardepth;\n";
             psbuf.put(foginterp, strlen(foginterp));
