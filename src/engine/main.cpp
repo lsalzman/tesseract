@@ -1057,6 +1057,7 @@ int main(int argc, char **argv)
     logoutf("init: video: misc");
     keyrepeat(false);
     SDL_ShowCursor(SDL_FALSE);
+    SDL_StopTextInput(); // workaround for spurious text-input events getting sent on first text input toggle?
 
     logoutf("init: gl");
     gl_checkextensions();
