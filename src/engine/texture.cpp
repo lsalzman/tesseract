@@ -1697,6 +1697,7 @@ const struct slottex
     {"1", TEX_UNKNOWN},
 
     {"c", TEX_DIFFUSE},
+    {"u", TEX_UNKNOWN},
     {"d", TEX_DECAL},
     {"n", TEX_NORMAL},
     {"g", TEX_GLOW},
