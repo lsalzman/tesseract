@@ -25,7 +25,7 @@ extern "C"
 
 #define ENET_VERSION_MAJOR 1
 #define ENET_VERSION_MINOR 3
-#define ENET_VERSION_PATCH 6
+#define ENET_VERSION_PATCH 7
 #define ENET_VERSION_CREATE(major, minor, patch) (((major)<<16) | ((minor)<<8) | (patch))
 #define ENET_VERSION ENET_VERSION_CREATE(ENET_VERSION_MAJOR, ENET_VERSION_MINOR, ENET_VERSION_PATCH)
 
@@ -112,7 +112,10 @@ typedef enum _ENetPacketFlag
    ENET_PACKET_FLAG_NO_ALLOCATE = (1 << 2),
    /** packet will be fragmented using unreliable (instead of reliable) sends
      * if it exceeds the MTU */
-   ENET_PACKET_FLAG_UNRELIABLE_FRAGMENT = (1 << 3)
+   ENET_PACKET_FLAG_UNRELIABLE_FRAGMENT = (1 << 3),
+
+   /** whether the packet has been sent from all queues it has been entered into */
+   ENET_PACKET_FLAG_SENT = (1<<8)
 } ENetPacketFlag;
 
 typedef void (ENET_CALLBACK * ENetPacketFreeCallback) (struct _ENetPacket *);
@@ -143,6 +146,7 @@ typedef struct _ENetPacket
    enet_uint8 *             data;            /**< allocated data for packet */
    size_t                   dataLength;      /**< length of data */
    ENetPacketFreeCallback   freeCallback;    /**< function to be called when the packet is no longer in use */
+   void *                   userData;        /**< application private data, may be freely modified */
 } ENetPacket;
 
 typedef struct _ENetAcknowledgement
