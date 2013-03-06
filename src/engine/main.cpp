@@ -424,7 +424,7 @@ void inputgrab(bool on)
         {
             if(SDL_SetRelativeMouseMode(SDL_TRUE) >= 0) 
             {
-                SDL_SetWindowGrab(screen, SDL_GetWindowFlags(screen) & SDL_WINDOW_FULLSCREEN ? SDL_FALSE : SDL_TRUE);
+                SDL_SetWindowGrab(screen, SDL_TRUE);
                 relativemouse = true;
             }
             else 
