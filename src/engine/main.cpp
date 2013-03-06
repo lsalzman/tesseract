@@ -829,6 +829,8 @@ void checkinput()
                     case SDL_BUTTON_LEFT: processkey(-1, event.button.state==SDL_PRESSED); break;
                     case SDL_BUTTON_MIDDLE: processkey(-2, event.button.state==SDL_PRESSED); break;
                     case SDL_BUTTON_RIGHT: processkey(-3, event.button.state==SDL_PRESSED); break;
+                    case SDL_BUTTON_X1: processkey(-6, event.button.state==SDL_PRESSED); break;
+                    case SDL_BUTTON_X2: processkey(-7, event.button.state==SDL_PRESSED); break;
                 }
                 //lasttype = event.type;
                 //lastbut = event.button.button;
