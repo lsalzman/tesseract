@@ -824,7 +824,12 @@ void checkinput()
             case SDL_MOUSEBUTTONDOWN:
             case SDL_MOUSEBUTTONUP:
                 //if(lasttype==event.type && lastbut==event.button.button) break; // why?? get event twice without it
-                processkey(event.button.button >= 4 ? -2-int(event.button.button) : -int(event.button.button), event.button.state==SDL_PRESSED);
+                switch(event.button.button)
+                {
+                    case SDL_BUTTON_LEFT: processkey(-1, event.button.state==SDL_PRESSED); break;
+                    case SDL_BUTTON_MIDDLE: processkey(-2, event.button.state==SDL_PRESSED); break;
+                    case SDL_BUTTON_RIGHT: processkey(-3, event.button.state==SDL_PRESSED); break;
+                }
                 //lasttype = event.type;
                 //lastbut = event.button.button;
                 break;
