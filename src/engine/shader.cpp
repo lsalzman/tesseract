@@ -259,7 +259,7 @@ static void linkglslprogram(Shader &s, bool msg = true)
             GLint loc = glGetUniformLocation_(s.program, texnames[i]);
             if(loc != -1) glUniform1i_(loc, i);
         }
-        bindworldtexlocs(s);
+        if(s.type & SHADER_WORLD) bindworldtexlocs(s);
         loopv(s.defaultparams)
         {
             SlotShaderParamState &param = s.defaultparams[i];
