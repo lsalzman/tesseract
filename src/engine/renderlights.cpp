@@ -2396,6 +2396,10 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
         glStencilFunc(GL_EQUAL, stencilmask|0x08, ~0);
     }
 
+    glmatrix lightmatrix;
+    lightmatrix.identity();
+    GLOBALPARAM(lightmatrix, lightmatrix);
+
     if(sunpass)
     {
         int tx1 = max(int(floor((bsx1*0.5f+0.5f)*vieww)), 0), ty1 = max(int(floor((bsy1*0.5f+0.5f)*viewh)), 0),
@@ -2415,10 +2419,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
     static vec lightcolorv[8], spotxv[8], spotyv[8];
     static vec2 shadowoffsetv[8];
 
-    glmatrix lightmatrix;
-    lightmatrix.identity();
-    GLOBALPARAM(lightmatrix, lightmatrix);
- 
     if(!lighttilebatch)
     {
         varray::disable();
@@ -2475,6 +2475,11 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 shadowoffsetv[0] = vec2(sm.x + 0.5f*sm.size, sm.y + 0.5f*sm.size);
             }
 
+            lightmatrix = camprojmatrix;
+            lightmatrix.translate(l.o);
+            lightmatrix.scale(l.radius*lightradiustweak);
+            GLOBALPARAM(lightmatrix, lightmatrix);
+
             s->setvariant(0, (shadowmap ? 1 : 0) + 2 + (spotlight ? 4 : 0));
             lightpos.setv(lightposv, 1);
             lightcolor.setv(lightcolorv, 1);
@@ -2511,11 +2516,6 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
                 glDepthFunc(GL_LESS);
                 glCullFace(GL_BACK);
             }
-
-            lightmatrix = camprojmatrix;
-            lightmatrix.translate(l.o);
-            lightmatrix.scale(l.radius*lightradiustweak);
-            LOCALPARAM(lightmatrix, lightmatrix);
 
             glDrawRangeElements_(GL_TRIANGLES, 0, lightspherenumverts-1, lightspherenumindices, GL_UNSIGNED_SHORT, lightsphereindices);
             xtraverts += lightspherenumindices;
