@@ -1240,7 +1240,7 @@ void g3d_render()
     {
         if(fieldmode != FIELDSHOW) SDL_StartTextInput();
         else SDL_StopTextInput();
-        keyrepeat(fieldmode!=FIELDSHOW || editmode);
+        keyrepeat(fieldmode!=FIELDSHOW, KR_GUI);
     }
     
     mousebuttons = 0;

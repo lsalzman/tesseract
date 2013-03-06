@@ -390,11 +390,13 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     swapbuffers();
 }
 
-bool grabinput = false, minimized = false, canrelativemouse = true, relativemouse = false, allowrepeat = false;
+bool grabinput = false, minimized = false, canrelativemouse = true, relativemouse = false;
+int allowrepeat = 0;
 
-void keyrepeat(bool on)
+void keyrepeat(bool on, int mask)
 {
-    allowrepeat = on;
+    if(on) allowrepeat |= mask;
+    else allowrepeat &= ~mask;
 }
 
 void inputgrab(bool on)
@@ -1071,11 +1073,9 @@ int main(int argc, char **argv)
     ASSERT(dedicated <= 1);
     game::initclient();
 
-    logoutf("init: video: mode");
+    logoutf("init: video");
     setupscreen();
 
-    logoutf("init: video: misc");
-    keyrepeat(false);
     SDL_ShowCursor(SDL_FALSE);
     SDL_StopTextInput(); // workaround for spurious text-input events getting sent on first text input toggle?
 

@@ -590,6 +590,10 @@ extern void getfps(int &fps, int &bestdiff, int &worstdiff);
 extern void swapbuffers();
 extern int getclockmillis();
 
+enum { KR_CONSOLE = 1<<0, KR_EDITMODE = 1<<2, KR_GUI = 1<<2 };
+
+extern void keyrepeat(bool on, int mask = ~0);
+
 // menu
 extern void menuprocess();
 extern void addchange(const char *desc, int type);

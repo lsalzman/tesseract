@@ -139,7 +139,7 @@ void toggleedit(bool force)
     }
     cancelsel();
     stoppaintblendmap();
-    keyrepeat(editmode);
+    keyrepeat(editmode, KR_EDITMODE);
     editing = entediting = editmode;
     if(!force) game::edittoggled(editmode);
 }

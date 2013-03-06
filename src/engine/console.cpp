@@ -256,7 +256,7 @@ void inputcommand(char *init, char *action = NULL, char *prompt = NULL, char *fl
     commandmillis = init ? totalmillis : -1;
     if(commandmillis >= 0) SDL_StartTextInput();
     else SDL_StopTextInput();
-    if(!editmode) keyrepeat(commandmillis >= 0);
+    keyrepeat(commandmillis >= 0, KR_CONSOLE);
     copystring(commandbuf, init ? init : "");
     DELETEA(commandaction);
     DELETEA(commandprompt);
