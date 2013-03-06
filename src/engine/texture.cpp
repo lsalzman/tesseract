@@ -1693,8 +1693,8 @@ const struct slottex
     int id;
 } slottexs[] =
 {
+    {"0", TEX_DIFFUSE},
     {"c", TEX_DIFFUSE},
-    {"u", TEX_UNKNOWN},
     {"d", TEX_DECAL},
     {"n", TEX_NORMAL},
     {"g", TEX_GLOW},
@@ -1717,7 +1717,7 @@ void texture(char *type, char *name, int *rot, int *xoffset, int *yoffset, float
     if(slots.length()>=0x10000) return;
     static int lastmatslot = -1;
     int tnum = findslottex(type), matslot = findmaterial(type);
-    if(tnum<0) tnum = atoi(type);
+    if(tnum<0) tnum = atoi(type) ? TEX_UNKNOWN : 0;
     if(tnum==TEX_DIFFUSE) lastmatslot = matslot;
     else if(lastmatslot>=0) matslot = lastmatslot;
     else if(slots.empty()) return;

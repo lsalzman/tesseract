@@ -1014,7 +1014,6 @@ struct renderstate
     int alphaing;
     GLuint vbuf;
     bool vattribs, vquery;
-    int diffusetmu;
     GLfloat color[4], fogcolor[4];
     vec colorscale;
     float alphascale;
@@ -1027,7 +1026,7 @@ struct renderstate
     vec2 texgenscroll;
     int texgendim, texgenmillis;
 
-    renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), vattribs(false), vquery(false), diffusetmu(0), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscroll(0, 0), texgendim(-1), texgenmillis(lastmillis)
+    renderstate() : colormask(true), depthmask(true), alphaing(0), vbuf(0), vattribs(false), vquery(false), colorscale(1, 1, 1), alphascale(0), refractscale(0), refractcolor(1, 1, 1), blendx(-1), blendy(-1), slot(NULL), texgenslot(NULL), vslot(NULL), texgenvslot(NULL), texgenscroll(0, 0), texgendim(-1), texgenmillis(lastmillis)
     {
         loopk(4) color[k] = 1;
         loopk(7) textures[k] = 0;
@@ -1248,10 +1247,10 @@ static void changebatchtmus(renderstate &cur, int pass, geombatch &b)
     if(b.vslot.slot->shader->type&SHADER_ENVMAP && b.es.envmap!=EMID_CUSTOM)
     {
         GLuint emtex = lookupenvmap(b.es.envmap);
-        if(cur.textures[6]!=emtex)
+        if(cur.textures[TEX_ENVMAP]!=emtex)
         {
-            glActiveTexture_(GL_TEXTURE6);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[6] = emtex);
+            glActiveTexture_(GL_TEXTURE0 + TEX_ENVMAP);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[TEX_ENVMAP] = emtex);
             changed = true;
         }
     }
@@ -1263,7 +1262,7 @@ static void changebatchtmus(renderstate &cur, int pass, geombatch &b)
         cur.blendy = b.va->o.y&~0xFFF;
         changed = true;
     }  
-    if(changed) glActiveTexture_(GL_TEXTURE0+cur.diffusetmu);
+    if(changed) glActiveTexture_(GL_TEXTURE0);
 }
 
 static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
@@ -1271,8 +1270,8 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
     if(pass==RENDERPASS_GBUFFER || pass==RENDERPASS_RSM)
     {
         GLuint diffusetex = slot.sts.empty() ? notexture->id : slot.sts[0].t->id;
-        if(cur.textures[cur.diffusetmu]!=diffusetex)
-            glBindTexture(GL_TEXTURE_2D, cur.textures[cur.diffusetmu] = diffusetex);
+        if(cur.textures[0]!=diffusetex)
+            glBindTexture(GL_TEXTURE_2D, cur.textures[0] = diffusetex);
 
         if(msaasamples && pass == RENDERPASS_GBUFFER) GLOBALPARAMF(hashid, (vslot.index));
     }
@@ -1299,30 +1298,31 @@ static void changeslottmus(renderstate &cur, int pass, Slot &slot, VSlot &vslot)
         cur.colorscale = vslot.colorscale;
         GLOBALPARAMF(colorparams, (vslot.colorscale.x, vslot.colorscale.y, vslot.colorscale.z, 1));
     }
-    int tmu = cur.diffusetmu+1;
+
     loopvj(slot.sts)
     {
         Slot::Tex &t = slot.sts[j];
-        if(t.type==TEX_DIFFUSE || t.combined>=0) continue;
-        if(t.type==TEX_ENVMAP)
+        switch(t.type)
         {
-            if(slot.shader->type&SHADER_ENVMAP && t.t && cur.textures[6]!=t.t->id)
-            {
-                glActiveTexture_(GL_TEXTURE6);
-                glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[6] = t.t->id);
-            }
-        }
-        else 
-        {
-            if(cur.textures[tmu]!=t.t->id)
-            {
-                glActiveTexture_(GL_TEXTURE0+tmu);
-                glBindTexture(GL_TEXTURE_2D, cur.textures[tmu] = t.t->id);
-            }
-            if(++tmu >= 7) break;
+            case TEX_ENVMAP:
+                if(t.t && cur.textures[t.type] != t.t->id)
+                {
+                    glActiveTexture_(GL_TEXTURE0 + t.type);
+                    glBindTexture(GL_TEXTURE_CUBE_MAP, cur.textures[t.type] = t.t->id);
+                }
+                break;
+            case TEX_NORMAL:
+            case TEX_GLOW:
+            case TEX_DECAL:
+                if(cur.textures[t.type] != t.t->id)
+                {
+                    glActiveTexture_(GL_TEXTURE0 + t.type);
+                    glBindTexture(GL_TEXTURE_2D, cur.textures[t.type] = t.t->id);
+                }
+                break;
         }
     }
-    glActiveTexture_(GL_TEXTURE0+cur.diffusetmu);
+    glActiveTexture_(GL_TEXTURE0);
 
     cur.slot = &slot;
     cur.vslot = &vslot;

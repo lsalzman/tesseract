@@ -209,6 +209,23 @@ static void bindglsluniform(Shader &s, UniformLoc &u)
     }
 }
 
+static void bindworldtexlocs(Shader &s)
+{
+#define UNIFORMTEX(name, tmu) \
+    do { \
+        int loc = glGetUniformLocation_(s.program, name); \
+        if(loc != -1) { glUniform1i_(loc, tmu); } \
+    } while(0)
+    UNIFORMTEX("diffusemap", TEX_DIFFUSE);
+    UNIFORMTEX("normalmap", TEX_NORMAL);
+    UNIFORMTEX("glowmap", TEX_GLOW);
+    UNIFORMTEX("envmap", TEX_ENVMAP);
+    UNIFORMTEX("decal", TEX_DECAL);
+    UNIFORMTEX("blendmap", 7);
+    UNIFORMTEX("refractmask", 7);
+    UNIFORMTEX("refractlight", 8);
+}
+
 static void linkglslprogram(Shader &s, bool msg = true)
 {
     s.program = s.vsobj && s.psobj ? glCreateProgram_() : 0;
@@ -242,6 +259,7 @@ static void linkglslprogram(Shader &s, bool msg = true)
             GLint loc = glGetUniformLocation_(s.program, texnames[i]);
             if(loc != -1) glUniform1i_(loc, i);
         }
+        bindworldtexlocs(s);
         loopv(s.defaultparams)
         {
             SlotShaderParamState &param = s.defaultparams[i];
@@ -402,43 +420,6 @@ static void allocglslactiveuniforms(Shader &s)
 
 void Shader::allocparams(Slot *slot)
 {
-    if(slot)
-    {
-#define UNIFORMTEX(name, tmu) \
-        do { \
-            loc = glGetUniformLocation_(program, name); \
-            int val = tmu; \
-            if(loc != -1) glUniform1i_(loc, val); \
-        } while(0)
-        int loc, tmu = 1;
-        if(type & SHADER_ENVMAP) UNIFORMTEX("envmap", 6);
-        if(type & SHADER_REFRACT) 
-        {
-            UNIFORMTEX("refractmask", 7);
-            UNIFORMTEX("refractlight", 8);
-        }
-        UNIFORMTEX("blendmap", 7);
-        int stex = 0;
-        loopv(slot->sts)
-        {
-            Slot::Tex &t = slot->sts[i];
-            switch(t.type)
-            {
-                case TEX_DIFFUSE: UNIFORMTEX("diffusemap", 0); break;
-                case TEX_NORMAL: UNIFORMTEX("normalmap", tmu++); break;
-                case TEX_GLOW: UNIFORMTEX("glowmap", tmu++); break;
-                case TEX_DECAL: UNIFORMTEX("decal", tmu++); break;
-                case TEX_SPEC: if(t.combined<0) UNIFORMTEX("specmap", tmu++); break;
-                case TEX_DEPTH: if(t.combined<0) UNIFORMTEX("depthmap", tmu++); break;
-                case TEX_UNKNOWN: 
-                {
-                    defformatstring(sname)("stex%d", stex++); 
-                    UNIFORMTEX(sname, tmu++);
-                    break;
-                }
-            }
-        }
-    }
     allocglslactiveuniforms(*this);
 }
 

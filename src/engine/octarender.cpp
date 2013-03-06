@@ -663,7 +663,7 @@ void addcubeverts(VSlot &vslot, int orient, int size, vec *pos, int convex, usho
             v.tangent = bvec(t);
             v.bitangent = vec().cross(n, t).dot(orientation_binormal[vslot.rotation][dim]) < 0 ? 0 : 255;
         }
-        else if(texture != DEFAULT_SKY && vslot.slot->shader->type&(SHADER_NORMALSLMS | SHADER_ENVMAP))
+        else if(texture != DEFAULT_SKY)
         {
             if(!k) guessnormals(pos, numverts, normals);
             const vec &n = normals[k];

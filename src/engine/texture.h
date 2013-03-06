@@ -93,7 +93,7 @@ struct SlotShaderParamState : LocalShaderParamState
 enum 
 { 
     SHADER_DEFAULT    = 0, 
-    SHADER_NORMALSLMS = 1<<0, 
+    SHADER_WORLD      = 1<<0, 
     SHADER_ENVMAP     = 1<<1,
     SHADER_REFRACT    = 1<<2,
     SHADER_OPTION     = 1<<3,
@@ -532,13 +532,14 @@ struct Texture
 enum
 {
     TEX_DIFFUSE = 0,
-    TEX_UNKNOWN,
-    TEX_DECAL,
     TEX_NORMAL,
     TEX_GLOW,
+    TEX_ENVMAP,
+    TEX_DECAL,
+    
     TEX_SPEC,
     TEX_DEPTH,
-    TEX_ENVMAP
+    TEX_UNKNOWN
 };
 
 enum 
