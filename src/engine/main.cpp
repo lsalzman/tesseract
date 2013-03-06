@@ -391,12 +391,26 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
 }
 
 bool grabinput = false, minimized = false, canrelativemouse = true, relativemouse = false;
-int allowrepeat = 0;
+int keyrepeatmask = 0, textinputmask = 0;
 
 void keyrepeat(bool on, int mask)
 {
-    if(on) allowrepeat |= mask;
-    else allowrepeat &= ~mask;
+    if(on) keyrepeatmask |= mask;
+    else keyrepeatmask &= ~mask;
+}
+
+void textinput(bool on, int mask)
+{
+    if(on) 
+    {
+        if(!textinputmask) SDL_StartTextInput(); 
+        textinputmask |= mask;
+    }
+    else
+    {
+        textinputmask &= ~mask;
+        if(!textinputmask) SDL_StopTextInput();
+    }
 }
 
 void inputgrab(bool on)
@@ -761,14 +775,14 @@ void checkinput()
             {
                 static uchar buf[SDL_TEXTINPUTEVENT_TEXT_SIZE+1];
                 int len = decodeutf8(buf, int(sizeof(buf)-1), (const uchar *)event.text.text, strlen(event.text.text));
-                if(len > 0) { buf[len] = '\0'; textinput((const char *)buf, len); }
+                if(len > 0) { buf[len] = '\0'; processtextinput((const char *)buf, len); }
                 break;
             }
 
             case SDL_KEYDOWN:
             case SDL_KEYUP:
-                if(allowrepeat || !event.key.repeat)
-                    keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED);
+                if(keyrepeatmask || !event.key.repeat)
+                    processkey(event.key.keysym.sym, event.key.state==SDL_PRESSED);
                 break;
 
             case SDL_WINDOWEVENT:
@@ -810,14 +824,14 @@ void checkinput()
             case SDL_MOUSEBUTTONDOWN:
             case SDL_MOUSEBUTTONUP:
                 //if(lasttype==event.type && lastbut==event.button.button) break; // why?? get event twice without it
-                keypress(event.button.button >= 4 ? -2-int(event.button.button) : -int(event.button.button), event.button.state==SDL_PRESSED);
+                processkey(event.button.button >= 4 ? -2-int(event.button.button) : -int(event.button.button), event.button.state==SDL_PRESSED);
                 //lasttype = event.type;
                 //lastbut = event.button.button;
                 break;
     
             case SDL_MOUSEWHEEL:
-                if(event.wheel.y > 0) keypress(-4, true);
-                else if(event.wheel.y < 0) keypress(-5, true);
+                if(event.wheel.y > 0) processkey(-4, true);
+                else if(event.wheel.y < 0) processkey(-5, true);
                 break;
         }
     }

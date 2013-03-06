@@ -1115,27 +1115,8 @@ bool g3d_key(int code, bool isdown)
         case SDLK_KP_ENTER:
             if(isdown) fieldmode = FIELDCOMMIT; //signal field commit (handled when drawing field)
             return true;
-        case SDLK_HOME:
-        case SDLK_END:
-        case SDLK_PAGEUP:
-        case SDLK_PAGEDOWN:
-        case SDLK_DELETE:
-        case SDLK_BACKSPACE:
-        case SDLK_UP:
-        case SDLK_DOWN:
-        case SDLK_LEFT:
-        case SDLK_RIGHT:
-        case SDLK_LSHIFT:
-        case SDLK_RSHIFT:
-        case -4:
-        case -5:
-            break;
-        default:
-            return false;
-            break;
     }
-    if(!isdown) return true;
-    e->key(code);
+    if(isdown) e->key(code);
     return true;
 }
 
@@ -1238,8 +1219,7 @@ void g3d_render()
     if(!fieldsactive) fieldmode = FIELDSHOW; //didn't draw any fields, so loose focus - mainly for menu closed
     if((fieldmode!=FIELDSHOW) != wasfocused) 
     {
-        if(fieldmode != FIELDSHOW) SDL_StartTextInput();
-        else SDL_StopTextInput();
+        textinput(fieldmode!=FIELDSHOW, TI_GUI);
         keyrepeat(fieldmode!=FIELDSHOW, KR_GUI);
     }
     

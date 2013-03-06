@@ -254,8 +254,7 @@ ICOMMAND(searcheditbinds, "s", (char *action), searchbinds(action, keym::ACTION_
 void inputcommand(char *init, char *action = NULL, char *prompt = NULL, char *flags = NULL) // turns input to the command line on or off
 {
     commandmillis = init ? totalmillis : -1;
-    if(commandmillis >= 0) SDL_StartTextInput();
-    else SDL_StopTextInput();
+    textinput(commandmillis >= 0, TI_CONSOLE);
     keyrepeat(commandmillis >= 0, KR_CONSOLE);
     copystring(commandbuf, init ? init : "");
     DELETEA(commandaction);
@@ -410,12 +409,13 @@ void execbind(keym &k, bool isdown)
     k.pressed = isdown;
 }
 
-void consoleinput(const char *str, int len)
+bool consoleinput(const char *str, int len)
 {
+    if(commandmillis < 0) return false;
+
     resetcomplete();
     int cmdlen = (int)strlen(commandbuf), cmdspace = int(sizeof(commandbuf)) - (cmdlen+1);
     len = min(len, cmdspace);
-    if(len <= 0) return;
     if(commandpos<0) 
     {
         memcpy(&commandbuf[cmdlen], str, len);
@@ -427,10 +427,14 @@ void consoleinput(const char *str, int len)
         commandpos += len;
     }
     commandbuf[cmdlen + len] = '\0';
+
+    return true;
 }
 
-void consolekey(int code, bool isdown)
+bool consolekey(int code, bool isdown)
 {
+    if(commandmillis < 0) return false;
+
     #ifdef __APPLE__
         #define MOD_KEYS (KMOD_LMETA|KMOD_RMETA) 
     #else
@@ -533,24 +537,26 @@ void consolekey(int code, bool isdown)
             inputcommand(NULL);
         }
     }
+
+    return true;
 }
 
-void textinput(const char *str, int len)
+void processtextinput(const char *str, int len)
 {
     if(!g3d_input(str, len))
-    {
-        if(commandmillis >= 0) consoleinput(str, len);
-    }
+        consoleinput(str, len);
 }
 
-void keypress(int code, bool isdown)
+void processkey(int code, bool isdown)
 {
     keym *haskey = keyms.access(code);
     if(haskey && haskey->pressed) execbind(*haskey, isdown); // allow pressed keys to release
     else if(!g3d_key(code, isdown)) // 3D GUI mouse button intercept   
     {
-        if(commandmillis >= 0) consolekey(code, isdown);
-        else if(haskey) execbind(*haskey, isdown);
+        if(!consolekey(code, isdown))
+        {
+            if(haskey) execbind(*haskey, isdown);
+        }
     }
 }
 
