@@ -746,20 +746,17 @@ struct varenderer : partrenderer
         else genpos<T>(o, d, p->size, ts, p->gravity, vs);
     }
 
-    void update()
+    void genverts()
     {
-        if(lastmillis == lastupdate && vbo) return;
-        lastupdate = lastmillis;
-      
         loopi(numparts)
         {
             particle *p = &parts[i];
             partvert *vs = &verts[i*4];
             if(p->fade < 0)
             {
-                do 
+                do
                 {
-                    --numparts; 
+                    --numparts;
                     if(numparts <= i) return;
                 }
                 while(parts[numparts].fade < 0);
@@ -768,6 +765,14 @@ struct varenderer : partrenderer
             }
             else genverts(p, vs, (p->flags&0x80)!=0);
         }
+    }
+
+    void update()
+    {
+        if(lastmillis == lastupdate && vbo) return;
+        lastupdate = lastmillis;
+      
+        genverts();
 
         if(!vbo) glGenBuffers_(1, &vbo);
         glBindBuffer_(GL_ARRAY_BUFFER, vbo);
