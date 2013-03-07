@@ -383,6 +383,7 @@ struct gui : g3d_gui
                 rendermodel(name, anim, o, yaw, 0, 0, NULL, NULL, 0);
             }
             modelpreview::end();
+            hudshader->set();
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glEnable(GL_BLEND);
             if(overlaid)
