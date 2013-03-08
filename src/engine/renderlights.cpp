@@ -3861,6 +3861,7 @@ void shadegbuffer()
 
 void setupframe(int w, int h)
 {
+    GLERROR;
     setupgbuffer(w, h);
     if(hdr && (bloomw < 0 || bloomh < 0)) setupbloom(gw, gh);
     if(ao && (aow < 0 || aoh < 0)) setupao(gw, gh);

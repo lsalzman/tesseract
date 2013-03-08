@@ -927,6 +927,8 @@ void printtimers(int conw, int conh)
 
 void gl_init(int w, int h)
 {
+    GLERROR;
+
     glViewport(0, 0, w, h);
     glClearColor(0, 0, 0, 0);
     glClearDepth(1);
@@ -958,6 +960,8 @@ void gl_init(int w, int h)
 
     vieww = w;
     viewh = h;
+
+    GLERROR;
 }
 
 #define VARRAY_INTERNAL
@@ -1797,10 +1801,12 @@ void drawminimap()
 {
     if(!game::needminimap()) { clearminimap(); return; }
 
+    GLERROR;
     renderprogress(0, "generating mini-map...", 0, !renderedframe);
 
     drawtex = DRAWTEX_MINIMAP;
 
+    GLERROR;
     setupframe(screenw, screenh);
 
     int size = 1<<minimapsize, sizelimit = min(hwtexsize, min(vieww, viewh));
