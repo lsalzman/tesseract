@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-Shader *particleshader = NULL, *particlenotextureshader = NULL, *particlesoftshader = NULL;
+Shader *particleshader = NULL, *particlenotextureshader = NULL, *particlesoftshader = NULL, *particletextshader = NULL;
 
 FVARP(particlebright, 0, 2, 100);
 VARP(particlesize, 20, 100, 500);
@@ -371,7 +371,7 @@ listparticle *listrenderer::parempty = NULL;
 struct meterrenderer : listrenderer
 {
     meterrenderer(int type)
-        : listrenderer(type|PT_NOTEX)
+        : listrenderer(type|PT_NOTEX|PT_LERP)
     {}
 
     void startrender()
@@ -447,20 +447,22 @@ struct meterrenderer : listrenderer
         varray::end();
     }
 };
-static meterrenderer meters(PT_METER|PT_LERP), metervs(PT_METERVS|PT_LERP);
+static meterrenderer meters(PT_METER), metervs(PT_METERVS);
 
 struct textrenderer : listrenderer
 {
-    textrenderer(int type)
-        : listrenderer(type)
+    textrenderer(int type = 0)
+        : listrenderer(type|PT_TEXT|PT_LERP|PT_SHADER)
     {}
 
     void startrender()
     {
+        textshader = particletextshader;
     }
 
     void endrender()
     {
+        textshader = NULL;
     }
 
     void killpart(listparticle *p)
@@ -484,7 +486,7 @@ struct textrenderer : listrenderer
         textmatrix = NULL;
     } 
 };
-static textrenderer texts(PT_TEXT|PT_LERP);
+static textrenderer texts;
 
 template<int T>
 static inline void modifyblend(const vec &o, int &blend)
@@ -858,6 +860,7 @@ void particleinit()
     if(!particleshader) particleshader = lookupshaderbyname("particle");
     if(!particlenotextureshader) particlenotextureshader = lookupshaderbyname("particlenotexture");
     if(!particlesoftshader) particlesoftshader = lookupshaderbyname("particlesoft");
+    if(!particletextshader) particletextshader = lookupshaderbyname("particletext");
     loopi(sizeof(parts)/sizeof(parts[0])) parts[i]->init(parts[i]->type&PT_FEW ? min(fewparticles, maxparticles) : maxparticles);
 }
 

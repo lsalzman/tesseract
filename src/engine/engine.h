@@ -55,6 +55,8 @@ struct font
 #define MINRESH 480
 
 extern font *curfont;
+extern Shader *textshader;
+extern const matrix3x4 *textmatrix;
 
 // texture
 extern int hwtexsize, hwcubetexsize, hwmaxaniso, maxtexsize, hwtexunits, hwvtexunits;
@@ -143,8 +145,6 @@ extern void disablepolygonoffset(GLenum type);
 extern bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2);
 extern bool calcbbscissor(const ivec &bbmin, const ivec &bbmax, float &sx1, float &sy1, float &sx2, float &sy2);
 extern bool calcspotscissor(const vec &origin, float radius, const vec &dir, int spot, const vec &spotx, const vec &spoty, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2);
-extern int pushscissor(float sx1, float sy1, float sx2, float sy2);
-extern void popscissor();
 extern void screenquad();
 extern void screenquad(float sw, float sh);
 extern void screenquadflipped(float sw, float sh);

@@ -1311,55 +1311,6 @@ void disablepolygonoffset(GLenum type)
     setcamprojmatrix(false, true);
 }
 
-static int scissoring = 0;
-static GLint oldscissor[4];
-
-int pushscissor(float sx1, float sy1, float sx2, float sy2)
-{
-    scissoring = 0;
-
-    if(sx1 <= -1 && sy1 <= -1 && sx2 >= 1 && sy2 >= 1) return 0;
-
-    sx1 = max(sx1, -1.0f);
-    sy1 = max(sy1, -1.0f);
-    sx2 = min(sx2, 1.0f);
-    sy2 = min(sy2, 1.0f);
-
-    GLint viewport[4];
-    glGetIntegerv(GL_VIEWPORT, viewport);
-    int sx = viewport[0] + int(floor((sx1+1)*0.5f*viewport[2])),
-        sy = viewport[1] + int(floor((sy1+1)*0.5f*viewport[3])),
-        sw = viewport[0] + int(ceil((sx2+1)*0.5f*viewport[2])) - sx,
-        sh = viewport[1] + int(ceil((sy2+1)*0.5f*viewport[3])) - sy;
-    if(sw <= 0 || sh <= 0) return 0;
-
-    if(glIsEnabled(GL_SCISSOR_TEST))
-    {
-        glGetIntegerv(GL_SCISSOR_BOX, oldscissor);
-        sw += sx;
-        sh += sy;
-        sx = max(sx, int(oldscissor[0]));
-        sy = max(sy, int(oldscissor[1]));
-        sw = min(sw, int(oldscissor[0] + oldscissor[2])) - sx;
-        sh = min(sh, int(oldscissor[1] + oldscissor[3])) - sy;
-        if(sw <= 0 || sh <= 0) return 0;
-        scissoring = 2;
-    }
-    else scissoring = 1;
-
-    glScissor(sx, sy, sw, sh);
-    if(scissoring<=1) glEnable(GL_SCISSOR_TEST);
-    
-    return scissoring;
-}
-
-void popscissor()
-{
-    if(scissoring>1) glScissor(oldscissor[0], oldscissor[1], oldscissor[2], oldscissor[3]);
-    else if(scissoring) glDisable(GL_SCISSOR_TEST);
-    scissoring = 0;
-}
-
 bool calcspherescissor(const vec &center, float size, float &sx1, float &sy1, float &sx2, float &sy2, float &sz1, float &sz2)
 {
     vec e;
