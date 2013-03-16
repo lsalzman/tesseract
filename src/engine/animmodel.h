@@ -419,6 +419,7 @@ struct animmodel : model
             loopv(meshes) meshes[i]->gentris(skins[i].tex && skins[i].tex->type&Texture::ALPHA ? skins[i].tex : NULL, tris, m);
         }
 
+        virtual void *animkey() { return this; }
         virtual int totalframes() const { return 1; }
         bool hasframe(int i) const { return i>=0 && i<totalframes(); }
         bool hasframes(int i, int n) const { return i>=0 && i+n<=totalframes(); }
@@ -734,12 +735,13 @@ struct animmodel : model
             {
                 animinterpinfo &ai = d->animinterp[interp];
                 if((info.anim&ANIM_CLAMP)==ANIM_CLAMP) aitime = min(aitime, int(info.range*info.speed*0.5e-3f));
+                void *ak = meshes->animkey();
                 if(d->ragdoll && !(anim&ANIM_RAGDOLL)) 
                 {
                     ai.prev.range = ai.cur.range = 0;
                     ai.lastswitch = -1;
                 }
-                else if(ai.lastmodel!=this || ai.lastswitch<0 || lastmillis-d->lastrendered>aitime)
+                else if(ai.lastmodel!=ak || ai.lastswitch<0 || lastmillis-d->lastrendered>aitime)
                 {
                     ai.prev = ai.cur = info;
                     ai.lastswitch = lastmillis-aitime*2;
@@ -751,7 +753,7 @@ struct animmodel : model
                     ai.lastswitch = lastmillis;
                 }
                 else if(info.anim&ANIM_SETTIME) ai.cur.basetime = info.basetime;
-                ai.lastmodel = this;
+                ai.lastmodel = ak;
             }
             return true;
         }
