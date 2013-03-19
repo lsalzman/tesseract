@@ -291,9 +291,9 @@ bool fileexists(const char *path, const char *mode)
     bool exists = true;
     if(mode[0]=='w' || mode[0]=='a') path = parentdir(path);
 #ifdef WIN32
-    if(GetFileAttributes(path) == INVALID_FILE_ATTRIBUTES) exists = false;
+    if(GetFileAttributes(path[0] ? path : ".\\") == INVALID_FILE_ATTRIBUTES) exists = false;
 #else
-    if(access(path, mode[0]=='w' || mode[0]=='a' ? W_OK : (mode[0]=='d' ? X_OK : R_OK)) == -1) exists = false;
+    if(access(path[0] ? path : ".", mode[0]=='w' || mode[0]=='a' ? W_OK : (mode[0]=='d' ? X_OK : R_OK)) == -1) exists = false;
 #endif
     return exists;
 }
