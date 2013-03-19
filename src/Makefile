@@ -18,11 +18,25 @@ MV=mv
 ifneq (,$(findstring MINGW,$(PLATFORM)))
 WINDRES= windres
 ifneq (,$(findstring 64,$(PLATFORM)))
+ifneq (,$(findstring CROSS,$(PLATFORM)))
+  CXX=x86_64-w64-mingw32-g++
+  WINDRES=x86_64-w64-mingw32-windres
+ifneq (,$(STRIP))
+  STRIP=x86_64-w64-mingw32-strip
+endif
+endif
 WINLIB=lib64
 WINBIN=../bin64
 override CXX+= -m64
 override WINDRES+= -F pe-x86-64
 else
+ifneq (,$(findstring CROSS,$(PLATFORM)))
+  CXX=i686-w64-mingw32-g++
+  WINDRES=i686-w64-mingw32-windres
+ifneq (,$(STRIP))
+  STRIP=i686-w64-mingw32-strip
+endif
+endif
 WINLIB=lib
 WINBIN=../bin
 override CXX+= -m32
