@@ -875,9 +875,9 @@ void synctimers()
         {
             GLint available = 0;
             while(!available)
-                glGetQueryObjectiv_(t.query[timercycle], GL_QUERY_RESULT_AVAILABLE_ARB, &available);
+                glGetQueryObjectiv_(t.query[timercycle], GL_QUERY_RESULT_AVAILABLE, &available);
             GLuint64EXT result = 0;
-            glGetQueryObjectui64v_(t.query[timercycle], GL_QUERY_RESULT_ARB, &result);
+            glGetQueryObjectui64v_(t.query[timercycle], GL_QUERY_RESULT, &result);
             t.result = max(float(result) * 1e-6f, 0.0f);
             t.waiting &= ~(1<<timercycle);
         }
