@@ -463,7 +463,16 @@ void screenres(int w, int h)
 {
     scr_w = clamp(w, SCR_MINW, SCR_MAXW);
     scr_h = clamp(h, SCR_MINH, SCR_MAXH);
-    initwarning("screen resolution");
+    if(screen && SDL_GetWindowFlags(screen) & SDL_WINDOW_RESIZABLE)
+    {
+        SDL_SetWindowSize(screen, scr_w, scr_h);
+        SDL_GetWindowSize(screen, &screenw, &screenh);
+        gl_resize(screenw, screenh);
+    }
+    else 
+    {
+        initwarning("screen resolution");
+    }
 }
 
 ICOMMAND(screenres, "ii", (int *w, int *h), screenres(*w, *h));
@@ -515,7 +524,7 @@ void setupscreen()
     memset(&desktop, 0, sizeof(desktop));
     SDL_GetDisplayBounds(0, &desktop);
 
-    int flags = 0;
+    int flags = SDL_WINDOW_RESIZABLE;
     if(fullscreen) flags = SDL_WINDOW_FULLSCREEN;
     int nummodes = SDL_GetNumDisplayModes(0);
     vector<SDL_DisplayMode> modes;
@@ -574,7 +583,13 @@ void setupscreen()
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
     screen = SDL_CreateWindow("Tesseract", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, scr_w, scr_h, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_INPUT_FOCUS | SDL_WINDOW_MOUSE_FOCUS | flags);
     if(!screen) fatal("failed to create OpenGL window: %s", SDL_GetError());
-    
+   
+    if(flags&SDL_WINDOW_RESIZABLE)
+    {
+        SDL_SetWindowMinimumSize(screen, SCR_MINW, SCR_MINH);
+        SDL_SetWindowMaximumSize(screen, SCR_MAXW, SCR_MAXH);
+    }
+
     static const struct { int major, minor; } coreversions[] = { { 3, 3 }, { 3, 2 }, { 3, 1 }, { 3, 0 } };
     loopi(sizeof(coreversions)/sizeof(coreversions[0]))
     {
@@ -811,6 +826,17 @@ void checkinput()
                     case SDL_WINDOWEVENT_MAXIMIZED:
                     case SDL_WINDOWEVENT_RESTORED:
                         minimized = false;
+                        break;
+
+                    case SDL_WINDOWEVENT_RESIZED:
+                        if(SDL_GetWindowFlags(screen) & SDL_WINDOW_RESIZABLE)
+                        {
+                            screenw = event.window.data1;
+                            screenh = event.window.data2;
+                            scr_w = clamp(screenw, SCR_MINW, SCR_MAXH);
+                            scr_h = clamp(screenh, SCR_MINW, SCR_MAXH);
+                            gl_resize(screenw, screenh);
+                        }
                         break;
                 }
                 break;

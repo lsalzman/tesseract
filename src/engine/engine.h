@@ -136,6 +136,7 @@ extern void glerror(const char *file, int line, GLenum error);
 
 extern void gl_checkextensions();
 extern void gl_init(int w, int h);
+extern void gl_resize(int w, int h);
 extern void cleangl();
 extern void gl_drawframe(int w, int h);
 extern void gl_drawmainmenu(int w, int h);

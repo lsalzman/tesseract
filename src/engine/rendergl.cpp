@@ -924,12 +924,20 @@ void printtimers(int conw, int conh)
     if(totalmillis - lastprint >= 200) lastprint = totalmillis;
 }
          
+void gl_resize(int w, int h)
+{
+    glViewport(0, 0, w, h);
+    
+    vieww = w;
+    viewh = h;
+}
 
 void gl_init(int w, int h)
 {
     GLERROR;
 
-    glViewport(0, 0, w, h);
+    gl_resize(w, h);
+
     glClearColor(0, 0, 0, 0);
     glClearDepth(1);
     glClearStencil(0);
@@ -957,9 +965,6 @@ void gl_init(int w, int h)
     conoutf(CON_INIT, "Rendering using the OpenGL %s path.", rpnames[renderpath]);
 
     setuptexcompress();
-
-    vieww = w;
-    viewh = h;
 
     GLERROR;
 }
