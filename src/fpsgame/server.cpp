@@ -248,7 +248,7 @@ namespace server
 
         enum
         {
-            PUSHMILLIS = 2500
+            PUSHMILLIS = 3000
         };
 
         int calcpushrange()
@@ -2851,7 +2851,7 @@ namespace server
                 {
                     if((!ci->local || demorecord || hasnonlocalclients()) && (cp->state.state==CS_ALIVE || cp->state.state==CS_EDITING))
                     {
-                        if(!ci->local && !m_edit && max(vel.magnitude2(), vel.z) >= 180)
+                        if(!ci->local && !m_edit && max(vel.magnitude2(), (float)fabs(vel.z)) >= 180)
                             cp->setexceeded();
                         cp->position.setsize(0);
                         while(curmsg<p.length()) cp->position.add(p.buf[curmsg++]);
