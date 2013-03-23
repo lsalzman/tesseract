@@ -466,8 +466,6 @@ void screenres(int w, int h)
     if(screen && SDL_GetWindowFlags(screen) & SDL_WINDOW_RESIZABLE)
     {
         SDL_SetWindowSize(screen, scr_w, scr_h);
-        SDL_GetWindowSize(screen, &screenw, &screenh);
-        gl_resize(screenw, screenh);
     }
     else 
     {
@@ -831,8 +829,7 @@ void checkinput()
                     case SDL_WINDOWEVENT_RESIZED:
                         if(SDL_GetWindowFlags(screen) & SDL_WINDOW_RESIZABLE)
                         {
-                            screenw = event.window.data1;
-                            screenh = event.window.data2;
+                            SDL_GetWindowSize(screen, &screenw, &screenh);
                             scr_w = clamp(screenw, SCR_MINW, SCR_MAXH);
                             scr_h = clamp(screenh, SCR_MINW, SCR_MAXH);
                             gl_resize(screenw, screenh);
