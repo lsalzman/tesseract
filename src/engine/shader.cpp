@@ -630,7 +630,7 @@ static const char *findglslmain(const char *s)
     return s;
 }
 
-static void gengenericvariant(Shader &s, const char *sname, const char *vs, const char *ps, int row)
+static void gengenericvariant(Shader &s, const char *sname, const char *vs, const char *ps, int row = 0)
 {
     bool vschanged = false, pschanged = false;
     vector<char> vsv, psv;
@@ -675,6 +675,35 @@ static void gengenericvariant(Shader &s, const char *sname, const char *vs, cons
     if(s.variants[row].length()) formatstring(reuse)("%d", row);
     else copystring(reuse, "");
     newshader(s.type, varname, vschanged ? vsv.getbuf() : reuse, pschanged ? psv.getbuf() : reuse, &s, row);
+}
+
+static void genswizzle(Shader &s, const char *sname, const char *ps, int row = 0)
+{
+    static const int pragmalen = strlen("#pragma CUBE2_swizzle");
+    const char *pspragma = strstr(ps, "#pragma CUBE2_swizzle");
+    if(!pspragma) return;
+
+    int clen = 0;
+    const char *cname = pspragma + pragmalen;
+    while(iscubealpha(*cname)) cname++;
+    while(*cname && !iscubespace(*cname)) cname++;
+    cname += strspn(cname, " \t\v\f");
+    clen = strcspn(cname, "\r\n");
+
+    string reuse;
+    if(s.variants[row].length()) formatstring(reuse)("%d", row);
+    else copystring(reuse, "");
+
+    loopi(2)
+    {
+        vector<char> pswz;
+        pswz.put(ps, int(pspragma-ps));
+        pswz.put(cname, clen); pswz.put(" = ", 3); pswz.put(cname, clen); pswz.put(i ? ".rrrg;" : ".rrra;", 6);
+        pswz.put(cname+clen, strlen(cname+clen)+1);
+
+        defformatstring(varname)("<variant:%d,%d>%s", s.variants[row].length(), row, sname);
+        newshader(s.type, varname, reuse, pswz.getbuf(), &s, row);
+    }
 }
 
 static void genfogshader(vector<char> &vsbuf, vector<char> &psbuf, const char *vs, const char *ps)
@@ -787,11 +816,11 @@ void setupshaders()
         "varying vec4 colorscale;\n"
         "fragdata(0, fragcolor, vec4)\n"
         "void main(void) {\n"
-        "    #pragma CUBE2_variantoverride vec4 color = texture2D(tex0, texcoord0).rrrg;\n"
         "    vec4 color = texture2D(tex0, texcoord0);\n"
+        "    #pragma CUBE2_swizzle color\n"
         "    fragcolor = colorscale * color;\n"
         "}\n");
-    if(hudshader) gengenericvariant(*hudshader, hudshader->name, hudshader->vsstr, hudshader->psstr, 0);
+    if(hudshader) genswizzle(*hudshader, hudshader->name, hudshader->psstr);
     hudnotextureshader = newshader(0, "<init>hudnotexture",
         "attribute vec4 vvertex, vcolor;\n"
         "uniform mat4 hudmatrix;"
@@ -924,7 +953,8 @@ void shader(int *type, char *name, char *vs, char *ps)
     Shader *s = newshader(*type, name, vs, ps);
     if(s)
     {
-        if(strstr(ps, "#pragma CUBE2_variant") || strstr(vs, "#pragma CUBE2_variant")) gengenericvariant(*s, name, vs, ps, 0);
+        if(strstr(ps, "#pragma CUBE2_variant") || strstr(vs, "#pragma CUBE2_variant")) gengenericvariant(*s, name, vs, ps);
+        if(strstr(ps, "#pragma CUBE2_swizzle")) genswizzle(*s, name, ps);
     }
     slotparams.shrink(0);
 }
@@ -955,6 +985,7 @@ void variantshader(int *type, char *name, int *row, char *vs, char *ps, int *max
     if(v)
     {
         if(strstr(ps, "#pragma CUBE2_variant") || strstr(vs, "#pragma CUBE2_variant")) gengenericvariant(*s, varname, vs, ps, *row);
+        if(strstr(ps, "#pragma CUBE2_swizzle")) genswizzle(*s, varname, ps, *row);
     }
 }
 

@@ -363,7 +363,7 @@ void draw_text(const char *str, int left, int top, int r, int g, int b, int a, i
     if(a < 0) { usecolor = false; a = -a; }
     Texture *tex = curfont->texs[0];
     Shader *oldshader = Shader::lastshader;
-    (textshader ? textshader : hudshader)->setvariant(tex->bpp <= 2 && hasTRG ? 0 : -1, 0);
+    (textshader ? textshader : hudshader)->setvariant(hasTRG ? (tex->bpp==1 ? 0 : (tex->bpp==2 ? 1 : -1)) : -1, 0);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindTexture(GL_TEXTURE_2D, tex->id);
     varray::color(color, a);
