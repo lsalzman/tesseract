@@ -2944,7 +2944,7 @@ static inline void rhquad(float x1, float y1, float x2, float y2, float tx1, flo
     varray::attribf(x2, y1); varray::attribf(tx2, ty1, tz);
     varray::attribf(x1, y1); varray::attribf(tx1, ty1, tz);
     varray::attribf(x2, y2); varray::attribf(tx2, ty2, tz);
-    varray::attribf(x1, y2); varray::attribf(ty1, ty2, tz);
+    varray::attribf(x1, y2); varray::attribf(tx1, ty2, tz);
     varray::end();
 }
 
