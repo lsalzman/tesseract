@@ -141,7 +141,7 @@ const char *getmaterialdesc(int mat, const char *prefix)
     return desc;
 }
     
-int visiblematerial(const cube &c, int orient, int x, int y, int z, int size, uchar matmask)
+int visiblematerial(const cube &c, int orient, int x, int y, int z, int size, ushort matmask)
 {   
     ushort mat = c.material&matmask;
     switch(mat)
@@ -175,7 +175,7 @@ void genmatsurfs(const cube &c, int cx, int cy, int cz, int size, vector<materia
         static const ushort matmasks[] = { MATF_VOLUME|MATF_INDEX, MATF_CLIP, MAT_DEATH, MAT_ALPHA };
         loopj(sizeof(matmasks)/sizeof(matmasks[0]))
         {
-            int matmask = matmasks[j];
+            ushort matmask = matmasks[j];
             int vis = visiblematerial(c, i, cx, cy, cz, size, matmask&~MATF_INDEX);
             if(vis != MATSURF_NOT_VISIBLE) 
             {
