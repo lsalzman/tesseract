@@ -272,7 +272,7 @@ static inline void masktiles(uint *tiles, float sx1, float sy1, float sx2, float
 enum { SM_NONE = 0, SM_REFLECT, SM_CUBEMAP, SM_CASCADE, SM_SPOT };
 
 enum { L_NOSHADOW = 1<<0, L_NODYNSHADOW = 1<<1 };
- 
+
 extern int shadowmapping;
 
 extern vec shadoworigin, shadowdir;
@@ -460,7 +460,7 @@ extern void renderliquidmaterials();
 extern void rendersolidmaterials();
 extern void rendereditmaterials();
 extern void renderminimapmaterials();
-extern int visiblematerial(const cube &c, int orient, int x, int y, int z, int size, uchar matmask = MATF_VOLUME);
+extern int visiblematerial(const cube &c, int orient, int x, int y, int z, int size, ushort matmask = MATF_VOLUME);
 
 // water
 extern int vertwater, waterreflect, caustics;
