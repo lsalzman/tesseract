@@ -156,22 +156,6 @@ struct vec
     int tohexcolor() { return ((int(r*255)>>16)&0xFF)|((int(g*255)>>8)&0xFF)|(int(b*255)&0xFF); }
 };
 
-#define VEC_OP(OP)                                                    \
-static inline vec operator OP (const vec &a, const vec &b) {          \
-    return vec(a.x OP b.x, a.y OP b.y, a.z OP b.z);                   \
-}                                                                     \
-static inline vec operator OP (float s, const vec &b) {               \
-    return vec(s OP b.x, s OP b.y, s OP b.z);                         \
-}                                                                     \
-static inline vec operator OP (const vec &a, float s) {               \
-    return vec(a.x OP s, a.y OP s, a.z OP s);                         \
-}
-VEC_OP(*)
-VEC_OP(/)
-VEC_OP(+)
-VEC_OP(-)
-#undef VEC_OP
-
 static inline bool htcmp(const vec &x, const vec &y)
 {
     return x == y;
@@ -259,22 +243,6 @@ struct vec4
     vec4 &rotate_around_x(float angle) { return rotate_around_x(cosf(angle), sinf(angle)); }
     vec4 &rotate_around_y(float angle) { return rotate_around_y(cosf(angle), sinf(angle)); }
 };
-
-#define VEC4_OP(OP)                                                   \
-static inline vec4 operator OP (const vec4 &a, const vec4 &b) {       \
-    return vec4(a.x OP b.x, a.y OP b.y, a.z OP b.z, a.w OP b.w);      \
-}                                                                     \
-static inline vec4 operator OP (float s, const vec4 &b) {             \
-    return vec4(s OP b.x, s OP b.y, s OP b.z, s OP b.w);              \
-}                                                                     \
-static inline vec4 operator OP (const vec4 &a, float s) {             \
-    return vec4(a.x OP s, a.y OP s, a.z OP s, a.w OP s);              \
-}
-VEC4_OP(*)
-VEC4_OP(/)
-VEC4_OP(+)
-VEC4_OP(-)
-#undef VEC4_OP
 
 inline vec::vec(const vec4 &v) : x(v.x), y(v.y), z(v.z) {}
 
