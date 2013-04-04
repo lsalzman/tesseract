@@ -29,7 +29,7 @@ struct editline
         {
             va_list args;
             va_start(args, fmt);
-            _vsnprintf(newtext, maxlen, fmt, args);
+            vformatstring(newtext, fmt, args, maxlen);
             va_end(args);
         }
         DELETEA(text);
