@@ -319,7 +319,7 @@ void gl_checkextensions()
 
     if(glversion < 210) fatal("OpenGL 2.1 or greater is required!");
 
-#ifndef __APLE__
+#ifndef __APPLE__
     glActiveTexture_ =            (PFNGLACTIVETEXTUREPROC)            getprocaddress("glActiveTexture");
 
     glBlendEquation_ =            (PFNGLBLENDEQUATIONPROC)            getprocaddress("glBlendEquation");
