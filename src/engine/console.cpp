@@ -436,7 +436,7 @@ bool consolekey(int code, bool isdown)
     if(commandmillis < 0) return false;
 
     #ifdef __APPLE__
-        #define MOD_KEYS (KMOD_LMETA|KMOD_RMETA) 
+        #define MOD_KEYS (KMOD_LGUI|KMOD_RGUI) 
     #else
         #define MOD_KEYS (KMOD_LCTRL|KMOD_RCTRL)
     #endif
