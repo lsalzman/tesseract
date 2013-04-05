@@ -75,9 +75,9 @@ struct animmodel : model
         Texture *tex, *decal, *masks, *envmap, *normalmap;
         Shader *shader;
         float spec, ambient, glow, glowdelta, glowpulse, fullbright, envmapmin, envmapmax, scrollu, scrollv, alphatest;
-        bool alphablend, cullface;
+        bool cullface;
 
-        skin() : owner(0), tex(notexture), decal(NULL), masks(notexture), envmap(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), alphablend(false), cullface(true) {}
+        skin() : owner(0), tex(notexture), decal(NULL), masks(notexture), envmap(NULL), normalmap(NULL), shader(NULL), spec(1.0f), ambient(0.3f), glow(3.0f), glowdelta(0), glowpulse(0), fullbright(0), envmapmin(0), envmapmax(0), scrollu(0), scrollv(0), alphatest(0.9f), cullface(true) {}
 
         bool envmapped() { return envmapmax>0 && envmapmodels; }
         bool bumpmapped() { return normalmap && bumpmodels; }
@@ -165,7 +165,6 @@ struct animmodel : model
 
             if(as->cur.anim&ANIM_NOSKIN)
             {
-                if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
                 if(alphatest > 0 && s->type&Texture::ALPHA)
                 {
                     if(s!=lasttex)
@@ -208,23 +207,6 @@ struct animmodel : model
                 glBindTexture(GL_TEXTURE_2D, decal->id);
                 lastdecal = n;
             } 
-            if(s->type&Texture::ALPHA)
-            {
-                if(alphablend)
-                {
-                    if(!enablealphablend)
-                    {
-                        glEnable(GL_BLEND);
-                        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                        enablealphablend = true;
-                    }
-                }
-                else if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
-            }
-            else
-            {
-                if(enablealphablend) { glDisable(GL_BLEND); enablealphablend = false; }
-            }
             if(m!=lastmasks && m!=notexture)
             {
                 glActiveTexture_(GL_TEXTURE1);
@@ -1352,12 +1334,6 @@ struct animmodel : model
         loopv(parts) loopvj(parts[i]->skins) parts[i]->skins[j].alphatest = alphatest;
     }
 
-    void setalphablend(bool alphablend)
-    {
-        if(parts.empty()) loaddefaultparts();
-        loopv(parts) loopvj(parts[i]->skins) parts[i]->skins[j].alphablend = alphablend;
-    }
-
     void setfullbright(float fullbright)
     {
         if(parts.empty()) loaddefaultparts();
@@ -1384,7 +1360,7 @@ struct animmodel : model
         center.add(radius);
     }
 
-    static bool enabletc, enablealphablend, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
+    static bool enabletc, enablecullface, enablenormals, enabletangents, enablebones, enabledepthoffset;
     static float sizescale, transparent;
     static GLuint lastvbuf, lasttcbuf, lastnbuf, lastxbuf, lastbbuf, lastebuf, lastenvmaptex, closestenvmaptex;
     static Texture *lasttex, *lastdecal, *lastmasks, *lastnormalmap;
@@ -1393,7 +1369,7 @@ struct animmodel : model
 
     void startrender()
     {
-        enabletc = enablealphablend = enablenormals = enabletangents = enablebones = enabledepthoffset = false;
+        enabletc = enablenormals = enabletangents = enablebones = enabledepthoffset = false;
         enablecullface = true;
         lastvbuf = lasttcbuf = lastnbuf = lastxbuf = lastbbuf = lastebuf = lastenvmaptex = closestenvmaptex = 0;
         lasttex = lastdecal = lastmasks = lastnormalmap = NULL;
@@ -1441,7 +1417,6 @@ struct animmodel : model
     void endrender()
     {
         if(lastvbuf || lastebuf) disablevbo();
-        if(enablealphablend) glDisable(GL_BLEND);
         if(!enablecullface) glEnable(GL_CULL_FACE);
         if(enabledepthoffset) disablepolygonoffset(GL_POLYGON_OFFSET_FILL);
     }
@@ -1449,7 +1424,7 @@ struct animmodel : model
 
 int animmodel::intersectresult = -1, animmodel::intersectmode = 0;
 float animmodel::intersectdist = 0, animmodel::intersectscale = 1;
-bool animmodel::enabletc = false, animmodel::enablealphablend = false,
+bool animmodel::enabletc = false,
      animmodel::enablecullface = true, 
      animmodel::enablenormals = false, animmodel::enabletangents = false, 
      animmodel::enablebones = false, animmodel::enabledepthoffset = false;
@@ -1542,11 +1517,6 @@ template<class MDL, class MESH> struct modelcommands
         loopskins(meshname, s, s.alphatest = max(0.0f, min(1.0f, *cutoff)));
     }
     
-    static void setalphablend(char *meshname, int *blend)
-    {
-        loopskins(meshname, s, s.alphablend = *blend!=0);
-    }
-    
     static void setcullface(char *meshname, int *cullface)
     {
         loopskins(meshname, s, s.cullface = *cullface!=0);
@@ -1614,7 +1584,6 @@ template<class MDL, class MESH> struct modelcommands
             modelcommand(setambient, "ambient", "si");
             modelcommand(setglow, "glow", "siif");
             modelcommand(setalphatest, "alphatest", "sf");
-            modelcommand(setalphablend, "alphablend", "si");
             modelcommand(setcullface, "cullface", "si");
             modelcommand(setenvmap, "envmap", "ss");
             modelcommand(setbumpmap, "bumpmap", "ss");

@@ -96,22 +96,6 @@ void mdlalphatest(float *cutoff)
 
 COMMAND(mdlalphatest, "f");
 
-void mdlalphablend(int *blend)
-{   
-    checkmdl;
-    loadingmodel->setalphablend(*blend!=0);
-}
-
-COMMAND(mdlalphablend, "i");
-
-void mdlalphadepth(int *depth)
-{
-    checkmdl;
-    loadingmodel->alphadepth = *depth!=0;
-}
-
-COMMAND(mdlalphadepth, "i");
-
 void mdldepthoffset(int *offset)
 {
     checkmdl;
