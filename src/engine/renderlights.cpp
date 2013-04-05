@@ -3495,7 +3495,8 @@ void rendertransparent()
 {
     int hasalphavas = findalphavas();
     int hasmats = findmaterials();
-    if(!hasalphavas && !hasmats) return;
+    bool hasmodels = transmdlsx1 < transmdlsx2 && transmdlsy1 < transmdlsy2;
+    if(!hasalphavas && !hasmats && !hasmodels) return;
 
     timer *transtimer = begintimer("transparent");
 
@@ -3547,10 +3548,11 @@ void rendertransparent()
     GLOBALPARAM(raymatrix, raymatrix);
     GLOBALPARAM(linearworldmatrix, linearworldmatrix);
 
-    loop(layer, 3)
+    uint tiles[LIGHTTILE_MAXH];
+    float sx1, sy1, sx2, sy2;
+
+    loop(layer, 4)
     {
-        uint tiles[LIGHTTILE_MAXH];
-        float sx1, sy1, sx2, sy2;
         switch(layer)
         {
         case 0:
@@ -3576,6 +3578,12 @@ void rendertransparent()
                 loopj(LIGHTTILE_MAXH) tiles[j] |= matsolidtiles[j];
             }
             break;
+        case 3:
+            if(!hasmodels) continue;
+            sx1 = transmdlsx1; sy1 = transmdlsy1; sx2 = transmdlsx2; sy2 = transmdlsy2;
+            memcpy(tiles, transmdltiles, sizeof(tiles));
+            break;
+
         default:
             continue;
         }
@@ -3617,6 +3625,9 @@ void rendertransparent()
         case 2:
             if(hasalphavas&2) renderalphageom(2);
             if(hasmats&2) rendersolidmaterials();
+            break;
+        case 3:
+            if(hasmodels) rendertransparentmodelbatches();
             break;
         }
 

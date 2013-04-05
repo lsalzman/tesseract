@@ -632,6 +632,9 @@ extern void startmap(const char *name);
 // rendermodel
 struct mapmodelinfo { string name; model *m; };
 
+extern float transmdlsx1, transmdlsy1, transmdlsx2, transmdlsy2;
+extern uint transmdltiles[LIGHTTILE_MAXH];
+
 extern void findanims(const char *pattern, vector<int> &anims);
 extern void loadskin(const char *dir, const char *altdir, Texture *&skin, Texture *&masks);
 extern mapmodelinfo *getmminfo(int i);
@@ -642,6 +645,7 @@ extern void rendershadowmodelbatches(bool dynmodel = true);
 extern void shadowmaskbatchedmodels(bool dynshadow = true);
 extern void rendermapmodelbatches();
 extern void rendermodelbatches();
+extern void rendertransparentmodelbatches();
 extern void rendermapmodel(int idx, int anim, const vec &o, float yaw = 0, float pitch = 0, int flags = MDL_CULL_VFC | MDL_CULL_DIST, int basetime = 0, float size = 1);
 extern void clearbatchedmapmodels();
 extern void preloadusedmapmodels(bool msg = false, bool bih = false);
