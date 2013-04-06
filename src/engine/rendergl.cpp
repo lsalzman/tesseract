@@ -213,6 +213,8 @@ void *getprocaddress(const char *name)
     return SDL_GL_GetProcAddress(name);
 }
 
+VAR(glerr, 0, 0, 1);
+
 void glerror(const char *file, int line, GLenum error)
 {
     const char *desc = "unknown";

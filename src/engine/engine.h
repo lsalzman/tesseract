@@ -130,9 +130,10 @@ extern bvec fogcolor;
 extern vec curfogcolor;
 extern int wireframe;
 
+extern int glerr;
 extern void glerror(const char *file, int line, GLenum error);
 
-#define GLERROR do { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } while(0)
+#define GLERROR do { if(glerr) { GLenum error = glGetError(); if(error != GL_NO_ERROR) glerror(__FILE__, __LINE__, error); } } while(0)
 
 extern void gl_checkextensions();
 extern void gl_init(int w, int h);
