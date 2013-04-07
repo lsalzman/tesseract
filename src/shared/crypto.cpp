@@ -647,7 +647,7 @@ struct ecjacobian
         y.sub(f, x).sub(x).mul(b).sub(e.mul(a).mul(d)).div2();
     }
 
-    template<int Q_DIGITS> void mul(const ecjacobian &p, const bigint<Q_DIGITS> q)
+    template<int Q_DIGITS> void mul(const ecjacobian &p, const bigint<Q_DIGITS> &q)
     {
         *this = origin;
         for(int i = q.numbits()-1; i >= 0; i--)
@@ -656,7 +656,7 @@ struct ecjacobian
             if(q.hasbit(i)) add(p);
         }
     }
-    template<int Q_DIGITS> void mul(const bigint<Q_DIGITS> q) { ecjacobian tmp(*this); mul(tmp, q); }
+    template<int Q_DIGITS> void mul(const bigint<Q_DIGITS> &q) { ecjacobian tmp(*this); mul(tmp, q); }
 
     void normalize()
     {
