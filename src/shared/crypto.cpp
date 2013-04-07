@@ -307,14 +307,14 @@ template<int BI_DIGITS> struct bigint
 
     template<int X_DIGITS> bigint &rshift(const bigint<X_DIGITS> &x, int n)
     {
-        if(!len || !n) return *this;
+        if(!len || n<=0) return *this;
         int dig = (n-1)/BI_DIGIT_BITS;
         n = ((n-1) % BI_DIGIT_BITS)+1;
         digit carry = digit(x.digits[dig]>>n);
-        loopi(len-dig-1)
+        for(int i = dig+1; i < x.len; i++)
         {
-            digit tmp = x.digits[i+dig+1];
-            digits[i] = digit((tmp<<(BI_DIGIT_BITS-n)) | carry);
+            digit tmp = x.digits[i];
+            digits[i-dig-1] = digit((tmp<<(BI_DIGIT_BITS-n)) | carry);
             carry = digit(tmp>>n);
         }
         digits[len-dig-1] = carry;
@@ -326,7 +326,7 @@ template<int BI_DIGITS> struct bigint
 
     template<int X_DIGITS> bigint &lshift(const bigint<X_DIGITS> &x, int n)
     {
-        if(!len || !n) return *this;
+        if(!len || n<=0) return *this;
         int dig = n/BI_DIGIT_BITS;
         n %= BI_DIGIT_BITS;
         digit carry = 0;

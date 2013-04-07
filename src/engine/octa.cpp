@@ -674,6 +674,7 @@ static inline void gencubevert(const cube &c, int i, T &v)
 {
     switch(i)
     {
+        default:
 #define GENCUBEVERT(n, x, y, z) \
         case n: \
             v = T(edgeget(cubeedge(c, 0, y, z), x), \
@@ -687,9 +688,9 @@ static inline void gencubevert(const cube &c, int i, T &v)
 
 void genfaceverts(const cube &c, int orient, ivec v[4])
 {
-
     switch(orient)
     {
+        default:
 #define GENFACEORIENT(o, v0, v1, v2, v3) \
         case o: v0 v1 v2 v3 break;
 #define GENFACEVERT(o, n, x,y,z, xv,yv,zv) \
