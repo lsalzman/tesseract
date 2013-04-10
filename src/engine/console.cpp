@@ -365,7 +365,7 @@ vector<releaseaction> releaseactions;
 
 const char *addreleaseaction(char *s)
 {
-    if(!keypressed) return NULL;
+    if(!keypressed) { delete[] s; return NULL; }
     releaseaction &ra = releaseactions.add();
     ra.key = keypressed;
     ra.action = s;
