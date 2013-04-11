@@ -85,12 +85,12 @@ void draw_envbox_face(float s0, float t0, int x0, int y0, int z0,
                       GLuint texture)
 {
     glBindTexture(GL_TEXTURE_2D, texture);
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(x3, y3, z3); varray::attribf(s3, t3);
-    varray::attribf(x2, y2, z2); varray::attribf(s2, t2);
-    varray::attribf(x0, y0, z0); varray::attribf(s0, t0);
-    varray::attribf(x1, y1, z1); varray::attribf(s1, t1);
-    xtraverts += varray::end();
+    gle::begin(GL_TRIANGLE_STRIP);
+    gle::attribf(x3, y3, z3); gle::attribf(s3, t3);
+    gle::attribf(x2, y2, z2); gle::attribf(s2, t2);
+    gle::attribf(x0, y0, z0); gle::attribf(s0, t0);
+    gle::attribf(x1, y1, z1); gle::attribf(s1, t1);
+    xtraverts += gle::end();
 }
 
 void draw_envbox(int w, float z1clip = 0.0f, float z2clip = 1.0f, int faces = 0x3F, Texture **sky = NULL)
@@ -100,8 +100,8 @@ void draw_envbox(int w, float z1clip = 0.0f, float z2clip = 1.0f, int faces = 0x
     float v1 = 1-z1clip, v2 = 1-z2clip;
     int z1 = int(ceil(2*w*(z1clip-0.5f))), z2 = int(ceil(2*w*(z2clip-0.5f)));
 
-    varray::defvertex();
-    varray::deftexcoord0();
+    gle::defvertex();
+    gle::deftexcoord0();
 
     if(faces&0x01)
         draw_envbox_face(0.0f, v2,  -w, -w, z2,
@@ -139,7 +139,7 @@ void draw_envbox(int w, float z1clip = 0.0f, float z2clip = 1.0f, int faces = 0x
                          1.0f, 0.0f, -w, -w, w,
                          1.0f, 1.0f,  w, -w, w, sky[5] ? sky[5]->id : notexture->id);
 
-    varray::disable();
+    gle::disable();
 }
 
 void draw_env_overlay(int w, Texture *overlay = NULL, float tx = 0, float ty = 0)
@@ -147,36 +147,36 @@ void draw_env_overlay(int w, Texture *overlay = NULL, float tx = 0, float ty = 0
     float z = w*cloudheight, tsz = 0.5f*(1-cloudfade)/cloudscale, psz = w*(1-cloudfade);
     glBindTexture(GL_TEXTURE_2D, overlay ? overlay->id : notexture->id);
     vec color = vec::hexcolor(cloudcolour);
-    varray::color(color, cloudalpha);
-    varray::defvertex();
-    varray::deftexcoord0();
-    varray::begin(GL_TRIANGLE_FAN);
+    gle::color(color, cloudalpha);
+    gle::defvertex();
+    gle::deftexcoord0();
+    gle::begin(GL_TRIANGLE_FAN);
     loopi(cloudsubdiv+1)
     {
         vec p(1, 1, 0);
         p.rotate_around_z((-2.0f*M_PI*i)/cloudsubdiv);
-        varray::attribf(p.x*psz, p.y*psz, z); 
-            varray::attribf(tx + p.x*tsz, ty + p.y*tsz);
+        gle::attribf(p.x*psz, p.y*psz, z); 
+            gle::attribf(tx + p.x*tsz, ty + p.y*tsz);
     }
-    xtraverts += varray::end();
+    xtraverts += gle::end();
     float tsz2 = 0.5f/cloudscale;
-    varray::defvertex();
-    varray::deftexcoord0();
-    varray::defcolor(4);
-    varray::begin(GL_TRIANGLE_STRIP);
+    gle::defvertex();
+    gle::deftexcoord0();
+    gle::defcolor(4);
+    gle::begin(GL_TRIANGLE_STRIP);
     loopi(cloudsubdiv+1)
     {
         vec p(1, 1, 0);
         p.rotate_around_z((-2.0f*M_PI*i)/cloudsubdiv);
-        varray::attribf(p.x*psz, p.y*psz, z);
-            varray::attribf(tx + p.x*tsz, ty + p.y*tsz);
-            varray::attribf(color.r, color.g, color.b, cloudalpha);
-        varray::attribf(p.x*w, p.y*w, z);
-            varray::attribf(tx + p.x*tsz2, ty + p.y*tsz2);
-            varray::attribf(color.r, color.g, color.b, 0);
+        gle::attribf(p.x*psz, p.y*psz, z);
+            gle::attribf(tx + p.x*tsz, ty + p.y*tsz);
+            gle::attribf(color.r, color.g, color.b, cloudalpha);
+        gle::attribf(p.x*w, p.y*w, z);
+            gle::attribf(tx + p.x*tsz2, ty + p.y*tsz2);
+            gle::attribf(color.r, color.g, color.b, 0);
     }
-    xtraverts += varray::end();
-    varray::disable();
+    xtraverts += gle::end();
+    gle::disable();
 }
 
 static struct domevert
@@ -333,17 +333,17 @@ static void drawdome()
     glBindBuffer_(GL_ARRAY_BUFFER, domevbuf);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, domeebuf);
 
-    varray::vertexpointer(sizeof(domevert), &domeverts->pos);
-    varray::colorpointer(sizeof(domevert), &domeverts->color);
-    varray::enablevertex();
-    varray::enablecolor();
+    gle::vertexpointer(sizeof(domevert), &domeverts->pos);
+    gle::colorpointer(sizeof(domevert), &domeverts->color);
+    gle::enablevertex();
+    gle::enablecolor();
 
     glDrawRangeElements_(GL_TRIANGLES, 0, domenumverts-1, domenumindices + fogdomecap*domecapindices, GL_UNSIGNED_SHORT, domeindices);
     xtraverts += domenumverts;
     glde++;
 
-    varray::disablevertex();
-    varray::disablecolor();
+    gle::disablevertex();
+    gle::disablecolor();
 
     glBindBuffer_(GL_ARRAY_BUFFER, 0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -412,7 +412,7 @@ void drawskybox(int farplane)
 
     if(clampsky) glDepthRange(1, 1);
 
-    varray::color(vec::hexcolor(skyboxcolour));
+    gle::color(vec::hexcolor(skyboxcolour));
 
     glmatrix skymatrix = cammatrix, skyprojmatrix;
     skymatrix.d = vec4(0, 0, 0, 1);
@@ -434,7 +434,7 @@ void drawskybox(int farplane)
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        varray::color(vec::hexcolor(cloudboxcolour), cloudboxalpha);
+        gle::color(vec::hexcolor(cloudboxcolour), cloudboxalpha);
 
         skymatrix = cammatrix;
         skymatrix.d = vec4(0, 0, 0, 1);

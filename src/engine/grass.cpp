@@ -263,13 +263,13 @@ void rendergrass()
     glBindBuffer_(GL_ARRAY_BUFFER, grassvbo);
 
     const grassvert *ptr = 0;
-    varray::vertexpointer(sizeof(grassvert), ptr->pos.v);
-    varray::colorpointer(sizeof(grassvert), ptr->color);
-    varray::texcoord0pointer(sizeof(grassvert), &ptr->u);
-    varray::enablevertex();
-    varray::enablecolor();
-    varray::enabletexcoord0();
-    varray::enablequads();
+    gle::vertexpointer(sizeof(grassvert), ptr->pos.v);
+    gle::colorpointer(sizeof(grassvert), ptr->color);
+    gle::texcoord0pointer(sizeof(grassvert), &ptr->u);
+    gle::enablevertex();
+    gle::enablecolor();
+    gle::enabletexcoord0();
+    gle::enablequads();
  
     static Shader *grassshader = NULL;
     if(!grassshader) grassshader = lookupshaderbyname("grass");
@@ -300,14 +300,14 @@ void rendergrass()
             blend = g.tri->blend;
         }
 
-        varray::drawquads(g.offset, g.numquads);
+        gle::drawquads(g.offset, g.numquads);
         xtravertsva += 4*g.numquads;
     }
 
-    varray::disablequads();
-    varray::disablevertex();
-    varray::disablecolor();
-    varray::disabletexcoord0();
+    gle::disablequads();
+    gle::disablevertex();
+    gle::disablecolor();
+    gle::disabletexcoord0();
 
     glBindBuffer_(GL_ARRAY_BUFFER, 0);
 

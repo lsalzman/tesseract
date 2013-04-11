@@ -442,19 +442,19 @@ struct captureclientmode : clientmode
             {
                 if(!blips) 
                 {
-                    varray::defvertex(2);
-                    varray::deftexcoord0();
-                    varray::begin(GL_QUADS);
+                    gle::defvertex(2);
+                    gle::deftexcoord0();
+                    gle::begin(GL_QUADS);
                 }
                 float x = 0.5f*(dir.x*fw/blipsize - fw), y = 0.5f*(dir.y*fh/blipsize - fh);
-                varray::attribf(x,    y);    varray::attribf(0, 0);
-                varray::attribf(x+fw, y);    varray::attribf(1, 0);
-                varray::attribf(x+fw, y+fh); varray::attribf(1, 1);
-                varray::attribf(x,    y+fh); varray::attribf(0, 1);
+                gle::attribf(x,    y);    gle::attribf(0, 0);
+                gle::attribf(x+fw, y);    gle::attribf(1, 0);
+                gle::attribf(x+fw, y+fh); gle::attribf(1, 1);
+                gle::attribf(x,    y+fh); gle::attribf(0, 1);
             }
             blips++;
         }
-        if(blips && !basenumbers) varray::end();
+        if(blips && !basenumbers) gle::end();
     }
 
     int respawnwait(fpsent *d)
@@ -472,12 +472,12 @@ struct captureclientmode : clientmode
     {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         int s = 1800/4, x = 1800*w/h - s - s/10, y = s/10;
-        varray::colorf(1, 1, 1, minimapalpha);
+        gle::colorf(1, 1, 1, minimapalpha);
         if(minimapalpha >= 1) glDisable(GL_BLEND);
         bindminimap();
         drawminimap(d, x, y, s);
         if(minimapalpha >= 1) glEnable(GL_BLEND);
-        varray::colorf(1, 1, 1);
+        gle::colorf(1, 1, 1);
         float margin = 0.04f, roffset = s*margin, rsize = s + 2*roffset;
         settexture("packages/hud/radar.png", 3);
         drawradar(x - roffset, y - roffset, rsize);

@@ -213,16 +213,16 @@ struct decalrenderer
         glDepthMask(GL_FALSE);
         glEnable(GL_BLEND);
 
-        varray::enablevertex();
-        varray::enabletexcoord0();
-        varray::enablecolor();
+        gle::enablevertex();
+        gle::enabletexcoord0();
+        gle::enablecolor();
     }
 
     static void cleanuprenderstate()
     {
-        varray::disablevertex();
-        varray::disabletexcoord0();
-        varray::disablecolor();
+        gle::disablevertex();
+        gle::disabletexcoord0();
+        gle::disablecolor();
 
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
@@ -268,9 +268,9 @@ struct decalrenderer
             glBufferSubData_(GL_ARRAY_BUFFER, 0, endvert*sizeof(decalvert), verts);
 
         const decalvert *ptr = 0;
-        varray::vertexpointer(sizeof(decalvert), &ptr->pos);
-        varray::texcoord0pointer(sizeof(decalvert), &ptr->u);
-        varray::colorpointer(sizeof(decalvert), &ptr->color);
+        gle::vertexpointer(sizeof(decalvert), &ptr->pos);
+        gle::texcoord0pointer(sizeof(decalvert), &ptr->u);
+        gle::colorpointer(sizeof(decalvert), &ptr->color);
 
         glDrawArrays(GL_TRIANGLES, startvert, count);
         if(endvert < startvert) 

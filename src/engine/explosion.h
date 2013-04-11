@@ -156,8 +156,8 @@ static void setupexplosion()
         glBindBuffer_(GL_ARRAY_BUFFER, hemivbuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, hemiebuf);
 
-        varray::vertexpointer(sizeof(vec), hemiverts);
-        varray::enablevertex();
+        gle::vertexpointer(sizeof(vec), hemiverts);
+        gle::enablevertex();
     }
     else
     {
@@ -166,10 +166,10 @@ static void setupexplosion()
         glBindBuffer_(GL_ARRAY_BUFFER, spherevbuf);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, sphereebuf);
 
-        varray::vertexpointer(sizeof(spherevert), &sphereverts->pos);
-        varray::texcoord0pointer(sizeof(spherevert), &sphereverts->s);
-        varray::enablevertex();
-        varray::enabletexcoord0();
+        gle::vertexpointer(sizeof(spherevert), &sphereverts->pos);
+        gle::texcoord0pointer(sizeof(spherevert), &sphereverts->s);
+        gle::enablevertex();
+        gle::enabletexcoord0();
     }
 }
 
@@ -194,7 +194,7 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
         LOCALPARAMF(side, (inside ? -1 : 1));
         loopi(inside ? 2 : 1)
         {
-            varray::colorf(r, g, b, i ? a/2 : a);
+            gle::colorf(r, g, b, i ? a/2 : a);
             if(i) glDepthFunc(GL_GEQUAL);
             drawexpverts(spherenumverts, spherenumindices, sphereindices);
             if(i) glDepthFunc(GL_LESS);
@@ -203,7 +203,7 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
     }
     loopi(inside ? 2 : 1)
     {
-        varray::colorf(r, g, b, i ? a/2 : a);
+        gle::colorf(r, g, b, i ? a/2 : a);
         LOCALPARAMF(side, (1));
         if(i) glDepthFunc(GL_GEQUAL);
         if(inside)
@@ -220,8 +220,8 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
 
 static void cleanupexplosion()
 {
-    varray::disablevertex();
-    if(!explosion2d) varray::disabletexcoord0();
+    gle::disablevertex();
+    if(!explosion2d) gle::disabletexcoord0();
 
     glBindBuffer_(GL_ARRAY_BUFFER, 0);
     glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);

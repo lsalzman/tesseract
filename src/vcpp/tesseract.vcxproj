@@ -431,11 +431,11 @@
     <ClInclude Include="..\shared\cube.h" />
     <ClInclude Include="..\shared\ents.h" />
     <ClInclude Include="..\shared\geom.h" />
+    <ClInclude Include="..\shared\glemu.h" />
     <ClInclude Include="..\shared\glexts.h" />
     <ClInclude Include="..\shared\iengine.h" />
     <ClInclude Include="..\shared\igame.h" />
     <ClInclude Include="..\shared\tools.h" />
-    <ClInclude Include="..\shared\varray.h" />
     <ClInclude Include="..\fpsgame\ai.h" />
     <ClInclude Include="..\fpsgame\aiman.h" />
     <ClInclude Include="..\fpsgame\capture.h" />
@@ -977,6 +977,7 @@
     </ClCompile>
     <ClCompile Include="..\shared\crypto.cpp" />
     <ClCompile Include="..\shared\geom.cpp" />
+    <ClCompile Include="..\shared\glemu.cpp" />
     <ClCompile Include="..\shared\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

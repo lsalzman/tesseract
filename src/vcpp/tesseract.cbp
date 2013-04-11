@@ -229,13 +229,14 @@
 		<Unit filename="..\shared\ents.h" />
 		<Unit filename="..\shared\geom.cpp" />
 		<Unit filename="..\shared\geom.h" />
+		<Unit filename="..\shared\glemu.cpp" />
+		<Unit filename="..\shared\glemu.h" />
 		<Unit filename="..\shared\glexts.h" />
 		<Unit filename="..\shared\iengine.h" />
 		<Unit filename="..\shared\igame.h" />
 		<Unit filename="..\shared\stream.cpp" />
 		<Unit filename="..\shared\tools.cpp" />
 		<Unit filename="..\shared\tools.h" />
-		<Unit filename="..\shared\varray.h" />
 		<Unit filename="..\shared\zip.cpp" />
 		<Unit filename="mingw.rc">
 			<Option compilerVar="WINDRES" />

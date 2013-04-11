@@ -134,12 +134,12 @@ void restorebackground()
 
 void bgquad(float x, float y, float w, float h, float tx = 0, float ty = 0, float tw = 1, float th = 1)
 {
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(x,   y);   varray::attribf(tx,      ty);
-    varray::attribf(x+w, y);   varray::attribf(tx + tw, ty);
-    varray::attribf(x,   y+h); varray::attribf(tx,      ty + th);
-    varray::attribf(x+w, y+h); varray::attribf(tx + tw, ty + th);
-    varray::end();
+    gle::begin(GL_TRIANGLE_STRIP);
+    gle::attribf(x,   y);   gle::attribf(tx,      ty);
+    gle::attribf(x+w, y);   gle::attribf(tx + tw, ty);
+    gle::attribf(x,   y+h); gle::attribf(tx,      ty + th);
+    gle::attribf(x+w, y+h); gle::attribf(tx + tw, ty + th);
+    gle::end();
 }
 
 void renderbackground(const char *caption, Texture *mapshot, const char *mapname, const char *mapinfo, bool restore, bool force)
@@ -189,10 +189,10 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         resethudmatrix();
         hudshader->set();
 
-        varray::defvertex(2);
-        varray::deftexcoord0();
+        gle::defvertex(2);
+        gle::deftexcoord0();
 
-        varray::colorf(1, 1, 1);
+        gle::colorf(1, 1, 1);
         settexture("data/background.png", 0);
         float bu = w*0.67f/256.0f + backgroundu, bv = h*0.67f/256.0f + backgroundv;
         bgquad(0, 0, w, h, 0, 0, bu, bv);
@@ -286,7 +286,7 @@ void renderbackground(const char *caption, Texture *mapshot, const char *mapname
         }
         glDisable(GL_BLEND);
 
-        varray::disable();
+        gle::disable();
 
         if(!restore) swapbuffers();
     }
@@ -328,10 +328,10 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
     resethudmatrix();
     hudshader->set();
 
-    varray::defvertex(2);
-    varray::deftexcoord0();
+    gle::defvertex(2);
+    gle::deftexcoord0();
 
-    varray::colorf(1, 1, 1);
+    gle::colorf(1, 1, 1);
 
     float fh = 0.075f*min(w, h), fw = fh*10,
           fx = renderedframe ? w - fw - fh/4 : 0.5f*(w - fw), 
@@ -387,7 +387,7 @@ void renderprogress(float bar, const char *text, GLuint tex, bool background)   
         glDisable(GL_BLEND);
     }
     
-    varray::disable();
+    gle::disable();
 
     swapbuffers();
 }

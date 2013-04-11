@@ -424,8 +424,8 @@ struct animmodel : model
             if(lastvbuf!=vbuf)
             {
                 glBindBuffer_(GL_ARRAY_BUFFER, vbuf);
-                if(!lastvbuf) varray::enablevertex();
-                varray::vertexpointer(stride, v);
+                if(!lastvbuf) gle::enablevertex();
+                gle::vertexpointer(stride, v);
                 lastvbuf = vbuf;
             }
         }
@@ -434,12 +434,12 @@ struct animmodel : model
         {
             if(!enabletc)
             {
-                varray::enabletexcoord0();
+                gle::enabletexcoord0();
                 enabletc = true;
             }
             if(lasttcbuf!=lastvbuf)
             {
-                varray::texcoord0pointer(stride, v);
+                gle::texcoord0pointer(stride, v);
                 lasttcbuf = lastvbuf;
             }
         }
@@ -448,12 +448,12 @@ struct animmodel : model
         {
             if(!enablenormals)
             {
-                varray::enablenormal();
+                gle::enablenormal();
                 enablenormals = true;
             }
             if(lastnbuf!=lastvbuf)
             {
-                varray::normalpointer(stride, v);
+                gle::normalpointer(stride, v);
                 lastnbuf = lastvbuf;
             }
         }
@@ -462,12 +462,12 @@ struct animmodel : model
         {
             if(!enabletangents)
             {
-                varray::enabletangent();
+                gle::enabletangent();
                 enabletangents = true;
             }
             if(lastxbuf!=lastvbuf)
             {
-                varray::tangentpointer(stride, v);
+                gle::tangentpointer(stride, v);
                 lastxbuf = lastvbuf;
             }
         }
@@ -476,14 +476,14 @@ struct animmodel : model
         {
             if(!enablebones)
             {
-                varray::enableboneweight();
-                varray::enableboneindex();
+                gle::enableboneweight();
+                gle::enableboneindex();
                 enablebones = true;
             }
             if(lastbbuf!=lastvbuf)
             {
-                varray::boneweightpointer(stride, wv);
-                varray::boneindexpointer(stride, bv);
+                gle::boneweightpointer(stride, wv);
+                gle::boneindexpointer(stride, bv);
                 lastbbuf = lastvbuf;
             }
         }
@@ -1379,26 +1379,26 @@ struct animmodel : model
 
     static void disablebones()
     {
-        varray::disableboneweight();
-        varray::disableboneindex();
+        gle::disableboneweight();
+        gle::disableboneindex();
         enablebones = false;
     }
 
     static void disabletangents()
     {
-        varray::disabletangent();
+        gle::disabletangent();
         enabletangents = false;
     }
 
     static void disabletc()
     {
-        varray::disabletexcoord0();
+        gle::disabletexcoord0();
         enabletc = false;
     }
 
     static void disablenormals()
     {
-        varray::disablenormal();
+        gle::disablenormal();
         enablenormals = false;
     }
 
@@ -1406,7 +1406,7 @@ struct animmodel : model
     {
         glBindBuffer_(GL_ARRAY_BUFFER, 0);
         glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
-        varray::disablevertex();
+        gle::disablevertex();
         if(enabletc) disabletc();
         if(enablenormals) disablenormals();
         if(enabletangents) disabletangents();

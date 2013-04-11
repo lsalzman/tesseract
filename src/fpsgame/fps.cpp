@@ -665,14 +665,14 @@ namespace game
     {
         settexture("packages/hud/items.png");
         float tsz = 0.25f, tx = tsz*(icon%4), ty = tsz*(icon/4);
-        varray::defvertex(2);
-        varray::deftexcoord0();
-        varray::begin(GL_TRIANGLE_STRIP);
-        varray::attribf(x,    y);    varray::attribf(tx,     ty);
-        varray::attribf(x+sz, y);    varray::attribf(tx+tsz, ty);
-        varray::attribf(x,    y+sz); varray::attribf(tx,     ty+tsz);
-        varray::attribf(x+sz, y+sz); varray::attribf(tx+tsz, ty+tsz);
-        varray::end();
+        gle::defvertex(2);
+        gle::deftexcoord0();
+        gle::begin(GL_TRIANGLE_STRIP);
+        gle::attribf(x,    y);    gle::attribf(tx,     ty);
+        gle::attribf(x+sz, y);    gle::attribf(tx+tsz, ty);
+        gle::attribf(x,    y+sz); gle::attribf(tx,     ty+tsz);
+        gle::attribf(x+sz, y+sz); gle::attribf(tx+tsz, ty+tsz);
+        gle::end();
     }
 
     float abovegameplayhud(int w, int h)

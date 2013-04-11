@@ -600,34 +600,34 @@ struct editor
                 if(ey > maxy) { ey = maxy; pey = pixelheight - FONTH; pex = pixelwidth; }
 
                 hudnotextureshader->set();
-                varray::colorub(0xA0, 0x80, 0x80);
-                varray::defvertex(2);
-                varray::begin(GL_QUADS);
+                gle::colorub(0xA0, 0x80, 0x80);
+                gle::defvertex(2);
+                gle::begin(GL_QUADS);
                 if(psy == pey) 
                 {
-                    varray::attribf(x+psx, y+psy);
-                    varray::attribf(x+pex, y+psy);
-                    varray::attribf(x+pex, y+pey+FONTH);
-                    varray::attribf(x+psx, y+pey+FONTH);
+                    gle::attribf(x+psx, y+psy);
+                    gle::attribf(x+pex, y+psy);
+                    gle::attribf(x+pex, y+pey+FONTH);
+                    gle::attribf(x+psx, y+pey+FONTH);
                 } 
                 else 
-                {   varray::attribf(x+psx,        y+psy);
-                    varray::attribf(x+psx,        y+psy+FONTH);
-                    varray::attribf(x+pixelwidth, y+psy+FONTH);
-                    varray::attribf(x+pixelwidth, y+psy);
+                {   gle::attribf(x+psx,        y+psy);
+                    gle::attribf(x+psx,        y+psy+FONTH);
+                    gle::attribf(x+pixelwidth, y+psy+FONTH);
+                    gle::attribf(x+pixelwidth, y+psy);
                     if(pey-psy > FONTH) 
                     {
-                        varray::attribf(x,            y+psy+FONTH);
-                        varray::attribf(x+pixelwidth, y+psy+FONTH);
-                        varray::attribf(x+pixelwidth, y+pey);
-                        varray::attribf(x,            y+pey);
+                        gle::attribf(x,            y+psy+FONTH);
+                        gle::attribf(x+pixelwidth, y+psy+FONTH);
+                        gle::attribf(x+pixelwidth, y+pey);
+                        gle::attribf(x,            y+pey);
                     }
-                    varray::attribf(x,     y+pey);
-                    varray::attribf(x,     y+pey+FONTH);
-                    varray::attribf(x+pex, y+pey+FONTH);
-                    varray::attribf(x+pex, y+pey);
+                    gle::attribf(x,     y+pey);
+                    gle::attribf(x,     y+pey+FONTH);
+                    gle::attribf(x+pex, y+pey+FONTH);
+                    gle::attribf(x+pex, y+pey);
                 }
-                varray::end();
+                gle::end();
                 hudshader->set();
             }
         }
@@ -643,20 +643,20 @@ struct editor
             if(linewrap && height > FONTH) // line wrap indicator
             {   
                 hudnotextureshader->set();
-                varray::colorub(0x80, 0xA0, 0x80);
-                varray::defvertex(2);
-                varray::begin(GL_TRIANGLE_STRIP);
-                varray::attribf(x,         y+h+FONTH);
-                varray::attribf(x,         y+h+height);
-                varray::attribf(x-FONTW/2, y+h+FONTH);
-                varray::attribf(x-FONTW/2, y+h+height);
-                varray::end();
+                gle::colorub(0x80, 0xA0, 0x80);
+                gle::defvertex(2);
+                gle::begin(GL_TRIANGLE_STRIP);
+                gle::attribf(x,         y+h+FONTH);
+                gle::attribf(x,         y+h+height);
+                gle::attribf(x-FONTW/2, y+h+FONTH);
+                gle::attribf(x-FONTW/2, y+h+height);
+                gle::end();
                 hudshader->set();
             }
             h+=height;
         }
 
-        varray::disable();
+        gle::disable();
     }
 };
 

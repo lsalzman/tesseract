@@ -61,6 +61,7 @@
 		D11B02510F830BA400334D69 /* waypoint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D11B024D0F830BA400334D69 /* waypoint.cpp */; };
 		D16BD00D0D7000EA0053CECE /* dynlight.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D16BD00C0D7000EA0053CECE /* dynlight.cpp */; };
 		D16E4E140ED107C300C401A2 /* blend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D16E4E130ED107C300C401A2 /* blend.cpp */; };
+		D19E776111977E82003753EF /* glemu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D19E776111977E82003753EF /* glemu.cpp */; };
 		D1B750F516278BF500FA16AA /* aa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B750F016278BF500FA16AA /* aa.cpp */; };
 		D1B750F616278BF500FA16AA /* renderlights.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B750F316278BF500FA16AA /* renderlights.cpp */; };
 		D1B87D600F7F57C80063BD1C /* crypto.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D1B87D5D0F7F57C80063BD1C /* crypto.cpp */; };
@@ -192,7 +193,8 @@
 		D19E775D11977E82003753EF /* iqm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = iqm.h; sourceTree = "<group>"; };
 		D19E775E11977E82003753EF /* mpr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mpr.h; sourceTree = "<group>"; };
 		D19E776011977E82003753EF /* smd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = smd.h; sourceTree = "<group>"; };
-		D19E776111977E82003753EF /* varray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = varray.h; sourceTree = "<group>"; };
+		D19E776111977E82003753EF /* glemu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = glemu.cpp; sourceTree = "<group>"; };
+		D19E776111977E82003753EF /* glemu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = glemu.h; sourceTree = "<group>"; };
 		D1AB44FB0E245F7A00B5D3A5 /* help */ = {isa = PBXFileReference; lastKnownFileType = folder; path = help; sourceTree = "<group>"; };
 		D1B750F016278BF500FA16AA /* aa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = aa.cpp; sourceTree = "<group>"; };
 		D1B750F216278BF500FA16AA /* hitzone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = hitzone.h; sourceTree = "<group>"; };
@@ -442,7 +444,8 @@
 				B9AC7AC70D06DB44005506F8 /* iengine.h */,
 				B9AC7AC80D06DB44005506F8 /* igame.h */,
 				B9AC7ACE0D06DB44005506F8 /* tools.h */,
-                D19E776111977E82003753EF /* varray.h */,
+				D19E776111977E82003753EF /* glemu.cpp */,
+                D19E776111977E82003753EF /* glemu.h */,
 			);
 			name = shared;
 			path = ../shared;
@@ -579,6 +582,7 @@
 				D1C660CA0D5467C8002E52C1 /* pvs.cpp in Sources */,
 				D16BD00D0D7000EA0053CECE /* dynlight.cpp in Sources */,
 				D16E4E140ED107C300C401A2 /* blend.cpp in Sources */,
+				D19E776111977E82003753EF /* glemu.cpp in Sources */,
 				D1D07EFE0F645590007098A8 /* client.cpp in Sources */,
 				D1D07EFF0F645590007098A8 /* entities.cpp in Sources */,
 				D1D07F020F645590007098A8 /* render.cpp in Sources */,

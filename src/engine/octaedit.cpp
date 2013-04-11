@@ -10,15 +10,15 @@ void boxs(int orient, vec o, const vec &s)
     float f = !outline ? 0 : (dc>0 ? 0.2f : -0.2f);
     o[D[d]] += float(dc) * s[D[d]] + f,
 
-    varray::defvertex();
-    varray::begin(GL_LINE_LOOP);
+    gle::defvertex();
+    gle::begin(GL_LINE_LOOP);
 
-    varray::attrib(o); o[R[d]] += s[R[d]];
-    varray::attrib(o); o[C[d]] += s[C[d]];
-    varray::attrib(o); o[R[d]] -= s[R[d]];
-    varray::attrib(o);
+    gle::attrib(o); o[R[d]] += s[R[d]];
+    gle::attrib(o); o[C[d]] += s[C[d]];
+    gle::attrib(o); o[R[d]] -= s[R[d]];
+    gle::attrib(o);
     
-    xtraverts += varray::end();
+    xtraverts += gle::end();
 }
 
 void boxs3D(const vec &o, vec s, int g)
@@ -40,23 +40,23 @@ void boxsgrid(int orient, vec o, vec s, int g)
 
     o[D[d]] += dc * s[D[d]]*g + f;
 
-    varray::defvertex();
-    varray::begin(GL_LINES);
+    gle::defvertex();
+    gle::begin(GL_LINES);
     loop(x, xs) {
         o[R[d]] += g;
-        varray::attrib(o);
+        gle::attrib(o);
         o[C[d]] += ys*g;
-        varray::attrib(o);
+        gle::attrib(o);
         o[C[d]] = oy;
     }
     loop(y, ys) {
         o[C[d]] += g;
         o[R[d]] = ox;
-        varray::attrib(o);
+        gle::attrib(o);
         o[R[d]] += xs*g;
-        varray::attrib(o);
+        gle::attrib(o);
     }
-    xtraverts += varray::end();
+    xtraverts += gle::end();
 }
 
 selinfo sel, lastsel;
@@ -443,9 +443,9 @@ void rendereditcursor()
     if(!moving && !hovering && !hidecursor)
     {
         if(hmapedit==1)
-            varray::colorub(0, hmapsel ? 255 : 40, 0);
+            gle::colorub(0, hmapsel ? 255 : 40, 0);
         else
-            varray::colorub(120,120,120);
+            gle::colorub(120,120,120);
         boxs(orient, lu.tovec(), vec(lusize));
     }
 
@@ -453,11 +453,11 @@ void rendereditcursor()
     if(havesel)
     {
         d = dimension(sel.orient);
-        varray::colorub(50,50,50);   // grid
+        gle::colorub(50,50,50);   // grid
         boxsgrid(sel.orient, sel.o.tovec(), sel.s.tovec(), sel.grid);
-        varray::colorub(200,0,0);    // 0 reference
+        gle::colorub(200,0,0);    // 0 reference
         boxs3D(sel.o.tovec().sub(0.5f*min(gridsize*0.25f, 2.0f)), vec(min(gridsize*0.25f, 2.0f)), 1);
-        varray::colorub(200,200,200);// 2D selection box
+        gle::colorub(200,200,200);// 2D selection box
         vec co(sel.o.v), cs(sel.s.v);
         co[R[d]] += 0.5f*(sel.cx*gridsize);
         co[C[d]] += 0.5f*(sel.cy*gridsize);
@@ -466,9 +466,9 @@ void rendereditcursor()
         cs[D[d]] *= gridsize;
         boxs(sel.orient, co, cs);
         if(hmapedit==1)         // 3D selection box
-            varray::colorub(0,120,0);
+            gle::colorub(0,120,0);
         else 
-            varray::colorub(0,0,120);
+            gle::colorub(0,0,120);
         boxs3D(sel.o.tovec(), sel.s.tovec(), sel.grid);
     }
    
@@ -2283,8 +2283,8 @@ void rendertexturepanel(int w, int h)
 
         int y = 50, gap = 10;
 
-        varray::defvertex(2);
-        varray::deftexcoord0();
+        gle::defvertex(2);
+        gle::deftexcoord0();
 
         loopi(7)
         {
@@ -2317,29 +2317,29 @@ void rendertexturepanel(int w, int h)
                 glBindTexture(GL_TEXTURE_2D, tex->id);
                 loopj(glowtex ? 3 : 2)
                 {
-                    if(j < 2) varray::color(vec(vslot.colorscale).mul(j), texpaneltimer/1000.0f);
+                    if(j < 2) gle::color(vec(vslot.colorscale).mul(j), texpaneltimer/1000.0f);
                     else
                     {
                         glBindTexture(GL_TEXTURE_2D, glowtex->id);
                         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-                        varray::color(vslot.glowcolor, texpaneltimer/1000.0f);
+                        gle::color(vslot.glowcolor, texpaneltimer/1000.0f);
                     }
-                    varray::begin(GL_TRIANGLE_STRIP);
-                    varray::attribf(x,   y);   varray::attrib(tc[0]);
-                    varray::attribf(x+r, y);   varray::attrib(tc[1]);
-                    varray::attribf(x,   y+r); varray::attrib(tc[3]);
-                    varray::attribf(x+r, y+r); varray::attrib(tc[2]);
-                    xtraverts += varray::end();
+                    gle::begin(GL_TRIANGLE_STRIP);
+                    gle::attribf(x,   y);   gle::attrib(tc[0]);
+                    gle::attribf(x+r, y);   gle::attrib(tc[1]);
+                    gle::attribf(x,   y+r); gle::attrib(tc[3]);
+                    gle::attribf(x+r, y+r); gle::attrib(tc[2]);
+                    xtraverts += gle::end();
                     if(j==1 && layertex)
                     {
-                        varray::color(layer->colorscale, texpaneltimer/1000.0f);
+                        gle::color(layer->colorscale, texpaneltimer/1000.0f);
                         glBindTexture(GL_TEXTURE_2D, layertex->id);
-                        varray::begin(GL_TRIANGLE_STRIP);
-                        varray::attribf(x+r/2, y+r/2); varray::attrib(tc[0]);
-                        varray::attribf(x+r,   y+r/2); varray::attrib(tc[1]);
-                        varray::attribf(x+r/2, y+r);   varray::attrib(tc[3]);
-                        varray::attribf(x+r,   y+r);   varray::attrib(tc[2]);
-                        xtraverts += varray::end();
+                        gle::begin(GL_TRIANGLE_STRIP);
+                        gle::attribf(x+r/2, y+r/2); gle::attrib(tc[0]);
+                        gle::attribf(x+r,   y+r/2); gle::attrib(tc[1]);
+                        gle::attribf(x+r/2, y+r);   gle::attrib(tc[3]);
+                        gle::attribf(x+r,   y+r);   gle::attrib(tc[2]);
+                        xtraverts += gle::end();
                     }
                     if(!j)
                     {
@@ -2353,7 +2353,7 @@ void rendertexturepanel(int w, int h)
             y += s+gap;
         }
 
-        varray::disable();
+        gle::disable();
         pophudmatrix(true, false);
         hudshader->set();
     }

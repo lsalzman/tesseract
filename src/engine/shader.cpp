@@ -241,7 +241,7 @@ static void linkglslprogram(Shader &s, bool msg = true)
             glBindAttribLocation_(s.program, a.loc, a.name);
             attribs |= 1<<a.loc;
         }
-        loopi(varray::MAXATTRIBS) if(!(attribs&(1<<i))) glBindAttribLocation_(s.program, i, varray::attribnames[i]);
+        loopi(gle::MAXATTRIBS) if(!(attribs&(1<<i))) glBindAttribLocation_(s.program, i, gle::attribnames[i]);
         if(glslversion >= 130 && glslversion < 330 && (glslversion < 150 || !hasEAL) && glversion >= 300) loopv(s.fragdatalocs) 
         {
             FragDataLoc &d = s.fragdatalocs[i];

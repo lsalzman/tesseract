@@ -958,7 +958,7 @@ void gl_init(int w, int h)
 
     renderpath = R_GLSLANG;
 
-    varray::setup();
+    gle::setup();
 
     extern void setupshaders();
     setupshaders();
@@ -970,9 +970,6 @@ void gl_init(int w, int h)
 
     GLERROR;
 }
-
-#define VARRAY_INTERNAL
-#include "varray.h"
 
 VAR(wireframe, 0, 0, 1);
 
@@ -1503,67 +1500,67 @@ bool calcspotscissor(const vec &origin, float radius, const vec &dir, int spot, 
 
 void screenquad()
 {
-    varray::defvertex(2);
-    varray::begin(GL_TRIANGLE_STRIP);
-    varray::attribf(1, -1);
-    varray::attribf(-1, -1);
-    varray::attribf(1, 1);
-    varray::attribf(-1, 1);
-    varray::end();
-    varray::disable();
+    gle::defvertex(2);
+    gle::begin(GL_TRIANGLE_STRIP);
+    gle::attribf(1, -1);
+    gle::attribf(-1, -1);
+    gle::attribf(1, 1);
+    gle::attribf(-1, 1);
+    gle::end();
+    gle::disable();
 }
 
 #define SCREENQUAD1(x1, y1, x2, y2, sx1, sy1, sx2, sy2) { \
-    varray::defvertex(2); \
-    varray::deftexcoord0(); \
-    varray::begin(GL_TRIANGLE_STRIP); \
-    varray::attribf(x2, y1); varray::attribf(sx2, sy1); \
-    varray::attribf(x1, y1); varray::attribf(sx1, sy1); \
-    varray::attribf(x2, y2); varray::attribf(sx2, sy2); \
-    varray::attribf(x1, y2); varray::attribf(sx1, sy2); \
-    varray::end(); \
+    gle::defvertex(2); \
+    gle::deftexcoord0(); \
+    gle::begin(GL_TRIANGLE_STRIP); \
+    gle::attribf(x2, y1); gle::attribf(sx2, sy1); \
+    gle::attribf(x1, y1); gle::attribf(sx1, sy1); \
+    gle::attribf(x2, y2); gle::attribf(sx2, sy2); \
+    gle::attribf(x1, y2); gle::attribf(sx1, sy2); \
+    gle::end(); \
 }
 
 void screenquad(float sw, float sh)
 {
     SCREENQUAD1(-1, -1, 1, 1, 0, 0, sw, sh);
-    varray::disable();
+    gle::disable();
 }
 
 void screenquadflipped(float sw, float sh)
 {
     SCREENQUAD1(-1, -1, 1, 1, 0, sh, sw, 0);
-    varray::disable();
+    gle::disable();
 }
 
 #define SCREENQUAD2(x1, y1, x2, y2, sx1, sy1, sx2, sy2, tx1, ty1, tx2, ty2) { \
-    varray::defvertex(2); \
-    varray::deftexcoord0(); \
-    varray::deftexcoord1(); \
-    varray::begin(GL_TRIANGLE_STRIP); \
-    varray::attribf(x2, y1); varray::attribf(sx2, sy1); varray::attribf(tx2, ty1); \
-    varray::attribf(x1, y1); varray::attribf(sx1, sy1); varray::attribf(tx1, ty1); \
-    varray::attribf(x2, y2); varray::attribf(sx2, sy2); varray::attribf(tx2, ty2); \
-    varray::attribf(x1, y2); varray::attribf(sx1, sy2); varray::attribf(tx1, ty2); \
-    varray::end(); \
+    gle::defvertex(2); \
+    gle::deftexcoord0(); \
+    gle::deftexcoord1(); \
+    gle::begin(GL_TRIANGLE_STRIP); \
+    gle::attribf(x2, y1); gle::attribf(sx2, sy1); gle::attribf(tx2, ty1); \
+    gle::attribf(x1, y1); gle::attribf(sx1, sy1); gle::attribf(tx1, ty1); \
+    gle::attribf(x2, y2); gle::attribf(sx2, sy2); gle::attribf(tx2, ty2); \
+    gle::attribf(x1, y2); gle::attribf(sx1, sy2); gle::attribf(tx1, ty2); \
+    gle::end(); \
 }
 
 void screenquad(float sw, float sh, float sw2, float sh2)
 {
     SCREENQUAD2(-1, -1, 1, 1, 0, 0, sw, sh, 0, 0, sw2, sh2);
-    varray::disable();
+    gle::disable();
 }
 
 void screenquadoffset(float x, float y, float w, float h)
 {
     SCREENQUAD1(-1, -1, 1, 1, x, y, x+w, y+h);
-    varray::disable();
+    gle::disable();
 }
 
 void screenquadoffset(float x, float y, float w, float h, float x2, float y2, float w2, float h2)
 {
     SCREENQUAD2(-1, -1, 1, 1, x, y, x+w, y+h, x2, y2, x2+w2, y2+h2);
-    varray::disable();
+    gle::disable();
 }
 
 void hudquad(float x, float y, float w, float h, float tx, float ty, float tw, float th)
@@ -1574,7 +1571,7 @@ void hudquad(float x, float y, float w, float h, float tx, float ty, float tw, f
 void debugquad(float x, float y, float w, float h, float tx, float ty, float tw, float th)
 {
     SCREENQUAD1(x, y, x+w, y+h, tx, ty+th, tx+tw, ty);
-    varray::disable();
+    gle::disable();
 }
 
 VARR(fog, 16, 4000, 1000024);
@@ -1711,7 +1708,7 @@ void drawfogoverlay(int fogmat, float fogbelow, float fogblend, int abovemat)
     blendfogoverlay(fogmat, fogbelow, fogblend, overlay);
     blendfogoverlay(abovemat, 0, 1-fogblend, overlay);
 
-    varray::color(overlay);
+    gle::color(overlay);
     screenquad();
 
     glDisable(GL_BLEND);
@@ -2229,9 +2226,9 @@ void drawdamagecompass(int w, int h)
         if(!dirs)
         {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            varray::colorf(1, 0, 0, damagecompassalpha/100.0f);
-            varray::defvertex();
-            varray::begin(GL_TRIANGLES);
+            gle::colorf(1, 0, 0, damagecompassalpha/100.0f);
+            gle::defvertex();
+            gle::begin(GL_TRIANGLES);
         }
         dirs++;
 
@@ -2245,15 +2242,15 @@ void drawdamagecompass(int w, int h)
         m.translate(0, offset, 0);
         m.scale(size*scale);
         
-        varray::attrib(m.transform(vec2(1, 1)));
-        varray::attrib(m.transform(vec2(-1, 1)));
-        varray::attrib(m.transform(vec2(0, 0)));
+        gle::attrib(m.transform(vec2(1, 1)));
+        gle::attrib(m.transform(vec2(-1, 1)));
+        gle::attrib(m.transform(vec2(0, 0)));
 
         // fade in log space so short blips don't disappear too quickly
         scale -= float(curtime)/damagecompassfade;
         damagedirs[i] = scale > 0 ? (pow(logscale, scale) - 1) / (logscale - 1) : 0;
     }
-    if(dirs) varray::end();
+    if(dirs) gle::end();
 }
 
 int damageblendmillis = 0;
@@ -2286,7 +2283,7 @@ void drawdamagescreen(int w, int h)
     float fade = damagescreenalpha/100.0f;
     if(damageblendmillis - lastmillis < damagescreenfade)
         fade *= float(damageblendmillis - lastmillis)/damagescreenfade;
-    varray::colorf(fade, fade, fade, fade);
+    gle::colorf(fade, fade, fade, fade);
 
     hudquad(0, 0, w, h);
 }
@@ -2370,7 +2367,7 @@ void drawcrosshair(int w, int h)
     }
     if(crosshair->type&Texture::ALPHA) glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     else glBlendFunc(GL_ONE, GL_ONE);
-    varray::colorf(r, g, b);
+    gle::colorf(r, g, b);
     float x = cx*w - (windowhit ? 0 : chsize/2.0f);
     float y = cy*h - (windowhit ? 0 : chsize/2.0f);
     glBindTexture(GL_TEXTURE_2D, crosshair->id);
@@ -2401,7 +2398,7 @@ void gl_drawhud(int w, int h)
     resethudmatrix();
     hudshader->set();
     
-    varray::colorf(1, 1, 1);
+    gle::colorf(1, 1, 1);
 
     debuglights();
 
@@ -2549,7 +2546,7 @@ void gl_drawhud(int w, int h)
 
     drawcrosshair(w, h);
 
-    varray::disable();
+    gle::disable();
 
     glDisable(GL_BLEND);
 
@@ -2565,6 +2562,6 @@ void cleanupgl()
 {
     clearminimap();
     cleanuptimers();
-    varray::cleanup();
+    gle::cleanup();
 }
 
