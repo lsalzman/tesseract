@@ -7,6 +7,15 @@ HVARFR(ambient, 1, 0x191919, 0xFFFFFF,
     ambientcolor = bvec((ambient>>16)&0xFF, (ambient>>8)&0xFF, ambient&0xFF);
 });
 FVARR(ambientscale, 0, 1, 16);
+
+bvec skylightcolor(0, 0, 0);
+HVARFR(skylight, 0, 0, 0xFFFFFF,
+{
+    if(skylight <= 255) skylight |= (skylight<<8) | (skylight<<16);
+    skylightcolor = bvec((skylight>>16)&0xFF, (skylight>>8)&0xFF, skylight&0xFF);
+});
+FVARR(skylightscale, 0, 1, 16);
+
 extern void setupsunlight();
 bvec sunlightcolor(0, 0, 0);
 HVARFR(sunlight, 0, 0, 0xFFFFFF,
