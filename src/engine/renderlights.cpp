@@ -1402,6 +1402,7 @@ VAR(rhdyntex, 0, 0, 1);
 VAR(rhdynmm, 0, 0, 1);
 VARFR(gidist, 0, 384, 1024, { cleardeferredlightshaders(); if(!gidist) cleanupradiancehints(); });
 FVARFR(giscale, 0, 1.5f, 1e3f, { cleardeferredlightshaders(); if(!giscale) cleanupradiancehints(); });
+FVARR(giaoscale, 0, 1, 1e3f);
 VARFP(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
 
 VAR(debugrsm, 0, 0, 2);
@@ -2369,7 +2370,7 @@ void renderlights(float bsx1 = -1, float bsy1 = -1, float bsx2 = 1, float bsy2 =
             GLOBALPARAM(sunlightdir, sunlightdir);
             GLOBALPARAMF(sunlightcolor, (sunlightcolor.x*lightscale*sunlightscale, sunlightcolor.y*lightscale*sunlightscale, sunlightcolor.z*lightscale*sunlightscale));
             GLOBALPARAMF(giscale, (2*giscale));
-            GLOBALPARAMF(skylightcolor, (2*skylightcolor.x*lightscale*skylightscale, 2*skylightcolor.y*lightscale*skylightscale, 2*skylightcolor.z*lightscale*skylightscale));
+            GLOBALPARAMF(skylightcolor, (2*giaoscale*skylightcolor.x*lightscale*skylightscale, 2*giaoscale*skylightcolor.y*lightscale*skylightscale, 2*giaoscale*skylightcolor.z*lightscale*skylightscale));
         }
         if(!batchsunlight) sunpass = true;
     }
