@@ -51,6 +51,7 @@ getsundir
 You can control the diffuse global illumination of sunlight using the following parameters:
 giscale - scales the contribution of indirect light
 gidist - limits the distance which indirect light travels (smaller values are more intense, but higher values allow farther travel)
+giaoscale - controls the contribution of atmospheric light
 skylight - controls the color of atmospheric light
 
 Screen-space ambient occlusion affects mostly ambient light and to a lesser degree sunlight,
