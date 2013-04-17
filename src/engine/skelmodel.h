@@ -527,6 +527,8 @@ struct skelmodel : animmodel
     {
         int bone, target, parent;
         float pitchmin, pitchmax, pitchscale, pitchangle, pitchtotal;
+
+        pitchcorrect() : parent(-1), pitchangle(0), pitchtotal(0) {}
     };
 
     struct skeleton
