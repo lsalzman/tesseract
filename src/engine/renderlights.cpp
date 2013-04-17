@@ -2976,6 +2976,7 @@ void radiancehints::renderslices()
     glBindFramebuffer_(GL_FRAMEBUFFER, rhfbo);
     glViewport(0, 0, rhgrid+2*rhborder, rhgrid+2*rhborder);
 
+    GLOBALPARAMF(gidist, (gidist));
     GLOBALPARAMF(rhatten, (1.0f/(gidist*gidist)));
     GLOBALPARAMF(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
     GLOBALPARAMF(rhaoheight, (gidist*rhaoheight));
