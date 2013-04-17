@@ -1393,7 +1393,6 @@ FVAR(rhnudge, 0, 0.5f, 4);
 FVARF(rhsplitweight, 0.20f, 0.6f, 0.95f, clearradiancehintscache());
 VARF(rhgrid, 3, 27, 128, cleanupradiancehints());
 FVARF(rsmspread, 0, 0.15f, 1, clearradiancehintscache());
-FVARF(rhaoheight, 0, 0.1f, 1, clearradiancehintscache());
 VAR(rhclipgrid, 0, 1, 1);
 VARF(rhcache, 0, 1, 1, cleanupradiancehints());
 VAR(rsmcull, 0, 1, 1);
@@ -2976,10 +2975,10 @@ void radiancehints::renderslices()
     glBindFramebuffer_(GL_FRAMEBUFFER, rhfbo);
     glViewport(0, 0, rhgrid+2*rhborder, rhgrid+2*rhborder);
 
-    GLOBALPARAMF(gidist, (gidist));
     GLOBALPARAMF(rhatten, (1.0f/(gidist*gidist)));
     GLOBALPARAMF(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
-    GLOBALPARAMF(rhaoheight, (gidist*rhaoheight));
+    GLOBALPARAMF(rhaoatten, (1.0f/(gidist*rsmspread)));
+    GLOBALPARAMF(rhaoheight, (gidist*rsmspread));
 
     glmatrix rsmtcmatrix;
     rsmtcmatrix.identity();
