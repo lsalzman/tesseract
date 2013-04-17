@@ -402,11 +402,11 @@ void drawskybox(int farplane)
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
     }
-    
-    if(ldrscale < 1 && skyboxoverbright > 1 && skyboxoverbrightthreshold < 1)
+   
+    if(ldrscale < 1 && (skyboxoverbrightmin != 1 || (skyboxoverbright > 1 && skyboxoverbrightthreshold < 1)))
     {
         SETSHADER(skyboxoverbright);
-        LOCALPARAMF(overbrightparams, (skyboxoverbright-1, skyboxoverbrightthreshold));
+        LOCALPARAMF(overbrightparams, (skyboxoverbrightmin, max(skyboxoverbright, skyboxoverbrightmin), skyboxoverbrightthreshold));
     }
     else SETSHADER(skybox);
 
