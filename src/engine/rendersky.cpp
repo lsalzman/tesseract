@@ -55,6 +55,7 @@ Texture *loadskyoverlay(const char *basename)
 SVARFR(skybox, "", { if(skybox[0]) loadsky(skybox, sky); }); 
 HVARR(skyboxcolour, 0, 0xFFFFFF, 0xFFFFFF);
 FVARR(skyboxoverbright, 1, 2, 16);
+FVARR(skyboxoverbrightmin, 0, 1, 16);
 FVARR(skyboxoverbrightthreshold, 0, 0.7f, 1);
 FVARR(spinsky, -720, 0, 720);
 VARR(yawsky, 0, 0, 360);
