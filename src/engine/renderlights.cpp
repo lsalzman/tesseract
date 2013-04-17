@@ -1400,7 +1400,7 @@ VAR(rsmcull, 0, 1, 1);
 VARFP(rhtaps, 0, 20, 32, cleanupradiancehints());
 VAR(rhdyntex, 0, 0, 1);
 VAR(rhdynmm, 0, 0, 1);
-VARFR(gidist, 0, 384, 1024, { cleardeferredlightshaders(); if(!gidist) cleanupradiancehints(); });
+VARFR(gidist, 0, 384, 1024, { clearradiancehintscache(); cleardeferredlightshaders(); if(!gidist) cleanupradiancehints(); });
 FVARFR(giscale, 0, 1.5f, 1e3f, { cleardeferredlightshaders(); if(!giscale) cleanupradiancehints(); });
 FVARR(giaoscale, 0, 3, 1e3f);
 VARFP(gi, 0, 1, 1, { cleardeferredlightshaders(); cleanupradiancehints(); });
