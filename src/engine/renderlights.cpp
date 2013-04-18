@@ -2977,6 +2977,7 @@ void radiancehints::renderslices()
 
     GLOBALPARAMF(rhatten, (1.0f/(gidist*gidist)));
     GLOBALPARAMF(rsmspread, (gidist*rsmspread*rsm.scale.x, gidist*rsmspread*rsm.scale.y));
+    GLOBALPARAMF(rhaothreshold, (splits[0].bounds/rhgrid));
     GLOBALPARAMF(rhaoatten, (1.0f/(gidist*rsmspread)));
     GLOBALPARAMF(rhaoheight, (gidist*rsmspread));
 
