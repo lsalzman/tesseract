@@ -112,8 +112,7 @@ namespace server
     extern void serverupdate();
     extern bool servercompatible(char *name, char *sdec, char *map, int ping, const vector<int> &attr, int np);
     extern int laninfoport();
-    extern int serverinfoport(int servport = -1);
-    extern int serverport(int infoport = -1);
+    extern int serverport();
     extern const char *defaultmaster();
     extern int masterport();
     extern void processmasterinput(const char *cmd, int cmdlen, const char *args);

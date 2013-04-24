@@ -573,7 +573,7 @@ bool checkclientinput(client &c)
         else if(sscanf(c.input, "regserv %d", &port) == 1)
         {
             if(checkban(servbans, c.address.host)) return false;
-            if(port < 0 || port + 1 < 0 || (c.servport >= 0 && port != c.servport)) outputf(c, "failreg invalid port\n");
+            if(port < 0 || (c.servport >= 0 && port != c.servport)) outputf(c, "failreg invalid port\n");
             else
             {
                 c.servport = port;
@@ -710,7 +710,7 @@ int main(int argc, char **argv)
     atexit(enet_deinitialize);
 
     const char *dir = "", *ip = NULL;
-    int port = 28787;
+    int port = 41999;
     if(argc>=2) dir = argv[1];
     if(argc>=3) port = atoi(argv[2]);
     if(argc>=4) ip = argv[3];

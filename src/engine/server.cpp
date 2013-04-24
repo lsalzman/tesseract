@@ -118,7 +118,7 @@ vector<client *> clients;
 
 ENetHost *serverhost = NULL;
 int laststatus = 0; 
-ENetSocket pongsock = ENET_SOCKET_NULL, lansock = ENET_SOCKET_NULL;
+ENetSocket lansock = ENET_SOCKET_NULL;
 
 int localclients = 0, nonlocalclients = 0;
 
@@ -172,9 +172,8 @@ void cleanupserver()
     if(serverhost) enet_host_destroy(serverhost);
     serverhost = NULL;
 
-    if(pongsock != ENET_SOCKET_NULL) enet_socket_destroy(pongsock);
     if(lansock != ENET_SOCKET_NULL) enet_socket_destroy(lansock);
-    pongsock = lansock = ENET_SOCKET_NULL;
+    lansock = ENET_SOCKET_NULL;
 }
 
 void process(ENetPacket *packet, int sender, int chan);
@@ -508,51 +507,57 @@ void flushmasterinput()
     else disconnectmaster();
 }
 
-static ENetAddress pongaddr;
+static ENetAddress serverinfoaddress;
 
 void sendserverinforeply(ucharbuf &p)
 {
     ENetBuffer buf;
     buf.data = p.buf;
     buf.dataLength = p.length();
-    enet_socket_send(pongsock, &pongaddr, &buf, 1);
+    enet_socket_send(serverhost->socket, &serverinfoaddress, &buf, 1);
 }
 
 void checkserversockets()        // reply all server info requests
 {
     static ENetSocketSet sockset;
     ENET_SOCKETSET_EMPTY(sockset);
-    ENetSocket maxsock = pongsock;
-    ENET_SOCKETSET_ADD(sockset, pongsock);
+    ENetSocket maxsock = ENET_SOCKET_NULL;
     if(mastersock != ENET_SOCKET_NULL)
     {
-        maxsock = max(maxsock, mastersock);
+        maxsock = maxsock == ENET_SOCKET_NULL ? mastersock : max(maxsock, mastersock);
         ENET_SOCKETSET_ADD(sockset, mastersock);
     }
     if(lansock != ENET_SOCKET_NULL)
     {
-        maxsock = max(maxsock, lansock);
+        maxsock = maxsock == ENET_SOCKET_NULL ? lansock : max(maxsock, lansock);
         ENET_SOCKETSET_ADD(sockset, lansock);
     }
-    if(enet_socketset_select(maxsock, &sockset, NULL, 0) <= 0) return;
+    if(maxsock == ENET_SOCKET_NULL || enet_socketset_select(maxsock, &sockset, NULL, 0) <= 0) return;
 
-    ENetBuffer buf;
-    uchar pong[MAXTRANS];
-    loopi(2)
+    if(lansock != ENET_SOCKET_NULL && ENET_SOCKETSET_CHECK(sockset, lansock)) 
     {
-        ENetSocket sock = i ? lansock : pongsock;
-        if(sock == ENET_SOCKET_NULL || !ENET_SOCKETSET_CHECK(sockset, sock)) continue;
-
-        buf.data = pong;
-        buf.dataLength = sizeof(pong);
-        int len = enet_socket_receive(sock, &pongaddr, &buf, 1);
-        if(len < 0) return;
-        ucharbuf req(pong, len), p(pong, sizeof(pong));
-        p.len += len;
+        ENetBuffer buf;
+        uchar data[MAXTRANS];
+        buf.data = data;
+        buf.dataLength = sizeof(data);
+        int len = enet_socket_receive(lansock, &serverinfoaddress, &buf, 1);
+        if(len < 2 || data[0] != 0xFF || data[1] != 0xFF) return;
+        ucharbuf req(data+2, len-2), p(data+2, sizeof(data)-2);
+        p.len += len-2;
         server::serverinforeply(req, p);
     }
 
     if(mastersock != ENET_SOCKET_NULL && ENET_SOCKETSET_CHECK(sockset, mastersock)) flushmasterinput();
+}
+
+static int serverinfointercept(ENetHost *host, ENetEvent *event)
+{
+    if(host->receivedDataLength < 2 || host->receivedData[0] != 0xFF || host->receivedData[1] != 0xFF) return 0;
+    serverinfoaddress = host->receivedAddress;
+    ucharbuf req(host->receivedData+2, host->receivedDataLength-2), p(host->receivedData+2, sizeof(host->packetData[0])-2);
+    p.len += host->receivedDataLength-2;
+    server::serverinforeply(req, p);
+    return 1;
 }
 
 #define DEFAULTCLIENTS 8
@@ -1022,15 +1027,7 @@ bool setuplistenserver(bool dedicated)
     serverhost = enet_host_create(&address, min(maxclients + server::reserveclients(), MAXCLIENTS), server::numchannels(), 0, serveruprate);
     if(!serverhost) return servererror(dedicated, "could not create server host");
     loopi(maxclients) serverhost->peers[i].data = NULL;
-    address.port = server::serverinfoport(serverport > 0 ? serverport : -1);
-    pongsock = enet_socket_create(ENET_SOCKET_TYPE_DATAGRAM);
-    if(pongsock != ENET_SOCKET_NULL && enet_socket_bind(pongsock, &address) < 0)
-    {
-        enet_socket_destroy(pongsock);
-        pongsock = ENET_SOCKET_NULL;
-    }
-    if(pongsock == ENET_SOCKET_NULL) return servererror(dedicated, "could not create server info socket");
-    else enet_socket_set_option(pongsock, ENET_SOCKOPT_NONBLOCK, 1);
+    serverhost->intercept = serverinfointercept;
     address.port = server::laninfoport();
     lansock = enet_socket_create(ENET_SOCKET_TYPE_DATAGRAM);
     if(lansock != ENET_SOCKET_NULL && (enet_socket_set_option(lansock, ENET_SOCKOPT_REUSEADDR, 1) < 0 || enet_socket_bind(lansock, &address) < 0))

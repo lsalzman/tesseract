@@ -356,7 +356,7 @@ static serverinfo *newserver(const char *name, int port, uint ip = ENET_HOST_ANY
 {
     serverinfo *si = new serverinfo;
     si->address.host = ip;
-    si->address.port = server::serverinfoport(port);
+    si->address.port = port;
     if(ip!=ENET_HOST_ANY) si->resolved = RESOLVED;
 
     si->port = port;
@@ -415,6 +415,7 @@ void pingservers()
     ENetBuffer buf;
     uchar ping[MAXTRANS];
     ucharbuf p(ping, sizeof(ping));
+    p.put(0xFF); p.put(0xFF);
     putint(p, totalmillis);
 
     static int lastping = 0;
@@ -493,7 +494,7 @@ void checkpings()
         if(len <= 0) return;  
         serverinfo *si = NULL;
         loopv(servers) if(addr.host == servers[i]->address.host && addr.port == servers[i]->address.port) { si = servers[i]; break; }
-        if(!si && searchlan) si = newserver(NULL, server::serverport(addr.port), addr.host); 
+        if(!si && searchlan) si = newserver(NULL, addr.port, addr.host); 
         if(!si) continue;
         ucharbuf p(ping, len);
         int millis = getint(p), rtt = clamp(totalmillis - millis, 0, min(servpingdecay, totalmillis));
