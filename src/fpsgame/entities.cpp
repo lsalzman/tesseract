@@ -12,13 +12,6 @@ namespace entities
 
     void readent(entity &e, char *buf, int ver)     // read from disk, and init
     {
-        if(ver <= 30) switch(e.type)
-        {
-            case FLAG:
-            case TELEDEST:
-                e.attr1 = (int(e.attr1)+180)%360;
-                break;
-        }
     }
 
 #ifndef STANDALONE
