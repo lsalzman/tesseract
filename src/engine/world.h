@@ -21,28 +21,6 @@ struct octaheader
     int numvslots;
 };
     
-struct compatheader             // map file format header
-{
-    char magic[4];              // "OCTA"
-    int version;                // any >8bit quantity is little endian
-    int headersize;             // sizeof(header)
-    int worldsize;
-    int numents;
-    int numpvs;
-    int lightmaps;
-    int lightprecision, lighterror, lightlod;
-    uchar ambient;
-    uchar watercolour[3];
-    uchar blendmap;
-    uchar lerpangle, lerpsubdiv, lerpsubdivsize;
-    uchar bumperror;
-    uchar skylight[3];
-    uchar lavacolour[3];
-    uchar waterfallcolour[3];
-    uchar reserved[10];
-    char maptitle[128];
-};
-
 #define WATER_AMPLITUDE 0.4f
 #define WATER_OFFSET 1.1f
 
