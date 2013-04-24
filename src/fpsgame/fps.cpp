@@ -562,6 +562,11 @@ namespace game
         return showmodeinfo && m_valid(gamemode) ? gamemodes[gamemode - STARTGAMEMODE].info : NULL;
     }
 
+    const char *getscreenshotinfo()
+    {
+        return server::modename(gamemode, NULL);
+    }
+
     void physicstrigger(physent *d, bool local, int floorlevel, int waterlevel, int material)
     {
         if     (waterlevel>0) { if(material!=MAT_LAVA) playsound(S_SPLASH1, d==player1 ? NULL : &d->o); }
