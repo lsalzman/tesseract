@@ -864,8 +864,8 @@ void checkinput()
                 break;
     
             case SDL_MOUSEWHEEL:
-                if(event.wheel.y > 0) processkey(-4, true);
-                else if(event.wheel.y < 0) processkey(-5, true);
+                if(event.wheel.y > 0) { processkey(-4, true); processkey(-4, false); }
+                else if(event.wheel.y < 0) { processkey(-5, true); processkey(-5, false); }
                 break;
         }
     }
