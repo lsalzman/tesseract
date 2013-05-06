@@ -1,15 +1,23 @@
 #include "engine.h"
 
+struct normalkey
+{
+    vec pos;
+    int smooth;
+};
+
+static inline uint hthash(const normalkey &k) { return hthash(k.pos); }
+
 struct normalgroup
 {
     vec pos;
-    int flat, normals, tnormals;
+    int smooth, flat, normals, tnormals;
 
-    normalgroup() : flat(0), normals(-1), tnormals(-1) {}
-    normalgroup(const vec &pos) : pos(pos), flat(0), normals(-1), tnormals(-1) {}
+    normalgroup() : smooth(0), flat(0), normals(-1), tnormals(-1) {}
+    normalgroup(const normalkey &key) : pos(key.pos), smooth(key.smooth), flat(0), normals(-1), tnormals(-1) {}
 };
 
-static inline bool htcmp(const vec &v, const normalgroup &n) { return v == n.pos; } 
+static inline bool htcmp(const normalkey &k, const normalgroup &n) { return k.pos == n.pos && k.smooth == n.smooth; } 
 
 struct normal
 {
@@ -25,17 +33,30 @@ struct tnormal
     normalgroup *groups[2];
 };
 
+struct smoothgroup
+{
+    float lerpthreshold;
+
+    smoothgroup() : lerpthreshold(-3) {}
+
+    void setangle(int angle)
+    {
+        lerpthreshold = cos(clamp(angle, 0, 180)*RAD) - 1e-5f;
+    }
+};
+
 hashset<normalgroup> normalgroups(1<<16);
 vector<normal> normals;
 vector<tnormal> tnormals;
+vector<smoothgroup> smoothgroups;
 
-VARR(lerpangle, 0, 44, 180);
+VARFR(lerpangle, 0, 44, 180, smoothangle(0, lerpangle));
 
-static float lerpthreshold = 0;
 static bool usetnormals = true;
 
-static int addnormal(const vec &key, const vec &surface)
+static int addnormal(const vec &pos, int smooth, const vec &surface)
 {
+    normalkey key = { pos, smooth };
     normalgroup &g = normalgroups.access(key, key);
     normal &n = normals.add();
     n.next = g.normals;
@@ -43,27 +64,30 @@ static int addnormal(const vec &key, const vec &surface)
     return g.normals = normals.length()-1;
 }
 
-static void addtnormal(const vec &key, float offset, int normal1, int normal2, normalgroup *group1, normalgroup *group2)
+static void addtnormal(const vec &pos, int smooth, float offset, int normal1, int normal2, const vec &pos1, const vec &pos2)
 {
+    normalkey key = { pos, smooth };
     normalgroup &g = normalgroups.access(key, key);
     tnormal &n = tnormals.add();
     n.next = g.tnormals;
     n.offset = offset;
     n.normals[0] = normal1;
     n.normals[1] = normal2;
-    n.groups[0] = group1;
-    n.groups[1] = group2;
+    normalkey key1 = { pos1, smooth }, key2 = { pos2, smooth };
+    n.groups[0] = normalgroups.access(key1);
+    n.groups[1] = normalgroups.access(key2);
     g.tnormals = tnormals.length()-1;
 }
 
-static int addnormal(const vec &key, int axis)
+static int addnormal(const vec &pos, int smooth, int axis)
 {
+    normalkey key = { pos, smooth };
     normalgroup &g = normalgroups.access(key, key);
     g.flat += 1<<(4*axis);
     return axis - 6;
 }
 
-static inline void findnormal(const normalgroup &g, const vec &surface, vec &v)
+static inline void findnormal(const normalgroup &g, float lerpthreshold, const vec &surface, vec &v)
 {
     v = vec(0, 0, 0);
     int total = 0;
@@ -87,7 +111,7 @@ static inline void findnormal(const normalgroup &g, const vec &surface, vec &v)
     else if(!total) v = surface;
 }
 
-static inline bool findtnormal(const normalgroup &g, const vec &surface, vec &v)
+static inline bool findtnormal(const normalgroup &g, float lerpthreshold, const vec &surface, vec &v)
 {
     float bestangle = lerpthreshold;
     tnormal *bestnorm = NULL;
@@ -109,18 +133,24 @@ static inline bool findtnormal(const normalgroup &g, const vec &surface, vec &v)
     }
     if(!bestnorm) return false;
     vec n1, n2;
-    findnormal(*bestnorm->groups[0], surface, n1);
-    findnormal(*bestnorm->groups[1], surface, n2);
+    findnormal(*bestnorm->groups[0], lerpthreshold, surface, n1);
+    findnormal(*bestnorm->groups[1], lerpthreshold, surface, n2);
     v.lerp(n1, n2, bestnorm->offset).normalize();
     return true;
 }
 
-void findnormal(const vec &key, const vec &surface, vec &v)
+void findnormal(const vec &pos, int smooth, const vec &surface, vec &v)
 {
+    normalkey key = { pos, smooth };
     const normalgroup *g = normalgroups.access(key);
-    if(!g) v = surface;
-    else if(g->tnormals < 0 || !findtnormal(*g, surface, v)) 
-        findnormal(*g, surface, v);
+    if(g)
+    {
+        float lerpthreshold = smoothgroups.inrange(smooth) ? smoothgroups[smooth].lerpthreshold : -3;
+        if(lerpthreshold >= -2) lerpthreshold = smoothgroups[0].lerpthreshold;
+        if(g->tnormals < 0 || !findtnormal(*g, lerpthreshold, surface, v)) 
+            findnormal(*g, lerpthreshold, surface, v);
+    }
+    else v = surface;
 }
 
 VARR(lerpsubdiv, 0, 2, 4);
@@ -188,15 +218,18 @@ void addnormals(cube &c, const ivec &o, int size)
             if(convex) planes[numplanes++].cross(pos[0], pos[2], pos[3]).normalize();
         }
 
-        if(!numplanes) loopk(numverts) norms[k] = addnormal(pos[k], i);
-        else if(numplanes==1) loopk(numverts) norms[k] = addnormal(pos[k], planes[0]);
+        VSlot &vslot = lookupvslot(c.texture[i], false);
+        int smooth = vslot.slot->smooth;
+
+        if(!numplanes) loopk(numverts) norms[k] = addnormal(pos[k], smooth, i);
+        else if(numplanes==1) loopk(numverts) norms[k] = addnormal(pos[k], smooth, planes[0]);
         else 
         { 
             vec avg = vec(planes[0]).add(planes[1]).normalize();
-            norms[0] = addnormal(pos[0], avg);
-            norms[1] = addnormal(pos[1], planes[0]);
-            norms[2] = addnormal(pos[2], avg);
-            for(int k = 3; k < numverts; k++) norms[k] = addnormal(pos[k], planes[1]);
+            norms[0] = addnormal(pos[0], smooth, avg);
+            norms[1] = addnormal(pos[1], smooth, planes[0]);
+            norms[2] = addnormal(pos[2], smooth, avg);
+            for(int k = 3; k < numverts; k++) norms[k] = addnormal(pos[k], smooth, planes[1]);
         }
 
         while(tj >= 0 && tjoints[tj].edge < i*(MAXFACEVERTS+1)) tj = tjoints[tj].next;
@@ -220,7 +253,7 @@ void addnormals(cube &c, const ivec &o, int size)
                 if(t.edge != edge) break;
                 float offset = (t.offset - offset1) * doffset;
                 vec tpos = d.tovec().mul(t.offset/8.0f).add(o); 
-                addtnormal(tpos, offset, norms[e1], norms[e2], normalgroups.access(v1), normalgroups.access(v2));
+                addtnormal(tpos, smooth, offset, norms[e1], norms[e2], v1, v2);
                 tj = t.next;
             }
         }
@@ -229,10 +262,8 @@ void addnormals(cube &c, const ivec &o, int size)
 
 void calcnormals(bool lerptjoints)
 {
-    if(!lerpangle) return;
     usetnormals = lerptjoints; 
     if(usetnormals) findtjoints();
-    lerpthreshold = cos(lerpangle*RAD) - 1e-5f; 
     progress = 1;
     loopi(8) addnormals(worldroot[i], ivec(i, 0, 0, 0, worldsize/2), worldsize/2);
 }
@@ -243,6 +274,23 @@ void clearnormals()
     normals.setsize(0);
     tnormals.setsize(0);
 }
+
+void resetsmoothgroups()
+{
+    smoothgroups.setsize(0);
+    smoothgroups.add().setangle(lerpangle);
+}
+
+int smoothangle(int id, int angle)
+{
+    if(id < 0) id = smoothgroups.length();
+    if(id >= 10000) return -1;
+    while(smoothgroups.length() <= id) smoothgroups.add();
+    if(angle >= 0) smoothgroups[id].setangle(angle);
+    return id;
+}
+
+ICOMMAND(smoothangle, "ib", (int *id, int *angle), intret(smoothangle(*id, *angle)));
 
 void calclerpverts(const vec2 *c, const vec *n, lerpvert *lv, int &numv)
 {

@@ -1834,6 +1834,14 @@ void texrefract(float *k, float *r, float *g, float *b)
 }
 COMMAND(texrefract, "ffff");
 
+void texsmooth(int *id, int *angle)
+{
+    if(slots.empty()) return;
+    Slot &s = *slots.last();
+    s.smooth = smoothangle(*id, *angle);
+}
+COMMAND(texsmooth, "ib");
+
 static int findtextype(Slot &s, int type, int last = -1)
 {
     for(int i = last+1; i<s.sts.length(); i++) if((type&(1<<s.sts[i].type)) && s.sts[i].combined<0) return i;

@@ -618,7 +618,7 @@ struct Slot
         int combined;
     };
 
-    int index;
+    int index, smooth;
     vector<Tex> sts;
     Shader *shader;
     vector<SlotShaderParam> params;
@@ -632,6 +632,7 @@ struct Slot
     
     void reset()
     {
+        smooth = 0;
         sts.shrink(0);
         shader = NULL;
         params.shrink(0);
