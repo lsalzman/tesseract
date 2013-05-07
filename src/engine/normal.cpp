@@ -33,24 +33,12 @@ struct tnormal
     normalgroup *groups[2];
 };
 
-struct smoothgroup
-{
-    float lerpthreshold;
-
-    smoothgroup() : lerpthreshold(-3) {}
-
-    void setangle(int angle)
-    {
-        lerpthreshold = cos(clamp(angle, 0, 180)*RAD) - 1e-5f;
-    }
-};
-
 hashset<normalgroup> normalgroups(1<<16);
 vector<normal> normals;
 vector<tnormal> tnormals;
-vector<smoothgroup> smoothgroups;
+vector<int> smoothgroups;
 
-VARFR(lerpangle, 0, 44, 180, smoothangle(0, lerpangle));
+VARR(lerpangle, 0, 44, 180);
 
 static bool usetnormals = true;
 
@@ -145,8 +133,8 @@ void findnormal(const vec &pos, int smooth, const vec &surface, vec &v)
     const normalgroup *g = normalgroups.access(key);
     if(g)
     {
-        float lerpthreshold = smoothgroups.inrange(smooth) ? smoothgroups[smooth].lerpthreshold : -3;
-        if(lerpthreshold >= -2) lerpthreshold = smoothgroups[0].lerpthreshold;
+        int angle = smoothgroups.inrange(smooth) && smoothgroups[smooth] >= 0 ? smoothgroups[smooth] : lerpangle;
+        float lerpthreshold = sincos360[angle].x - 1e-5f;
         if(g->tnormals < 0 || !findtnormal(*g, lerpthreshold, surface, v)) 
             findnormal(*g, lerpthreshold, surface, v);
     }
@@ -278,15 +266,14 @@ void clearnormals()
 void resetsmoothgroups()
 {
     smoothgroups.setsize(0);
-    smoothgroups.add().setangle(lerpangle);
 }
 
 int smoothangle(int id, int angle)
 {
     if(id < 0) id = smoothgroups.length();
     if(id >= 10000) return -1;
-    while(smoothgroups.length() <= id) smoothgroups.add();
-    if(angle >= 0) smoothgroups[id].setangle(angle);
+    while(smoothgroups.length() <= id) smoothgroups.add(-1);
+    if(angle >= 0) smoothgroups[id] = min(angle, 180);
     return id;
 }
 

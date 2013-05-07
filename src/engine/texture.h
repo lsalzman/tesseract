@@ -632,7 +632,7 @@ struct Slot
     
     void reset()
     {
-        smooth = 0;
+        smooth = -1;
         sts.shrink(0);
         shader = NULL;
         params.shrink(0);
