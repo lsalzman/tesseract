@@ -1777,10 +1777,10 @@ struct skelmodel : animmodel
     {
     }
 
-    int linktype(animmodel *m) const
+    int linktype(animmodel *m, part *p) const
     {
         return type()==m->type() &&
-            ((skelmeshgroup *)parts[0]->meshes)->skel == ((skelmeshgroup *)m->parts[0]->meshes)->skel ? 
+            ((skelmeshgroup *)parts[0]->meshes)->skel == ((skelmeshgroup *)p->meshes)->skel ? 
                 LINK_REUSE : 
                 LINK_TAG;
     }

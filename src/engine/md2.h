@@ -78,7 +78,7 @@ struct md2 : vertmodel, vertloader<md2>
     static bool multimeshed() { return false; }
     int type() const { return MDL_MD2; }
 
-    int linktype(animmodel *m) const { return LINK_COOP; }
+    int linktype(animmodel *m, part *p) const { return LINK_COOP; }
 
     struct md2meshgroup : vertmeshgroup
     {
