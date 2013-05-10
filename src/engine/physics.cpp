@@ -532,7 +532,7 @@ bool ellipsecollide(physent *d, const vec &dir, const vec &o, const vec &center,
     yo.rotate_around_z(yaw*RAD);
     yo.add(o);
     float x = yo.x - d->o.x, y = yo.y - d->o.y;
-    float angle = atan2f(y, x), dangle = angle-(d->yaw+90)*RAD, eangle = angle-(yaw+90)*RAD;
+    float angle = atan2f(y, x), dangle = angle-d->yaw*RAD, eangle = angle-yaw*RAD;
     float dx = d->xradius*cosf(dangle), dy = d->yradius*sinf(dangle);
     float ex = xr*cosf(eangle), ey = yr*sinf(eangle);
     float dist = sqrtf(x*x + y*y) - sqrtf(dx*dx + dy*dy) - sqrtf(ex*ex + ey*ey);
