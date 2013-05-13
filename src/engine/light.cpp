@@ -484,6 +484,8 @@ static void calcsurfaces(cube &c, const ivec &co, int size, int usefacemask, int
                 x2 = max(x2, int(v.x));
                 y2 = max(y2, int(v.y));
             }
+            x2 = max(x2, x1+1);
+            y2 = max(y2, y1+1);
             x1 = (x1>>3) + (co.x&~0xFFF);
             y1 = (y1>>3) + (co.y&~0xFFF);
             x2 = ((x2+7)>>3) + (co.x&~0xFFF);
