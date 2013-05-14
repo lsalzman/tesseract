@@ -1157,7 +1157,7 @@ void setbbfrommodel(dynent *d, const char *mdl)
     {
         d->collidetype = COLLIDE_OBB;
         //d->collidetype = COLLIDE_AABB;
-        //rotatebb(center, radius, int(d->yaw));
+        //rotatebb(center, radius, int(d->yaw), int(d->pitch));
     }
     d->xradius   = radius.x + fabs(center.x);
     d->yradius   = radius.y + fabs(center.y);

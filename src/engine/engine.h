@@ -608,7 +608,7 @@ extern void clearchanges(int type);
 extern void mousemove(int dx, int dy);
 extern bool pointincube(const clipplanes &p, const vec &v);
 extern bool overlapsdynent(const vec &o, float radius);
-extern void rotatebb(vec &center, vec &radius, int yaw);
+extern void rotatebb(vec &center, vec &radius, int yaw, int pitch);
 extern float shadowray(const vec &o, const vec &ray, float radius, int mode, extentity *t = NULL);
 struct ShadowRayCache;
 extern ShadowRayCache *newshadowraycache();

@@ -275,9 +275,11 @@ bool mmintersect(const extentity &e, const vec &o, const vec &ray, float maxdist
     else if((mode&RAY_ENTS)!=RAY_ENTS && (!m->collide || e.flags&extentity::F_NOCOLLIDE)) return false;
     if(!m->bih && !m->setBIH()) return false;
     vec mo = vec(o).sub(e.o), mray(ray);
+    int scale = e.attr4;
+    if(scale > 0) mo.mul(100.0f/scale);
     float v = mo.dot(mray), inside = m->bih->radius - mo.squaredlen();
     if((inside < 0 && v > 0) || inside + v*v < 0) return false;
-    int yaw = e.attr1;
+    int yaw = e.attr1, pitch = e.attr3;
     if(yaw != 0) 
     {
         if(yaw < 0) yaw = 360 + yaw%360;
@@ -286,6 +288,19 @@ bool mmintersect(const extentity &e, const vec &o, const vec &ray, float maxdist
         mo.rotate_around_z(rot.x, -rot.y);
         mray.rotate_around_z(rot.x, -rot.y);
     }
-    return m->bih->traverse(mo, mray, maxdist ? maxdist : 1e16f, dist, mode);
+    if(pitch != 0)
+    {
+        if(pitch < 0) pitch = 360 + pitch%360;
+        else if(pitch >= 360) pitch %= 360;
+        const vec2 &rot = sincos360[pitch];
+        mo.rotate_around_y(rot.x, rot.y);
+        mray.rotate_around_y(rot.x, rot.y);
+    }
+    if(m->bih->traverse(mo, mray, maxdist ? maxdist : 1e16f, dist, mode))
+    {
+        if(scale > 0) dist *= scale/100.0f;
+        return true;
+    }
+    return false;
 }
 

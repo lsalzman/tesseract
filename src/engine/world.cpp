@@ -23,8 +23,13 @@ bool getentboundingbox(extentity &e, ivec &o, ivec &r)
             {
                 vec center, radius;
                 m->boundbox(center, radius);
-                rotatebb(center, radius, e.attr1);
-
+                if(e.attr4 > 0)
+                {
+                    float scale = e.attr4/100.0f;
+                    center.mul(scale);
+                    radius.mul(scale);
+                }
+                rotatebb(center, radius, e.attr1, e.attr3);
                 o = e.o;
                 o.add(center);
                 r = radius;
@@ -477,7 +482,8 @@ void entselectionbox(const entity &e, vec &eo, vec &es)
     else if(e.type == ET_MAPMODEL && (m = loadmodel(NULL, e.attr2)))
     {
         m->collisionbox(eo, es);
-        rotatebb(eo, es, e.attr1);
+        if(e.attr4 > 0) { float scale = e.attr4/100.0f; eo.mul(scale); es.mul(scale); }
+        rotatebb(eo, es, e.attr1, e.attr3);
 #if 0
         if(m->collide)
             eo.z -= player->aboveeye; // wacky but true. see physics collide                    
@@ -811,7 +817,8 @@ bool dropentity(entity &e, int drop = -1)
         {
             vec center;
             m->boundbox(center, radius);
-            rotatebb(center, radius, e.attr1);
+            if(e.attr4 > 0) { float scale = e.attr4/100.0f; center.mul(scale); radius.mul(scale); }
+            rotatebb(center, radius, e.attr1, e.attr3);
             radius.x += fabs(center.x);
             radius.y += fabs(center.y);
         }
