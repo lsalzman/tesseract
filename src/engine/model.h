@@ -54,12 +54,12 @@ struct model
         boundbox(center, radius);
         if(collideradius)
         {
-            center[0] = center[1] = 0;
-            radius[0] = radius[1] = collideradius;
+            center.x = center.y = 0;
+            radius.x = radius.y = collideradius;
         }
         if(collideheight)
         {
-            center[2] = radius[2] = collideheight/2;
+            center.z = radius.z = collideheight/2;
         }
     }
 
