@@ -380,7 +380,7 @@ struct gui : g3d_gui
                 float dist =  2.0f*max(radius.magnitude2(), 1.1f*radius.z),
                       yaw = fmod(lastmillis/10000.0f*360.0f, 360.0f);
                 vec o(-center.x, dist - center.y, -0.1f*dist - center.z);
-                rendermodel(name, anim, o, yaw, 0, 0, NULL, NULL, 0);
+                rendermodel(name, anim, o, yaw, 0, 0, 0, NULL, NULL, 0);
             }
             modelpreview::end();
             hudshader->set();

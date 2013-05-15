@@ -148,14 +148,15 @@ void mdlshader(char *shader)
 
 COMMAND(mdlshader, "s");
 
-void mdlspin(float *yaw, float *pitch)
+void mdlspin(float *yaw, float *pitch, float *roll)
 {
     checkmdl;
     loadingmodel->spinyaw = *yaw;
     loadingmodel->spinpitch = *pitch;
+    loadingmodel->spinroll = *roll;
 }
 
-COMMAND(mdlspin, "ff");
+COMMAND(mdlspin, "fff");
 
 void mdlscale(int *percent)
 {
@@ -191,6 +192,14 @@ void mdlpitch(float *angle)
 }
 
 COMMAND(mdlpitch, "f");
+
+void mdlroll(float *angle)
+{
+    checkmdl;
+    loadingmodel->offsetroll = *angle;
+}
+
+COMMAND(mdlroll, "f");
 
 void mdlshadow(int *shadow)
 {
@@ -454,7 +463,7 @@ bool modeloccluded(const vec &center, float radius)
 struct batchedmodel
 {
     vec pos, center;
-    float radius, yaw, pitch, sizescale, transparent;
+    float radius, yaw, pitch, roll, sizescale, transparent;
     int anim, basetime, basetime2, flags, attached;
     union
     {
@@ -511,7 +520,7 @@ static inline void renderbatchedmodel(model *m, batchedmodel &b)
         if(b.flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
     }
 
-    m->render(anim, b.basetime, b.basetime2, b.pos, b.yaw, b.pitch, b.d, a, b.sizescale, b.transparent);
+    m->render(anim, b.basetime, b.basetime2, b.pos, b.yaw, b.pitch, b.roll, b.d, a, b.sizescale, b.transparent);
 }
 
 VARP(maxmodelradiusdistance, 10, 200, 1000);
@@ -872,7 +881,7 @@ void clearbatchedmapmodels()
     batchedmodels.setsize(len);
 }
 
-void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, int flags, int basetime, float size)
+void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, float roll, int flags, int basetime, float size)
 {
     if(!mapmodels.inrange(idx)) return;
     mapmodelinfo &mmi = mapmodels[idx];
@@ -883,6 +892,8 @@ void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, int
     m->boundbox(center, bbradius);
     float radius = bbradius.magnitude();
     center.mul(size);
+    if(roll) center.rotate_around_y(-roll*RAD);
+    if(pitch && m->pitched()) center.rotate_around_x(pitch*RAD);
     center.rotate_around_z(yaw*RAD);
     center.add(o);
     radius *= size;
@@ -904,6 +915,7 @@ void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, int
     b.anim = anim;
     b.yaw = yaw;
     b.pitch = pitch;
+    b.roll = roll;
     b.basetime = basetime;
     b.basetime2 = 0;
     b.sizescale = size;
@@ -915,7 +927,7 @@ void rendermapmodel(int idx, int anim, const vec &o, float yaw, float pitch, int
     addbatchedmodel(m, b, batchedmodels.length()-1);
 }
 
-void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch, int flags, dynent *d, modelattach *a, int basetime, int basetime2, float size, float trans)
+void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch, float roll, int flags, dynent *d, modelattach *a, int basetime, int basetime2, float size, float trans)
 {
     model *m = loadmodel(mdl); 
     if(!m) return;
@@ -931,6 +943,8 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
     else
     {
         center.mul(size);
+        if(roll) center.rotate_around_y(-roll*RAD);
+        if(pitch && m->pitched()) center.rotate_around_x(pitch*RAD);
         center.rotate_around_z(yaw*RAD);
         center.add(o);
     }
@@ -970,7 +984,7 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
         m->startrender();
         setaamask(true);
         if(flags&MDL_FULLBRIGHT) anim |= ANIM_FULLBRIGHT;
-        m->render(anim, basetime, basetime2, o, yaw, pitch, d, a, size);
+        m->render(anim, basetime, basetime2, o, yaw, pitch, roll, d, a, size);
         m->endrender();
         if(flags&MDL_CULL_QUERY && d->query) endquery(d->query);
         return;
@@ -984,6 +998,7 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
     b.anim = anim;
     b.yaw = yaw;
     b.pitch = pitch;
+    b.roll = roll;
     b.basetime = basetime;
     b.basetime2 = basetime2;
     b.sizescale = size;
@@ -996,7 +1011,7 @@ void rendermodel(const char *mdl, int anim, const vec &o, float yaw, float pitch
     addbatchedmodel(m, b, batchedmodels.length()-1);
 }
 
-int intersectmodel(const char *mdl, int anim, const vec &pos, float yaw, float pitch, const vec &o, const vec &ray, float &dist, int mode, dynent *d, modelattach *a, int basetime, int basetime2, float size)
+int intersectmodel(const char *mdl, int anim, const vec &pos, float yaw, float pitch, float roll, const vec &o, const vec &ray, float &dist, int mode, dynent *d, modelattach *a, int basetime, int basetime2, float size)
 {
     model *m = loadmodel(mdl);
     if(!m) return -1;
@@ -1004,7 +1019,7 @@ int intersectmodel(const char *mdl, int anim, const vec &pos, float yaw, float p
     {
         if(a[i].name) a[i].m = loadmodel(a[i].name);
     }
-    return m->intersect(anim, basetime, basetime2, pos, yaw, pitch, d, a, size, o, ray, dist, mode);
+    return m->intersect(anim, basetime, basetime2, pos, yaw, pitch, roll, d, a, size, o, ray, dist, mode);
 }
 
 void abovemodel(vec &o, const char *mdl)
@@ -1144,7 +1159,7 @@ void renderclient(dynent *d, const char *mdlname, modelattach *attachments, int 
     else flags |= MDL_CULL_DIST;
     if(drawtex == DRAWTEX_MODELPREVIEW) flags &= ~(MDL_FULLBRIGHT | MDL_CULL_VFC | MDL_CULL_OCCLUDED | MDL_CULL_QUERY | MDL_CULL_DIST);
     if(d->state == CS_LAGGED) trans = min(trans, 0.3f);
-    rendermodel(mdlname, anim, o, yaw, pitch, flags, d, attachments, basetime, 0, scale, trans);
+    rendermodel(mdlname, anim, o, yaw, pitch, 0, flags, d, attachments, basetime, 0, scale, trans);
 }
 
 void setbbfrommodel(dynent *d, const char *mdl)

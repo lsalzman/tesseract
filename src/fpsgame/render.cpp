@@ -177,12 +177,6 @@ namespace game
             case 2: mdlname = mdl.redteam; break;
         }
         renderclient(d, mdlname, a[0].tag ? a : NULL, hold, attack, delay, lastaction, intermission && d->state!=CS_DEAD ? 0 : d->lastpain, fade, ragdoll && mdl.ragdoll);
-#if 0
-        if(d->state!=CS_DEAD && d->quadmillis) 
-        {
-            rendermodel("quadrings", ANIM_MAPMODEL|ANIM_LOOP, vec(d->o).sub(vec(0, 0, d->eyeheight/2)), 360*lastmillis/1000.0f, 0, MDL_CULL_VFC | MDL_CULL_DIST);
-        }
-#endif
     }
 
     VARP(teamskins, 0, 0, 1);
@@ -310,7 +304,7 @@ namespace game
             base = 0;
             interp = &guninterp;
         }
-        rendermodel(gunname, anim, sway, testhudgun ? 0 : d->yaw, testhudgun ? 0 : d->pitch, MDL_NOBATCH, interp, a, base, (int)ceil(speed));
+        rendermodel(gunname, anim, sway, testhudgun ? 0 : d->yaw, testhudgun ? 0 : d->pitch, 0, MDL_NOBATCH, interp, a, base, (int)ceil(speed));
         if(d->muzzle.x >= 0) d->muzzle = calcavatarpos(d->muzzle, 12);
     }
 
