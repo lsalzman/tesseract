@@ -905,7 +905,7 @@ extentity *newentity(bool local, const vec &o, int type, int v1, int v2, int v3,
         switch(type)
         {
                 case ET_MAPMODEL:
-                    e.attr2 = (int)camera1->yaw;
+                    if(!e.attr2) e.attr2 = (int)camera1->yaw;
                     break;
                 case ET_PLAYERSTART:
                     e.attr5 = e.attr4;
