@@ -269,7 +269,7 @@ char *entname(entity &e)
 }
 
 extern selinfo sel;
-extern bool havesel, selectcorners;
+extern bool havesel;
 int entlooplevel = 0;
 int efocus = -1, enthover = -1, entorient = -1, oldhover = -1;
 bool undonext = true;

@@ -2,58 +2,92 @@ VARP(softexplosion, 0, 1, 1);
 VARP(softexplosionblend, 1, 16, 64);
 
 //cache our unit hemisphere
-static GLushort *hemiindices = NULL;
-static vec *hemiverts = NULL;
-static int heminumverts = 0, heminumindices = 0;
-static GLuint hemivbuf = 0, hemiebuf = 0;
-
-static void subdivide(int depth, int face);
-
-static void genface(int depth, int i1, int i2, int i3)
+namespace hemisphere
 {
-    int face = heminumindices; heminumindices += 3;
-    hemiindices[face]   = i1;
-    hemiindices[face+1] = i2;
-    hemiindices[face+2] = i3;
-    subdivide(depth, face);
-}
+    GLushort *indices = NULL;
+    vec *verts = NULL;
+    int numverts = 0, numindices = 0;
+    GLuint vbuf = 0, ebuf = 0;
 
-static void subdivide(int depth, int face)
-{
-    if(depth-- <= 0) return;
-    int idx[6];
-    loopi(3) idx[i] = hemiindices[face+i];
-    loopi(3)
+    void subdivide(int depth, int face);
+
+    void genface(int depth, int i1, int i2, int i3)
     {
-        int vert = heminumverts++;
-        hemiverts[vert] = vec(hemiverts[idx[i]]).add(hemiverts[idx[(i+1)%3]]).normalize(); //push on to unit sphere
-        idx[3+i] = vert;
-        hemiindices[face+i] = vert;
+        int face = numindices; numindices += 3;
+        indices[face]   = i1;
+        indices[face+1] = i2;
+        indices[face+2] = i3;
+        subdivide(depth, face);
     }
-    subdivide(depth, face);
-    loopi(3) genface(depth, idx[i], idx[3+i], idx[3+(i+2)%3]);
-}
 
-//subdiv version wobble much more nicely than a lat/longitude version
-static void inithemisphere(int hres, int depth)
-{
-    const int tris = hres << (2*depth);
-    heminumverts = heminumindices = 0;
-    hemiverts = new vec[tris+1];
-    hemiindices = new GLushort[tris*3];
-    hemiverts[heminumverts++] = vec(0.0f, 0.0f, 1.0f); //build initial 'hres' sided pyramid
-    loopi(hres) hemiverts[heminumverts++] = vec(sincos360[(360*i)/hres], 0.0f);
-    loopi(hres) genface(depth, 0, i+1, 1+(i+1)%hres);
+    void subdivide(int depth, int face)
+    {
+        if(depth-- <= 0) return;
+        int idx[6];
+        loopi(3) idx[i] = indices[face+i];
+        loopi(3)
+        {
+            int curvert = numverts++;
+            verts[curvert] = vec(verts[idx[i]]).add(verts[idx[(i+1)%3]]).normalize(); //push on to unit sphere
+            idx[3+i] = curvert;
+            indices[face+i] = curvert;
+        }
+        subdivide(depth, face);
+        loopi(3) genface(depth, idx[i], idx[3+i], idx[3+(i+2)%3]);
+    }
 
-    if(!hemivbuf) glGenBuffers_(1, &hemivbuf);
-    glBindBuffer_(GL_ARRAY_BUFFER, hemivbuf);
-    glBufferData_(GL_ARRAY_BUFFER, heminumverts*sizeof(vec), hemiverts, GL_STATIC_DRAW);
-    DELETEA(hemiverts);
+    //subdiv version wobble much more nicely than a lat/longitude version
+    void init(int hres, int depth)
+    {
+        const int tris = hres << (2*depth);
+        numverts = numindices = 0;
+        verts = new vec[tris+1];
+        indices = new GLushort[tris*3];
+        verts[numverts++] = vec(0.0f, 0.0f, 1.0f); //build initial 'hres' sided pyramid
+        loopi(hres) verts[numverts++] = vec(sincos360[(360*i)/hres], 0.0f);
+        loopi(hres) genface(depth, 0, i+1, 1+(i+1)%hres);
 
-    if(!hemiebuf) glGenBuffers_(1, &hemiebuf);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, hemiebuf);
-    glBufferData_(GL_ELEMENT_ARRAY_BUFFER, heminumindices*sizeof(GLushort), hemiindices, GL_STATIC_DRAW);
-    DELETEA(hemiindices);
+        if(!vbuf) glGenBuffers_(1, &vbuf);
+        glBindBuffer_(GL_ARRAY_BUFFER, vbuf);
+        glBufferData_(GL_ARRAY_BUFFER, numverts*sizeof(vec), verts, GL_STATIC_DRAW);
+        DELETEA(verts);
+
+        if(!ebuf) glGenBuffers_(1, &ebuf);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, ebuf);
+        glBufferData_(GL_ELEMENT_ARRAY_BUFFER, numindices*sizeof(GLushort), indices, GL_STATIC_DRAW);
+        DELETEA(indices);
+    }
+
+    void cleanup()
+    {
+        if(vbuf) { glDeleteBuffers_(1, &vbuf); vbuf = 0; }
+        if(ebuf) { glDeleteBuffers_(1, &ebuf); ebuf = 0; }
+    }
+
+    void enable()
+    {
+        if(!vbuf) init(5, 2);
+        glBindBuffer_(GL_ARRAY_BUFFER, vbuf);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, ebuf);
+
+        gle::vertexpointer(sizeof(vec), verts);
+        gle::enablevertex();
+    }
+
+    void draw()
+    {
+        glDrawRangeElements_(GL_TRIANGLES, 0, numverts-1, numindices, GL_UNSIGNED_SHORT, indices);
+        xtraverts += numindices;
+        glde++;
+    }
+    
+    void disable()
+    {
+        gle::disablevertex();
+
+        glBindBuffer_(GL_ARRAY_BUFFER, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
 }
 
 static GLuint expmodtex[2] = {0, 0};
@@ -77,63 +111,101 @@ static GLuint createexpmodtex(int size, float minval)
     return tex;
 }
 
-static struct spherevert
+namespace sphere
 {
-    vec pos;
-    float s, t;
-} *sphereverts = NULL;
-static GLushort *sphereindices = NULL;
-static int spherenumverts = 0, spherenumindices = 0;
-static GLuint spherevbuf = 0, sphereebuf = 0;
-
-static void initsphere(int slices, int stacks)
-{
-    spherenumverts = (stacks+1)*(slices+1);
-    sphereverts = new spherevert[spherenumverts];
-    float ds = 1.0f/slices, dt = 1.0f/stacks, t = 1.0f;
-    loopi(stacks+1)
+    struct vert
     {
-        float rho = M_PI*(1-t), s = 0.0f;
-        loopj(slices+1)
+        vec pos;
+        float s, t;
+    } *verts = NULL;
+    GLushort *indices = NULL;
+    int numverts = 0, numindices = 0;
+    GLuint vbuf = 0, ebuf = 0;
+
+    void init(int slices, int stacks)
+    {
+        numverts = (stacks+1)*(slices+1);
+        verts = new vert[numverts];
+        float ds = 1.0f/slices, dt = 1.0f/stacks, t = 1.0f;
+        loopi(stacks+1)
         {
-            float theta = j==slices ? 0 : 2*M_PI*s;
-            spherevert &v = sphereverts[i*(slices+1) + j];
-            v.pos = vec(-sin(theta)*sin(rho), cos(theta)*sin(rho), cos(rho));
-            v.s = s;
-            v.t = t;
-            s += ds;
+            float rho = M_PI*(1-t), s = 0.0f;
+            loopj(slices+1)
+            {
+                float theta = j==slices ? 0 : 2*M_PI*s;
+                vert &v = verts[i*(slices+1) + j];
+                v.pos = vec(-sin(theta)*sin(rho), cos(theta)*sin(rho), cos(rho));
+                v.s = s;
+                v.t = t;
+                s += ds;
+            }
+            t -= dt;
         }
-        t -= dt;
+
+        numindices = stacks*slices*3*2;
+        indices = new ushort[numindices];
+        GLushort *curindex = indices;
+        loopi(stacks)
+        {
+            loopk(slices)
+            {
+                int j = i%2 ? slices-k-1 : k;
+
+                *curindex++ = i*(slices+1)+j;
+                *curindex++ = (i+1)*(slices+1)+j;
+                *curindex++ = i*(slices+1)+j+1;
+
+                *curindex++ = i*(slices+1)+j+1;
+                *curindex++ = (i+1)*(slices+1)+j;
+                *curindex++ = (i+1)*(slices+1)+j+1;
+            }
+        }
+
+        if(!vbuf) glGenBuffers_(1, &vbuf);
+        glBindBuffer_(GL_ARRAY_BUFFER, vbuf);
+        glBufferData_(GL_ARRAY_BUFFER, numverts*sizeof(vert), verts, GL_STATIC_DRAW);
+        DELETEA(verts);
+
+        if(!ebuf) glGenBuffers_(1, &ebuf);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, ebuf);
+        glBufferData_(GL_ELEMENT_ARRAY_BUFFER, numindices*sizeof(GLushort), indices, GL_STATIC_DRAW);
+        DELETEA(indices);
     }
 
-    spherenumindices = stacks*slices*3*2;
-    sphereindices = new ushort[spherenumindices];
-    GLushort *curindex = sphereindices;
-    loopi(stacks)
+    void cleanup()
     {
-        loopk(slices)
-        {
-            int j = i%2 ? slices-k-1 : k;
-
-            *curindex++ = i*(slices+1)+j;
-            *curindex++ = (i+1)*(slices+1)+j;
-            *curindex++ = i*(slices+1)+j+1;
-
-            *curindex++ = i*(slices+1)+j+1;
-            *curindex++ = (i+1)*(slices+1)+j;
-            *curindex++ = (i+1)*(slices+1)+j+1;
-        }
+        if(vbuf) { glDeleteBuffers_(1, &vbuf); vbuf = 0; }
+        if(ebuf) { glDeleteBuffers_(1, &ebuf); ebuf = 0; }
     }
 
-    if(!spherevbuf) glGenBuffers_(1, &spherevbuf);
-    glBindBuffer_(GL_ARRAY_BUFFER, spherevbuf);
-    glBufferData_(GL_ARRAY_BUFFER, spherenumverts*sizeof(spherevert), sphereverts, GL_STATIC_DRAW);
-    DELETEA(sphereverts);
+    void enable()
+    {
+        if(!vbuf) init(12, 6);
 
-    if(!sphereebuf) glGenBuffers_(1, &sphereebuf);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, sphereebuf);
-    glBufferData_(GL_ELEMENT_ARRAY_BUFFER, spherenumindices*sizeof(GLushort), sphereindices, GL_STATIC_DRAW);
-    DELETEA(sphereindices);
+        glBindBuffer_(GL_ARRAY_BUFFER, vbuf);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, ebuf);
+
+        gle::vertexpointer(sizeof(vert), &verts->pos);
+        gle::texcoord0pointer(sizeof(vert), &verts->s);
+        gle::enablevertex();
+        gle::enabletexcoord0();
+    }
+
+    void draw()
+    {
+        glDrawRangeElements_(GL_TRIANGLES, 0, numverts-1, numindices, GL_UNSIGNED_SHORT, indices);
+        xtraverts += numindices;
+        glde++;
+    }
+
+    void disable()
+    {
+        gle::disablevertex();
+        gle::disabletexcoord0();
+
+        glBindBuffer_(GL_ARRAY_BUFFER, 0);
+        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
 }
 
 VARP(explosion2d, 0, 0, 1);
@@ -150,34 +222,8 @@ static void setupexplosion()
     }
     else if(explosion2d) SETSHADER(explosion2d); else SETSHADER(explosion3d);
 
-    if(explosion2d)
-    {
-        if(!hemivbuf) inithemisphere(5, 2);
-        glBindBuffer_(GL_ARRAY_BUFFER, hemivbuf);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, hemiebuf);
-
-        gle::vertexpointer(sizeof(vec), hemiverts);
-        gle::enablevertex();
-    }
-    else
-    {
-        if(!spherevbuf) initsphere(12, 6);
-
-        glBindBuffer_(GL_ARRAY_BUFFER, spherevbuf);
-        glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, sphereebuf);
-
-        gle::vertexpointer(sizeof(spherevert), &sphereverts->pos);
-        gle::texcoord0pointer(sizeof(spherevert), &sphereverts->s);
-        gle::enablevertex();
-        gle::enabletexcoord0();
-    }
-}
-
-static void drawexpverts(int numverts, int numindices, GLushort *indices)
-{
-    glDrawRangeElements_(GL_TRIANGLES, 0, numverts-1, numindices, GL_UNSIGNED_SHORT, indices);
-    xtraverts += numindices;
-    glde++;
+    if(explosion2d) hemisphere::enable();
+    else sphere::enable();
 }
 
 static void drawexplosion(bool inside, float r, float g, float b, float a)
@@ -196,7 +242,7 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
         {
             gle::colorf(r, g, b, i ? a/2 : a);
             if(i) glDepthFunc(GL_GEQUAL);
-            drawexpverts(spherenumverts, spherenumindices, sphereindices);
+            sphere::draw();
             if(i) glDepthFunc(GL_LESS);
         }
         return;
@@ -209,31 +255,26 @@ static void drawexplosion(bool inside, float r, float g, float b, float a)
         if(inside)
         {
             glCullFace(GL_FRONT);
-            drawexpverts(heminumverts, heminumindices, hemiindices);
+            hemisphere::draw();
             glCullFace(GL_BACK);
             LOCALPARAMF(side, (-1));
         }
-        drawexpverts(heminumverts, heminumindices, hemiindices);
+        hemisphere::draw();
         if(i) glDepthFunc(GL_LESS);
     }
 }
 
 static void cleanupexplosion()
 {
-    gle::disablevertex();
-    if(!explosion2d) gle::disabletexcoord0();
-
-    glBindBuffer_(GL_ARRAY_BUFFER, 0);
-    glBindBuffer_(GL_ELEMENT_ARRAY_BUFFER, 0);
+    if(explosion2d) hemisphere::disable();
+    else sphere::disable();
 }
 
 static void deleteexplosions()
 {
     loopi(2) if(expmodtex[i]) { glDeleteTextures(1, &expmodtex[i]); expmodtex[i] = 0; }
-    if(hemivbuf) { glDeleteBuffers_(1, &hemivbuf); hemivbuf = 0; }
-    if(hemiebuf) { glDeleteBuffers_(1, &hemiebuf); hemiebuf = 0; }
-    if(spherevbuf) { glDeleteBuffers_(1, &spherevbuf); spherevbuf = 0; }
-    if(sphereebuf) { glDeleteBuffers_(1, &sphereebuf); sphereebuf = 0; }
+    hemisphere::cleanup();
+    sphere::cleanup();
 }
 
 static const float WOBBLE = 1.25f;

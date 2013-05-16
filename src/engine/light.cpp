@@ -355,7 +355,7 @@ const vector<int> &checklightcache(int x, int y)
     return lce.lights;
 }
 
-static uint progress = 0;
+static uint lightprogress = 0;
 
 bool calclight_canceled = false;
 volatile bool check_calclight_progress = false;
@@ -371,7 +371,7 @@ void check_calclight_canceled()
 
 void show_calclight_progress()
 {
-    float bar1 = float(progress) / float(allocnodes);
+    float bar1 = float(lightprogress) / float(allocnodes);
     defformatstring(text1)("%d%%", int(bar1 * 100));
 
     renderprogress(bar1, text1);
@@ -513,7 +513,7 @@ static void calcsurfaces(cube *c, const ivec &co, int size)
 {
     CHECK_CALCLIGHT_PROGRESS(return, show_calclight_progress);
 
-    progress++;
+    lightprogress++;
 
     loopi(8)
     {
@@ -609,7 +609,7 @@ void calclight()
     optimizeblendmap();
     clearlightcache();
     clearsurfaces(worldroot);
-    progress = 0;
+    lightprogress = 0;
     calclight_canceled = false;
     check_calclight_progress = false;
     SDL_TimerID timer = SDL_AddTimer(250, calclighttimer, NULL);

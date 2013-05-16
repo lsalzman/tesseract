@@ -144,11 +144,11 @@ void findnormal(const vec &pos, int smooth, const vec &surface, vec &v)
 VARR(lerpsubdiv, 0, 2, 4);
 VARR(lerpsubdivsize, 4, 4, 128);
 
-static uint progress = 0;
+static uint normalprogress = 0;
 
 void show_addnormals_progress()
 {
-    float bar1 = float(progress) / float(allocnodes);
+    float bar1 = float(normalprogress) / float(allocnodes);
     renderprogress(bar1, "computing normals...");
 }
 
@@ -158,7 +158,7 @@ void addnormals(cube &c, const ivec &o, int size)
 
     if(c.children)
     {
-        progress++;
+        normalprogress++;
         size >>= 1;
         loopi(8) addnormals(c.children[i], ivec(i, o.x, o.y, o.z, size), size);
         return;
@@ -252,7 +252,7 @@ void calcnormals(bool lerptjoints)
 {
     usetnormals = lerptjoints; 
     if(usetnormals) findtjoints();
-    progress = 1;
+    normalprogress = 1;
     loopi(8) addnormals(worldroot[i], ivec(i, 0, 0, 0, worldsize/2), worldsize/2);
 }
 
