@@ -713,6 +713,7 @@ struct ctfclientmode : clientmode
                 dropped = getint(p);
                 if(dropped) loopk(3) droploc[k] = getint(p)/DMF;
             }
+            if(p.overread()) break;
             if(commit && flags.inrange(i))
             {
                 flag &f = flags[i];
