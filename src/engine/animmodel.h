@@ -127,8 +127,8 @@ struct animmodel : model
                     else LOADMODELSHADER(name, alphaname); \
                 } while(0)
             #define SETMODELSHADER(m, name) DOMODELSHADER(name, (m)->setshader(name##shader))
-            if(shader) return shader;
-            else if(shadowmapping == SM_REFLECT) LOADMODELSHADER(rsmmodel, rsmalphamodel);
+            if(shadowmapping == SM_REFLECT) LOADMODELSHADER(rsmmodel, rsmalphamodel);
+            else if(shader) return shader;
             else if(bumpmapped())
             {
                 if(shouldenvmap) LOADDECALMODELSHADER(bumpenvmapmodel, bumpenvmapalphamodel, decalbumpenvmapmodel, decalbumpenvmapalphamodel);
