@@ -961,7 +961,7 @@ void renderparticles()
                         LOCALPARAMF(softparams, (-1.0f/softparticleblend, 0, 0));
                     }
                     else if(flags&PT_NOTEX) particlenotextureshader->set();
-                    else particleshader->setvariant(hasTRG ? (flags&PT_GREY ? 0 : (flags&PT_GREYALPHA ? 1 : -1)) : -1 ? 0 : -1, 0);
+                    else particleshader->setvariant(hasTRG ? (flags&PT_GREY ? 0 : (flags&PT_GREYALPHA ? 1 : -1)) : -1, 0);
                 }
                 if(changedbits&(PT_BRIGHT|PT_SOFT|PT_NOTEX|PT_SHADER|PT_GREY|PT_GREYALPHA))
                 {
