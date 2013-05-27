@@ -858,7 +858,7 @@ namespace game
         q.put(physstate);
         ivec o = ivec(vec(d->o.x, d->o.y, d->o.z-d->eyeheight).mul(DMF));
         uint vel = min(int(d->vel.magnitude()*DVELF), 0xFFFF), fall = min(int(d->falling.magnitude()*DVELF), 0xFFFF);
-        // 3 bits position, 1 bit velocity, 3 bits falling, 1 bit material
+        // 3 bits position, 1 bit velocity, 3 bits falling, 1 bit material, 1 bit crouching
         uint flags = 0;
         if(o.x < 0 || o.x > 0xFFFF) flags |= 1<<0;
         if(o.y < 0 || o.y > 0xFFFF) flags |= 1<<1;
@@ -871,6 +871,7 @@ namespace game
             if(d->falling.x || d->falling.y || d->falling.z > 0) flags |= 1<<6;
         }
         if((lookupmaterial(d->feetpos())&MATF_CLIP) == MAT_GAMECLIP) flags |= 1<<7;
+        if(d->crouching < 0) flags |= 1<<8;
         putuint(q, flags);
         loopk(3)
         {
@@ -1077,6 +1078,7 @@ namespace game
                 d->roll = roll;
                 d->move = (physstate>>4)&2 ? -1 : (physstate>>4)&1;
                 d->strafe = (physstate>>6)&2 ? -1 : (physstate>>6)&1;
+                d->crouching = (flags&(1<<8))!=0 ? -1 : abs(d->crouching);
                 vec oldpos(d->o);
                 if(allowmove(d))
                 {

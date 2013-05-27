@@ -345,6 +345,10 @@ static const struct guninfo { int sound, attackdelay, damage, spread, projspeed,
 
 #include "ai.h"
 
+#define CROUCHTIME 150
+#define CROUCHMAXHEIGHT 14
+#define CROUCHMINHEIGHT 10
+
 // inherited by fpsent and server clients
 struct fpsstate
 {
@@ -576,6 +580,7 @@ struct fpsent : dynent, fpsstate
         lastcollect = vec(-1e10f, -1e10f, -1e10f);
         stopattacksound();
         lastnode = -1;
+        eyeheight = CROUCHMAXHEIGHT;
     }
 };
 
