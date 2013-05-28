@@ -1775,7 +1775,7 @@ void modifyvelocity(physent *pl, bool local, bool water, bool floating, int curt
         {
             if(pl==player) d.mul(floatspeed/100.0f);
         }
-        else if(pl->physstate >= PHYS_SLOPE && pl->crouching) d.mul(0.35f);
+        else if(pl->physstate >= PHYS_SLOPE && pl->crouching) d.mul(0.4f);
     }
     float fric = water && !floating ? 20.0f : (pl->physstate >= PHYS_SLOPE || floating ? 6.0f : 30.0f);
     pl->vel.lerp(d, pl->vel, pow(1 - 1/fric, curtime/20.0f));
