@@ -994,7 +994,7 @@ void batchshadowmapmodels()
     for(octaentities *oe = shadowmms; oe; oe = oe->rnext) loopvk(oe->mapmodels)
     {
         extentity &e = *ents[oe->mapmodels[k]];
-        if(e.flags&extentity::F_NOVIS) continue;
+        if(e.flags&(extentity::F_NOVIS|extentity::F_NOSHADOW)) continue;
         e.visible = true;
     }
     for(octaentities *oe = shadowmms; oe; oe = oe->rnext) loopvj(oe->mapmodels)
