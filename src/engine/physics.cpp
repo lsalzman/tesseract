@@ -1500,10 +1500,10 @@ bool move(physent *d, vec &dir)
     return !collided;
 }
 
-void crouchplayer(physent *pl, int moveres, bool local, float speed, float minheight, float maxheight)
+void crouchplayer(physent *pl, int moveres, bool local)
 {
     if(!curtime) return;
-    speed = (maxheight - minheight) * (curtime / speed);
+    float minheight = pl->maxheight * CROUCHHEIGHT, speed = (pl->maxheight - minheight) * curtime / float(CROUCHTIME);
     if(pl->crouching < 0)
     {
         if(pl->eyeheight > minheight)
@@ -1517,9 +1517,9 @@ void crouchplayer(physent *pl, int moveres, bool local, float speed, float minhe
             }
         }
     }
-    else if(pl->eyeheight < maxheight)
+    else if(pl->eyeheight < pl->maxheight)
     {
-        float diff = min(maxheight - pl->eyeheight, speed), step = diff/moveres;
+        float diff = min(pl->maxheight - pl->eyeheight, speed), step = diff/moveres;
         pl->eyeheight += diff;
         if(pl->physstate > PHYS_FALL)
         {

@@ -204,7 +204,7 @@ namespace game
             }
             if(d->state==CS_ALIVE || d->state==CS_EDITING)
             {
-                crouchplayer(d, 10, false, CROUCHTIME, CROUCHMINHEIGHT, CROUCHMAXHEIGHT);
+                crouchplayer(d, 10, false);
                 if(smoothmove && d->smoothmillis>0) predictplayer(d, true);
                 else moveplayer(d, 1, false);
             }
@@ -240,7 +240,7 @@ namespace game
         else if(!intermission)
         {
             if(player1->ragdoll) cleanragdoll(player1);
-            crouchplayer(player1, 10, true, CROUCHTIME, CROUCHMINHEIGHT, CROUCHMAXHEIGHT);
+            crouchplayer(player1, 10, true);
             moveplayer(player1, 10, true);
             swayhudgun(curtime);
             entities::checkitems(player1);
