@@ -1653,8 +1653,6 @@ void resetfogcolor()
     setfogcolor(curfogcolor);
 }
 
-FVAR(fogscale, 0, 1.5f, 1e3f);
-
 static void setfog(int fogmat, float below = 0, float blend = 1, int abovemat = MAT_AIR)
 {
     float start = 0, end = 0;
