@@ -1,3 +1,11 @@
+ENet 1.3.8 (June 2, 2013):
+
+* added enet_linked_version() for checking the linked version 
+* added enet_socket_get_address() for querying the local address of a socket
+* silenced some debugging prints unless ENET_DEBUG is defined during compilation
+* handle EINTR in enet_socket_wait() so that enet_host_service() doesn't propagate errors from signals
+* optimized enet_host_bandwidth_throttle() to be less expensive for large numbers of peers
+
 ENet 1.3.7 (March 6, 2013):
 
 * added ENET_PACKET_FLAG_SENT to indicate that a packet is being freed because it has been sent
