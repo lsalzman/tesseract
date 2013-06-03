@@ -678,7 +678,7 @@ struct matrix3x3
         b.rotate_around_y(ck, sk);
         c.rotate_around_y(ck, sk);
     }
-    void rotate_around_y(float angle) { rotate_around_x(cosf(angle), sinf(angle)); }
+    void rotate_around_y(float angle) { rotate_around_y(cosf(angle), sinf(angle)); }
 
     void rotate_around_z(float ck, float sk)
     {
@@ -687,7 +687,7 @@ struct matrix3x3
         b.rotate_around_z(ck, sk);
         c.rotate_around_z(ck, sk);
     }
-    void rotate_around_z(float angle) { rotate_around_x(cosf(angle), sinf(angle)); }
+    void rotate_around_z(float angle) { rotate_around_z(cosf(angle), sinf(angle)); }
 
     vec transform(const vec2 &o) const { return vec(a.x*o.x + a.y*o.y, b.x*o.x + b.y*o.y, c.x*o.y + c.y*o.y); }
 };
@@ -863,7 +863,7 @@ struct matrix3x4
         b.rotate_around_y(ck, sk);
         c.rotate_around_y(ck, sk);
     }
-    void rotate_around_y(float angle) { rotate_around_x(cosf(angle), sinf(angle)); }
+    void rotate_around_y(float angle) { rotate_around_y(cosf(angle), sinf(angle)); }
 
     void rotate_around_z(float ck, float sk)
     {
@@ -872,7 +872,7 @@ struct matrix3x4
         b.rotate_around_z(ck, sk);
         c.rotate_around_z(ck, sk);
     }
-    void rotate_around_z(float angle) { rotate_around_x(cosf(angle), sinf(angle)); }
+    void rotate_around_z(float angle) { rotate_around_z(cosf(angle), sinf(angle)); }
 
     vec transform(const vec &o) const { return vec(a.dot(o), b.dot(o), c.dot(o)); }
     vec transposedtransform(const vec &o) const
