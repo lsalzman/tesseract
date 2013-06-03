@@ -199,8 +199,8 @@ namespace mpr
 
         ModelOBB(const vec &ent, const vec &center, const vec &radius, float yaw, float pitch, float roll) : o(ent), radius(radius), orient(vec(0, 0, 1), yaw*RAD) 
         {
-            if(pitch) orient.mul(quat(vec(1, 0, 0), pitch*RAD), quat(orient));
-            if(roll) orient.mul(quat(vec(0, -1, 0), roll*RAD), quat(orient));
+            if(pitch) orient.mul(quat(vec(1, 0, 0), pitch*RAD));
+            if(roll) orient.mul(quat(vec(0, -1, 0), roll*RAD));
             o.add(orient.rotate(center));
         }
 
@@ -241,8 +241,8 @@ namespace mpr
 
         ModelEllipse(const vec &ent, const vec &center, const vec &radius, float yaw, float pitch, float roll) : o(ent), radius(radius), orient(vec(0, 0, 1), yaw*RAD) 
         {
-            if(pitch) orient.mul(quat(vec(1, 0, 0), pitch*RAD), quat(orient));
-            if(roll) orient.mul(quat(vec(0, -1, 0), roll*RAD), quat(orient));
+            if(pitch) orient.mul(quat(vec(1, 0, 0), pitch*RAD));
+            if(roll) orient.mul(quat(vec(0, -1, 0), roll*RAD));
             o.add(orient.rotate(center));
         }
 
