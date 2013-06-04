@@ -717,36 +717,13 @@ bool plcollide(physent *d, const vec &dir)    // collide with player or monster
 
 void rotatebb(vec &center, vec &radius, int yaw, int pitch, int roll)
 {
-    if(roll)
-    {
-        if(roll < 0) roll = 360 + roll%360;
-        else if(roll >= 360) roll %= 360;
-        const vec2 &rot = sincos360[roll];
-        center.rotate_around_y(rot.x, -rot.y);
-        vec2 oldradius(radius.x, radius.z);
-        radius.x = fabs(oldradius.x*rot.x) + fabs(oldradius.y*rot.y);
-        radius.z = fabs(oldradius.y*rot.x) + fabs(oldradius.x*rot.y);
-    }
-    if(pitch)
-    {
-        if(pitch < 0) pitch = 360 + pitch%360;
-        else if(pitch >= 360) pitch %= 360;
-        const vec2 &rot = sincos360[pitch];
-        center.rotate_around_x(rot.x, rot.y);
-        vec2 oldradius(radius.y, radius.z);
-        radius.y = fabs(oldradius.x*rot.x) + fabs(oldradius.y*rot.y);
-        radius.z = fabs(oldradius.y*rot.x) + fabs(oldradius.x*rot.y);
-    }
-    if(yaw)
-    {
-        if(yaw < 0) yaw = 360 + yaw%360;
-        else if(yaw >= 360) yaw %= 360;
-        const vec2 &rot = sincos360[yaw];
-        center.rotate_around_z(rot.x, rot.y);
-        vec2 oldradius(radius);
-        radius.x = fabs(oldradius.x*rot.x) + fabs(oldradius.y*rot.y);
-        radius.y = fabs(oldradius.y*rot.x) + fabs(oldradius.x*rot.y);
-    }
+    matrix3x3 orient;
+    orient.identity();
+    if(yaw) orient.rotate_around_z(sincosmod360(yaw));
+    if(pitch) orient.rotate_around_x(sincosmod360(pitch));
+    if(roll) orient.rotate_around_y(sincosmod360(-roll));
+    center = orient.transform(center);
+    radius = orient.abstransform(radius);
 }
 
 template<class E, class M>
@@ -768,37 +745,13 @@ static inline bool mmcollide(physent *d, const vec &dir, const extentity &e, con
 template<class E>
 static bool fuzzycolliderect(physent *d, const vec &dir, float cutoff, const vec &o, const vec &center, const vec &radius, int yaw, int pitch, int roll)
 {
-    vec bbcenter = center, bbradius = radius;
-    rotatebb(bbcenter, bbradius, yaw, pitch, roll);
-    bbcenter.add(o);
+    mpr::ModelOBB mdlvol(o, center, radius, yaw, pitch, roll);
+    vec bbradius = mdlvol.orient.abstransposedtransform(radius);
 
-    if(fabs(d->o.x - bbcenter.x) > bbradius.x + d->radius || fabs(d->o.y - bbcenter.y) > bbradius.y + d->radius ||
-       d->o.z + d->aboveeye < bbcenter.z - bbradius.z || d->o.z - d->eyeheight > bbcenter.z + bbradius.z)
+    if(fabs(d->o.x - mdlvol.o.x) > bbradius.x + d->radius || fabs(d->o.y - mdlvol.o.y) > bbradius.y + d->radius ||
+       d->o.z + d->aboveeye < mdlvol.o.z - bbradius.z || d->o.z - d->eyeheight > mdlvol.o.z + bbradius.z)
         return true;
 
-    matrix3x3 orient;
-    orient.identity();
-    if(roll) 
-    {
-        if(roll < 0) roll = 360 + roll%360;
-        else if(roll >= 360) roll %= 360;
-        const vec2 &rot = sincos360[roll];
-        orient.rotate_around_y(rot.x, rot.y);
-    }
-    if(pitch) 
-    {
-        if(pitch < 0) pitch = 360 + pitch%360;
-        else if(pitch >= 360) pitch %= 360;
-        const vec2 &rot = sincos360[pitch];
-        orient.rotate_around_x(rot.x, -rot.y);
-    }
-    if(yaw)
-    {
-        if(yaw < 0) yaw = 360 + yaw%360;
-        else if(yaw >= 360) yaw %= 360;
-        const vec2 &rot = sincos360[yaw];
-        orient.rotate_around_z(rot.x, -rot.y);
-    }
     E entvol(d);
     wall = vec(0, 0, 0);
     float bestdist = -1e10f;
@@ -808,16 +761,68 @@ static bool fuzzycolliderect(physent *d, const vec &dir, float cutoff, const vec
         float dist;
         switch(i)
         {
-            case 0: w = vec(orient.a).neg(); dist = center.x - radius.x; break;
-            case 1: w = orient.a; dist = -center.x - radius.x; break;
-            case 2: w = vec(orient.b).neg(); dist = center.y - radius.y; break;
-            case 3: w = orient.b; dist = -center.y - radius.y; break;
-            case 4: w = vec(orient.c).neg(); dist = center.z - radius.z; break;
-            case 5: w = orient.c; dist = -center.z - radius.z; break;
+            case 0: w = vec(mdlvol.orient.a).neg(); dist = -radius.x; break;
+            case 1: w = mdlvol.orient.a; dist = -radius.x; break;
+            case 2: w = vec(mdlvol.orient.b).neg(); dist = -radius.y; break;
+            case 3: w = mdlvol.orient.b; dist = -radius.y; break;
+            case 4: w = vec(mdlvol.orient.c).neg(); dist = -radius.z; break;
+            case 5: w = mdlvol.orient.c; dist = -radius.z; break;
         }
         vec pw = entvol.supportpoint(vec(w).neg());
-        dist += w.dot(vec(pw).sub(o));
+        dist += w.dot(vec(pw).sub(mdlvol.o));
         if(dist >= 0) return true;
+        if(dist <= bestdist) continue;
+        wall = vec(0, 0, 0);
+        bestdist = dist;
+        if(!dir.iszero())
+        {
+            if(w.dot(dir) >= -cutoff*dir.magnitude()) continue;
+            if(d->type<ENT_CAMERA &&
+                dist < (dir.z*w.z < 0 ?
+                    d->zmargin-(d->eyeheight+d->aboveeye)/(dir.z < 0 ? 3.0f : 4.0f) :
+                    ((dir.x*w.x < 0 || dir.y*w.y < 0) ? -d->radius : 0)))
+                continue;
+        }
+        wall = w;
+    }
+    if(wall.iszero())
+    {
+        inside = true;
+        return true;
+    }
+    return false;
+}
+
+template<class E>
+static bool fuzzycollideellipse(physent *d, const vec &dir, float cutoff, const vec &o, const vec &center, const vec &radius, int yaw, int pitch, int roll)
+{
+    E entvol(d);
+    mpr::ModelEllipse mdlvol(o, center, radius, yaw, pitch, roll);
+    if(!mpr::collide(entvol, mdlvol)) return true;
+ 
+    wall = vec(0, 0, 0);
+    float bestdist = -1e10f;
+    loopi(3)
+    {
+        vec w;
+        float dist;
+        switch(i)
+        {
+            case 0: w = mdlvol.orient.c; dist = -radius.z; break;
+            case 1: w = vec(mdlvol.orient.c).neg(); dist = -radius.z; break;
+            case 2: 
+            {
+                vec2 ln(mdlvol.orient.transform(entvol.center().sub(mdlvol.o)));
+                float r = ln.magnitude();
+                if(r < 1e-6f) continue;
+                vec2 lw = vec2(ln.x*radius.y, ln.y*radius.x).normalize();
+                w = mdlvol.orient.transposedtransform(lw);
+                dist = -vec2(ln.x*radius.x, ln.y*radius.y).dot(lw)/r;
+                break;
+            }   
+        }
+        vec pw = entvol.supportpoint(vec(w).neg());
+        dist += w.dot(vec(pw).sub(mdlvol.o));
         if(dist <= bestdist) continue;
         wall = vec(0, 0, 0);
         bestdist = dist;
@@ -859,8 +864,11 @@ bool mmcollide(physent *d, const vec &dir, float cutoff, octaentities &oc) // co
                 if(m->ellipsecollide)
                 {
                     //if(!mmcollide<mpr::EntCylinder, mpr::ModelEllipse>(d, dir, e, center, radius, yaw, pitch, roll)) return false;
-                    if(pitch || roll) rotatebb(center, radius, 0, pitch, roll);
-                    if(!ellipsecollide(d, dir, e.o, center, yaw, radius.x, radius.y, radius.z, radius.z)) return false;
+                    if(pitch || roll) 
+                    {
+                        if(!fuzzycollideellipse<mpr::EntCapsule>(d, dir, cutoff, e.o, center, radius, yaw, pitch, roll)) return false;
+                    }
+                    else if(!ellipsecollide(d, dir, e.o, center, yaw, radius.x, radius.y, radius.z, radius.z)) return false;
                 }
                 //else if(!mmcollide<mpr::EntCylinder, mpr::ModelOBB>(d, dir, e, center, radius, yaw, pitch, roll)) return false;
                 else if(pitch || roll)

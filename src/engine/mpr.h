@@ -82,17 +82,17 @@ namespace mpr
     struct EntOBB
     {
         physent *ent;
-        quat orient;
+        matrix3x3 orient;
         float zmargin;
 
-        EntOBB(physent *ent, float zmargin = 0) : ent(ent), orient(vec(0, 0, 1), ent->yaw*RAD), zmargin(zmargin) {}
+        EntOBB(physent *ent, float zmargin = 0) : ent(ent), orient(ent->yaw*RAD, vec(0, 0, 1)), zmargin(zmargin) {}
 
         vec center() const { vec o(ent->o); o.z += (ent->aboveeye - ent->eyeheight - zmargin)/2; return o; }
 
         vec contactface(const vec &wn, const vec &wdir) const
         {
-            vec n = orient.invertedrotate(wn).div(vec(ent->xradius, ent->yradius, (ent->aboveeye + ent->eyeheight + zmargin)/2)), 
-                dir = orient.invertedrotate(wdir), 
+            vec n = orient.transform(wn).div(vec(ent->xradius, ent->yradius, (ent->aboveeye + ent->eyeheight + zmargin)/2)), 
+                dir = orient.transform(wdir), 
                 an(fabs(n.x), fabs(n.y), dir.z ? fabs(n.z) : 0),
                 fn(0, 0, 0);
             if(an.x > an.y)
@@ -102,19 +102,19 @@ namespace mpr
             }
             else if(an.y > an.z) fn.y = n.y*dir.y < 0 ? (n.y > 0 ? 1 : -1) : 0;
             else if(an.z > 0) fn.z = n.z*dir.z < 0 ? (n.z > 0 ? 1 : -1) : 0;
-            return orient.rotate(fn);
+            return orient.transposedtransform(fn);
         }
 
         vec supportpoint(const vec &n) const
         {
-            vec ln = orient.invertedrotate(n), p(0, 0, 0);
+            vec ln = orient.transform(n), p(0, 0, 0);
             if(ln.x > 0) p.x += ent->xradius;
             else p.x -= ent->xradius;
             if(ln.y > 0) p.y += ent->yradius;
             else p.y -= ent->yradius;
             if(ln.z > 0) p.z += ent->aboveeye;
             else p.z -= ent->eyeheight + zmargin;
-            return orient.rotate(p).add(ent->o);
+            return orient.transposedtransform(p).add(ent->o);
         }
     };
 
@@ -195,20 +195,22 @@ namespace mpr
     struct ModelOBB
     {
         vec o, radius;
-        quat orient;
+        matrix3x3 orient;
 
-        ModelOBB(const vec &ent, const vec &center, const vec &radius, float yaw, float pitch, float roll) : o(ent), radius(radius), orient(vec(0, 0, 1), yaw*RAD) 
+        ModelOBB(const vec &ent, const vec &center, const vec &radius, int yaw, int pitch, int roll) : o(ent), radius(radius)
         {
-            if(pitch) orient.mul(quat(vec(1, 0, 0), pitch*RAD));
-            if(roll) orient.mul(quat(vec(0, -1, 0), roll*RAD));
-            o.add(orient.rotate(center));
+            orient.identity();
+            if(roll) orient.rotate_around_y(sincosmod360(roll));
+            if(pitch) orient.rotate_around_x(sincosmod360(-pitch));
+            if(yaw) orient.rotate_around_z(sincosmod360(-yaw));
+            o.add(orient.transposedtransform(center));
         }
 
         vec center() const { return o; }
 
         vec contactface(const vec &wn, const vec &wdir) const
         {
-            vec n = orient.invertedrotate(wn).div(radius), dir = orient.invertedrotate(wdir),
+            vec n = orient.transform(wn).div(radius), dir = orient.transform(wdir),
                 an(fabs(n.x), fabs(n.y), dir.z ? fabs(n.z) : 0),
                 fn(0, 0, 0);
             if(an.x > an.y)
@@ -218,63 +220,65 @@ namespace mpr
             }
             else if(an.y > an.z) fn.y = n.y*dir.y < 0 ? (n.y > 0 ? 1 : -1) : 0;
             else if(an.z > 0) fn.z = n.z*dir.z < 0 ? (n.z > 0 ? 1 : -1) : 0;
-            return orient.rotate(fn);
+            return orient.transposedtransform(fn);
         }
 
         vec supportpoint(const vec &n) const
         {
-            vec ln = orient.invertedrotate(n), p(0, 0, 0);
+            vec ln = orient.transform(n), p(0, 0, 0);
             if(ln.x > 0) p.x += radius.x;
             else p.x -= radius.x;
             if(ln.y > 0) p.y += radius.y;
             else p.y -= radius.y;
             if(ln.z > 0) p.z += radius.z;
             else p.z -= radius.z;
-            return orient.rotate(p).add(o);
+            return orient.transposedtransform(p).add(o);
         }
     };
 
     struct ModelEllipse
     {
         vec o, radius;
-        quat orient;
+        matrix3x3 orient;
 
-        ModelEllipse(const vec &ent, const vec &center, const vec &radius, float yaw, float pitch, float roll) : o(ent), radius(radius), orient(vec(0, 0, 1), yaw*RAD) 
+        ModelEllipse(const vec &ent, const vec &center, const vec &radius, float yaw, float pitch, float roll) : o(ent), radius(radius)
         {
-            if(pitch) orient.mul(quat(vec(1, 0, 0), pitch*RAD));
-            if(roll) orient.mul(quat(vec(0, -1, 0), roll*RAD));
-            o.add(orient.rotate(center));
+            orient.identity();
+            if(roll) orient.rotate_around_y(sincosmod360(roll));
+            if(pitch) orient.rotate_around_x(sincosmod360(-pitch));
+            if(yaw) orient.rotate_around_z(sincosmod360(-yaw));
+            o.add(orient.transposedtransform(center));
         }
 
         vec center() const { return o; }
 
         vec contactface(const vec &wn, const vec &wdir) const
         {
-            vec n = orient.invertedrotate(wn).div(radius), dir = orient.invertedrotate(wdir);
+            vec n = orient.transform(wn).div(radius), dir = orient.transform(wdir);
             float dxy = n.dot2(n), dz = n.z*n.z;
             vec fn(0, 0, 0);
             if(dz > dxy && dir.z) fn.z = n.z*dir.z < 0 ? (n.z > 0 ? 1 : -1) : 0;
             else if(n.dot2(dir) < 0) 
             {
-                fn.x = n.x*radius.x;
-                fn.y = n.y*radius.y;
+                fn.x = n.x*radius.y;
+                fn.y = n.y*radius.x;
                 fn.normalize();
             }
-            return orient.rotate(fn);
+            return orient.transposedtransform(fn);
         }
 
         vec supportpoint(const vec &n) const
         {
-            vec ln = orient.invertedrotate(n), p(0, 0, 0);
+            vec ln = orient.transform(n), p(0, 0, 0);
             if(ln.z > 0) p.z += radius.z;
             else p.z -= radius.z;
             if(ln.x || ln.y)
             {
-                float r = n.magnitude2();
+                float r = ln.magnitude2();
                 p.x += ln.x*radius.x/r;
                 p.y += ln.y*radius.y/r;
             }
-            return orient.rotate(p).add(o);
+            return orient.transposedtransform(p).add(o);
         }
     };
  

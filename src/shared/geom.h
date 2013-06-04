@@ -1,5 +1,59 @@
+struct vec;
 struct vec4;
-struct vec2;
+
+struct vec2
+{
+    union
+    {
+        struct { float x, y; };
+        float v[2];
+    };
+
+    vec2() {}
+    vec2(float x, float y) : x(x), y(y) {}
+    explicit vec2(const vec &v);
+    explicit vec2(const vec4 &v);
+
+    float &operator[](int i)       { return v[i]; }
+    float  operator[](int i) const { return v[i]; }
+
+    bool operator==(const vec2 &o) const { return x == o.x && y == o.y; }
+    bool operator!=(const vec2 &o) const { return x != o.x || y != o.y; }
+
+    bool iszero() const { return x==0 && y==0; }
+    float dot(const vec2 &o) const  { return x*o.x + y*o.y; }
+    float squaredlen() const { return dot(*this); }
+    float magnitude() const  { return sqrtf(squaredlen()); }
+    vec2 &normalize() { mul(1/magnitude()); return *this; }
+    float cross(const vec2 &o) const { return x*o.y - y*o.x; }
+
+    vec2 &mul(float f)       { x *= f; y *= f; return *this; }
+    vec2 &mul(const vec2 &o) { x *= o.x; y *= o.y; return *this; }
+    vec2 &div(float f)       { x /= f; y /= f; return *this; }
+    vec2 &div(const vec2 &o) { x /= o.x; y /= o.y; return *this; }
+    vec2 &add(float f)       { x += f; y += f; return *this; }
+    vec2 &add(const vec2 &o) { x += o.x; y += o.y; return *this; }
+    vec2 &sub(float f)       { x -= f; y -= f; return *this; }
+    vec2 &sub(const vec2 &o) { x -= o.x; y -= o.y; return *this; }
+    vec2 &neg()              { x = -x; y = -y; return *this; }
+
+    vec2 &lerp(const vec2 &b, float t) { x += (b.x-x)*t; y += (b.y-y)*t; return *this; }
+    vec2 &lerp(const vec2 &a, const vec2 &b, float t) { x = a.x + (b.x-a.x)*t; y = a.y + (b.y-a.y)*t; return *this; }
+    vec2 &avg(const vec2 &b) { add(b); mul(0.5f); return *this; }
+};
+
+static inline bool htcmp(const vec2 &x, const vec2 &y)
+{
+    return x == y;
+}
+
+static inline uint hthash(const vec2 &k)
+{
+    union { uint i; float f; } x, y;
+    x.f = k.x; y.f = k.y;
+    uint v = x.i^y.i;
+    return v + (v>>12);
+}
 
 struct vec
 {
@@ -16,8 +70,8 @@ struct vec
     vec(float a, float b, float c) : x(a), y(b), z(c) {}
     explicit vec(int v[3]) : x(v[0]), y(v[1]), z(v[2]) {}
     explicit vec(const float *v) : x(v[0]), y(v[1]), z(v[2]) {}
+    explicit vec(const vec2 &v, float z = 0) : x(v.x), y(v.y), z(z) {}
     explicit vec(const vec4 &v);
-    explicit vec(const vec2 &v, float z = 0);
 
     vec(float yaw, float pitch) : x(-sinf(yaw)*cosf(pitch)), y(cosf(yaw)*cosf(pitch)), z(sinf(pitch)) {}
 
@@ -31,8 +85,10 @@ struct vec
 
     bool iszero() const { return x==0 && y==0 && z==0; }
     float squaredlen() const { return x*x + y*y + z*z; }
+    float dot2(const vec2 &o) const { return x*o.x + y*o.y; }
     float dot2(const vec &o) const { return x*o.x + y*o.y; }
     float dot(const vec &o) const { return x*o.x + y*o.y + z*o.z; }
+    float absdot(const vec &o) const { return fabs(x*o.x) + fabs(y*o.y) + fabs(z*o.z); }
     vec &mul(const vec &o)   { x *= o.x; y *= o.y; z *= o.z; return *this; }
     vec &mul(float f)        { x *= f; y *= f; z *= f; return *this; }
     vec &div(const vec &o)   { x /= o.x; y /= o.y; z /= o.z; return *this; }
@@ -47,6 +103,7 @@ struct vec
     vec &max(const vec &o)   { x = ::max(x, o.x); y = ::max(y, o.y); z = ::max(z, o.z); return *this; }
     vec &min(float f)        { x = ::min(x, f); y = ::min(y, f); z = ::min(z, f); return *this; }
     vec &max(float f)        { x = ::max(x, f); y = ::max(y, f); z = ::max(z, f); return *this; }
+    vec &abs() { x = fabs(x); y = fabs(y); z = fabs(z); return *this; }
     vec &clamp(float f, float h) { x = ::clamp(x, f, h); y = ::clamp(y, f, h); z = ::clamp(z, f, h); return *this; }
     float magnitude2() const { return sqrtf(dot2(*this)); }
     float magnitude() const  { return sqrtf(squaredlen()); }
@@ -98,11 +155,9 @@ struct vec
     vec &rotate_around_x(float angle) { return rotate_around_x(cosf(angle), sinf(angle)); }
     vec &rotate_around_y(float angle) { return rotate_around_y(cosf(angle), sinf(angle)); }
 
-    vec &rotate(float angle, const vec &d)
-    {
-        float c = cosf(angle), s = sinf(angle);
-        return rotate(c, s, d);
-    }
+    vec &rotate_around_z(const vec2 &sc) { return rotate_around_z(sc.x, sc.y); }
+    vec &rotate_around_x(const vec2 &sc) { return rotate_around_x(sc.x, sc.y); }
+    vec &rotate_around_y(const vec2 &sc) { return rotate_around_y(sc.x, sc.y); }
 
     vec &rotate(float c, float s, const vec &d)
     {
@@ -111,6 +166,9 @@ struct vec
                     x*(d.x*d.z*(1-c)-d.y*s) + y*(d.y*d.z*(1-c)+d.x*s) + z*(d.z*d.z*(1-c)+c));
         return *this;
     }
+
+    vec &rotate(float angle, const vec &d) { return rotate(cosf(angle), sinf(angle), d); }
+    vec &rotate(const vec2 &sc, const vec &d) { return rotate(sc.x, sc.y, d); }
 
     void orthogonal(const vec &d)
     {
@@ -155,6 +213,8 @@ struct vec
 
     int tohexcolor() { return ((int(r*255)>>16)&0xFF)|((int(g*255)>>8)&0xFF)|(int(b*255)&0xFF); }
 };
+
+inline vec2::vec2(const vec &v) : x(v.x), y(v.y) {}
 
 static inline bool htcmp(const vec &x, const vec &y)
 {
@@ -242,65 +302,14 @@ struct vec4
     vec4 &rotate_around_z(float angle) { return rotate_around_z(cosf(angle), sinf(angle)); }
     vec4 &rotate_around_x(float angle) { return rotate_around_x(cosf(angle), sinf(angle)); }
     vec4 &rotate_around_y(float angle) { return rotate_around_y(cosf(angle), sinf(angle)); }
+
+    vec4 &rotate_around_z(const vec2 &sc) { return rotate_around_z(sc.x, sc.y); }
+    vec4 &rotate_around_x(const vec2 &sc) { return rotate_around_x(sc.x, sc.y); }
+    vec4 &rotate_around_y(const vec2 &sc) { return rotate_around_y(sc.x, sc.y); }
 };
 
+inline vec2::vec2(const vec4 &v) : x(v.x), y(v.y) {}
 inline vec::vec(const vec4 &v) : x(v.x), y(v.y), z(v.z) {}
-
-struct vec2
-{
-    union
-    {
-        struct { float x, y; };
-        float v[2];
-    };
-
-    vec2() {}
-    vec2(float x, float y) : x(x), y(y) {}
-    explicit vec2(const vec &v) : x(v.x), y(v.y) {}
-    explicit vec2(const vec4 &v) : x(v.x), y(v.y) {}
-
-    float &operator[](int i)       { return v[i]; }
-    float  operator[](int i) const { return v[i]; }
-
-    bool operator==(const vec2 &o) const { return x == o.x && y == o.y; }
-    bool operator!=(const vec2 &o) const { return x != o.x || y != o.y; }
-
-    bool iszero() const { return x==0 && y==0; }
-    float dot(const vec2 &o) const  { return x*o.x + y*o.y; }
-    float squaredlen() const { return dot(*this); }
-    float magnitude() const  { return sqrtf(squaredlen()); }
-    vec2 &normalize() { mul(1/magnitude()); return *this; }
-    float cross(const vec2 &o) const { return x*o.y - y*o.x; }
-
-    vec2 &mul(float f)       { x *= f; y *= f; return *this; }
-    vec2 &mul(const vec2 &o) { x *= o.x; y *= o.y; return *this; }
-    vec2 &div(float f)       { x /= f; y /= f; return *this; }
-    vec2 &div(const vec2 &o) { x /= o.x; y /= o.y; return *this; }
-    vec2 &add(float f)       { x += f; y += f; return *this; }
-    vec2 &add(const vec2 &o) { x += o.x; y += o.y; return *this; }
-    vec2 &sub(float f)       { x -= f; y -= f; return *this; }
-    vec2 &sub(const vec2 &o) { x -= o.x; y -= o.y; return *this; }
-    vec2 &neg()              { x = -x; y = -y; return *this; }
-
-    vec2 &lerp(const vec2 &b, float t) { x += (b.x-x)*t; y += (b.y-y)*t; return *this; }
-    vec2 &lerp(const vec2 &a, const vec2 &b, float t) { x = a.x + (b.x-a.x)*t; y = a.y + (b.y-a.y)*t; return *this; }
-    vec2 &avg(const vec2 &b) { add(b); mul(0.5f); return *this; }
-};
-
-inline vec::vec(const vec2 &v, float z) : x(v.x), y(v.y), z(z) {}
-
-static inline bool htcmp(const vec2 &x, const vec2 &y)
-{
-    return x == y;
-}
-
-static inline uint hthash(const vec2 &k)
-{
-    union { uint i; float f; } x, y;
-    x.f = k.x; y.f = k.y;
-    uint v = x.i^y.i;
-    return v + (v>>12);
-}
 
 struct matrix3x3;
 struct matrix3x4;
@@ -650,11 +659,17 @@ struct matrix3x3
     vec transform(const vec &o) const { return vec(a.dot(o), b.dot(o), c.dot(o)); }
     vec transposedtransform(const vec &o) const
     {
-        return vec(a.x*o.x + b.x*o.y + c.x*o.z,
-                   a.y*o.x + b.y*o.y + c.y*o.z,
-                   a.z*o.x + b.z*o.y + c.z*o.z);
+        return vec(a).mul(o.x).add(vec(b).mul(o.y)).add(vec(c).mul(o.z));
     }
-
+    vec abstransform(const vec &o) const
+    {
+        return vec(a.absdot(o), b.absdot(o), c.absdot(o));
+    } 
+    vec abstransposedtransform(const vec &o) const
+    {
+        return vec(a).mul(o.x).abs().add(vec(b).mul(o.y).abs()).add(vec(c).mul(o.z).abs());
+    }
+        
     void identity()
     {
         a = vec(1, 0, 0);
@@ -670,6 +685,7 @@ struct matrix3x3
         c.rotate_around_x(ck, sk);
     }
     void rotate_around_x(float angle) { rotate_around_x(cosf(angle), sinf(angle)); }
+    void rotate_around_x(const vec2 &sc) { rotate_around_x(sc.x, sc.y); }
 
     void rotate_around_y(float ck, float sk)
     {
@@ -679,6 +695,7 @@ struct matrix3x3
         c.rotate_around_y(ck, sk);
     }
     void rotate_around_y(float angle) { rotate_around_y(cosf(angle), sinf(angle)); }
+    void rotate_around_y(const vec2 &sc) { rotate_around_y(sc.x, sc.y); }
 
     void rotate_around_z(float ck, float sk)
     {
@@ -688,8 +705,10 @@ struct matrix3x3
         c.rotate_around_z(ck, sk);
     }
     void rotate_around_z(float angle) { rotate_around_z(cosf(angle), sinf(angle)); }
+    void rotate_around_z(const vec2 &sc) { rotate_around_z(sc.x, sc.y); }
 
-    vec transform(const vec2 &o) const { return vec(a.x*o.x + a.y*o.y, b.x*o.x + b.y*o.y, c.x*o.y + c.y*o.y); }
+    vec transform(const vec2 &o) const { return vec(a.dot2(o), b.dot2(o), c.dot2(o)); }
+    vec transposedtransform(const vec2 &o) { return vec(a).mul(o.x).add(vec(b).mul(o.y)); }
 };
 
 struct matrix3x4
@@ -855,6 +874,7 @@ struct matrix3x4
         c.rotate_around_x(ck, sk);
     }
     void rotate_around_x(float angle) { rotate_around_x(cosf(angle), sinf(angle)); }
+    void rotate_around_x(const vec2 &sc) { rotate_around_x(sc.x, sc.y); }
 
     void rotate_around_y(float ck, float sk)
     {
@@ -864,6 +884,7 @@ struct matrix3x4
         c.rotate_around_y(ck, sk);
     }
     void rotate_around_y(float angle) { rotate_around_y(cosf(angle), sinf(angle)); }
+    void rotate_around_y(const vec2 &sc) { rotate_around_y(sc.x, sc.y); }
 
     void rotate_around_z(float ck, float sk)
     {
@@ -873,6 +894,7 @@ struct matrix3x4
         c.rotate_around_z(ck, sk);
     }
     void rotate_around_z(float angle) { rotate_around_z(cosf(angle), sinf(angle)); }
+    void rotate_around_z(const vec2 &sc) { rotate_around_z(sc.x, sc.y); }
 
     vec transform(const vec &o) const { return vec(a.dot(o), b.dot(o), c.dot(o)); }
     vec transposedtransform(const vec &o) const
@@ -1241,32 +1263,35 @@ struct glmatrix
         : a(m.a.x, m.b.x, m.c.x, 0), b(m.a.y, m.b.y, m.c.y, 0), c(m.a.z, m.b.z, m.c.z, 0), d(m.a.w, m.b.w, m.c.w, 1)
     {}
     
-    void rotate_around_x(float angle)
+    void rotate_around_x(float ck, float sk)
     {
-        float ck = cosf(angle), sk = sinf(angle);
         vec4 rb = vec4(b).mul(ck).add(vec4(c).mul(sk)),
              rc = vec4(c).mul(ck).sub(vec4(b).mul(sk));
         b = rb;
         c = rc;
     }
+    void rotate_around_x(float angle) { rotate_around_x(cosf(angle), sinf(angle)); }
+    void rotate_around_x(const vec2 &sc) { rotate_around_x(sc.x, sc.y); }
 
-    void rotate_around_y(float angle)
+    void rotate_around_y(float ck, float sk)
     {
-        float ck = cosf(angle), sk = sinf(angle);
         vec4 rc = vec4(c).mul(ck).add(vec4(a).mul(sk)),
              ra = vec4(a).mul(ck).sub(vec4(c).mul(sk));
         c = rc;
         a = ra;
     }
+    void rotate_around_y(float angle) { rotate_around_y(cosf(angle), sinf(angle)); }
+    void rotate_around_y(const vec2 &sc) { rotate_around_y(sc.x, sc.y); }
 
-    void rotate_around_z(float angle)
+    void rotate_around_z(float ck, float sk)
     {
-        float ck = cosf(angle), sk = sinf(angle);
         vec4 ra = vec4(a).mul(ck).add(vec4(b).mul(sk)),
              rb = vec4(b).mul(ck).sub(vec4(a).mul(sk));
         a = ra;
         b = rb;
     }
+    void rotate_around_z(float angle) { rotate_around_z(cosf(angle), sinf(angle)); }
+    void rotate_around_z(const vec2 &sc) { rotate_around_z(sc.x, sc.y); }
 
     void rotate(float ck, float sk, const vec &dir)
     {
@@ -1281,11 +1306,8 @@ struct glmatrix
         c = rc;
     }
 
-    void rotate(float angle, const vec &dir)
-    {
-        float ck = cosf(angle), sk = sinf(angle);
-        rotate(ck, sk, dir);
-    }
+    void rotate(float angle, const vec &dir) { rotate(cosf(angle), sinf(angle), dir); }
+    void rotate(const vec2 &sc, const vec &dir) { rotate(sc.x, sc.y, dir); }
 
     void mul(const glmatrix &x, const glmatrix &y)
     {
@@ -1534,4 +1556,13 @@ extern bool rayrectintersect(const vec &b, const vec &s, const vec &o, const vec
 extern bool linecylinderintersect(const vec &from, const vec &to, const vec &start, const vec &end, float radius, float &dist);
 
 extern const vec2 sincos360[];
+
+static inline int mod360(int angle)
+{
+    if(angle < 0) angle = 360 + (angle <= -360 ? angle%360 : angle);
+    else if(angle >= 360) angle %= 360;
+    return angle;
+}
+
+static inline const vec2 &sincosmod360(int angle) { return sincos360[mod360(angle)]; }    
 
