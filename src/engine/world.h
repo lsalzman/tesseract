@@ -31,7 +31,7 @@ enum
     MATSURF_EDIT_ONLY
 };
 
-#define TEX_SCALE 8.0f
+#define TEX_SCALE 16.0f
 
 struct vertex { vec pos; bvec norm; uchar reserved; vec2 tc; bvec tangent; uchar bitangent; };
  
