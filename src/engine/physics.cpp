@@ -1724,7 +1724,7 @@ bool droptofloor(vec &o, float radius, float height)
         dropent() 
         { 
             type = ENT_CAMERA; 
-            collidetype = COLLIDE_AABB; 
+            //collidetype = COLLIDE_AABB; 
             vel = vec(0, 0, -1);
         }
     } d;
