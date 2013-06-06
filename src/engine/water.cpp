@@ -538,7 +538,7 @@ void renderlava()
             Texture *tex = lslot.sts.inrange(0) ? lslot.sts[0].t: notexture;
             glBindTexture(GL_TEXTURE_2D, tex->id);
             glActiveTexture_(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, lslot.sts.inrange(2) ? lslot.sts[2].t->id : notexture->id);
+            glBindTexture(GL_TEXTURE_2D, lslot.sts.inrange(1) ? lslot.sts[1].t->id : notexture->id);
             glActiveTexture_(GL_TEXTURE0);
 
             vector<materialsurface> &surfs = lavasurfs[k];
@@ -548,7 +548,7 @@ void renderlava()
 
         if(drawtex != DRAWTEX_MINIMAP && lavafallsurfs[k].length())
         {
-            Texture *tex = lslot.sts.inrange(1) ? lslot.sts[1].t : (lslot.sts.inrange(0) ? lslot.sts[0].t : notexture);
+            Texture *tex = lslot.sts.inrange(2) ? lslot.sts[2].t : (lslot.sts.inrange(0) ? lslot.sts[0].t : notexture);
             float angle = fmod(float(lastmillis/2000.0f/(2*M_PI)), 1.0f),
                   s = angle - int(angle) - 0.5f;
             s *= 8 - fabs(s)*16;
@@ -559,7 +559,7 @@ void renderlava()
 
             glBindTexture(GL_TEXTURE_2D, tex->id);
             glActiveTexture_(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, lslot.sts.inrange(3) ? lslot.sts[3].t->id : notexture->id);
+            glBindTexture(GL_TEXTURE_2D, lslot.sts.inrange(2) ? (lslot.sts.inrange(3) ? lslot.sts[3].t->id : notexture->id) : (lslot.sts.inrange(1) ? lslot.sts[1].t->id : notexture->id));
             glActiveTexture_(GL_TEXTURE0);
 
             vector<materialsurface> &surfs = lavafallsurfs[k];
@@ -582,7 +582,7 @@ void renderwaterfalls()
 
         MSlot &wslot = lookupmaterialslot(MAT_WATER+k);
 
-        Texture *tex = wslot.sts.inrange(1) ? wslot.sts[1].t : notexture;
+        Texture *tex = wslot.sts.inrange(2) ? wslot.sts[2].t : (wslot.sts.inrange(0) ? wslot.sts[0].t : notexture);
         float angle = fmod(float(lastmillis/600.0f/(2*M_PI)), 1.0f),
               s = angle - int(angle) - 0.5f;
         s *= 8 - fabs(s)*16;
@@ -606,9 +606,7 @@ void renderwaterfalls()
  
         glBindTexture(GL_TEXTURE_2D, tex->id);
         glActiveTexture_(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(4) ? wslot.sts[4].t->id : notexture->id);
-        glActiveTexture_(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(5) ? wslot.sts[5].t->id : notexture->id);
+        glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(2) ? (wslot.sts.inrange(3) ? wslot.sts[3].t->id : notexture->id) : (wslot.sts.inrange(1) ? wslot.sts[1].t->id : notexture->id));
         if(waterfallenv)
         {
             glActiveTexture_(GL_TEXTURE3);
@@ -634,9 +632,9 @@ void renderwater()
 
         MSlot &wslot = lookupmaterialslot(MAT_WATER+k);
 
-        glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(2) ? wslot.sts[2].t->id : notexture->id);
+        glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(0) ? wslot.sts[0].t->id : notexture->id);
         glActiveTexture_(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(3) ? wslot.sts[3].t->id : notexture->id);
+        glBindTexture(GL_TEXTURE_2D, wslot.sts.inrange(1) ? wslot.sts[1].t->id : notexture->id);
         if(caustics && causticscale && causticmillis) setupcaustics(2);
         if(waterenvmap && !waterreflect && drawtex != DRAWTEX_MINIMAP)
         {
