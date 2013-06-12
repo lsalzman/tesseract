@@ -1,0 +1,16 @@
+# ignore compiled objects
+*.[oa]
+*.gch
+
+# ignore backups and other misc files
+*.orig
+*.rej
+*.bak
+*~
+
+# binaries
+*.exe
+/src/tess_client
+/src/tess_server
+/bin_unix/native_*
+
